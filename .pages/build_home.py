@@ -5,6 +5,7 @@ Folders not listed in categories.json land in "미분류" so a new digest never 
 Also puts the password lock into every document page (see protect_pages).
 Run: python3 .pages/build_home.py
 """
+import datetime as dt
 import html
 import json
 import re
@@ -64,6 +65,7 @@ def load_videos():
         videos[name] = {
             "folder": name,
             "page": page,
+            "dir": d,
             "title": c.get("title", d.name),
             "subtitle": c.get("subtitle", ""),
             "channel": (c.get("channel") or "채널 미상").strip(),
@@ -71,6 +73,23 @@ def load_videos():
             "vid": c.get("video_id") or (m.group(1) if m else ""),
         }
     return videos
+
+
+WEEKDAYS = "월화수목금토일"
+
+
+def load_dates(videos):
+    """When each video was digested. First seen = folder creation time, then frozen in dates.json
+    so rebuilding a digest or cloning the repo elsewhere never reshuffles the order."""
+    path = HERE / "dates.json"
+    dates = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    for name, v in videos.items():
+        if name not in dates:
+            st = v["dir"].stat()
+            ts = getattr(st, "st_birthtime", st.st_mtime)
+            dates[name] = dt.datetime.fromtimestamp(ts).strftime("%Y-%m-%dT%H:%M:%S")
+    path.write_text(json.dumps(dict(sorted(dates.items())), ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    return dates
 
 
 def card(v, cat_label=None, show_channel=True):
@@ -185,6 +204,22 @@ def main():
             f'<div class="grid" data-group>{cards}</div></section>'
         )
 
+    # time view: newest first, one group per day (the page can flip the order)
+    dates = load_dates(videos)
+    by_day = defaultdict(list)
+    for name, v in videos.items():
+        by_day[dates[name][:10]].append(v)
+    time_html = []
+    for day in sorted(by_day, reverse=True):
+        vs = sorted(by_day[day], key=lambda v: dates[v["folder"]], reverse=True)
+        d = dt.date.fromisoformat(day)
+        label = f"{d.year}년 {d.month}월 {d.day}일 ({WEEKDAYS[d.weekday()]})"
+        cards = "".join(card(v, cat_label=cat_of[v["folder"]].split(" › ")[-1]) for v in vs)
+        time_html.append(
+            f'<section class="chsec" data-sec><h3>{label}<span class="n">{len(vs)}</span></h3>'
+            f'<div class="grid" data-group>{cards}</div></section>'
+        )
+
     tpl = (HERE / "home_template.html").read_text(encoding="utf-8")
     # SHA-256 of the home password, one line. Empty or missing = no lock screen.
     hash_file = HERE / "password.sha256"
@@ -199,6 +234,7 @@ def main():
         .replace("{{NAV}}", "".join(nav))
         .replace("{{CATEGORY_VIEW}}", "".join(sections))
         .replace("{{CHANNEL_VIEW}}", "".join(ch_html))
+        .replace("{{TIME_VIEW}}", "".join(time_html))
     )
     (ROOT / "index.html").write_text(out, encoding="utf-8")
     changed = protect_pages(videos, pw_hash)

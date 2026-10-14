@@ -34,6 +34,9 @@
   .seg button{border:0; background:none; color:var(--text-sub); font:inherit; font-size:14px; font-weight:600;
     padding:7px 14px; border-radius:9px; cursor:pointer}
   .seg button[aria-pressed="true"]{background:var(--bg); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .order{border:1px solid var(--line); background:var(--bg); color:var(--text); font:inherit; font-size:14px; font-weight:600;
+    padding:7px 12px; border-radius:12px; cursor:pointer; white-space:nowrap}
+  .order:hover{border-color:var(--brand); color:var(--brand)}
   input[type=search]{flex:1; min-width:180px; font:inherit; font-size:15px; color:var(--text);
     background:var(--surface-2); border:1px solid transparent; border-radius:12px; padding:9px 14px; outline:none}
   input[type=search]:focus{border-color:var(--brand); background:var(--bg)}
@@ -141,7 +144,9 @@
       <div class="seg" role="group" aria-label="보기 방식">
         <button type="button" data-view="cat" aria-pressed="true">주제별</button>
         <button type="button" data-view="ch" aria-pressed="false">채널별</button>
+        <button type="button" data-view="time" aria-pressed="false">시간별</button>
       </div>
+      <button type="button" class="order" id="order" hidden>최신순</button>
       <input type="search" id="q" placeholder="제목, 채널, 주제로 찾기" aria-label="검색">
     </div>
     <nav class="chips" id="chips">{{NAV}}</nav>
@@ -150,21 +155,38 @@
 <main class="wrap">
   <div id="view-cat">{{CATEGORY_VIEW}}</div>
   <div id="view-ch" hidden>{{CHANNEL_VIEW}}</div>
+  <div id="view-time" hidden>{{TIME_VIEW}}</div>
   <p class="empty" id="empty">찾는 영상이 없어요. 다른 단어로 찾아보세요.</p>
 </main>
 <footer class="wrap"></footer>
 <script>
 (function(){
-  var q = document.getElementById('q'), chips = document.getElementById('chips'),
-      views = {cat: document.getElementById('view-cat'), ch: document.getElementById('view-ch')},
-      empty = document.getElementById('empty'), current = 'cat';
+  var q = document.getElementById('q'), chips = document.getElementById('chips'), orderBtn = document.getElementById('order'),
+      views = {cat: document.getElementById('view-cat'), ch: document.getElementById('view-ch'), time: document.getElementById('view-time')},
+      empty = document.getElementById('empty'), current = 'cat', newestFirst = true;
+  function store(k, v){ try { localStorage.setItem(k, v); } catch(e) {} }
+  function read(k){ try { return localStorage.getItem(k); } catch(e) { return null; } }
   function setView(v){
     current = v;
     document.querySelectorAll('.seg button').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.view === v); });
-    views.cat.hidden = v !== 'cat'; views.ch.hidden = v !== 'ch';
-    chips.hidden = v !== 'cat' || !!q.value.trim();
-    try { localStorage.setItem('home-view', v); } catch(e) {}
+    Object.keys(views).forEach(function(k){ views[k].hidden = k !== v; });
+    orderBtn.hidden = v !== 'time';
+    store('home-view', v);
     filter();
+  }
+  // 시간별 보기는 최신순으로 그려 두고, 오래된순이면 날짜 묶음과 그 안의 카드를 뒤집어요.
+  function setOrder(newest){
+    if (newest !== newestFirst) {
+      var root = views.time;
+      Array.prototype.slice.call(root.children).reverse().forEach(function(sec){ root.appendChild(sec); });
+      root.querySelectorAll('.grid').forEach(function(g){
+        Array.prototype.slice.call(g.children).reverse().forEach(function(c){ g.appendChild(c); });
+      });
+      newestFirst = newest;
+    }
+    orderBtn.textContent = newest ? '최신순 ↓' : '오래된순 ↑';
+    orderBtn.setAttribute('aria-label', newest ? '최신순으로 보는 중, 눌러서 오래된순으로' : '오래된순으로 보는 중, 눌러서 최신순으로');
+    store('home-order', newest ? 'new' : 'old');
   }
   function filter(){
     var term = q.value.trim().toLowerCase(), root = views[current], shown = 0;
@@ -180,9 +202,11 @@
     empty.style.display = shown ? 'none' : 'block';
   }
   document.querySelectorAll('.seg button').forEach(function(b){ b.addEventListener('click', function(){ setView(b.dataset.view); }); });
+  orderBtn.addEventListener('click', function(){ setOrder(!newestFirst); });
   q.addEventListener('input', filter);
-  var saved = null; try { saved = localStorage.getItem('home-view'); } catch(e) {}
-  setView(saved === 'ch' ? 'ch' : 'cat');
+  setOrder(read('home-order') !== 'old');
+  var saved = read('home-view');
+  setView(views[saved] ? saved : 'cat');
 })();
 </script>
 </body>
