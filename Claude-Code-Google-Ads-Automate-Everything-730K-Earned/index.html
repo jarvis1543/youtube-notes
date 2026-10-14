@@ -25,6 +25,8 @@
 <!-- yn-lock:end -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Claude Code로 Google Ads 자동화하기 — 73만 달러를 번 전략</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 <style>
   :root{
     --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
@@ -32,7 +34,10 @@
     --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
     --warn:#ff8a00; --warn-soft:#fff4e6;
     --info:#00b8a9; --info-soft:#e4f8f6;
-    --radius:16px; --maxw:760px;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
   }
   @media (prefers-color-scheme:dark){
     :root{
@@ -41,6 +46,8 @@
       --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
       --warn:#ffab4a; --warn-soft:#3a2a13;
       --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
     }
   }
   *{box-sizing:border-box}
@@ -78,13 +85,29 @@
   .keypoints li strong{color:var(--text)}
 
   /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
   nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
     border-radius:var(--radius)}
   nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
   nav.toc ol{margin:0; padding-left:20px}
-  nav.toc li{margin:6px 0; font-size:15px}
-  nav.toc a{color:var(--text-sub)}
-  nav.toc a.active{color:var(--brand); font-weight:600}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
 
   /* ── 본문 ──────────────────────────────────────────── */
   section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
@@ -99,6 +122,16 @@
     background:var(--surface-2); color:var(--text-mute);
     font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
   a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
 
   /* ── 그림 ──────────────────────────────────────────── */
   figure{margin:28px 0}
@@ -115,23 +148,33 @@
   thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
     font-weight:700; white-space:nowrap}
   tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
   td code{font-size:13.5px}
 
-  /* ── 용어 툴팁 ─────────────────────────────────────── */
-  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
-    font-weight:600; background:none}
-  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
-  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
-    background:var(--text); color:var(--bg); border-radius:12px;
-    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
-    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
-    transition:opacity .12s ease; pointer-events:none}
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
   #tip.on{opacity:1; visibility:visible}
-  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
 
   /* ── 박스 두 종류 ───────────────────────────────────
      .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
-     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
   aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
   aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
   aside p{margin:8px 0}
@@ -144,6 +187,92 @@
   aside .table-scroll{margin:12px 0 0}
   aside table{min-width:320px; font-size:14.5px}
   aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
 
   /* ── 인용 ──────────────────────────────────────────── */
   blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
@@ -159,13 +288,14 @@
   pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
     border:1px solid var(--line); overflow-x:auto; line-height:1.6}
   pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
 
   /* ── 꼬리말 ────────────────────────────────────────── */
   .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
   .tail h2{font-size:20px; margin:0 0 14px}
   .tail + .tail{margin-top:40px}
   .tail ol{padding-left:20px}
-  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
   footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
     font-size:13.5px; color:var(--text-mute)}
 
@@ -182,11 +312,11 @@
 
 <header>
   <h1>Claude Code로 Google Ads 자동화하기 — 73만 달러를 번 전략</h1>
-  <p class="lede">검색어·광고·페이지를 한 줄로 맞추고, 반복 작업은 Claude에 맡기는 법</p>
+  <p class="lede">키워드부터 광고, 랜딩 페이지, 수익 추적까지 Claude에게 맡기는 법</p>
   <div class="meta">
     <span>Jono Catliff</span><span class="dot">·</span>
-    <span>01:08:17</span><span class="dot">·</span>
-    <span>유튜브 영상 정리</span>
+    <span>영상 1:08:17</span><span class="dot">·</span>
+    <span>읽는 데 약 34분</span>
   </div>
   <a class="src-btn" href="https://www.youtube.com/watch?v=-EInjdpjKy0" target="_blank" rel="noopener">
     원본 영상 보러 가기 →
@@ -196,525 +326,729 @@
 <div class="keypoints">
   <h2>핵심만 먼저</h2>
   <ol>
-    <li>봐야 할 숫자는 클릭률이 아니라 수익이에요. 결제한 고객이 어느 광고에서 왔는지 끝까지 추적해요.</li>
-    <li>검색어 하나에 광고 그룹 하나(SKAG)를 두고, 검색어·광고·랜딩 페이지가 같은 말을 하게 만드는 게 핵심 전략이에요.</li>
-    <li>키워드는 AI에게 묻지 말고 키워드 플래너의 실제 검색량으로 골라요. 경쟁사 이름과 구직·교육·DIY 검색어는 빼요.</li>
-    <li>캠페인은 검색만 쓰고, 위치는 '실제 위치'로, 내 나라 밖은 전부 제외하는 걸 기본값으로 둬요.</li>
-    <li>Claude Code를 Google Ads API에 한 번 연결하면 캠페인·광고·랜딩 페이지·계정 감사를 대화로 처리하고, 스킬로 묶어 반복할 수 있어요.</li>
+    <li>Google Ads의 기준은 클릭이 아니라 이익이에요. 구글이 권하는 최적화 점수나 화려한 지표는 구글의 매출을 위한 것이에요.</li>
+    <li>키워드는 사는 사람의 의도로 고르고, <span class="term" data-term="구문 일치" data-en="Phrase match" data-desc="키워드의 뜻을 담은 검색에만 광고를 보여 주는 일치 유형이에요. 발표자는 같은 뜻의 여러 표현을 잡으면서도 크게 새지 않아서 기본값으로 써요." data-g="2">구문 일치</span>를 기본으로 써요. 구직, 교육, DIY(Do It Yourself), 경쟁사 검색은 처음부터 막아요.</li>
+    <li><span class="term" data-term="광고 그룹" data-en="Ad group" data-desc="캠페인 안에서 키워드와 광고를 묶는 단위예요. SKAG에서는 광고 그룹마다 검색어를 하나만 넣어요." data-g="3">광고 그룹</span> 하나에 검색어 하나(SKAG(Single Keyword Ad Group))를 두고, 검색어, 광고, <span class="term" data-term="랜딩 페이지" data-en="Landing page" data-desc="광고를 누른 사람이 처음 도착하는 페이지예요. 검색어와 같은 말로 시작해야 떠나지 않고 문의까지 이어져요." data-g="4">랜딩 페이지</span>, 이메일, 영업 통화가 같은 말을 하게 만들어요.</li>
+    <li>Claude Code를 Google Ads API(Application Programming Interface)에 한 번 연결하면 캠페인 설정, 광고 수백 개, <span class="term" data-term="제외 키워드" data-en="Negative keyword" data-desc="이 단어가 든 검색에는 광고를 보여 주지 말라고 정해 두는 키워드예요. 구직, 무료, DIY 같은 단어를 막아 광고비를 아껴요." data-g="9">제외 키워드</span>, 랜딩 페이지, 대시보드를 몇 분 만에 만들어요.</li>
+    <li>결제한 고객을 키워드까지 거슬러 추적하고, 그 매출을 다시 Google Ads에 올려야 진짜 ROAS(Return On Ad Spend)를 보고 입찰도 좋아져요.</li>
   </ol>
 </div>
 
 <nav class="toc">
   <h2>목차</h2>
   <ol>
-    <li><a href="#s1">수익만 보세요</a></li>
-    <li><a href="#s2">돈이 되는 키워드 고르기</a></li>
-    <li><a href="#s3">SKAG: 검색어, 광고, 페이지를 한 줄로</a></li>
-    <li><a href="#s4">Claude Code를 Google Ads에 연결하기</a></li>
-    <li><a href="#s5">첫 캠페인 설정과 광고비 낮추기</a></li>
-    <li><a href="#s6">광고 200개, 헤드라인 고정, 제외 키워드</a></li>
-    <li><a href="#s7">랜딩 페이지와 리마케팅</a></li>
-    <li><a href="#s8">분석: 대시보드, 진짜 ROAS, 새는 검색어</a></li>
-    <li><a href="#s9">사이트 배포와 Claude Code 스킬</a></li>
+    <li><a href="#s1">구글 말을 다 믿으면 안 되는 이유</a></li>
+    <li><a href="#s2">돈 되는 키워드와 SKAG 전략</a></li>
+    <li><a href="#s3">Claude Code를 Google Ads에 연결하기</a></li>
+    <li><a href="#s4">캠페인 구조, 기본 설정, 입찰</a></li>
+    <li><a href="#s5">광고 200개, 고정 헤드라인, 제외 키워드</a></li>
+    <li><a href="#s6">검색어에 맞춘 랜딩 페이지</a></li>
+    <li><a href="#s7">차가운 고객과 따뜻한 고객: 리마케팅</a></li>
+    <li><a href="#s8">대시보드와 진짜 ROAS 추적</a></li>
+    <li><a href="#s9">사이트 배포와 스킬로 반복 줄이기</a></li>
     <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
   </ol>
 </nav>
 
 <main>
 <section id="s1">
   <a class="stamp" href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=0s" target="_blank" rel="noopener">00:00</a>
-  <h2>수익만 보세요</h2>
-<p>화자는 직접 운영하다 작년에 매각한 사업의 Google Ads 계정을 먼저 보여 줘요. 광고비로 약 17만 7천 캐나다 달러를 썼고, <span class="term" data-term="전환율" data-desc="광고를 보고 들어온 사람 중 문의나 구매처럼 원하는 행동을 한 사람의 비율이에요. 같은 광고비로 고객을 얼마나 얻는지 보여 줘요.">전환율</span>은 20% 안팎이었다고 해요. 화자는 이 정도면 마케터 상위 1%라고 말해요.</p>
+  <h2>구글 말을 다 믿으면 안 되는 이유</h2>
+<p>발표자는 자신이 팔았던 이전 사업의 Google Ads 계정을 먼저 열어 보여 줘요. 광고비로 약 17만 7천 캐나다달러를 썼고, 그 광고에서 나온 매출을 추적해 보니 73만 달러였다고 해요. <span class="term" data-term="전환율" data-en="Conversion rate" data-desc="광고를 누른 사람 중 문의, 구매처럼 원하는 행동까지 간 사람의 비율이에요. 발표자의 페이지는 20% 안팎이었어요." data-g="5">전환율</span>은 20% 안팎이었어요. 이 영상은 그 계정을 만든 전략을 Claude Code로 자동화하는 법을 다뤄요.</p>
+<p>슬라이드는 앞으로 다룰 전략 네 가지를 카드로 늘어놓아요. 01 SKAG, 02 ROAS 추적과 대시보드, 03 광고마다 따로 만든 랜딩 페이지, 04 사이트 방문자를 다시 잡는 리타기팅이에요. 이 문서의 나머지 부분이 이 네 장을 차례로 풀어요.</p>
 <figure>
-  <img src="assets/frame-0000.png" alt="Google Ads 캠페인 화면. 비용 CA$177,442.06과 캠페인 목록이 보여요">
-  <figcaption>화자가 매각한 사업의 실제 계정이에요. 영상 제목의 73만 달러는 추적을 시작한 뒤의 매출이에요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=0s" target="_blank" rel="noopener">영상 00:00에서 보기</a></figcaption>
+  <img src="assets/frame-0128.png" alt="4 strategies, $700K+ tracked from Google Ads라는 제목 아래 SKAGs, ROAS, Landing Pages, Retargeting 네 장의 카드가 놓인 슬라이드">
+  <figcaption>영상 전체의 목차예요. 두 번째 카드 ROAS가 이익을 재는 기준이라 뒤에서 가장 길게 다뤄요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=88s" target="_blank" rel="noopener">영상 01:28에서 보기</a></figcaption>
 </figure>
-<p>출발점은 절박했어요. 통장에 1만 달러만 남은 채 Google Ads를 시작했고, 월세를 내고 나니 2주치 생활비만 남았대요. 그 사이 고객 10명을 잡았고, 그게 7자리 매출 사업이 됐다고 해요.</p>
-<h3>Google이 시키는 대로 하지 마세요</h3>
-<p>화자는 먼저 의심할 것 세 가지를 꼽아요.</p>
-<ul>
-  <li><strong>최적화 점수와 추천 항목.</strong> 광고주를 위한 게 아니라 광고비를 더 쓰게 하려는 장치라고 봐요.</li>
-  <li><strong>Google 담당자의 정기 전화.</strong> 담당자의 보너스는 광고주의 성과가 아니라 지출에 묶여 있다고 말해요.</li>
-  <li><strong>화려한 지표.</strong> 클릭 수, 클릭률, 전환율보다 중요한 건 결국 얼마를 벌었느냐예요.</li>
-</ul>
-<h3>왜 수익만 봐야 할까요</h3>
-<p>매달 5만 8천 달러를 버는 사업도 고객이 Google Ads에서 왔는지, 검색엔진 노출이나 SNS, 외부 소개 사이트에서 왔는지 모를 수 있어요. 문의가 많아 보여도 스팸이나 가짜, 질 낮은 문의일 수 있죠. 그래서 결제한 고객이 어느 경로로 왔는지 추적해야 잘 되는 곳에 더 쓰고 안 되는 곳을 끊을 수 있어요. 영상의 나머지는 모두 이 목표, 즉 광고 수익률(<span class="term" data-term="ROAS" data-desc="광고비 대비 매출이에요. 100만 원을 써서 500만 원을 벌면 5배예요. 화자가 유일하게 중요하다고 보는 숫자예요.">ROAS</span>)을 끝까지 보는 구조를 만드는 데 맞춰져 있어요.</p>
+<h3>잔고 1만 달러에서 시작한 이야기</h3>
+<p>발표자는 창업 초기에 무엇을 해도 안 됐다고 해요. 통장에 1만 달러가 남았을 때 Google Ads를 시작했고, 월세가 나가면서 잔고가 계속 줄었어요. 그래프의 빨간 선이 바닥을 찍는 지점이 2천 달러, 약 2주를 버틸 돈이었어요. 거기서 첫 광고로 고객 10명을 얻으면서 초록 선처럼 반등했고, 결국 일곱 자리 매출 사업으로 키워 팔았어요.</p>
 <figure>
-  <img src="assets/frame-0340.png" alt="슬라이드 'Two ways you're flying blind right now'. 왼쪽은 매출 5만 8천 달러의 출처를 모르는 그림, 오른쪽은 Google이 3단계까지만 보는 그림이에요">
-  <figcaption>두 가지 '깜깜이' 상태예요. 사업주는 매출이 어느 채널에서 왔는지 모르고, Google은 문의까지만 알고 실제 결제는 몰라요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=220s" target="_blank" rel="noopener">영상 03:40에서 보기</a></figcaption>
+  <img src="assets/frame-0205.png" alt="잔고가 1만 달러에서 2천 달러까지 떨어졌다가 첫 Google 광고 계약 이후 7-figure exit까지 올라가는 꺾은선 그래프 슬라이드">
+  <figcaption>Rent hit 지점 이후 바닥까지가 두 달 남짓이에요. 이 전략이 이론이 아니라 버티려고 익힌 방법이라는 점을 강조해요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=125s" target="_blank" rel="noopener">영상 02:05에서 보기</a></figcaption>
 </figure>
-<p>화자가 소개하는 전략은 네 가지예요. 단일 키워드 광고 그룹, 수익 기준 추적, 전환이 잘 되는 <span class="term" data-term="랜딩 페이지" data-desc="광고를 누른 사람이 처음 도착하는 페이지예요. 홈페이지가 아니라 그 광고 전용으로 만든 페이지라 문의로 이어지기 쉬워요.">랜딩 페이지</span>, 그리고 이전 방문자를 다시 잡는 리타기팅이에요.</p>
+<h3>구글이 권하는 것 중 무시할 세 가지</h3>
+<p>첫째는 추천 탭의 <b>최적화 점수</b>예요. 점수를 올리라는 제안은 대개 광고비를 더 쓰게 하는 쪽이에요. 둘째는 주기적으로 걸려 오는 계정 담당자의 전화예요. 발표자는 담당자의 보너스가 광고주의 성과가 아니라 지출에 묶여 있다고 말해요. 셋째는 클릭 수, 클릭률, 전환율처럼 화려한 지표예요. 이 지표들이 좋아도 이익이 나는지는 알 수 없어요.</p>
+<p>아래 슬라이드는 왜 이익을 따로 추적해야 하는지 두 가지 사각지대로 보여 줘요. 왼쪽은 한 달 매출 5만 8,400달러가 SEO(Search Engine Optimization), Google Ads, SNS(Social Networking Service), 외부 중개 사이트 중 어디서 왔는지 모르는 상황이에요. 오른쪽은 구글 화면이 노출, 클릭률, 폼 제출의 1~3단계에서 끝나고, 통화, 상담, 결제의 4~6단계는 보이지 않는다는 뜻이에요. 맨 아래 검은 상자는 진짜 ROAS를 6단계 결제 금액 나누기 광고비로 정의해요.</p>
+<figure>
+  <img src="assets/frame-0330.png" alt="Two ways you're flying blind 슬라이드. 왼쪽은 네 채널에서 매출이 들어오지만 출처를 모르는 그림, 오른쪽은 1~3단계까지만 구글이 보여 주고 4~6단계는 보이지 않는 파이프라인">
+  <figcaption>리드가 많아 보여도 가짜이거나 질이 낮을 수 있어요. 돈을 낸 고객이 어디서 왔는지 알아야 잘 되는 채널에 돈을 더 넣어요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=210s" target="_blank" rel="noopener">영상 03:30에서 보기</a></figcaption>
+</figure>
 </section>
 
 <section id="s2">
   <a class="stamp" href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=239s" target="_blank" rel="noopener">03:59</a>
-  <h2>돈이 되는 키워드 고르기</h2>
-<p>'plumbing'을 검색하는 사람이 다 배관 공사를 맡기려는 건 아니에요. 배관 자재를 사려는 사람, 견습생 자리를 찾는 사람, 강좌를 찾는 사람, 경쟁사 이름을 친 사람이 섞여 있어요. 이런 검색어에 광고가 뜨면 고객이 될 리 없는 클릭에 돈을 내요. 화자는 AI에게 좋은 키워드를 물어보면 엉터리 답이 나온다고 경고해요.</p>
-<h3>일치 유형: 과녁의 어디를 노릴까요</h3>
-<p>키워드를 등록할 때는 검색어와 얼마나 비슷해야 광고를 보여 줄지 정해요. 화자는 이를 과녁에 비유해요. 한가운데는 이상적이지만 양이 적고, 바깥으로 갈수록 양은 늘지만 엉뚱한 사람이 섞여요.</p>
+  <h2>돈 되는 키워드와 SKAG 전략</h2>
+<p>키워드를 잘못 고르면 이길 수 없어요. 그런데 AI(Artificial Intelligence)에게 "좋은 키워드"를 물으면 그럴듯하지만 검색량이 없는 답을 준다고 발표자는 경고해요. 그래서 키워드는 사람의 <b>의도</b>와 실제 데이터로 골라요.</p>
+<p>슬라이드는 "plumber"를 입력했을 때 나오는 자동완성 여섯 개에 각각 의도를 붙여 놨어요. "become a plumber"는 구직, "plumber school near me"는 학생, "plumber equipment"는 장비, "how do plumbers fix a sink"는 직접 고치려는 사람, "cheap plumber"는 가격 비교예요. 맨 아래 노란 줄 "emergency plumber sydney now"만 초록색 'READY TO BUY' 표시가 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-0405.png" alt="plumber 검색창 아래 자동완성 여섯 개와 각각의 의도 라벨. job hunting, student, accessories, DIY, price shopper, 마지막 emergency plumber sydney now만 ready to buy">
+  <figcaption>검색량은 허영이고 의도가 유일한 필터라는 게 이 슬라이드의 결론이에요. 잘못 고른 키워드도 클릭되면 돈은 똑같이 나가요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=245s" target="_blank" rel="noopener">영상 04:05에서 보기</a></figcaption>
+</figure>
+<h3>일치 유형은 과녁으로 생각해요</h3>
+<p>한가운데를 맞히는 키워드는 정확하지만 수가 적어요. 그래서 조금 넓혀 검색량을 늘리는데, 얼마나 넓히느냐가 <b><span class="term" data-term="일치 유형" data-en="Keyword match type" data-desc="내 키워드와 사람들의 검색어가 얼마나 비슷해야 광고를 보여 줄지 정하는 설정이에요. 넓을수록 노출은 늘지만 엉뚱한 검색에도 돈이 나가요." data-g="1">일치 유형</span></b>이에요. 슬라이드의 과녁은 바깥 고리부터 확장 검색, 2021년에 없어진 확장 검색 수정자, 구문 일치, 한가운데 일치검색이에요. 오른쪽 카드에는 'emergency plumber toronto'로 광고를 걸었을 때 실제로 걸리는 검색 예시가 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0500.png" alt="네 겹 과녁 그림과 오른쪽 네 장의 카드. Broad는 burn budget, Broad Match Modifier는 gone, Phrase는 use this, Exact는 proven으로 표시">
+  <figcaption>발표자는 구문 일치에 winner 표시를 붙였어요. 바깥 확장 검색 고리에 찍힌 'plumber salary', 'plumbing memes' 같은 점이 돈이 새는 곳이에요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=300s" target="_blank" rel="noopener">영상 05:00에서 보기</a></figcaption>
+</figure>
 <div class="table-scroll">
   <table>
-    <thead><tr><th>일치 유형</th><th>어떻게 걸리나요</th><th>화자 평가</th></tr></thead>
+    <thead><tr><th>일치 유형</th><th>슬라이드의 예시 검색</th><th>발표자의 판단</th></tr></thead>
     <tbody>
-      <tr><td>확장 일치</td><td>Google이 비슷하다고 판단한 검색어까지 넓게 잡아요. '응급 배관공 토론토'에 '배관공 연봉 토론토'나 'DIY 배수구 뚫기'가 붙을 수 있어요</td><td>피해요</td></tr>
-      <tr><td><span class="term" data-term="구문 일치" data-desc="키워드를 등록할 때 고르는 일치 유형의 하나예요. 검색어에 그 표현(지금은 그 의미)이 들어 있을 때 광고가 나가요. 확장 일치보다 좁고 일치보다 넓어요.">구문 일치</span></td><td>검색어 안에 그 표현이 들어 있으면 걸려요. '토론토 시내 24시간 응급 배관공'도 잡혀요</td><td>최선이에요</td></tr>
-      <tr><td>일치</td><td>그 표현 그대로 검색할 때만 걸려요</td><td>정확하지만 모두가 그렇게 검색하진 않아요</td></tr>
+      <tr><td>확장 검색 (기호 없음)</td><td>plumber salary toronto, diy clogged drain, plumbing memes</td><td>예산만 태워요. 피해요</td></tr>
+      <tr><td>확장 검색 수정자 (+기호)</td><td>더는 받지 않아요</td><td>2021년에 없어졌어요</td></tr>
+      <tr><td>구문 일치 ("따옴표")</td><td>24/7 emergency plumber toronto downtown, best emergency plumber toronto same day</td><td>기본으로 써요. 같은 뜻의 여러 표현을 잡아요</td></tr>
+      <tr><td>일치검색 ([대괄호])</td><td>emergency plumber toronto, emergency plumbers toronto, toronto emergency plumber</td><td>가장 정확하지만 모두가 그 표현으로 찾진 않아요</td></tr>
     </tbody>
   </table>
 </div>
-<p>화자가 구문 일치를 고르는 이유는 같은 뜻을 말하는 방식이 수천 가지라서예요. 그 변형을 다 잡되 엉뚱한 의미는 피할 수 있다는 거예요. 그리고 '키워드'는 단어 하나가 아니라 사람이 친 검색어 전체라는 점도 짚어요.</p>
-<figure>
-  <img src="assets/frame-0500.png" alt="과녁 그림 슬라이드. 바깥부터 확장 일치, 2021년 폐지된 확장 일치 수정자, 구문 일치, 일치 순으로 고리가 그려져 있어요">
-  <figcaption>슬라이드에는 말로는 언급하지 않은 '확장 일치 수정자(BMM)'가 2021년에 폐지됐다는 표시도 있어요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=300s" target="_blank" rel="noopener">영상 05:00에서 보기</a></figcaption>
-</figure>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>지금 Google 도움말이 설명하는 구문 일치는 영상의 설명보다 조금 넓어요. 표현이 글자 그대로 들어 있지 않아도 '키워드의 의미'를 담은 검색어면 광고가 나갈 수 있어요. 예전 확장 일치 수정자(+키워드)의 동작이 구문 일치에 합쳐졌고, 새 BMM 키워드는 더 만들 수 없어요. 그래서 구문 일치를 써도 엉뚱한 검색어가 들어올 수 있고, 뒤에 나오는 제외 키워드 정리가 그만큼 중요해요.</p>
-  <p class="cite">출처: <a href="https://support.google.com/google-ads/answer/10286719?hl=en" target="_blank" rel="noopener">Google Ads 고객센터 — About changes to phrase match and broad match modifier</a></p>
+  <p>발표자는 구문 일치를 "그 구절을 포함한 검색", 일치검색을 "정확히 그 구절"로 설명해요. 지금 Google Ads 도움말은 조금 더 넓게 정의해요. 구문 일치는 키워드의 <b>의미</b>를 포함한 검색에, 일치검색은 <b>같은 의미나 같은 의도</b>의 검색에 광고가 나갈 수 있다고 해요. 그래서 구문 일치나 일치검색을 써도 검색어 보고서를 정기적으로 보고 제외 키워드를 넣는 일은 계속 필요해요.</p>
+  <p class="cite">출처: <a href="https://support.google.com/google-ads/answer/7478529?hl=en" target="_blank" rel="noopener">Google Ads 도움말 — About keyword matching options</a></p>
 </aside>
-<h3>키워드 플래너로 진짜 검색량 보기</h3>
-<p>키워드는 무료인 Google <span class="term" data-term="키워드 플래너" data-desc="Google Ads 안에 있는 무료 도구예요. 검색어별 월 검색량, 경쟁도, 예상 입찰가를 보여 줘서 어떤 키워드에 돈을 쓸지 고를 때 써요.">키워드 플래너</span>로 찾아요. 광고 계정을 만들고 '도구 → 키워드 플래너 → 새 키워드 찾기'로 들어가 'plumbing'처럼 넓게 시작해요. 이때 지역을 꼭 내 도시로 좁혀야 해요. 기본값은 나라 전체예요. 영상에서는 토론토로 좁혀 키워드 699개가 나왔어요.</p>
-<p>플래너는 월평균 검색량, 경쟁도, 상단 노출 입찰가를 보여 줘요. 검색량은 Claude도 모르는 정보라서 특히 중요해요. 화자는 경쟁이 있다는 걸 오히려 좋은 신호로 봐요. 경쟁이 있다는 건 돈이 된다는 뜻이니까요.</p>
-<ul>
-  <li><strong>좋은 키워드:</strong> '근처 배관공'처럼 당장 사람을 부르려는 검색어, '응급'이 붙은 검색어, '서비스 + 내 도시', '24시간 서비스'.</li>
-  <li><strong>피할 키워드:</strong> 경쟁사 상호(영상에선 Roto-Rooter), 하지 않는 서비스, 질 낮은 검색어.</li>
-</ul>
-<p>경쟁사 이름을 피하는 이유도 설명해요. 그 회사를 직접 검색한 사람은 예전 고객이거나 소개받은 사람이에요. 광고를 눌러 통화까지 와도 "다른 회사에 연락하려던 거였어요"라며 끝나요. 고른 키워드는 내보내서 Claude Code에 넘겨요.</p>
+<h3>키워드 플래너로 실제 숫자를 봐요</h3>
+<p>키워드는 무료인 Google 키워드 플래너에서 찾아요. Google Ads 계정을 만들고 도구 메뉴에서 '새 키워드 찾기'를 고른 뒤 "plumbing"처럼 넓게 넣어요. 이때 지역을 실제 영업하는 도시로 바꿔야 해요. 기본값은 나라 전체라서, 캘리포니아에서 일하는데 미국 전체의 클릭 값을 내게 될 수 있어요. 데모는 캐나다 토론토로 좁혀 키워드 699개를 받았어요.</p>
+<p>결과 표에서 동그라미 친 열이 <b>월평균 검색수</b>예요. 발표자는 이 숫자를 Claude가 모르는 정보라고 강조해요. 경쟁도가 높은 건 나쁜 신호가 아니에요. 경쟁이 있다는 건 그 키워드에 돈이 된다는 뜻이에요. 맨 오른쪽 열은 다른 광고주가 상단 노출에 내는 입찰가예요.</p>
 <figure>
-  <img src="assets/frame-0859.png" alt="슬라이드 'Free tool. Real numbers.' 왼쪽에 응급, 근처, 도시, 24/7 같은 키워드 패턴 목록, 오른쪽에 키워드 플래너 결과 예시가 있어요">
-  <figcaption>어느 업종에나 통하는 키워드 패턴이에요. 서비스명 앞뒤에 '응급', '근처', '도시명', '24/7'을 붙이는 식이에요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=539s" target="_blank" rel="noopener">영상 08:59에서 보기</a></figcaption>
+  <img src="assets/frame-0725.png" alt="Google 키워드 플래너 결과 화면. 토론토, 캐나다로 지역을 좁힌 plumbing 검색 결과에서 월평균 검색수 열에 원이 그려져 있음">
+  <figcaption>"plumbers near me"처럼 지금 당장 사람을 부르려는 키워드가 돈 되는 키워드예요. "Roto-Rooter near me" 같은 경쟁사 이름은 상담까지 와도 다른 회사를 찾던 사람이라 빼요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=445s" target="_blank" rel="noopener">영상 07:25에서 보기</a></figcaption>
 </figure>
-<h3>서비스 × 도시 표</h3>
-<p>화자가 잘 써 온 또 하나의 방법은 서비스와 도시를 표로 엮는 거예요. 응급 배관을 토론토, 미시소가, 브램턴, 노스요크, 스카버러, 마크햄마다 하나씩 만들고, 막힌 배수구도 도시마다 만들어요. 다만 작은 도시로 갈수록 검색량이 없어요. 토론토의 응급 배관은 검색량이 넉넉하지만 마크햄은 그렇지 않아서 뺄 수 있어요.</p>
+<p>어떤 업종이든 통하는 패턴도 슬라이드로 정리했어요. 왼쪽은 [서비스] 자리에 내 업종만 넣으면 되는 템플릿 12개예요. 'emergency [service]', '[service] near me', '[service] [city]', '24/7 [service]', 'same day [service]'처럼 위쪽 9개가 'HI', 아래쪽이 'MED'예요. 오른쪽은 'plumber sydney'를 플래너에 넣었을 때의 예시 숫자예요.</p>
 <figure>
-  <img src="assets/frame-0929.png" alt="슬라이드 'Service × suburb = your SKAG universe'. 서비스 5개와 도시 6곳을 엮은 표에서 검색량이 적은 칸은 빨간색으로 표시돼 있어요">
-  <figcaption>서비스 5개 × 도시 6곳 조합 중 검색량이 받쳐 주는 칸만 광고 그룹으로 만들어요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=569s" target="_blank" rel="noopener">영상 09:29에서 보기</a></figcaption>
+  <img src="assets/frame-0859.png" alt="왼쪽에 키워드 템플릿 12개, 오른쪽에 plumber sydney 키워드 플래너 결과 예시. emergency plumber sydney가 월 5,400회 검색, 클릭당 8.40~24.60달러">
+  <figcaption>템플릿으로 후보를 만들고, 플래너 숫자로 걸러요. 이렇게 고른 목록을 내보내 Claude Code에 넘기면 광고와 랜딩 페이지를 만들어요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=539s" target="_blank" rel="noopener">영상 08:59에서 보기</a></figcaption>
+</figure>
+<h3>서비스 × 도시 매트릭스</h3>
+<p>발표자가 특히 효과를 봤다는 방법이에요. 서비스와 도시를 곱해 조합마다 광고와 랜딩 페이지를 만들어요. 슬라이드는 서비스 5개(응급, 막힌 배수구, 온수기, 가스 설비, 새는 수도꼭지)와 토론토 근교 6곳을 곱해 30개 조합을 만들어요. 노란 칸은 검색량이 많은 주력, 흰 칸은 적은 예산으로 시험할 곳, 줄 그은 빨간 칸은 월 100회 미만이라 건너뛸 곳이에요. 그래서 실제로 운영할 조합은 12개예요.</p>
+<figure>
+  <img src="assets/frame-0919.png" alt="서비스 5개 곱하기 도시 6곳 표. Toronto, Mississauga, Brampton, North York, Scarborough, Markham 열과 서비스 행, 칸마다 월 검색량이 적혀 있고 Markham 열은 대부분 skip">
+  <figcaption>작은 도시로 갈수록 검색량이 급격히 줄어요. Markham 열은 응급 배관도 월 100회가 안 돼서 통째로 빠져요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=559s" target="_blank" rel="noopener">영상 09:19에서 보기</a></figcaption>
+</figure>
+<h3>73만 달러 전략, SKAG</h3>
+<p>SKAG는 광고 그룹 하나에 검색어 하나만 넣는 구조예요. 핵심은 단순해요. 사람이 검색한 말이 광고에도, 광고를 누르고 들어간 페이지에도 똑같이 있어야 해요. 슬라이드의 세 열이 각각 'blocked drain toronto', 'hot water repair toronto', 'gas fitter toronto' 검색에서 시작해, 같은 문구의 광고와 같은 문구의 페이지로 이어져요.</p>
+<figure>
+  <img src="assets/frame-0959.png" alt="My $700K+ strategy: SKAGs 슬라이드. 세 개의 검색어가 각각 같은 제목의 광고와 같은 제목의 랜딩 페이지로 화살표로 이어짐">
+  <figcaption>검색어마다 광고와 페이지가 한 쌍씩 따로 있어요. 동그라미 친 칸처럼 페이지 제목이 검색어와 글자까지 같아요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=599s" target="_blank" rel="noopener">영상 09:59에서 보기</a></figcaption>
+</figure>
+<p>발표자는 실제 검색 결과로 반대 사례도 보여 줘요. "plumber services toronto"를 검색했는데 "Galvanized Pipe Replacement" 광고가 뜨면 바로 떠나요. "Waterline replacement" 페이지에 도착해도 마찬가지예요. 이 일관성은 결제 순간까지 이어져야 해요. 아래 슬라이드의 위쪽 줄은 검색, 광고, 페이지, 이메일, 영업 통화가 서로 다른 말을 해서 ROAS 0.8배로 새는 파이프예요. 아래쪽 줄은 다섯 칸 모두 'blocked drain toronto'라서 ROAS 5.8배가 나와요.</p>
+<figure>
+  <img src="assets/frame-1059.png" alt="One service, five times, through one pipe 슬라이드. 위 줄은 단계마다 다른 문구가 ≠ 기호로 이어져 ROAS 0.8x, 아래 줄은 다섯 단계 모두 blocked drain toronto로 ROAS 5.8x">
+  <figcaption>대부분은 검색과 다른 일반적인 광고, 일반적인 페이지, 일반적인 이메일을 보내요. 발표자는 이게 Google Ads 성과가 나쁜 가장 흔한 이유라고 봐요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=659s" target="_blank" rel="noopener">영상 10:59에서 보기</a></figcaption>
 </figure>
 </section>
 
 <section id="s3">
-  <a class="stamp" href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=581s" target="_blank" rel="noopener">09:41</a>
-  <h2>SKAG: 검색어, 광고, 페이지를 한 줄로</h2>
-<p>화자가 '70만 달러 전략'이라고 부르는 건 <span class="term" data-term="SKAG" data-desc="Single Keyword Ad Group의 줄임말이에요. 광고 그룹 하나에 키워드 하나만 넣어서, 그 검색어 전용 광고와 페이지로 연결하는 구조예요.">SKAG</span>(Single Keyword Ad Group)예요. 원칙은 단순해요. 사람이 검색한 말, 광고 문구, 클릭해서 도착한 페이지가 모두 같은 말을 해야 해요.</p>
-<p>'토론토 배관 서비스'를 검색했는데 '아연도금관 교체' 광고가 뜨면 상관없는 광고예요. '배관공 토론토' 광고를 눌렀는데 '수도관 교체' 페이지가 나와도 사람은 바로 나가요. 반대로 '믿을 수 있는 토론토 배관공'이라는 페이지가 나오면 문의할 가능성이 높아요. 찾던 것과 정확히 맞으니까요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=669s" target="_blank" rel="noopener">11:09</a>
+  <h2>Claude Code를 Google Ads에 연결하기</h2>
+<p>여기부터는 예전에 손으로 하던 일을 Claude Code에 맡기기 위한 준비예요. 설정은 5분쯤 걸리고 한 번만 하면 돼요. 프로그래밍을 몰라도 된다고 발표자는 말해요. Claude Code를 "고용한 시니어 개발자"로, 나를 지시하는 사장으로 생각하면 된다고 해요.</p>
+<p>작업 공간은 VS Code예요. 확장 탭에서 Claude를 검색해 Claude Code 확장을 깔고, "Google Ads"라는 빈 폴더를 열어요. 이 폴더에 프롬프트 모음과 설정 안내 문서 두 파일을 넣은 뒤, "설정 안내를 읽고 내 Google Ads 계정에 연결해 줘"라고 시켜요.</p>
+<p>슬라이드는 전체 과정을 한 장에 담았어요. 왼쪽 네 칸이 단계이고 오른쪽 검은 상자가 결과물인 <code>.env</code> 파일이에요. 비밀번호와 키를 모아 두는 파일인데, <span class="term" data-term="개발자 토큰" data-en="Developer token" data-desc="Google Ads API를 쓰려면 받아야 하는 열쇠예요. 관리자 계정의 API 센터에서 받고, 등급에 따라 하루 작업 횟수가 달라요." data-g="13">개발자 토큰</span>, 클라이언트 ID(Identifier)와 시크릿, 리프레시 토큰, 로그인 고객 ID 다섯 값이 들어가요. 맨 아래 초록 줄은 연결 테스트 스크립트가 계정 목록을 출력하면 성공이라는 뜻이에요.</p>
 <figure>
-  <img src="assets/frame-1047.png" alt="슬라이드 'One service. Five times. Through one pipe.' 위쪽은 단계마다 문구가 바뀌는 빨간 파이프, 아래쪽은 '막힌 배수구 토론토'가 다섯 단계 내내 이어지는 초록 파이프예요">
-  <figcaption>위는 검색·광고·랜딩 페이지·이메일·통화가 제각각인 경우, 아래는 같은 말이 끝까지 이어지는 경우예요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=647s" target="_blank" rel="noopener">영상 10:47에서 보기</a></figcaption>
+  <img src="assets/frame-1127.png" alt="5 minutes of plumbing, then never again 슬라이드. Claude Code와 Google Ads 사이를 API와 환경 변수 5개가 잇고, 왼쪽에 설치, API 신청, OAuth, .env 저장 네 단계, 오른쪽에 .env 예시">
+  <figcaption>2번 API 신청 칸에만 '24h wait'가 붙어 있어요. 나머지는 1~2분이면 끝나요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=687s" target="_blank" rel="noopener">영상 11:27에서 보기</a></figcaption>
 </figure>
-<p>이 일관성은 광고에서 끝나지 않아요. 고객이 결제할 때까지 이메일과 영업 통화도 같은 이야기를 이어 가야 해요. 화자는 대부분이 범용 광고 → 범용 페이지 → 범용 이메일 → 범용 통화로 흘러가고, 그래서 Google Ads 성과가 나쁘다고 진단해요.</p>
+<h3>1. 관리자 계정과 개발자 토큰</h3>
+<p>일반 Google Ads 계정 말고 <b>관리자 계정</b>이 하나 더 필요해요. "Google Ads Manager account"로 검색해 가입하고, 계정 메뉴의 하위 계정에서 기존 광고 계정의 ID를 넣어 연결을 요청해요. 확인 메일을 승인하면 연결돼요.</p>
+<p>그다음 관리자 계정의 관리 메뉴에서 API 센터로 가요. 화살표가 가리키는 칸이 <b>개발자 토큰</b>이고, 그 아래 Access level 칸에서 더 높은 단계를 신청할 수 있어요. 발표자는 이 토큰으로 하루 2,880건을 요청할 수 있고, 더 필요하면 기본 액세스를 신청하면 72시간쯤 뒤에 승인된다고 해요.</p>
+<figure>
+  <img src="assets/frame-1449.png" alt="Google Ads 관리자 계정의 API 센터 화면. Developer token 칸에 토큰이 있고, Access level 칸에 Basic Access와 Apply for Standard Access 링크가 보임">
+  <figcaption>이 토큰을 <code>.env</code>의 첫 줄에 붙여 넣어요. 설정 안내 문서가 이 과정을 단계별로 알려 줘요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=889s" target="_blank" rel="noopener">영상 14:49에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>발표자가 'API 키'라고 부르는 것은 공식 이름으로 개발자 토큰이에요. Google Ads API 문서에 따르면 Explorer 액세스는 실제 광고 계정에 하루 2,880번의 작업을 할 수 있고, Basic 액세스는 하루 15,000번이에요. 단계가 오를수록 신청서 심사가 필요해요.</p>
+  <p class="cite">출처: <a href="https://developers.google.com/google-ads/api/docs/api-policy/access-levels" target="_blank" rel="noopener">Google Ads API — Access levels and permissible use</a></p>
+</aside>
+<h3>2. Google Cloud에서 인증 만들기</h3>
+<p>Google Cloud Console에서 새 프로젝트를 만들고 결제 계정을 붙여요. 상단 검색창에 "Google Ads API"를 쳐서 API를 켜요. 이어서 API 및 서비스 메뉴의 OAuth 동의 화면에서 앱 이름과 지원 이메일을 넣고, 사용자 유형은 외부로 골라요.</p>
+<p>중요한 단계가 <b>테스트 사용자</b> 추가예요. 아래 화면 오른쪽의 Add users 칸에 나중에 로그인할 이메일을 정확히 넣어야 해요. 앱이 아직 '테스트' 상태라서, 여기 등록한 사람만 로그인할 수 있어요.</p>
+<figure>
+  <img src="assets/frame-1649.png" alt="Google Cloud Console의 OAuth 동의 화면 Audience 메뉴. 게시 상태 Testing, 사용자 유형 External, 오른쪽에 테스트 사용자 이메일을 넣는 Add users 창">
+  <figcaption>로그인에 쓸 이메일과 여기 넣은 이메일이 다르면 인증이 실패해요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=1009s" target="_blank" rel="noopener">영상 16:49에서 보기</a></figcaption>
+</figure>
+<p>마지막으로 사용자 인증 정보 메뉴에서 OAuth 클라이언트 ID를 새로 만들어요. 애플리케이션 유형은 데스크톱 앱이에요. 만든 뒤 JSON(JavaScript Object Notation) 파일을 내려받아 프로젝트 폴더에 <code>credentials.json</code>이라는 이름으로 넣어요.</p>
+<h3>3. Claude에게 로그인을 맡겨요</h3>
+<p>"credentials.json을 넣었어. 읽고 구글 인증을 해 줘"라고 보내면 Claude가 브라우저 로그인 창을 띄워요. 테스트 사용자로 넣은 계정을 고르고 확인을 누르면 끝나요. 아래 화면에서 초록 화살표가 가리키는 부분이 Claude가 받아 온 리프레시 토큰을 <code>.env</code>에 써 넣은 기록이에요.</p>
+<figure>
+  <img src="assets/frame-1809.png" alt="VS Code의 Claude Code 대화창. 인증 성공 후 GOOGLE_ADS_REFRESH_TOKEN 값을 .env에 추가했다는 diff에 초록 화살표">
+  <figcaption>Claude가 무언가 더 필요하다고 버티면 "필요한 건 이미 다 있어"라고 알려 주면 된다고 해요. 이 연결은 다시 할 필요가 없어요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=1089s" target="_blank" rel="noopener">영상 18:09에서 보기</a></figcaption>
+</figure>
 </section>
 
 <section id="s4">
-  <a class="stamp" href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=669s" target="_blank" rel="noopener">11:09</a>
-  <h2>Claude Code를 Google Ads에 연결하기</h2>
-<p>여기부터는 Claude Code를 Google Ads 계정에 붙이는 준비 단계예요. 화자는 5분이면 끝나고 한 번만 하면 된다고 해요. 코딩을 몰라도 된다는 점을 강조하면서, Claude Code를 '내가 고용한 선임 개발자'에 비유해요. 내가 시키면 일을 해 오는 직원이라는 거예요.</p>
-<h3>작업 공간 만들기</h3>
-<ol>
-  <li>무료 편집기 VS Code를 설치하고, 확장 프로그램 탭에서 Claude Code를 받아요.</li>
-  <li>'Google Ads'라는 빈 폴더를 열어요. Claude Code의 프로젝트는 항상 폴더 하나 안에서 움직여요.</li>
-  <li>화자가 나눠 주는 설정 가이드와 프롬프트 모음을 파일로 넣고, "설정 가이드를 읽고 내 Google Ads 계정을 연결해 줘"라고 보내요.</li>
-</ol>
-<p>Claude는 비밀번호와 키를 담을 <code>.env</code> 파일을 만들고, 무엇을 채워야 하는지 단계별로 안내해요.</p>
-<figure>
-  <img src="assets/frame-1339.png" alt="VS Code 화면. 왼쪽에 프롬프트 파일, 오른쪽 Claude Code 패널에 관리자 계정 만들기 단계 안내가 떠 있어요">
-  <figcaption>설정 가이드를 읽은 Claude가 'Step 1 — 관리자 계정(MCC) 만들기'부터 안내하는 장면이에요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=819s" target="_blank" rel="noopener">영상 13:39에서 보기</a></figcaption>
-</figure>
-<h3>1단계: Google Ads 쪽 준비</h3>
-<p>일반 광고 계정 말고 관리자 계정(MCC)을 하나 더 만들어요. 관리자 계정에서 '계정 → 하위 계정 → 기존 계정 연결'로 원래 광고 계정 ID를 넣으면 확인 메일이 오고, 승인하면 연결돼요. 그다음 '관리 → <span class="term" data-term="API" data-desc="프로그램끼리 정해진 방식으로 데이터를 주고받는 창구예요. Claude Code가 사람 대신 Google Ads 계정을 조작할 수 있는 통로가 돼요.">API</span> 센터'에서 개발자 토큰을 받아요. 화자는 이 토큰으로 하루 2,880회 요청까지 된다고 말해요. 더 필요하면 기본 액세스를 신청하고, 약 72시간 안에 승인된다고 해요.</p>
-<figure>
-  <img src="assets/frame-1439.png" alt="Google Ads 관리자 계정의 API 센터 화면. 개발자 토큰과 액세스 수준 항목이 보여요">
-  <figcaption>관리자 계정의 API 센터예요. 여기서 받은 개발자 토큰을 <code>.env</code>에 넣어요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=879s" target="_blank" rel="noopener">영상 14:39에서 보기</a></figcaption>
-</figure>
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>Google Ads API 문서 기준으로 2,880회는 'Explorer' 액세스의 실제 계정 하루 작업 한도예요. 'Basic' 액세스는 하루 15,000회, 'Standard'는 한도가 없어요. 광고 수백 개를 한꺼번에 만들거나 자주 감사를 돌릴 계획이면 한도를 먼저 확인해 두는 게 좋아요.</p>
-  <p class="cite">출처: <a href="https://developers.google.com/google-ads/api/docs/api-policy/access-levels" target="_blank" rel="noopener">Google Ads API 문서 — Access levels and permissible use</a></p>
-</aside>
-<h3>2단계: Google Cloud 쪽 준비</h3>
-<p>이 부분은 Claude Code가 내 계정에 로그인할 수 있게 허락을 받는 과정이에요. 다른 프로그램이 Google 계정을 다루려면 API 사용 허가와 로그인 창구가 필요하거든요.</p>
-<ol>
-  <li>Google Cloud Console에서 새 프로젝트를 만들고 결제 계정을 붙여요.</li>
-  <li>상단 검색창에서 'Google Ads API'를 찾아 사용 설정해요.</li>
-  <li>'API 및 서비스 → OAuth 동의 화면'에서 앱 이름과 지원 이메일을 넣고 '외부'로 만들어요.</li>
-  <li>같은 메뉴의 '대상'에서 로그인할 이메일을 테스트 사용자로 넣어요. 앞에서 쓴 이메일과 똑같아야 해요.</li>
-  <li>'사용자 인증 정보'에서 '데스크톱 앱' 유형의 OAuth 클라이언트 ID를 만들고 JSON 파일을 내려받아요.</li>
-</ol>
-<p>내려받은 파일을 <code>credentials.json</code>으로 이름을 바꿔 폴더에 넣고, Claude에게 인증을 부탁해요. Google 로그인 창이 뜨면 테스트 사용자로 넣은 계정으로 승인하면 끝이에요. 화자는 Claude가 뭔가 더 필요하다고 버티면 "필요한 건 이미 다 있다"고 알려 주라고 해요.</p>
-</section>
-
-<section id="s5">
   <a class="stamp" href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=1093s" target="_blank" rel="noopener">18:13</a>
-  <h2>첫 캠페인 설정과 광고비 낮추기</h2>
-<h3>캠페인, 광고 그룹, 광고</h3>
-<p>Google Ads는 3단 구조예요. 화자는 Google Drive의 폴더 안 폴더에 비유해요. 바깥 폴더마다 설정이 달려 있어요.</p>
-<ul>
-  <li><strong>캠페인:</strong> 서비스 하나를 맡아요(예: 응급 배관). 하루 예산, 요일, 시간대, 지역을 여기서 정해요.</li>
-  <li><strong>광고 그룹:</strong> SKAG이라 검색어가 하나뿐이에요(예: '응급 배관 미시소가'). 그 검색어 전용 광고와 전용 페이지로 이어져요.</li>
-  <li><strong>광고:</strong> 한 그룹에 여러 개를 넣고 분할 테스트를 해요. 광고 하나만 내면 운이 좋을 수도, 그만두고 싶을 만큼 나쁠 수도 있어요. 수십, 수백 개를 돌려 크게 앞서는 하나를 찾고 그걸 오래 쓰는 게 목표예요.</li>
-</ul>
+  <h2>캠페인 구조, 기본 설정, 입찰</h2>
+<p>Google Ads 광고는 세 층으로 쌓여요. 맨 위가 캠페인, 그 안에 광고 그룹, 그 안에 광고예요. 발표자는 구글 드라이브의 폴더 안 폴더에 비유해요. 층마다 설정이 따로 있어요.</p>
+<p>슬라이드의 빨간 상자가 캠페인 'Emergency Plumber'예요. 하루 5달러, 월~토 오전 7시~오후 9시, 토론토 반경 50km 같은 설정이 여기 붙어요. 그 아래 주황 상자 두 개가 광고 그룹이고, SKAG라서 각각 'emergency plumber toronto'와 'emergency plumber mississauga' 검색어 하나만 가져요. 맨 아래 초록 카드들은 같은 광고 그룹 안에서 서로 경쟁하는 광고이고, 카드마다 클릭률이 적혀 있어요.</p>
 <figure>
-  <img src="assets/frame-2045.png" alt="슬라이드 'Service at the top. One keyword per group. Many ads at the bottom.' 캠페인 '응급 배관' 아래 키워드별 광고 그룹 두 개, 그 아래 광고 여러 개가 트리로 그려져 있어요">
-  <figcaption>캠페인은 서비스, 광고 그룹은 키워드 하나, 맨 아래는 테스트할 광고들이에요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=1245s" target="_blank" rel="noopener">영상 20:45에서 보기</a></figcaption>
+  <img src="assets/frame-1858.png" alt="캠페인 Emergency Plumber 아래 광고 그룹 두 개, 그 아래 광고 세 개씩 나무 구조로 그린 슬라이드. 광고마다 CTR 6.2%, 9.1%, 7.3%, 13.8% 등이 적힘">
+  <figcaption>별이 붙은 13.8% 광고처럼 하나가 튀어나올 때까지 여러 변형을 시험해요. 그 하나를 찾으면 오래 써요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=1138s" target="_blank" rel="noopener">영상 18:58에서 보기</a></figcaption>
 </figure>
+<p>광고를 여러 개 두는 이유는 <b><span class="term" data-term="스플릿 테스트" data-en="Split test (A/B test)" data-desc="광고나 페이지를 여러 버전으로 동시에 내보내고 어느 쪽 성과가 좋은지 데이터로 비교하는 방법이에요." data-g="6">스플릿 테스트</span></b>예요. 광고 하나만 내면 운이 좋을 수도, 너무 나빠서 Google Ads를 접고 싶어질 수도 있어요. 수십, 수백 개를 시험해 다른 걸 압도하는 하나를 찾는 게 발표자의 방식이에요.</p>
 <h3>Claude가 만든 첫 캠페인</h3>
-<p>화자의 캠페인 가이드를 <code>campaigns.md</code>로 넣고, 내 도메인과 함께 "첫 캠페인을 만들어 줘"라고 보내요. 도메인을 주는 이유는 Claude가 회사 사이트를 조사해서 그 사업에 맞는 캠페인을 만들게 하려는 거예요. 가이드에 딸린 파이썬 스크립트는 몰라도 되니, 화자는 <code>code</code> 폴더로 치워 버려요.</p>
-<p>잠시 뒤 계정에 'Plumber Toronto SKAG' 데모 캠페인이 생기고, 설정도 다 채워져 있어요. 화자가 하나씩 확인한 설정은 이래요.</p>
+<p>캠페인 설정 안내 문서를 <code>campaigns.md</code>로 넣고, 내 도메인을 적어 "첫 캠페인을 만들어 줘"라고 시켜요. 도메인을 주면 Claude가 회사를 조사해 그 내용을 캠페인에 반영해요. 데모에서는 'Plumber Toronto SKAG demo' 캠페인이 만들어졌어요.</p>
+<p>첫 설정은 캠페인 유형이에요. 아래 화면에서 동그라미 친 게 '검색'이고, 옆으로 <span class="term" data-term="실적 최대화" data-en="Performance Max" data-desc="검색, 유튜브, 디스플레이, 지메일 등 구글의 모든 지면에 자동으로 광고를 내는 캠페인 유형이에요. 발표자는 서비스업에서는 질 낮은 클릭만 산다고 봐요." data-g="7">실적 최대화</span>, 디맨드젠, 동영상, 아래로 디스플레이와 쇼핑이 있어요.</p>
 <figure>
-  <img src="assets/frame-2400.png" alt="Google Ads의 캠페인 유형 선택 화면. Performance Max, 검색, 디맨드젠, 동영상, 디스플레이, 쇼핑 여섯 가지가 있어요">
-  <figcaption>캠페인 유형 여섯 가지예요. 화자는 서비스 업종이면 검색만 쓴다고 해요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=1440s" target="_blank" rel="noopener">영상 24:00에서 보기</a></figcaption>
+  <img src="assets/frame-2359.png" alt="Google Ads 캠페인 유형 선택 화면. Performance Max, Search, Demand Gen, Video, Display, Shopping 중 Search에 원이 그려져 있음">
+  <figcaption>발표자는 검색만 써요. 쇼핑은 온라인 쇼핑몰에만 맞고, 나머지는 서비스업에서 성과를 본 적이 없다고 해요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=1439s" target="_blank" rel="noopener">영상 23:59에서 보기</a></figcaption>
+</figure>
+<p>이유는 차고 세일 비유로 설명해요. 열 번 가면 한 번 평생 쓸 물건을 찾는데, 그게 검색 트래픽이에요. 나머지 "누가 이런 걸 사지?" 싶은 물건이 실적 최대화, 디스플레이, 디맨드젠, 동영상이에요. 지메일이나 유튜브, 다른 웹사이트에 붙은 광고는 실수로 누르고 바로 닫는 경우가 대부분이라는 거예요.</p>
+<h3>캠페인 설정 아홉 가지</h3>
+<p>슬라이드 왼쪽은 고객이 보는 검색 결과, 오른쪽은 그 광고를 만드는 설정 아홉 개예요. 빨간 글씨 두 줄이 특히 중요해요. 4번 지역은 '관심 말고 실제로 있는 사람만', 5번은 '내 나라 빼고 전부 제외해서 VPN·봇 클릭 차단'이에요.</p>
+<figure>
+  <img src="assets/frame-2539.png" alt="What the customer sees, the nine switches 슬라이드. 왼쪽은 emergency plumber toronto 검색 결과의 광고와 지도, 오른쪽은 캠페인 유형부터 광고 순환까지 9개 설정 목록">
+  <figcaption>Claude는 이 아홉 개를 한 번에 맞춰 놓았고, 발표자는 Google Ads 화면에서 하나씩 확인해요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=1539s" target="_blank" rel="noopener">영상 25:39에서 보기</a></figcaption>
 </figure>
 <div class="table-scroll">
   <table>
-    <thead><tr><th>설정</th><th>화자의 선택</th><th>이유</th></tr></thead>
+    <thead><tr><th>#</th><th>설정</th><th>값</th><th>발표자의 이유</th></tr></thead>
     <tbody>
-      <tr><td>캠페인 유형</td><td>검색만</td><td><span class="term" data-term="Performance Max" data-desc="Google의 자동 캠페인 유형이에요. 검색, YouTube, 지메일, 지도, 디스플레이 등 여러 곳에 광고를 알아서 나눠 띄워요. 화자는 서비스 업종엔 맞지 않다고 봐요.">Performance Max</span>, 디스플레이, 디맨드젠, 동영상은 화자 경험상 '쓰레기 트래픽'이에요. 쇼핑은 온라인 쇼핑몰이면 괜찮아요</td></tr>
-      <tr><td>입찰</td><td>전환수 최대화</td><td>뒤에서 설명해요</td></tr>
-      <tr><td>일정</td><td>24시간 또는 영업시간</td><td>심야 광고는 싸지만 새벽 2시 문의자는 다음 날 전화를 잘 안 받아요</td></tr>
-      <tr><td>지역</td><td>도심 반경 50km, '실제 위치'만</td><td>'관심'을 두면 그 도시에 관심만 있는 해외 사람에게도 광고가 나가요. 손님이 찾아오는 업종이면 반경을 줄여요</td></tr>
-      <tr><td>제외 지역</td><td>내 나라 빼고 전부</td><td>VPN·봇 클릭을 막아요</td></tr>
-      <tr><td>기기</td><td>전부</td><td></td></tr>
-      <tr><td>잠재고객 세분화</td><td>쓰지 않음</td><td>검색어가 이미 의도를 보여 줘요. 더 좁히면 손해예요</td></tr>
-      <tr><td>자동 추천 적용</td><td>전부 끔</td><td>광고주 돈으로 Google이 버는 추천이라고 봐요</td></tr>
-      <tr><td>광고 순환</td><td>최적화(기본값)</td><td></td></tr>
+      <tr><td>1</td><td>캠페인 유형</td><td>검색 네트워크만</td><td>나머지 유형은 질 낮은 트래픽이에요</td></tr>
+      <tr><td>2</td><td>입찰</td><td>전환수 최대화 → 타깃 ROAS</td><td>처음엔 리드를, 나중엔 매출을 기준으로 해요</td></tr>
+      <tr><td>3</td><td>일정</td><td>24시간 (밤 −40%)</td><td>밤 광고는 싸지만 다음 날 연락이 잘 안 돼요</td></tr>
+      <tr><td>4</td><td>지역</td><td>실제로 있는 사람만, 50km</td><td>기본값 '관심'은 해외에도 광고를 내요</td></tr>
+      <tr><td>5</td><td>제외 지역</td><td>내 나라 빼고 모든 나라</td><td>VPN(Virtual Private Network)과 봇 클릭을 막아요</td></tr>
+      <tr><td>6</td><td>기기</td><td>모든 기기</td><td>태블릿, 모바일, 데스크톱 다 포함해요</td></tr>
+      <tr><td>7</td><td>잠재고객 세그먼트</td><td>쓰지 않음</td><td>검색한 사람이면 누구든 고객이 될 수 있어요</td></tr>
+      <tr><td>8</td><td>자동 추천 적용</td><td>모두 끔</td><td>구글이 광고주 비용으로 돈을 버는 장치예요</td></tr>
+      <tr><td>9</td><td>광고 순환</td><td>최적화 (기본값)</td><td>그대로 둬요</td></tr>
     </tbody>
   </table>
 </div>
-<p>화자가 다른 유형을 싫어하는 이유는 경험이에요. 지메일이나 YouTube, 다른 웹사이트에 붙은 광고는 실수로 누르고 바로 닫는 경우가 대부분이고, 그런 광고로 뭔가를 산 적이 없다고 해요. 다만 다른 사람들은 성공했을 수도 있다고 선을 그어요.</p>
+<p>지역 설정은 실제 화면으로 한 번 더 짚어요. 위치 칸에는 'Downtown Toronto 반경 50km'가 들어가 있어요. 위치 옵션을 펼치면 두 가지가 나와요. 화살표가 가리키는 위쪽은 구글이 '추천'을 붙여 둔 '관심 있는 사람 포함'이고, 아래쪽이 '실제로 있거나 자주 있는 사람'이에요. Claude는 아래쪽을 골라 뒀어요. 반경은 출장형 업체라면 도심에서 50km 정도로 잡아 근교까지 담고, 손님이 찾아오는 이발소 같은 곳이라면 더 좁혀요.</p>
 <figure>
-  <img src="assets/frame-2720.png" alt="슬라이드 'What the customer sees → the nine switches that produce it.' 왼쪽에 검색 결과의 광고, 오른쪽에 캠페인 설정 9가지가 번호로 정리돼 있어요">
-  <figcaption>고객이 보는 광고 한 줄 뒤에 있는 설정 9가지예요. 슬라이드에는 입찰을 나중에 tROAS로 옮기고 심야엔 입찰을 40% 낮춘다는 내용도 적혀 있어요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=1640s" target="_blank" rel="noopener">영상 27:20에서 보기</a></figcaption>
+  <img src="assets/frame-2630.png" alt="Google Ads 캠페인 설정의 위치 칸. 토론토 도심 반경 50km가 들어가 있고, 위치 옵션에서 recommended가 붙은 Presence or interest를 화살표가 가리키며 아래 Presence가 선택돼 있음">
+  <figcaption>토론토에 광고를 걸었는데 인도나 호주에서 토론토 여행을 알아보는 사람에게까지 광고비를 내게 될 수 있어요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=1590s" target="_blank" rel="noopener">영상 26:30에서 보기</a></figcaption>
 </figure>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>Google 도움말은 '실제 위치 또는 관심 지역(Presence or interest)'을 기본값이자 권장 옵션으로 소개해요. '실제 위치(Presence)'는 그 지역에 있거나 자주 있는 사람에게만 광고를 보여 주는 옵션이에요. 화자는 지역 서비스 업체 입장에서 일부러 권장값을 버리라는 거예요. 지역 기반 서비스라면 화자의 선택이 맞을 가능성이 높지만, 노출이 줄어드는 건 감안해야 해요.</p>
-  <p class="cite">출처: <a href="https://support.google.com/google-ads/answer/1722038?hl=en" target="_blank" rel="noopener">Google Ads 고객센터 — About advanced location options</a></p>
+  <p>Google Ads 도움말은 '실제로 있거나 관심 있는 사람'을 넓은 지역 타기팅이라고 부르고, 여행, 부동산, 교육 업종에서는 이 설정으로 전환이 늘었다는 자체 데이터도 소개해요. 반대로 지역 안에서 서비스하는 업체라면 발표자처럼 '실제로 있는 사람'으로 좁히는 게 흔한 선택이에요. 업종에 따라 답이 다를 수 있다는 점은 알아 두면 좋아요.</p>
+  <p class="cite">출처: <a href="https://support.google.com/google-ads/answer/1722043?hl=en" target="_blank" rel="noopener">Google Ads 도움말 — Target ads to geographic locations</a></p>
 </aside>
-<p>한번 흐름이 잡히면 앞에서 고른 키워드 목록을 Claude Code에 넣고 캠페인과 광고 그룹을 한꺼번에 만들 수 있어요. 손으로 하면 몇 주, 몇 달 걸리던 일이에요.</p>
-<h3>입찰 전략</h3>
-<p>Google Ads는 클릭당 비용을 내는 경매예요. 많이 부를수록 위에 뜨고, 위쪽일수록 비싸요. 처음에는 '전환수 최대화'로 시작해요. 클릭이 아니라 양식을 채운 문의를 기준으로 최적화하는 거예요. 데이터가 쌓이면 실제 결제 고객 기준(ROAS)으로 옮겨요. 클릭도, 문의도 그 자체로 돈이 되진 않으니까요.</p>
+<p>이렇게 한 번 리듬을 잡으면 처음에 뽑아 둔 키워드 목록을 Claude에게 주고 캠페인과 광고 그룹을 줄줄이 만들게 할 수 있어요. 손으로 하면 몇 주에서 몇 달 걸리던 일이에요.</p>
+<h3>입찰 전략: 클릭이 아니라 매출을 따라가요</h3>
+<p>광고는 클릭당 비용을 내는 경매예요. 더 많이 낸 광고가 대체로 위에 뜨고, 위에 뜰수록 비싸요. 처음엔 <b>전환수 최대화</b>로 시작해요. 클릭보다 폼을 채운 리드를 기준으로 삼는 거예요. 데이터가 쌓이면 실제로 돈을 낸 고객을 기준으로 바꿔요. 리드도 가짜이거나 질이 낮을 수 있기 때문이에요.</p>
+<p>슬라이드는 이 순서를 단계로 보여 줘요. 왼쪽 위 1일차는 목표 없이 전환수 최대화를 켜고 하루 20~50달러로 두는 단계예요. 전환이 30건 쌓이면 4~8주차에 타깃 CPA(Cost Per Acquisition)를 넣어요. 맨 위 검은 띠에는 '30건 전에 목표 넣기', '목표를 20% 넘게 깎기', '14일 안에 건드리기' 같은 금지 사항이 있어요.</p>
 <figure>
-  <img src="assets/frame-3209.png" alt="슬라이드 'Don't touch the bid strategy for 14 days.' 왼쪽은 입찰 전략 단계, 오른쪽은 광고가 싸지는 이유 세 가지와 절감 비율이에요">
-  <figcaption>슬라이드에는 하루 20~50달러로 시작해 전환 30건이 쌓이면 목표 CPA로 옮기고, 14일은 건드리지 말라고 적혀 있어요. 말로는 자세히 다루지 않은 부분이에요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=1929s" target="_blank" rel="noopener">영상 32:09에서 보기</a></figcaption>
+  <img src="assets/frame-3104.png" alt="Don't touch the bid strategy for 14 days 슬라이드. 왼쪽은 1일차 전환수 최대화에서 30건 후 타깃 CPA로 가는 입찰 단계, 오른쪽은 광고가 싸지는 이유 세 가지와 절감 비율 50%, 30%, 20%">
+  <figcaption>오른쪽 세 줄이 광고비를 낮추는 세 가지예요. 50%, 30%, 20% 비율은 슬라이드에만 있고 발표자가 근거를 말하지는 않아요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=1864s" target="_blank" rel="noopener">영상 31:04에서 보기</a></figcaption>
 </figure>
-<h3>광고비를 낮추는 세 가지</h3>
-<ol>
-  <li><strong>스마트 입찰이 자리 잡을 시간을 주기.</strong> 새 계정은 Google이 내 고객을 파악하는 데 시간이 걸려요.</li>
-  <li><strong>나쁜 검색어에 안 걸리기.</strong> 광고 하나로 검색어 50개를 받으면 49번은 엉뚱해요. SKAG이 이걸 막고, 그래도 나쁜 키워드가 보이면 캠페인에서 지워요.</li>
-  <li><strong><span class="term" data-term="품질평가점수" data-desc="Google이 키워드마다 매기는 1~10점 점수예요. 예상 클릭률, 광고 관련성, 방문 페이지 만족도로 정해지고, 높을수록 같은 자리를 더 싸게 사요.">품질평가점수</span> 올리기.</strong> 점수가 높을수록 클릭이 싸져요. 예상 클릭률, 광고 관련성, 랜딩 페이지 관련성 세 가지로 매겨지는데, 화자는 SKAG 구조와 Claude가 만드는 광고·페이지가 세 가지를 다 챙긴다고 해요.</li>
-</ol>
+<p>세 가지를 차례로 보면 이래요. 첫째, <b>스마트 입찰</b>은 구글이 새 계정을 배우는 데 시간이 걸리니 기다려야 해요. 둘째, 엉뚱한 검색어에 광고를 띄우지 않아요. 광고 하나로 검색어 50개를 받으면 49번은 어긋나는데, SKAG는 이 문제를 구조로 막아요. 그래도 나쁜 검색어가 보이면 키워드에서 지우면 돼요. 셋째가 <b><span class="term" data-term="품질평가점수" data-en="Quality Score" data-desc="키워드마다 매기는 1~10점의 광고 품질 점수예요. 예상 클릭률, 광고 관련성, 방문 페이지 만족도로 정해져요." data-g="8">품질평가점수</span></b>예요.</p>
+<p>품질평가점수는 키워드마다 1~10점으로 매겨져요. 슬라이드 맨 위 검은 띠는 같은 자리에 광고를 낼 때 4점이면 클릭당 3.20달러, 8점이면 1.60달러라는 예시예요. 아래 카드 세 장이 점수를 이루는 요소예요. 예상 클릭률, 광고 관련성, 랜딩 페이지예요. 카드마다 '무엇이 점수를 죽이는가'도 적혀 있어요. 숫자 없는 일반 문구, 한 광고 그룹에 섞인 키워드 50개, 느린 일반 홈페이지 같은 것들이에요.</p>
 <figure>
-  <img src="assets/frame-3234.png" alt="슬라이드 'QS 4 vs QS 8 = half the cost per click.' 품질평가점수 4점은 클릭당 3.20달러, 8점은 1.60달러로 나와 있고, 아래에 세 가지 요소가 있어요">
-  <figcaption>같은 자리라도 점수가 4점에서 8점이 되면 클릭당 비용이 절반이 된다는 슬라이드예요. 숫자는 예시예요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=1954s" target="_blank" rel="noopener">영상 32:34에서 보기</a></figcaption>
+  <img src="assets/frame-3230.png" alt="QS 4 vs QS 8 = half the cost per click 슬라이드. 4점 3.20달러와 8점 1.60달러 비교, 그 아래 Expected CTR, Ad Relevance, Landing Page 세 카드">
+  <figcaption>세 카드의 노란 칸은 'Claude가 다 처리해요'라는 뜻이에요. 이 영상에서 만드는 SKAG 구조와 맞춤 페이지가 곧 품질평가점수 대책이에요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=1950s" target="_blank" rel="noopener">영상 32:30에서 보기</a></figcaption>
 </figure>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>Google 도움말의 공식 명칭은 예상 클릭률(Expected CTR), 광고 관련성(Ad relevance), 방문 페이지 만족도(Landing page experience)예요. 세 번째는 '검색어와 관련 있는가'뿐 아니라 클릭한 사람에게 얼마나 쓸모 있는 페이지인가까지 봐요.</p>
-  <p class="cite">출처: <a href="https://support.google.com/google-ads/answer/6167118" target="_blank" rel="noopener">Google Ads 고객센터 — About Quality Score for Search campaigns</a></p>
+  <p>Google Ads 도움말은 품질평가점수가 예상 클릭률, 광고 관련성, 방문 페이지 만족도 세 요소로 정해진다고 설명해요. 발표자의 설명과 같아요. 다만 도움말은 이 점수 자체가 경매에 들어가는 값이 아니라 진단 도구라고 분명히 적어 둬요. 점수 숫자를 올리는 것보다, 점수가 가리키는 세 요소를 실제로 고치는 게 클릭당 비용을 낮추는 길이에요.</p>
+  <p class="cite">출처: <a href="https://support.google.com/google-ads/answer/6167118?hl=en" target="_blank" rel="noopener">Google Ads 도움말 — About Quality Score for Search campaigns</a></p>
 </aside>
 </section>
 
-<section id="s6">
+<section id="s5">
   <a class="stamp" href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=1990s" target="_blank" rel="noopener">33:10</a>
-  <h2>광고 200개, 헤드라인 고정, 제외 키워드</h2>
-<p>화자가 Claude Code에서 가장 좋아하는 작업이에요. 예전엔 좋은 광고 200개를 쓰려면 8시간, 길게는 16시간을 붙어 있어야 했는데 이제 몇 분이면 끝난다고 해요.</p>
+  <h2>광고 200개, 고정 헤드라인, 제외 키워드</h2>
+<p>캠페인과 광고 그룹을 만들었으니 이제 광고 차례예요. 발표자가 Claude Code로 가장 좋아하는 작업이라고 해요. 예전엔 품질 좋은 광고 200개를 쓰는 데 집중해서 8~16시간이 걸렸어요. 이제는 몇 분이면 끝나서, 직원 스무 명짜리 대행사보다 빠르게 만들 수 있다고 해요.</p>
+<p>슬라이드가 이 차이를 한 장으로 보여 줘요. 위쪽 검은 상자가 프롬프트 한 줄이고, 아래로 퍼지는 사다리꼴 끝에 광고 카드가 줄지어 있어요. 양옆 라벨은 '8분'과 '글자 수 초과 0건'이에요. 맨 아래 띠에는 같은 일을 대행사가 하면 14시간이라고 적혀 있어요.</p>
 <figure>
-  <img src="assets/frame-3310.png" alt="슬라이드 'One prompt in. Two hundred ads out.' 명령 한 줄에서 광고 200개가 펼쳐지는 그림이에요">
-  <figcaption>프롬프트 하나로 광고 200개를 만든다는 슬라이드예요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=1990s" target="_blank" rel="noopener">영상 33:10에서 보기</a></figcaption>
+  <img src="assets/frame-3335.png" alt="One prompt in, two hundred ads out 슬라이드. claude gen-rsas 프롬프트 한 줄에서 광고 200개가 퍼져 나오고, 8 min, 200x, 0 over limit 라벨">
+  <figcaption>광고를 만드는 비용이 거의 0이 되니 스플릿 테스트를 몇 배로 늘릴 수 있어요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2015s" target="_blank" rel="noopener">영상 33:35에서 보기</a></figcaption>
 </figure>
-<h3>참고 파일 두 개와 프롬프트 하나</h3>
-<p>화자가 정리한 '좋은 Google 광고의 구조'와 '광고 확장 소재 모범 사례' 두 파일을 넣고 프롬프트를 보내요. 영상에선 짧게 광고 3개만 만들었지만 200개도 같은 방식이에요. Claude가 채운 항목은 이래요.</p>
-<ul>
-  <li><strong>최종 URL과 표시 URL.</strong> 랜딩 페이지가 아직 없어서 일단 홈페이지를 임시로 넣어요.</li>
-  <li><strong>헤드라인 15개와 설명문.</strong> 일부 헤드라인은 위치를 고정해요.</li>
-  <li><strong>콜아웃.</strong> '24시간 응급 출동', '출장비 없음', '면허·보험 보유' 같은 짧은 장점 문구예요.</li>
-  <li><strong>구조화 스니펫과 사이트링크.</strong> 제공 서비스 목록과 사이트의 다른 페이지로 가는 링크예요.</li>
-</ul>
-<p>업체명과 로고는 Claude가 이번엔 건너뛰었는데, "다음엔 넣어 줘"라고 하면 챙겨요. 이미지도 넣을 수 있지만 화자는 조심하라고 해요. 질 좋은 이미지는 클릭을 늘리지만, 흔한 스톡 사진이나 어색한 AI 이미지는 신뢰를 깎아요.</p>
-<h3>헤드라인 1번 자리는 검색어로 고정</h3>
-<p>Google은 헤드라인 조합을 알아서 돌려 가며 클릭과 전환이 좋은 걸 찾아요. 그래도 1번 자리는 돌리면 안 된다는 게 화자의 핵심 조언이에요. 사용자가 검색한 키워드를 1번에 고정하고, 나머지 혜택 문구만 돌게 둬요.</p>
-<p>이유는 사람이 광고를 건너뛰는 순간을 생각하면 알 수 있어요. 검색했는데 '선불 가격, 당일 서비스, 2분 견적' 같은 문구만 보이면 "이게 무슨 회사지?" 하고 넘겨요. 찾던 말이 맨 앞에 있어야 멈춰요.</p>
+<p>방법은 두 가지 참고 문서를 넣는 거예요. 하나는 좋은 Google 광고의 구성 요소, 다른 하나는 광고 애셋 모범 사례예요. 둘을 Markdown 파일로 넣고 프롬프트를 보내면 Claude가 광고를 만들어 Google Ads에 올려요. 데모는 짧게 하려고 광고 3개만 만들었어요.</p>
+<h3>Claude가 채운 광고 한 편</h3>
+<p>광고 하나를 열어 보면 최종 URL(Uniform Resource Locator), 표시 URL, 헤드라인 15개, 설명문이 모두 채워져 있어요. 최종 URL은 랜딩 페이지를 아직 안 만들어서 임시로 홈페이지를 넣었어요. 아래 화면은 같은 광고가 모바일 검색 결과에서 어떻게 보일지 미리 본 것이에요. 세 화면의 헤드라인이 'Toronto Plumber - 15 Years Serving', 'Licensed Plumber Toronto', 'Toronto Plumber - Upfront, Honest Pricing'으로 다 달라요. 구글이 헤드라인을 조합해 바꿔 보여 주기 때문이에요.</p>
 <figure>
-  <img src="assets/frame-3830.png" alt="슬라이드 'Pin keyword to slot 1. Let Google rotate the rest.' 헤드라인 목록에서 키워드 세 개가 1번 자리에 고정돼 있고, 오른쪽에 조합 예시 광고 세 개가 있어요">
-  <figcaption>1번 자리에는 'Emergency Plumber Toronto'처럼 검색어가 고정되고, 뒤쪽 문구만 바뀌어요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2310s" target="_blank" rel="noopener">영상 38:30에서 보기</a></figcaption>
+  <img src="assets/frame-3745.png" alt="반응형 검색 광고 미리보기 화면. 모바일 구글 검색 결과 세 개에 같은 광고가 서로 다른 헤드라인 조합으로 표시됨">
+  <figcaption>세 미리보기 모두 맨 앞이 'Toronto Plumber' 또는 'Licensed Plumber Toronto'로 검색어를 담고 있어요. 다음 소제목의 고정 헤드라인 덕분이에요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2265s" target="_blank" rel="noopener">영상 37:45에서 보기</a></figcaption>
 </figure>
-<p>테스트는 3개가 아니라 수백 개도 좋다고 해요. 만들기가 이렇게 빠르니까요. 다만 결과를 믿으려면 검색량이 받쳐 줘야 해요. 한 달에 조회 100번인데 테스트를 200개 돌리면 승자를 가릴 수 없어요.</p>
-<h3>확장 소재로 화면 면적 넓히기</h3>
-<p>화자가 보는 확장 소재의 진짜 쓸모는 검색 결과 화면에서 자리를 많이 차지하는 거예요. 광고가 작으면 사람들이 그냥 다음 광고로 넘어가요. 크게 보일수록 더 눌려요. 광고 확인용 검색을 할 때는 광고 차단기를 꺼야 보인다는 팁도 줘요.</p>
+<p>이미지는 일부러 넣지 않았어요. 좋은 사진은 클릭을 늘리지만, 흔한 스톡 사진이나 질 낮은 AI 이미지는 신뢰를 깎아요. 업체 이름과 로고는 Claude가 빠뜨렸는데, "다음엔 업체 이름도 넣어 줘"라고 말하면 고쳐요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>이 광고 형식의 이름은 반응형 검색 광고예요. Google Ads 도움말에 따르면 광고 하나에 헤드라인을 15개, 설명을 4개까지 넣을 수 있고, 헤드라인은 30자, 설명은 90자까지예요. 한국어, 일본어, 중국어 같은 전각 문자는 한 글자를 2자로 세요. 그래서 한국어 헤드라인은 실제로 15글자 안팎이 한도예요. 한국어로 광고를 만들게 할 때는 이 기준을 Claude에게 따로 알려 주는 게 안전해요.</p>
+  <p class="cite">출처: <a href="https://support.google.com/google-ads/answer/7684791?hl=en" target="_blank" rel="noopener">Google Ads 도움말 — About responsive search ads</a></p>
+</aside>
+<h3>1번 자리에는 검색어를 고정해요</h3>
+<p>구글은 머신러닝으로 헤드라인 조합을 바꿔 가며 클릭률이 높은 걸 찾아요. 하지만 모든 자리를 마음대로 돌리게 두면 안 돼요. 슬라이드 왼쪽 목록에서 빨간 'PIN POS 1' 세 줄이 1번 자리에 고정한 헤드라인이에요. 'Emergency Plumber Toronto', 'Toronto Emergency Plumber', '24/7 Emergency Plumber'처럼 모두 검색어 자체예요. 나머지 'No Callout Fee Today', 'On Site Within 60 Min' 같은 혜택 문구는 고정하지 않아요. 오른쪽 세 광고가 그렇게 만들어진 변형이에요.</p>
 <figure>
-  <img src="assets/frame-3950.png" alt="슬라이드 'Same ad, 2x the screen real estate. Free.' 확장 소재가 붙은 광고와 업체명·로고, 사이트링크, 콜아웃, 구조화 스니펫, 이미지 목록이 있어요">
-  <figcaption>같은 광고라도 확장 소재를 채우면 화면 면적이 두 배가 된다는 슬라이드예요. 화면의 클릭률 상승 수치는 슬라이드 속 주장이에요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2390s" target="_blank" rel="noopener">영상 39:50에서 보기</a></figcaption>
+  <img src="assets/frame-3910.png" alt="Pin keyword to slot 1, let Google rotate the rest 슬라이드. 왼쪽 헤드라인 15개 중 3개가 PIN POS 1, 오른쪽에 변형 A, B, C 광고 세 개">
+  <figcaption>변형 세 개 모두 첫 헤드라인이 검색어이고, 뒤의 혜택 문구만 달라요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2350s" target="_blank" rel="noopener">영상 39:10에서 보기</a></figcaption>
+</figure>
+<p>이유는 사람들이 광고를 건너뛰는 순간 때문이에요. 검색했는데 "선불 가격, 당일 서비스, 2분 견적"만 보이면 "이게 무슨 회사지?" 하고 지나쳐요. 먼저 검색어로 "내가 찾던 그거"라는 걸 보여 주고, 그 뒤에 혜택을 붙여야 해요. 발표자는 광고를 수백 개 시험하라고 권하면서도 조건을 붙여요. 한 달 조회가 100번뿐인데 테스트를 200개 돌리면 승자를 가릴 수 없어요. 검색량이 충분해야 해요.</p>
+<h3>확장 요소로 화면을 넓게 차지해요</h3>
+<p>Claude는 사이트링크, 콜아웃, 구조화된 스니펫도 채웠어요. 콜아웃은 '24시간 응급 서비스', '출장비 없음', '면허·보험 완비' 같은 짧은 장점이에요. 구조화된 스니펫은 제공하는 서비스 목록이고, 사이트링크는 사이트의 다른 페이지로 바로 가는 링크예요.</p>
+<p>발표자가 보는 진짜 효과는 <b>면적</b>이에요. 슬라이드 왼쪽 광고 하나가 사이트링크 네 개와 콜아웃, 서비스 목록을 달고 검색 결과를 두 배쯤 차지해요. 오른쪽 다섯 줄은 업체 이름과 로고, 사이트링크, 콜아웃, 구조화된 스니펫, 이미지이고, 각각의 클릭률 상승 사례 수치가 붙어 있어요. 맨 아래 검은 칸은 네 가지를 모두 쓸 때 업계 평균 20~25% 클릭률 상승이라고 적었어요.</p>
+<figure>
+  <img src="assets/frame-3950.png" alt="Same ad, 2x the screen real estate, Free 슬라이드. 왼쪽은 확장 요소가 붙은 광고 예시, 오른쪽은 다섯 가지 애셋과 클릭률 상승 수치, 아래 +20-25%">
+  <figcaption>오른쪽 수치는 슬라이드가 여러 사례 연구에서 가져왔다고 적은 값이고, 발표자가 출처를 말하지는 않아요. 화면에서 <span class="term" data-term="확장 요소" data-en="Ad assets (extensions)" data-desc="광고 아래 붙는 사이트링크, 콜아웃, 서비스 목록 같은 추가 정보예요. 광고가 차지하는 면적을 넓혀 클릭을 늘려요." data-g="11">확장 요소</span>가 안 보이면 광고 차단기를 끄고 확인해요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2390s" target="_blank" rel="noopener">영상 39:50에서 보기</a></figcaption>
 </figure>
 <h3>공통 제외 키워드 목록</h3>
-<p>광고를 보내기 전에 꼭 붙여야 하는 게 <span class="term" data-term="제외 키워드" data-desc="이 단어가 들어간 검색에는 광고를 띄우지 말라고 지정하는 목록이에요. 고객이 될 리 없는 클릭에 돈이 새는 걸 막아요.">제외 키워드</span>예요. 화자는 이 작업을 둘로 나눠요. 처음에 붙이는 '공통 목록'과, 운영하면서 실제 검색어를 보고 지우는 작업(뒤의 분석 단계)이에요.</p>
-<p>공통 목록은 서비스 업종이면 어디나 돈이 안 되는 검색어예요. 배관 업체에 '배관공 학교'를 검색한 사람이 들어와도 매출은 없어요. 구직자, DIY, 학교·교육·자격증, 무료·정보 탐색, 기존 고객 지원 같은 묶음이에요. 화자의 목록 파일을 넣고 프롬프트를 보내면 Claude가 공유 제외 목록을 만들어 캠페인에 붙여요. 공유 목록이라 다른 캠페인에도 다시 쓸 수 있어요. 결과에는 '배관 쿠폰', '배관 강좌', '배관 정의', '배관 DIY' 같은 단어가 들어갔어요.</p>
+<p>랜딩 페이지로 넘어가기 전에 <b>제외 키워드</b>를 넣어요. 영상은 두 단계로 나눠요. 처음 하나는 어느 서비스업에나 통하는 공통 목록이고, 두 번째는 나중에 실제 검색어를 보고 지우는 작업이에요(대시보드 섹션에서 다뤄요).</p>
+<p>슬라이드 왼쪽이 공통 목록의 7개 범주와 단어 수예요. 구직 37개, DIY·방법 28개, 학교·자격증 22개, 무료·할인 15개, 정보 검색 16개, 기존 고객 지원 18개, 제한 업종 14개로 모두 150개예요. 오른쪽 빨간 상자는 반대로 <b>절대 넣으면 안 되는</b> 단어예요. 'affordable', 'near me', 'quote', 'price', 'best', 'hire', 'emergency', 'local'은 쓰레기처럼 보여도 사려는 사람의 신호예요.</p>
 <figure>
-  <img src="assets/frame-4230.png" alt="슬라이드 'Block the junk before you launch.' 왼쪽에 구직, DIY, 교육, 무료, 정보 탐색, 기존 고객, 제한 업종 7개 묶음, 오른쪽에 넣으면 안 되는 단어 목록이 있어요">
-  <figcaption>오른쪽 빨간 칸은 쓰레기처럼 보여도 제외하면 안 되는 말이에요. '저렴한', '근처', '응급' 같은 단어는 오히려 살 사람의 검색어라서요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2550s" target="_blank" rel="noopener">영상 42:30에서 보기</a></figcaption>
+  <img src="assets/frame-4045.png" alt="Block the junk before you launch 슬라이드. 왼쪽은 제외 키워드 7개 범주와 개수 총 150개, 오른쪽 빨간 상자는 제외하면 안 되는 구매 신호 단어 8가지">
+  <figcaption>오른쪽 목록이 이 슬라이드의 핵심이에요. 'emergency'는 가장 의도가 강한 키워드라서 제외 대상이 아니라고 적혀 있어요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2445s" target="_blank" rel="noopener">영상 40:45에서 보기</a></figcaption>
+</figure>
+<p>목록 파일을 넣고 프롬프트를 보내면 Claude가 이 단어들로 <b>공유 목록</b>을 만들어 캠페인에 붙여요. 아래 화면이 Google Ads의 공유 라이브러리에 생긴 목록이에요. coupon, course, crypto, definition, do-it-yourself 같은 단어가 들어 있어요. 공유 목록이라 다음 캠페인에도 그대로 붙일 수 있어요.</p>
+<figure>
+  <img src="assets/frame-4220.png" alt="Google Ads 도구의 공유 라이브러리, 제외 목록 화면. Claude가 만든 제외 키워드가 확장 검색 유형으로 길게 나열됨">
+  <figcaption>이 목록에 걸리는 검색은 아무리 클릭돼도 돈이 되지 않아요. 처음부터 막아 두면 매달 그만큼 아껴요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2540s" target="_blank" rel="noopener">영상 42:20에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2552s" target="_blank" rel="noopener">42:32</a>
+  <h2>검색어에 맞춘 랜딩 페이지</h2>
+<p>광고를 만들었으니 광고마다 도착할 페이지가 필요해요. 발표자는 예전에 랜딩 페이지를 손으로 만들던 일을 "악몽"이라고 기억해요. 성과는 좋았지만 다시는 하고 싶지 않았대요. Claude로는 한 달 걸리던 일이 몇 분으로 줄어요.</p>
+<p>원칙은 SKAG와 같아요. 슬라이드의 세 열이 'blocked drain sydney', 'hot water repair sydney', 'gas fitter sydney' 검색에서 시작해요. 가운데 줄이 그 검색어를 제목으로 단 광고, 아래 줄이 같은 제목의 페이지예요. 노란 제목 띠가 세 단계에 걸쳐 똑같아요.</p>
+<figure>
+  <img src="assets/frame-4240.png" alt="Three searches, three ads, three matching pages 슬라이드. 검색어 세 개가 각각 같은 문구의 광고와 같은 문구의 랜딩 페이지로 이어짐">
+  <figcaption>페이지 하나로 모든 광고를 받으면 이 일관성이 깨져요. 검색어마다 페이지를 하나씩 만드는 이유예요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2560s" target="_blank" rel="noopener">영상 42:40에서 보기</a></figcaption>
+</figure>
+<h3>디자인 참고 이미지를 붙여서 만들어요</h3>
+<p>페이지는 Next.js로 만들어요. 발표자는 "직접 코딩한 사이트용 워드프레스"쯤으로 생각하면 된다고 해요. 프롬프트에는 헤드라인을 키워드와 똑같이 맞추라는 지시가 들어 있어요. 디자인은 Dribbble에서 'plumbing website'를 검색해 마음에 드는 시안 이미지를 받아 프롬프트에 붙여요. 그러면 Claude가 비슷한 느낌으로 만들어요.</p>
+<p>결과 페이지가 아래 화면이에요. 큰 제목 'PLUMBER TORONTO — LICENSED, SAME-DAY SERVICE'가 광고 그룹의 검색어 'plumber toronto'로 시작해요. 아래쪽에는 별점 4.9, 15년 이상 같은 신뢰 숫자가 있어요. 발표자는 참고한 Dribbble 시안과 색감과 분위기가 놀랄 만큼 비슷하다고 말해요.</p>
+<figure>
+  <img src="assets/frame-4432.png" alt="Claude가 만든 RapidFlow Plumbing 랜딩 페이지. 큰 제목 PLUMBER TORONTO, LICENSED, SAME-DAY SERVICE와 배관 사진, 별점 4.9와 15+ years 표시">
+  <figcaption>주소창이 localhost예요. 아직 내 컴퓨터에서만 보이는 페이지라서, 광고의 최종 URL로 쓰려면 마지막 섹션에서 배포해야 해요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2672s" target="_blank" rel="noopener">영상 44:32에서 보기</a></figcaption>
+</figure>
+<h3>전환율 20%를 낸 페이지의 기본</h3>
+<p>발표자는 전환율 최적화를 따로 긴 강의로 다뤘다며, 여기서는 기본만 짚어요. 슬라이드는 페이지 요소를 등급표로 정리했어요. 맨 위 'SS' 등급은 <b>스플릿 테스트</b> 하나예요. 다른 모든 요소를 측정하고 쌓아 가게 해 주기 때문이에요. 그 아래 S 등급에 영상 후기, 페이지 위의 폼, 대표 소개 영상, 1분 안에 연락하기, 위험을 덜어 주는 제안이 있어요.</p>
+<figure>
+  <img src="assets/frame-4617.png" alt="Two percent to twenty percent, same traffic 슬라이드. 'SS', 'S', 'A', 'B' 등급별로 랜딩 페이지 요소를 배치한 등급표. 'SS'는 split testing">
+  <figcaption>"모든 요소의 무게가 같지 않아요. 80%의 효과는 몇 개가 내요"라는 부제가 이 표의 요지예요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2777s" target="_blank" rel="noopener">영상 46:17에서 보기</a></figcaption>
+</figure>
+<p>스플릿 테스트가 맨 위인 이유를 발표자는 이렇게 말해요. 나도, 술집에서 만난 친구도 각자 옳다고 생각하는 게 있지만 다 틀릴 수 있어요. 각자의 경험에서 나온 의견일 뿐이에요. 데이터를 추적하며 테스트해야 무엇이 통하는지 확실히 알 수 있어요.</p>
+<p>그다음이 <b>영상 후기</b>예요. 사람들은 이 업체를 믿어도 되는지 알고 싶어 해요. 앞으로의 성과를 가장 잘 보여 주는 건 과거의 성과이고, 그걸 보여 주는 게 사회적 증거예요. 아래 화면은 발표자의 DJ(Disc Jockey) 사업 페이지로, 결혼식 고객의 영상 후기 아홉 편을 격자로 깔아 두었어요.</p>
+<figure>
+  <img src="assets/frame-4632.png" alt="Trusted Across Canada - In 9 Cities 제목 아래 결혼식 고객 영상 후기 썸네일 아홉 개가 격자로 배치된 랜딩 페이지 구간">
+  <figcaption>예쁘지 않은 페이지였지만 이런 후기 덕분에 전환율 20%가 나왔다고 해요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2792s" target="_blank" rel="noopener">영상 46:32에서 보기</a></figcaption>
+</figure>
+<p>나머지 원칙은 짧아요. 문의 폼은 랜딩 페이지에 바로 있어야 해요. 다른 페이지로 숨기면 한 번 더 클릭할 때마다 전환율이 떨어져요. <b>대표 소개 영상</b>도 둬요. 배관이 왜 필요한지 설득할 필요는 없어요. 길 건너 다른 업체 대신 왜 나를 골라야 하는지, 내가 믿을 만하고 친근한 사람이라는 걸 보여 주는 게 목적이에요.</p>
+<p>가장 강조한 건 <b>응답 속도</b>예요. 폼이 들어오면 60초 안에 전화하는 걸 원칙으로 해요. 보통 업체는 48시간이 걸리는데, 광고비나 영업력을 늘리지 않고 이미 할 일을 빨리 하는 것만으로 판매가 네 배까지 늘 수 있다고 해요. 아래 폼 옆에도 '평균 응답 시간 75초, 전화를 준비해 두세요'라고 적어 두었어요.</p>
+<figure>
+  <img src="assets/frame-4740.png" alt="Get A Quote Now 문의 폼. Typical Response Time 75 seconds 문구와 이름, 전화, 이메일, 행사 종류 입력 칸, 빨간 제출 버튼">
+  <figcaption>응답 시간을 폼 바로 위에 약속처럼 적어 둔 점이 눈에 띄어요. 좋은 제안을 함께 두는 것도 필수라고 덧붙여요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2860s" target="_blank" rel="noopener">영상 47:40에서 보기</a></figcaption>
 </figure>
 </section>
 
 <section id="s7">
-  <a class="stamp" href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2552s" target="_blank" rel="noopener">42:32</a>
-  <h2>랜딩 페이지와 리마케팅</h2>
-<p>광고가 생겼으니 이제 광고마다 도착할 페이지를 만들어요. 화자는 예전에 이 작업에 한 달을 썼고 다시는 하기 싫었다고 해요. Claude로는 몇 분이면 된대요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2883s" target="_blank" rel="noopener">48:03</a>
+  <h2>차가운 고객과 따뜻한 고객: 리마케팅</h2>
+<p>Google Ads에서 만나는 사람은 두 부류예요. <b>차가운 고객</b>은 내 브랜드나 사이트를 본 적이 없어요. 관심도 없고 전환할 가능성도 낮아요. <b>따뜻한 고객</b>은 한 번 와 봤고, 이 업체를 어렴풋이 기억해요. 노출이 쌓일수록 신용카드를 꺼낼 가능성이 커져요. 그래서 두 부류에 맞춘 캠페인을 따로 둬요.</p>
+<p>슬라이드는 이를 두 개의 통으로 나눠요. 왼쪽 'COLD' 통은 지금 문제를 겪으며 구글에 검색하는 사람이고, 맞는 광고 지면은 지금까지 만든 SKAG 검색 광고 하나예요. 예산의 약 90%가 여기 들어가요. 오른쪽 'WARM' 통은 사이트에 한 번 왔지만 전환하지 않은 사람이에요. 검색 광고 입찰을 올리는 RLSA(Remarketing Lists for Search Ads)와, 방문자에게만 보이는 디스플레이 두 가지가 붙고 예산은 약 10%예요.</p>
 <figure>
-  <img src="assets/frame-4232.png" alt="슬라이드 'Three searches. Three ads. Three matching pages.' 검색어 세 개가 각각 맞춤 광고와 맞춤 페이지로 이어지는 그림이에요">
-  <figcaption>검색어마다 광고가 하나, 페이지가 하나예요. 페이지 제목도 검색어 그대로예요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2552s" target="_blank" rel="noopener">영상 42:32에서 보기</a></figcaption>
+  <img src="assets/frame-4903.png" alt="Cold traffic gets Search, warm traffic gets retargeting 슬라이드. 왼쪽 'COLD' 통은 검색 광고, 예산 90%. 오른쪽 'WARM' 통은 RLSA 입찰 조정과 방문자 대상 디스플레이, 예산 10%">
+  <figcaption>오른쪽 RLSA 줄에 '같은 SKAG, 따뜻한 방문자가 다시 검색하면 입찰 +50%'라고 적혀 있어요. 새 광고가 아니라 같은 광고에 입찰만 더 얹는 방식이에요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2943s" target="_blank" rel="noopener">영상 49:03에서 보기</a></figcaption>
 </figure>
-<h3>Claude로 페이지 만들기</h3>
-<p>프롬프트는 페이지를 Next.js로 만들고, 제목을 키워드와 맞추라고 지시해요. 화자는 Next.js를 '직접 코딩한 사이트용 워드프레스' 정도로 소개해요. 디자인은 디자인 공유 사이트 Dribbble에서 '배관 웹사이트'를 검색해 마음에 드는 이미지를 저장하고, 프롬프트에 붙이면 돼요. 결과물은 원본 디자인과 놀랄 만큼 비슷했다고 해요.</p>
-<p>이 단계의 페이지는 내 컴퓨터(localhost)에서만 보여요. 광고의 최종 URL을 바꾸려면 먼저 배포해야 하고, 그건 영상 마지막에 다뤄요.</p>
+<h3>Google 태그 심고 확인하기</h3>
+<p>따뜻한 고객을 모으려면 페이지에 <b>Google 태그</b>를 심어야 해요. 방문자가 들어오면 구글이 그 사람을 알아보고 목록에 담는 작은 코드예요. 기술적인 부분은 Claude가 해요. <span class="term" data-term="리마케팅" data-en="Remarketing" data-desc="이미 사이트에 와 본 사람에게 다시 광고를 보여 주는 방법이에요. 지금 구글 화면에서는 &#x27;내 데이터 세그먼트&#x27;라는 이름으로도 보여요." data-g="10">리마케팅</span> 설정 안내 문서를 넣고, 프롬프트에 내 도메인(데모는 automatable.co)을 적어 보내면 태그를 넣고 잠재고객 목록까지 만들어요.</p>
+<p>확인은 Google Tag Assistant로 해요. 도메인 칸에 localhost 주소를 넣고 연결하면, 페이지를 열어 둔 채 태그가 어떤 이벤트를 보내는지 기록해요. 데모에서는 폼 제출도 한 번 해 봐요. 아래 화면이 그 결과인데, Remarketing, User provided data, Lead Form Submit 같은 칸이 빼곡하게 찍혀 있어요.</p>
 <figure>
-  <img src="assets/frame-4803.png" alt="Claude가 만든 랜딩 페이지. 'PLUMBER TORONTO — LICENSED, SAME-DAY SERVICE' 제목과 배관 사진, 평점이 보여요">
-  <figcaption>Claude가 만든 'Plumber Toronto' 페이지예요. 검색어와 광고 문구가 그대로 제목이 됐어요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2883s" target="_blank" rel="noopener">영상 48:03에서 보기</a></figcaption>
+  <img src="assets/frame-5118.png" alt="Google Tag Assistant 요약 화면. localhost 페이지에서 감지된 Google 태그와 Remarketing, User provided data, Lead Form Submit 이벤트 칸들이 격자로 나열됨">
+  <figcaption>이 화면을 직접 해석할 필요는 없어요. 발표자는 결과를 복사해 Claude에게 "리마케팅 태그가 제대로 됐는지 알려 줘"라고 묻고, 제대로 됐다는 답을 받아요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3078s" target="_blank" rel="noopener">영상 51:18에서 보기</a></figcaption>
 </figure>
-<h3>전환되는 페이지의 기본기</h3>
-<p>화자는 별도 강의가 있다며 기본만 짚어요. 예쁘진 않아도 20% 전환율을 낸 자기 페이지를 예로 들어요.</p>
-<ul>
-  <li><strong>분할 테스트가 맨 위예요.</strong> 화자의 의견도, 술자리 친구의 의견도 틀릴 수 있어요. 데이터를 재야 확실해져요.</li>
-  <li><strong>영상 후기.</strong> 사람들은 믿을 수 있는지 알고 싶어 해요. 과거 성과를 보여 주는 가장 좋은 방법이 사회적 증거예요.</li>
-  <li><strong>문의 양식은 그 페이지에.</strong> 다른 페이지로 넘어가는 클릭 하나하나가 전환율을 깎아요.</li>
-  <li><strong>창업자 영상.</strong> 서비스가 왜 필요한지가 아니라, 왜 동네 다른 업체가 아니라 나인지를 보여 줘요. 사람은 좋아하는 사람과 일하고 싶어 해요.</li>
-  <li><strong>응답 속도.</strong> 문의가 오면 60초 안에 전화해요. 화자는 보통 업체가 48시간 걸린다며, 빨리 전화하는 것만으로 매출이 네 배가 될 수 있다고 말해요.</li>
-  <li><strong>좋은 제안.</strong> 페이지에 매력적인 오퍼가 있어야 해요.</li>
-</ul>
+<p>Claude에게 브라우저 테스트까지 맡기고 싶다면 Playwright 플러그인을 추가하라고 해요. Claude가 직접 브라우저를 열어 페이지를 확인해요.</p>
+<h3>어떤 리마케팅을 쓸까요</h3>
+<p>발표자가 확실히 권하는 건 RLSA예요. 검색 광고 그대로인데, 사이트에 와 본 사람이 다시 검색할 때 보여 주는 거예요. 클릭값은 더 들지만 전환율도 높아요. 디스플레이 배너는 따뜻한 고객에게만 시험 삼아 써 볼 만하고, 차가운 고객에게는 절대 쓰지 않는다고 해요. 효과가 있을 수도 없을 수도 있어서예요.</p>
+<p>실적 최대화(PMax)는 끝까지 반대해요. 슬라이드 왼쪽 검은 상자는 예산이 들어가면 무엇을 샀는지 알 수 없는 PMax를 나타내요. 오른쪽 목록이 실제로 돈을 내는 대상이에요. 모바일 게임 속 실수 클릭, 아무도 안 여는 앱 배너, 데이터센터에서 오는 봇 트래픽, 건너뛰기 직전의 동영상 광고, 아무도 모르는 검색 파트너 사이트예요.</p>
 <figure>
-  <img src="assets/frame-4757.png" alt="슬라이드 'Two percent to twenty percent. Same traffic.' 전환율 요소를 SS, S, A, B 등급으로 나눈 티어표예요">
-  <figcaption>화자의 전환율 요소 티어표예요. 맨 위 SS는 분할 테스트, S는 영상 후기·페이지 내 양식·창업자 영상·1분 응답·제안이에요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=2877s" target="_blank" rel="noopener">영상 47:57에서 보기</a></figcaption>
+  <img src="assets/frame-5331.png" alt="The CPC is cheap because the audience is garbage 슬라이드. 왼쪽 PMax 블랙박스에 예산이 들어가고, 오른쪽에 실수 클릭, 앱 배너, 봇 트래픽, 동영상 광고, 검색 파트너 다섯 항목">
+  <figcaption>클릭당 비용이 싼 건 그만큼 관객이 나쁘기 때문이라는 게 발표자의 결론이에요. 서비스업 기준의 개인 경험이라는 점은 본인도 밝혀요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3211s" target="_blank" rel="noopener">영상 53:31에서 보기</a></figcaption>
 </figure>
-<h3>차가운 고객과 따뜻한 고객</h3>
-<p>처음 보는 사람은 나에게 관심이 없어서 잘 전환되지 않아요. 이미 사이트에 와 본 사람은 "아, 그 회사" 하고 기억해요. 노출이 쌓일수록 결제할 가능성이 높아져요. 지금까지 만든 건 모두 차가운 고객용이에요. 따뜻한 고객용으로는 <span class="term" data-term="리마케팅" data-desc="이미 내 사이트에 왔던 사람에게 광고를 다시 보여 주는 방식이에요. 한 번 본 회사라 처음 보는 사람보다 결제할 가능성이 높아요.">리마케팅</span>을 따로 둬요.</p>
-<p>방법은 페이지에 Google 태그를 심는 거예요. 태그가 방문자를 표시해 두면, Google이 그 사람들을 목록으로 모아 다시 광고를 보여 줄 수 있어요. 화자의 가이드 파일(전환 추적과 잠재고객 설정)과 도메인을 넣으면 Claude가 태그와 전환 추적, 방문자 잠재고객까지 만들어요.</p>
-<p>확인은 Google Tag Assistant로 해요. 로컬 페이지 주소를 넣고 연결한 뒤 양식을 한 번 제출해 봐요. 결과 화면이 복잡하니, 그 내용을 Claude에게 붙여 넣고 리마케팅 태그가 제대로 됐는지 물어보면 돼요. Claude 공식 Playwright 플러그인을 깔면 Claude가 브라우저를 직접 조작해 테스트할 수도 있어요.</p>
-<figure>
-  <img src="assets/frame-5303.png" alt="슬라이드 'Cold traffic gets Search. Warm traffic gets retargeting.' 왼쪽은 처음 보는 고객용 검색 광고, 오른쪽은 이미 방문한 고객용 RLSA와 디스플레이예요">
-  <figcaption>예산의 약 90%는 차가운 고객용 검색 광고, 약 10%는 따뜻한 고객용 리타기팅에 둔다는 배분이 적혀 있어요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3183s" target="_blank" rel="noopener">영상 53:03에서 보기</a></figcaption>
-</figure>
-<p>리마케팅은 두 가지예요. 화자는 이전 방문자에게 검색 광고를 다시 보여 주는 <span class="term" data-term="RLSA" data-desc="Remarketing Lists for Search Ads의 줄임말이에요. 이전 방문자가 다시 Google 검색을 할 때 입찰을 높이거나 맞춤 광고를 보여 주는 기능이에요.">RLSA</span>는 꼭 하라고 해요. 클릭은 더 비싸지만 전환율도 높아요. 배너를 띄우는 디스플레이 리마케팅은 될 때도 있고 안 될 때도 있다고 해요. 디스플레이는 리마케팅에서만 써 보고, 처음 보는 고객에겐 절대 쓰지 않아요. Performance Max, 디맨드젠, 동영상은 서비스 업종에선 실수 클릭, 안 열리는 앱 배너, 봇 트래픽에 돈을 내는 것이라며 쓰지 않는다고 해요.</p>
 </section>
 
 <section id="s8">
   <a class="stamp" href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3211s" target="_blank" rel="noopener">53:31</a>
-  <h2>분석: 대시보드, 진짜 ROAS, 새는 검색어</h2>
-<p>화자는 이 부분이 영상에서 가장 중요하다고 해요. 계정을 세팅해서 돈을 버는 게 아니라, 계속 고쳐서 벌어요. 어떤 캠페인을 끊을지, 어떤 검색어를 제외할지, 입찰을 어떻게 바꿀지 찾는 일은 길고 지루해서, 바쁜 사업주는 대행사에 월 5천 달러를 주고 맡겨요. 이 일을 Claude Code가 해요.</p>
-<h3>대시보드 만들기</h3>
-<p>프롬프트 하나로 첫 버전 대시보드를 만들었어요. 광고비, 목표 CPA, 캠페인별 지출·매출·ROAS, 그리고 Claude의 추천이 한 화면에 나와요. 추천은 멈출 캠페인, 예산을 늘릴 캠페인, 고칠 키워드, 지울 키워드 같은 것들이에요. 화자는 매주 월요일 아침 이걸 보고 "이 세 가지 고쳐 줘"라고 시키면 된다고 해요. 대시보드 없이 "계정을 감사해 줘"라고만 해도 돼요.</p>
+  <h2>대시보드와 진짜 ROAS 추적</h2>
+<p>발표자는 이 부분이 영상 전체에서 가장 중요하다고 해요. 계정을 설정하는 것만으로는 돈을 벌 수 없어요. 돈은 <b>최적화</b>에서 나와요. 어떤 캠페인을 끊을지, 어떤 검색어를 막을지, 입찰을 어떻게 바꿀지 계속 판단해야 해요. 바쁜 사장은 이걸 할 시간이 없어서 대행사에 월 5천 달러를 내곤 해요. Claude Code는 이 일을 매우 빠르게 해요.</p>
+<h3>프롬프트 하나로 만든 대시보드</h3>
+<p>프롬프트 하나를 보내자 Claude가 대시보드 초안을 만들었어요. 아래 화면은 발표자의 DJ 사업(djing.ca) 계정의 최근 30일 데이터예요. 맨 위 카드 네 장은 ROAS 5.4배, 광고비 4,209달러, 광고로 이어진 매출 22,728달러, 리드당 비용 33.66달러예요. 왼쪽 표는 캠페인별 광고비, 매출, ROAS를 높은 순으로 칠해 두었어요. 오른쪽은 Claude가 할 일을 영향이 큰 순서로 추천한 목록이에요.</p>
 <figure>
-  <img src="assets/frame-5451.png" alt="ROAS 대시보드 화면. 위에 ROAS 5.4배, 광고비 4,209달러, 매출 22,728달러, 목표 CPA 33.66달러가 있고, 아래에 캠페인별 ROAS와 Claude 추천 목록이 있어요">
-  <figcaption>Claude가 만든 대시보드예요. 추천 항목마다 'Claude에게 보내기' 버튼이 붙어 있어요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3291s" target="_blank" rel="noopener">영상 54:51에서 보기</a></figcaption>
+  <img src="assets/frame-5536.png" alt="ROAS dashboard 화면. ROAS 5.4x, 광고비 4,209달러, 매출 22,728달러, CPA 33.66달러 카드와 캠페인별 ROAS 표, Claude의 추천 다섯 가지와 Send to Claude 버튼">
+  <figcaption>1번 추천은 ROAS가 0.7배, 1.2배인 위니펙과 캘거리 캠페인을 멈추라는 거예요. 버튼을 누르면 그 작업이 Claude의 할 일 목록에 들어가요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3336s" target="_blank" rel="noopener">영상 55:36에서 보기</a></figcaption>
 </figure>
-<h3>진짜 ROAS를 재는 다섯 단계</h3>
-<p>대시보드에 실제 매출을 연결하는 방법은 업체마다 시스템이 달라서 영상에서 직접 따라 하진 않아요. 대신 흐름을 보여 주고, 각 단계는 Claude와 대화하며 만들면 된다고 해요.</p>
-<ol>
-  <li><strong>URL 파라미터.</strong> 광고를 누르면 주소 뒤 물음표 다음에 정보가 붙어요. 키워드(wedding dj toronto), 캠페인, 광고 클릭 ID인 <span class="term" data-term="GCLID" data-desc="Google Click ID의 줄임말이에요. 광고 클릭마다 붙는 고유 번호라서, 나중에 결제한 고객이 어느 클릭에서 왔는지 이어 붙일 수 있어요.">GCLID</span>, 출처(google), 매체(cpc)가 실려 와요.</li>
-  <li><strong>숨은 필드.</strong> 문의 양식에 보이지 않는 칸을 두고 이 값들을 받아요.</li>
-  <li><strong>고객 관리 시스템(CRM) 저장.</strong> 양식이 제출되면 이름·이메일·전화와 함께 키워드·캠페인·클릭 ID가 기록돼요.</li>
-  <li><strong>결제 연결.</strong> 고객이 청구서를 결제하면 자동화가 그 데이터를 꺼내 대시보드의 ROAS를 갱신해요.</li>
-  <li><strong>Google Ads에 다시 올리기.</strong> 대시보드는 내 보고용이라 Google은 몰라요. 그래서 결제 데이터를 CSV로 Google Ads에 올려요.</li>
-</ol>
+<p>월요일 아침마다 이 화면을 보고 "이 세 가지를 고쳐 줘"라고 Claude에게 맡기면 돼요. 대시보드 없이 "내 계정을 감사해 줘"라고만 해도 비슷한 분석을 해 줘요. 발표자는 이를 월 20~100달러짜리 Google Ads 전문가를 둔 것과 같다고 표현해요. 지금은 뼈대만 만든 상태이고, 제대로 된 운영 화면으로 다듬으려면 몇 시간 더 걸린다고 해요.</p>
+<h3>진짜 ROAS를 추적하는 흐름</h3>
+<p>대시보드의 매출 숫자는 저절로 생기지 않아요. 발표자는 사업마다 연결 방식이 달라서 단계별로 따라 하게 보여 주지는 않고, 구조만 설명해요. 각 단계는 Claude와 대화하며 만들면 된다고 해요. 흐름을 한 장으로 그리면 이래요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["광고 클릭<br/>URL에 검색어·캠페인·GCLID"] --> B["랜딩 페이지 폼<br/>숨은 필드가 값을 받음"]
+  B --> C["CRM에 리드 저장<br/>출처·키워드 함께"]
+  C --> D["고객이 결제<br/>워크플로가 실행"]
+  D --> E["대시보드<br/>캠페인별 실제 ROAS"]
+  D --> F["CSV로 Google Ads에 업로드<br/>구글이 진짜 매출을 학습"]
+</pre>
+  <figcaption>영상이 말로 설명한 단계를 순서대로 옮겼어요. 대시보드는 내가 보는 용도, Google Ads 업로드는 구글의 입찰을 바꾸는 용도예요.</figcaption>
+</figure>
+<p>출발점은 <b>URL 매개변수</b>예요. 광고를 누르면 주소 끝의 물음표 뒤에 정보가 붙어 와요. 아래 화면에서 노란 칸이 검색어 'wedding+dj+toronto'와 캠페인 'weddings-toronto'이고, 그 뒤로 클릭 ID인 gclid, 출처 google, 매체 cpc가 이어져요. 매체가 cpc라는 건 SEO나 SNS가 아니라 클릭당 비용을 낸 광고에서 왔다는 뜻이에요.</p>
 <figure>
-  <img src="assets/frame-5611.png" alt="슬라이드 'The keyword that closed the deal travels with the lead.' 광고 클릭, 랜딩 페이지, CRM, 청구서 결제로 키워드가 따라가는 흐름도예요">
-  <figcaption>키워드가 클릭에서 결제까지 따라가는 흐름이에요. 끝에서 월별 ROAS가 계산돼요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3371s" target="_blank" rel="noopener">영상 56:11에서 보기</a></figcaption>
+  <img src="assets/frame-5651.png" alt="acme.com/wedding-dj 주소 뒤에 붙은 URL 매개변수. utm_term은 wedding+dj+toronto, utm_campaign은 weddings-toronto, gclid, utm_source는 google, utm_medium은 cpc">
+  <figcaption>이 한 줄에 '누가 어떤 검색어로 어떤 캠페인 광고를 눌렀는지'가 다 들어 있어요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3411s" target="_blank" rel="noopener">영상 56:51에서 보기</a></figcaption>
 </figure>
-<p>마지막 단계가 왜 필요한지도 설명해요. 데이터를 올리기 전까지 Google은 Sarah, Marcus, Priya, Tom이 각각 얼마를 냈는지 몰라요. 모든 문의를 같은 값(예: 200달러)으로 짐작할 수 있죠. 실제 결제액을 알려 줘야 Google이 그런 고객과 비슷한 사람을 찾아 입찰해요.</p>
+<p>폼에는 방문자에게 보이지 않는 <b><span class="term" data-term="숨은 필드" data-en="Hidden field" data-desc="방문자 눈에는 보이지 않지만 폼과 함께 전송되는 입력 칸이에요. 광고 주소에 붙어 온 검색어와 클릭 ID를 몰래 담아 CRM으로 보내요." data-g="12">숨은 필드</span></b>를 둬요. 화면 가운데 패널을 보면, Sarah가 이름, 이메일, 전화번호만 적었는데 아래 빨간 칸에 검색어와 캠페인이, 초록 칸에 GCLID(Google Click Identifier)가 저절로 채워져 있어요. 오른쪽 CRM(Customer Relationship Management) 카드에는 Sarah의 연락처와 함께 출처 Google Ads, 키워드, 캠페인, GCLID가 저장돼요.</p>
 <figure>
-  <img src="assets/frame-5851.png" alt="슬라이드 'YOU know which leads paid. Google doesn't. Fix that.' 왼쪽은 문의만 아는 Google, 오른쪽은 결제 금액까지 아는 Google을 비교해요">
-  <figcaption>결제 데이터를 올리기 전과 후예요. 왼쪽 Google은 문의 수만 세고, 오른쪽은 실제 매출을 봐요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3531s" target="_blank" rel="noopener">영상 58:51에서 보기</a></figcaption>
+  <img src="assets/frame-5716.png" alt="세 패널 슬라이드 확대. 1번 광고 클릭 URL, 2번 랜딩 페이지 폼과 숨은 필드 utm_term, utm_campaign, gclid, 3번 CRM에 저장된 Sarah K.의 연락처와 키워드, 캠페인, gclid">
+  <figcaption>초록 GCLID 칸에 '나중에 구글에 다시 먹이는 열쇠'라고 적혀 있어요. 이 값이 있어야 결제 정보를 구글의 클릭과 다시 짝지을 수 있어요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3436s" target="_blank" rel="noopener">영상 57:16에서 보기</a></figcaption>
 </figure>
+<p>Sarah가 청구서를 결제하면 워크플로가 돌아요. Sarah 한 명이 아니라 결제한 고객 125명쯤의 기록이 모여 대시보드를 갱신해요. 이렇게 하면 클릭률이나 전환율이 아니라 Google Ads로 번 돈을 한 푼 단위까지 볼 수 있어요.</p>
+<h3>결제 데이터를 구글에도 알려요</h3>
+<p>대시보드는 내 보고용이에요. 구글은 그걸 볼 수 없어요. 슬라이드 왼쪽이 지금 구글이 보는 모습이에요. Sarah, Marcus, Priya, Tom 모두 '리드 = 200달러'로 똑같아요. 오른쪽은 결제 데이터를 올린 뒤예요. Sarah는 2,400달러, Marcus는 400달러, Priya는 200달러를 냈고, Tom은 취소해서 0달러예요.</p>
+<figure>
+  <img src="assets/frame-5856.png" alt="YOU know which leads paid, Google doesn't 슬라이드. 위쪽에 CSV 필수 5개 열, 왼쪽은 모든 리드를 200달러로 보는 구글, 오른쪽은 업로드 후 실제 결제액을 보는 구글">
+  <figcaption>맨 아래 초록 띠가 결과예요. 구글이 2,400달러를 데려온 'wedding dj toronto'에는 더 세게 입찰하고, 취소로 끝난 'wedding dj cost'에는 입찰을 멈춰요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3536s" target="_blank" rel="noopener">영상 58:56에서 보기</a></figcaption>
+</figure>
+<p>슬라이드 위쪽 띠는 올릴 CSV(Comma-Separated Values)에 필요한 다섯 열이에요. gclid, 전환 이름, 전환 시각, 전환 금액, 통화예요. 업로드 방법도 세 가지를 적어 뒀어요. 매주 CSV 올리기가 가장 쉽고, Zapier로 결제 시스템과 잇거나 API로 실시간 전송할 수도 있어요. 발표자는 CSV로 내보내 올리면 끝이라고 해요.</p>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>Google은 이 방식을 '오프라인 전환 가져오기'라고 불러요. 광고 클릭마다 GCLID라는 고유 ID가 붙고, 이걸 문의 정보와 함께 저장해 뒀다가 고객이 계약하거나 결제하면 GCLID와 전환 종류·시각을 Google Ads에 돌려주는 구조예요. 파일로 올리는 방법 말고 Google Ads API나 CRM 연동으로 자동화할 수도 있어요.</p>
-  <p class="cite">출처: <a href="https://support.google.com/google-ads/answer/2998031?hl=en" target="_blank" rel="noopener">Google Ads 고객센터 — About offline conversion imports</a></p>
+  <p>이 작업의 공식 이름은 오프라인 전환 가져오기예요. Google Ads 도움말에는 2026년 6월 15일부터 오프라인 전환 가져오기와 리드용 향상된 전환 업로드가 Data Manager API로 옮겨지고, Google Ads API에서는 막힌다는 안내가 있어요. Claude에게 API로 자동 업로드를 맡길 계획이라면 Data Manager API를 쓰라고 지시해야 해요. 발표자가 권한 CSV 파일 업로드는 이 안내와 별개인 경로예요.</p>
+  <p class="cite">출처: <a href="https://support.google.com/google-ads/answer/2998031?hl=en" target="_blank" rel="noopener">Google Ads 도움말 — About offline conversion imports</a></p>
 </aside>
-<h3>새는 검색어를 제외 키워드로</h3>
-<p>SKAG을 잘 써도 예상 못 한 검색어는 계속 들어와요. 검색어 보고서를 훑어 돈만 쓰는 검색어를 제외 목록에 넣어야 하는데, 이것도 Claude에게 맡겨요. 화자의 가이드 파일을 넣고 프롬프트를 보내면 Claude가 계정을 분석해 보고서를 주고, 승인하면 그대로 반영해요.</p>
-<p>화자의 실제 DJ 업체 계정에서 나온 예가 인상적이에요. 'DJ hiring'은 DJ를 고용하려는 고객 검색어인 줄 알았는데, Claude가 검색해 보니 구인 게시판으로 가는 구직자 검색어였어요. 토론토 업체 광고가 '밴쿠버 웨딩 DJ'에 걸려 돈이 나가고 있던 것도 찾아냈어요. 화자는 몇 년을 운영하면서도 못 봤던 것들이라고 해요.</p>
+<h3>낭비 검색어를 Claude가 걸러요</h3>
+<p>SKAG와 공통 제외 목록을 써도, 생각지 못한 검색어에 광고가 뜨는 일은 계속 생겨요. 이걸 정기적으로 찾아 제외 키워드로 넣어야 해요. 이 일도 Claude에게 맡겨요. 슬라이드는 30일 동안 낭비된 돈을 검색어별 막대로 보여 줘요. 'plumber salary'에 842달러, 'plumbing apprenticeship'에 671달러, 'diy blocked drain'에 508달러가 새고 있어요. 오른쪽 아래 초록 띠는 이걸 막아 한 달에 2,861달러를 되찾는다는 뜻이에요.</p>
 <figure>
-  <img src="assets/frame-010011.png" alt="슬라이드 'Claude turns wasted search terms into negatives.' 배관공 연봉, 배관 견습, DIY 배수구, 시드니 배관공 구인 같은 검색어별 낭비 금액 막대그래프예요">
-  <figcaption>낭비된 검색어와 금액을 막대로 보여 줘요. 이걸 제외하면 돈이 그만큼 돌아온다는 뜻이에요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3611s" target="_blank" rel="noopener">영상 1:00:11에서 보기</a></figcaption>
+  <img src="assets/frame-010011.png" alt="Claude turns wasted search terms into negatives 슬라이드. plumber salary 842달러, plumbing apprenticeship 671달러 등 검색어별 30일 낭비 금액 막대그래프와 Recovered 2,861달러/월 표시">
+  <figcaption>예시 막대는 배관 업체 기준이에요. 발표자는 이어서 자기 DJ 사업의 실제 계정으로 같은 작업을 돌려요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3611s" target="_blank" rel="noopener">영상 01:00:11에서 보기</a></figcaption>
 </figure>
-<p>화자는 광고비를 줄이는 가장 좋은 방법 중 하나가 애초에 고객이 안 될 검색어에 돈을 안 쓰는 거라며, 이 작업을 가장 과소평가된 일로 꼽아요.</p>
+<p>제외 키워드 찾기 안내 문서를 넣고 프롬프트를 보내면, Claude가 계정을 깊이 분석해 보고서를 줘요. 실제 계정에서 Claude는 'DJ hiring'을 찾아냈어요. 발표자는 DJ를 고용하려는 사람의 검색이라고 생각했는데, Claude가 구글에서 직접 찾아보니 Indeed나 LinkedIn 같은 구인 사이트로 가는 검색이었어요. 'Wedding DJ Vancouver'도 걸렸어요. 토론토와 밴쿠버는 나라 반대편이라 받을 수 없는 고객인데 돈은 나가고 있었어요.</p>
+<p>보고서를 승인하면 Claude가 그 검색어들을 제외 키워드로 등록해요. 발표자는 몇 년 동안 운영하면서도 직접은 못 봤을 것들을 몇 초 만에 찾았다며, 전환당 비용을 낮추는 가장 과소평가된 방법이라고 말해요.</p>
 </section>
 
 <section id="s9">
-  <a class="stamp" href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3772s" target="_blank" rel="noopener">01:02:52</a>
-  <h2>사이트 배포와 Claude Code 스킬</h2>
-<h3>GitHub와 Vercel로 배포하기</h3>
-<p>지금 랜딩 페이지는 내 컴퓨터에만 있어요. 누구나 볼 수 있게 하려면 두 단계를 거쳐요. GitHub는 코드를 보관하는 곳이고, 화자는 '코드용 Google Drive'라고 설명해요. Vercel은 그 코드를 받아 인터넷에 띄워 줘요. 둘 다 무료로 쓸 수 있어요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3772s" target="_blank" rel="noopener">1:02:52</a>
+  <h2>사이트 배포와 스킬로 반복 줄이기</h2>
+<p>지금까지 만든 랜딩 페이지는 내 컴퓨터에서만 열려요. 광고를 누른 사람이 볼 수 있게 인터넷에 올려야 해요. 슬라이드는 이 과정을 세 칸으로 보여 줘요. Claude Code가 사이트를 만들고, GitHub가 코드를 보관하고, Vercel이 그 코드를 받아 세상에 띄워요. 발표자는 GitHub를 "코드용 구글 드라이브"라고 설명해요. 둘 다 무료예요.</p>
 <figure>
-  <img src="assets/frame-010302.png" alt="슬라이드 'Claude → GitHub → Vercel. Live in minutes.' Claude Code가 만들고, GitHub가 저장하고, Vercel이 배포하는 세 단계 카드예요">
-  <figcaption>Claude Code가 만들고, GitHub가 보관하고, Vercel이 세상에 내보내요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3782s" target="_blank" rel="noopener">영상 1:03:02에서 보기</a></figcaption>
+  <img src="assets/frame-010258.png" alt="Claude, GitHub, Vercel, live in minutes 슬라이드. Claude Code가 사이트를 만들고, GitHub가 코드를 저장하고, Vercel이 배포하는 세 칸이 화살표로 이어짐">
+  <figcaption>GitHub에 새 코드가 올라오면 Vercel이 알아서 다시 배포해요. 한 번 연결해 두면 이후 수정은 Claude에게 말만 하면 돼요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3778s" target="_blank" rel="noopener">영상 01:02:58에서 보기</a></figcaption>
 </figure>
-<ol>
-  <li>GitHub에서 새 저장소를 비공개로 만들고 주소를 복사해요.</li>
-  <li>Claude에게 주소를 주며 랜딩 페이지 폴더를 올려 달라고 해요. 마크다운 가이드 파일들은 빼고, 랜딩 페이지와 대시보드가 든 폴더만 올려요.</li>
-  <li>Vercel에서 새 프로젝트를 만들어 GitHub를 연결하고, 그 저장소를 가져와요.</li>
-  <li>프레임워크 설정을 Next.js로 두고 배포해요.</li>
+<ol class="steps">
+  <li><b>GitHub에서 새 저장소를 만들어요</b> — 이름은 아무거나, 공개 범위는 반드시 비공개로 해요.
+    <span class="done">저장소 주소가 담긴 안내 코드가 화면에 떠요</span></li>
+  <li><b>그 주소를 복사해 Claude Code에 붙여 넣어요</b> — "landing-pages 폴더를 여기에 올려 줘"처럼 폴더를 지정해요. 설정 문서 같은 다른 파일은 빼고 페이지와 대시보드만 올리기 위해서예요.</li>
+  <li><b>Vercel에 가입하고 새 프로젝트를 만들어요</b> — GitHub와 연결한 뒤 방금 만든 저장소를 가져와요.</li>
+  <li><b>프리셋이 Next.js인지 확인하고 배포를 눌러요</b>
+    <span class="done">누구나 열 수 있는 주소가 생겨요</span></li>
 </ol>
-<p>배포가 끝나면 누구나 접속할 수 있어요. 기본 도메인이 보기 싫으면 Vercel에서 도메인을 사거나 GoDaddy, Namecheap 같은 곳에서 산 도메인을 붙여요. 그다음 광고의 임시 최종 URL을 각 광고에 맞는 랜딩 페이지 주소로 바꿔요.</p>
-<h3>작업 흐름을 스킬로 묶기</h3>
-<p>지금까지는 매번 파일을 넣고 프롬프트를 붙이느라 꽤 느렸어요. 이걸 10배 빠르게 하는 게 Claude Code의 <span class="term" data-term="스킬" data-desc="Claude Code에 저장해 두는 작업 절차예요. /이름으로 부르면 매번 설명하지 않아도 같은 방식으로 일을 처리해요.">스킬</span>이에요. 화자는 스킬을 '필요할 때 부르는 작업 절차'라고 설명해요.</p>
-<p>프롬프트 라이브러리에 있는 스킬 생성 프롬프트를 보내면 Claude가 프로젝트 폴더 안에 스킬을 만들어요. 새 대화에서 <code>/generate-ads</code>를 치고 "토론토 배관 광고 그룹에 광고 5개 더 만들어 줘"라고만 하면, 좋은 광고의 조건을 다시 설명하지 않아도 같은 품질로 만들어요.</p>
+<p>아래가 배포된 페이지예요. 주소창이 localhost에서 vercel.app 주소로 바뀌었어요. 발표자는 이 주소가 "끔찍하다"며, Vercel에서 도메인을 사거나 GoDaddy, Namecheap 같은 곳에서 산 도메인을 연결하면 된다고 해요.</p>
 <figure>
-  <img src="assets/frame-010532.png" alt="슬라이드 'Six skills. Every business. Same playbook.' build-campaign, build-skags, generate-ads, build-landing-page, audit-account, clean-negatives 카드 6장이에요">
-  <figcaption>영상의 작업을 스킬 6개로 묶은 모습이에요. 캠페인, SKAG, 광고, 랜딩 페이지, 계정 감사, 제외 키워드 정리예요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3932s" target="_blank" rel="noopener">영상 1:05:32에서 보기</a></figcaption>
+  <img src="assets/frame-010452.png" alt="vercel.app 주소로 배포된 RapidFlow Plumbing 랜딩 페이지. 로고 옆을 분홍 화살표가 가리킴">
+  <figcaption>배포가 끝났으면 광고의 최종 URL을 임시로 넣었던 홈페이지에서 각 랜딩 페이지 주소로 바꿔야 해요. 이걸 빠뜨리면 SKAG의 마지막 고리가 끊겨요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3892s" target="_blank" rel="noopener">영상 01:04:52에서 보기</a></figcaption>
 </figure>
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>Claude Code 공식 문서 기준으로 스킬은 <code>SKILL.md</code> 파일 하나가 든 폴더예요. 프로젝트 전용이면 <code>.claude/skills/스킬이름/</code>, 모든 프로젝트에서 쓰려면 <code>~/.claude/skills/스킬이름/</code>에 둬요. 폴더 이름이 곧 <code>/명령어</code>가 되고, 요청 내용이 맞으면 Claude가 알아서 불러 쓰기도 해요.</p>
-  <p class="cite">출처: <a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code 공식 문서 — Skills</a></p>
-</aside>
+<h3>스킬로 다음 작업을 열 배 빠르게</h3>
+<p>지금까지는 단계마다 문서를 넣고 프롬프트를 고르느라 꽤 느렸어요. 이걸 <b><span class="term" data-term="스킬" data-en="Claude Code skill" data-desc="자주 하는 작업의 지시와 참고 문서를 묶어 둔 파일이에요. 슬래시와 이름만 치면 같은 기준으로 다시 실행해요." data-g="14">스킬</span></b>로 묶으면 빨라져요. 스킬은 필요할 때 불러 쓰는 작업 순서예요. 프롬프트 모음에 있는 스킬 생성 프롬프트를 보내면 Claude가 스킬 파일을 프로젝트 폴더 안에 만들어요.</p>
+<p>사용법은 새 대화를 열고 슬래시와 스킬 이름을 치는 거예요. 데모에서는 <code>/generate-ads</code>를 부르고 "토론토 배관 광고 그룹에 광고 5개 더 만들어 줘"라고만 덧붙였어요. 좋은 광고의 조건이나 이 사업의 맥락을 다시 설명하지 않아도 같은 기준으로 만들어요.</p>
+<p>슬라이드는 이 영상의 전체 흐름을 스킬 여섯 개로 정리해요. 1 <code>/build-campaign</code>은 기본 설정과 지역, 입찰 전략을 갖춘 검색 캠페인을 만들어요. 2 <code>/build-skags</code>는 서비스 × 도시 매트릭스로 광고 그룹을 한꺼번에 만들어요. 3 <code>/generate-ads</code>는 SKAG마다 헤드라인 15개와 설명 4개를 쓰고 1번 자리에 키워드를 고정해요. 4 <code>/build-landing-page</code>는 키워드와 같은 제목의 페이지를, 5 <code>/audit-account</code>는 계정 감사와 대시보드를, 6 <code>/clean-negatives</code>는 낭비 검색어 정리를 맡아요.</p>
+<figure>
+  <img src="assets/frame-010552.png" alt="Six skills, every business, same playbook 슬라이드. build-campaign, build-skags, generate-ads, build-landing-page, audit-account, clean-negatives 여섯 개의 스킬 카드">
+  <figcaption>카드마다 아래쪽에 'SOP'와 근거가 되는 프롬프트 파일이 적혀 있어요. 이 영상에서 넣은 안내 문서들이 곧 스킬의 재료예요. <a href="https://www.youtube.com/watch?v=-EInjdpjKy0&amp;t=3952s" target="_blank" rel="noopener">영상 01:05:52에서 보기</a></figcaption>
+</figure>
+<p>3번과 6번 카드에는 '사람이 승인한 뒤에 반영'이라는 줄도 있어요. 광고를 올리거나 키워드를 막는 일은 Claude가 준비하고, 마지막 확인은 사람이 하는 구조예요.</p>
 </section>
 
 <section id="corrections">
   <h2>자막 표기 바로잡기</h2>
 <aside class="note">
   <span class="tag">자막 관련 참고</span>
-  <p>자동생성 영어 자막이라 고유명사가 잘못 받아적힌 곳이 많아요. 화면과 문맥으로 이렇게 바로잡았어요.</p>
+  <p>자동생성 영어 자막이라 고유명사가 잘못 받아적힌 곳이 있어요. 화면과 문맥으로 이렇게 바로잡았어요.</p>
   <div class="table-scroll"><table>
     <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
     <tbody>
-      <tr><td>cloud code, clawed code</td><td>Claude Code</td><td></td></tr>
+      <tr><td>cloud code / clawed code</td><td>Claude Code</td><td></td></tr>
       <tr><td>SCAg</td><td>SKAG</td><td>Single Keyword Ad Group</td></tr>
-      <tr><td>MV</td><td>.env</td><td>비밀번호·키를 담는 파일</td></tr>
-      <tr><td>ooth, OOTH</td><td>OAuth</td><td></td></tr>
+      <tr><td>MV</td><td>.env</td><td>비밀 값을 담는 환경 변수 파일</td></tr>
+      <tr><td>ooth</td><td>OAuth</td><td></td></tr>
       <tr><td>Nex.js</td><td>Next.js</td><td></td></tr>
-      <tr><td>Verscell, Versil, Versel</td><td>Vercel</td><td></td></tr>
-      <tr><td>Dribble</td><td>Dribbble</td><td>디자인 공유 사이트</td></tr>
-      <tr><td>rlasse</td><td>RLSA</td><td></td></tr>
-      <tr><td>demand genen</td><td>Demand Gen</td><td>Google 캠페인 유형</td></tr>
+      <tr><td>Verscell / Versil / Versel</td><td>Vercel</td><td></td></tr>
+      <tr><td>Dribble</td><td>Dribbble</td><td>디자인 시안 공유 사이트</td></tr>
+      <tr><td>playright</td><td>Playwright</td><td></td></tr>
+      <tr><td>relisting / rlasse</td><td>RLSA</td><td>검색 광고용 리마케팅 목록</td></tr>
       <tr><td>Rotorooer</td><td>Roto-Rooter</td><td>배관 업체 이름</td></tr>
-      <tr><td>Missaga, Bmpton, Scarboro</td><td>Mississauga, Brampton, Scarborough</td><td>토론토 주변 도시</td></tr>
-      <tr><td>playright</td><td>Playwright</td><td>브라우저 자동화 도구</td></tr>
-      <tr><td>NameCheep</td><td>Namecheap</td><td>도메인 판매 업체</td></tr>
-      <tr><td>slashgenerate ads</td><td>/generate-ads</td><td>화면의 스킬 이름</td></tr>
-      <tr><td>admp, campaigns.mmd</td><td>.md 파일</td><td>마크다운 파일 확장자</td></tr>
+      <tr><td>Missaga / Bmpton / Scarboro</td><td>Mississauga / Brampton / Scarborough</td><td>토론토 근교 도시</td></tr>
+      <tr><td>demand genen</td><td>Demand Gen</td><td>구글 캠페인 유형</td></tr>
+      <tr><td>NameCheep</td><td>Namecheap</td><td>도메인 판매 사이트</td></tr>
+      <tr><td>campaigns.mmd</td><td>campaigns.md</td><td></td></tr>
     </tbody>
   </table></div>
 </aside>
 </section>
 </main>
 
-<div class="tail">
+<div class="tail" id="glossary">
   <h2>이 글에 나온 용어</h2>
-  <div class="table-scroll">
-    <table>
-      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
-      <tbody>
-        <tr><td>전환율</td><td>광고를 보고 들어온 사람 중 문의나 구매처럼 원하는 행동을 한 사람의 비율이에요. 같은 광고비로 고객을 얼마나 얻는지 보여 줘요.</td></tr>
-        <tr><td>ROAS</td><td>광고비 대비 매출이에요. 100만 원을 써서 500만 원을 벌면 5배예요. 화자가 유일하게 중요하다고 보는 숫자예요.</td></tr>
-        <tr><td>키워드 플래너</td><td>Google Ads 안에 있는 무료 도구예요. 검색어별 월 검색량, 경쟁도, 예상 입찰가를 보여 줘서 어떤 키워드에 돈을 쓸지 고를 때 써요.</td></tr>
-        <tr><td>구문 일치</td><td>키워드를 등록할 때 고르는 일치 유형의 하나예요. 검색어에 그 표현(지금은 그 의미)이 들어 있을 때 광고가 나가요. 확장 일치보다 좁고 일치보다 넓어요.</td></tr>
-        <tr><td>SKAG</td><td>Single Keyword Ad Group의 줄임말이에요. 광고 그룹 하나에 키워드 하나만 넣어서, 그 검색어 전용 광고와 페이지로 연결하는 구조예요.</td></tr>
-        <tr><td>랜딩 페이지</td><td>광고를 누른 사람이 처음 도착하는 페이지예요. 홈페이지가 아니라 그 광고 전용으로 만든 페이지라 문의로 이어지기 쉬워요.</td></tr>
-        <tr><td>API</td><td>프로그램끼리 정해진 방식으로 데이터를 주고받는 창구예요. Claude Code가 사람 대신 Google Ads 계정을 조작할 수 있는 통로가 돼요.</td></tr>
-        <tr><td>Performance Max</td><td>Google의 자동 캠페인 유형이에요. 검색, YouTube, 지메일, 지도, 디스플레이 등 여러 곳에 광고를 알아서 나눠 띄워요. 화자는 서비스 업종엔 맞지 않다고 봐요.</td></tr>
-        <tr><td>품질평가점수</td><td>Google이 키워드마다 매기는 1~10점 점수예요. 예상 클릭률, 광고 관련성, 방문 페이지 만족도로 정해지고, 높을수록 같은 자리를 더 싸게 사요.</td></tr>
-        <tr><td>제외 키워드</td><td>이 단어가 들어간 검색에는 광고를 띄우지 말라고 지정하는 목록이에요. 고객이 될 리 없는 클릭에 돈이 새는 걸 막아요.</td></tr>
-        <tr><td>리마케팅</td><td>이미 내 사이트에 왔던 사람에게 광고를 다시 보여 주는 방식이에요. 한 번 본 회사라 처음 보는 사람보다 결제할 가능성이 높아요.</td></tr>
-        <tr><td>RLSA</td><td>Remarketing Lists for Search Ads의 줄임말이에요. 이전 방문자가 다시 Google 검색을 할 때 입찰을 높이거나 맞춤 광고를 보여 주는 기능이에요.</td></tr>
-        <tr><td>GCLID</td><td>Google Click ID의 줄임말이에요. 광고 클릭마다 붙는 고유 번호라서, 나중에 결제한 고객이 어느 클릭에서 왔는지 이어 붙일 수 있어요.</td></tr>
-        <tr><td>스킬</td><td>Claude Code에 저장해 두는 작업 절차예요. /이름으로 부르면 매번 설명하지 않아도 같은 방식으로 일을 처리해요.</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-13"><dt>개발자 토큰<span class="en">Developer token</span></dt><dd>Google Ads API를 쓰려면 받아야 하는 열쇠예요. 관리자 계정의 API 센터에서 받고, 등급에 따라 하루 작업 횟수가 달라요.</dd></div>
+    <div class="g" id="g-3"><dt>광고 그룹<span class="en">Ad group</span></dt><dd>캠페인 안에서 키워드와 광고를 묶는 단위예요. SKAG에서는 광고 그룹마다 검색어를 하나만 넣어요.</dd></div>
+    <div class="g" id="g-2"><dt>구문 일치<span class="en">Phrase match</span></dt><dd>키워드의 뜻을 담은 검색에만 광고를 보여 주는 일치 유형이에요. 발표자는 같은 뜻의 여러 표현을 잡으면서도 크게 새지 않아서 기본값으로 써요.</dd></div>
+    <div class="g" id="g-4"><dt>랜딩 페이지<span class="en">Landing page</span></dt><dd>광고를 누른 사람이 처음 도착하는 페이지예요. 검색어와 같은 말로 시작해야 떠나지 않고 문의까지 이어져요.</dd></div>
+    <div class="g" id="g-10"><dt>리마케팅<span class="en">Remarketing</span></dt><dd>이미 사이트에 와 본 사람에게 다시 광고를 보여 주는 방법이에요. 지금 구글 화면에서는 &#x27;내 데이터 세그먼트&#x27;라는 이름으로도 보여요.</dd></div>
+    <div class="g" id="g-12"><dt>숨은 필드<span class="en">Hidden field</span></dt><dd>방문자 눈에는 보이지 않지만 폼과 함께 전송되는 입력 칸이에요. 광고 주소에 붙어 온 검색어와 클릭 ID를 몰래 담아 CRM으로 보내요.</dd></div>
+    <div class="g" id="g-14"><dt>스킬<span class="en">Claude Code skill</span></dt><dd>자주 하는 작업의 지시와 참고 문서를 묶어 둔 파일이에요. 슬래시와 이름만 치면 같은 기준으로 다시 실행해요.</dd></div>
+    <div class="g" id="g-6"><dt>스플릿 테스트<span class="en">Split test (A/B test)</span></dt><dd>광고나 페이지를 여러 버전으로 동시에 내보내고 어느 쪽 성과가 좋은지 데이터로 비교하는 방법이에요.</dd></div>
+    <div class="g" id="g-7"><dt>실적 최대화<span class="en">Performance Max</span></dt><dd>검색, 유튜브, 디스플레이, 지메일 등 구글의 모든 지면에 자동으로 광고를 내는 캠페인 유형이에요. 발표자는 서비스업에서는 질 낮은 클릭만 산다고 봐요.</dd></div>
+    <div class="g" id="g-1"><dt>일치 유형<span class="en">Keyword match type</span></dt><dd>내 키워드와 사람들의 검색어가 얼마나 비슷해야 광고를 보여 줄지 정하는 설정이에요. 넓을수록 노출은 늘지만 엉뚱한 검색에도 돈이 나가요.</dd></div>
+    <div class="g" id="g-5"><dt>전환율<span class="en">Conversion rate</span></dt><dd>광고를 누른 사람 중 문의, 구매처럼 원하는 행동까지 간 사람의 비율이에요. 발표자의 페이지는 20% 안팎이었어요.</dd></div>
+    <div class="g" id="g-9"><dt>제외 키워드<span class="en">Negative keyword</span></dt><dd>이 단어가 든 검색에는 광고를 보여 주지 말라고 정해 두는 키워드예요. 구직, 무료, DIY 같은 단어를 막아 광고비를 아껴요.</dd></div>
+    <div class="g" id="g-8"><dt>품질평가점수<span class="en">Quality Score</span></dt><dd>키워드마다 매기는 1~10점의 광고 품질 점수예요. 예상 클릭률, 광고 관련성, 방문 페이지 만족도로 정해져요.</dd></div>
+    <div class="g" id="g-11"><dt>확장 요소<span class="en">Ad assets (extensions)</span></dt><dd>광고 아래 붙는 사이트링크, 콜아웃, 서비스 목록 같은 추가 정보예요. 광고가 차지하는 면적을 넓혀 클릭을 늘려요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>CPA</dt><dd>Cost Per Acquisition</dd></div>
+    <div class="g"><dt>CRM</dt><dd>Customer Relationship Management</dd></div>
+    <div class="g"><dt>CSV</dt><dd>Comma-Separated Values</dd></div>
+    <div class="g"><dt>DIY</dt><dd>Do It Yourself</dd></div>
+    <div class="g"><dt>DJ</dt><dd>Disc Jockey</dd></div>
+    <div class="g"><dt>GCLID</dt><dd>Google Click Identifier</dd></div>
+    <div class="g"><dt>ID</dt><dd>Identifier</dd></div>
+    <div class="g"><dt>JSON</dt><dd>JavaScript Object Notation</dd></div>
+    <div class="g"><dt>RLSA</dt><dd>Remarketing Lists for Search Ads</dd></div>
+    <div class="g"><dt>ROAS</dt><dd>Return On Ad Spend</dd></div>
+    <div class="g"><dt>SEO</dt><dd>Search Engine Optimization</dd></div>
+    <div class="g"><dt>SKAG</dt><dd>Single Keyword Ad Group</dd></div>
+    <div class="g"><dt>SNS</dt><dd>Social Networking Service</dd></div>
+    <div class="g"><dt>URL</dt><dd>Uniform Resource Locator</dd></div>
+    <div class="g"><dt>VPN</dt><dd>Virtual Private Network</dd></div>
+  </dl>
 </div>
 
-<div class="tail">
+<div class="tail" id="sources">
   <h2>참고한 곳</h2>
   <ol>
-    <li><a href="https://www.youtube.com/watch?v=-EInjdpjKy0" target="_blank" rel="noopener">원본 영상 — Jono Catliff</a></li>
-    <li><a href="https://support.google.com/google-ads/answer/10286719?hl=en" target="_blank" rel="noopener">Google Ads 고객센터 — About changes to phrase match and broad match modifier</a></li>
-    <li><a href="https://developers.google.com/google-ads/api/docs/api-policy/access-levels" target="_blank" rel="noopener">Google Ads API 문서 — Access levels and permissible use</a></li>
-    <li><a href="https://support.google.com/google-ads/answer/1722038?hl=en" target="_blank" rel="noopener">Google Ads 고객센터 — About advanced location options</a></li>
-    <li><a href="https://support.google.com/google-ads/answer/6167118" target="_blank" rel="noopener">Google Ads 고객센터 — About Quality Score for Search campaigns</a></li>
-    <li><a href="https://support.google.com/google-ads/answer/2998031?hl=en" target="_blank" rel="noopener">Google Ads 고객센터 — About offline conversion imports</a></li>
-    <li><a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code 공식 문서 — Skills</a></li>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=-EInjdpjKy0" target="_blank" rel="noopener">원본 영상 — Jono Catliff, Claude Code Google Ads: Automate Everything ($730K Earned)</a></li>
+    <li id="src-2"><a href="https://support.google.com/google-ads/answer/7478529?hl=en" target="_blank" rel="noopener">Google Ads 도움말 — About keyword matching options</a></li>
+    <li id="src-3"><a href="https://developers.google.com/google-ads/api/docs/api-policy/access-levels" target="_blank" rel="noopener">Google Ads API — Access levels and permissible use</a></li>
+    <li id="src-4"><a href="https://support.google.com/google-ads/answer/1722043?hl=en" target="_blank" rel="noopener">Google Ads 도움말 — Target ads to geographic locations</a></li>
+    <li id="src-5"><a href="https://support.google.com/google-ads/answer/6167118?hl=en" target="_blank" rel="noopener">Google Ads 도움말 — About Quality Score for Search campaigns</a></li>
+    <li id="src-6"><a href="https://support.google.com/google-ads/answer/7684791?hl=en" target="_blank" rel="noopener">Google Ads 도움말 — About responsive search ads</a></li>
+    <li id="src-7"><a href="https://support.google.com/google-ads/answer/2998031?hl=en" target="_blank" rel="noopener">Google Ads 도움말 — About offline conversion imports</a></li>
+    <li id="src-8"><a href="https://support.google.com/google-ads/answer/2701222?hl=en" target="_blank" rel="noopener">Google Ads 도움말 — About your data segments for Search ads</a></li>
   </ol>
 </div>
 
-<footer>2026년 10월 1일에 이 영상을 보고 정리했어요. 원본은 Jono Catliff 채널에 있어요.</footer>
+<footer>2026년 10월 14일에 이 영상을 보고 정리했어요. 원본은 Jono Catliff 채널에 있어요. 금액 단위는 영상에 나온 그대로예요.</footer>
 
 </div>
 
-<div id="tip" role="tooltip"></div>
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
 <script>
 (function () {
-  // ── 용어 툴팁 ───────────────────────────────────────
-  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
-  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
-  var tip = document.getElementById('tip');
-  var open = null;
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
 
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
   function show(el) {
+    clearTimeout(hideTimer);
     var desc = el.getAttribute('data-desc');
     if (!desc) return;
-    var name = el.getAttribute('data-term') || el.textContent;
+    if (open && open !== el) open.classList.remove('open');
     tip.innerHTML = '';
-    var b = document.createElement('b');
-    b.textContent = name;
-    tip.appendChild(b);
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
     tip.appendChild(document.createTextNode(desc));
-    tip.classList.add('on');
-
-    var r = el.getBoundingClientRect();
-    var t = tip.getBoundingClientRect();
-    var pad = 12;
-    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
-    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
-    var top = r.top + window.scrollY - t.height - 10;
-    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
-    tip.style.left = left + 'px';
-    tip.style.top = top + 'px';
-    open = el;
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
   }
-
-  function hide() {
-    tip.classList.remove('on');
-    open = null;
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
   }
 
   document.querySelectorAll('.term').forEach(function (el) {
-    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
-    el.addEventListener('mouseenter', function () { show(el); });
-    el.addEventListener('mouseleave', hide);
-    el.addEventListener('focus', function () { show(el); });
-    el.addEventListener('blur', hide);
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
     el.addEventListener('click', function (e) {
-      e.preventDefault();
-      open === el ? hide() : show(el);
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
     });
   });
 
-  document.addEventListener('click', function (e) {
-    if (open && !e.target.closest('.term')) hide();
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
   });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') hide();
-  });
-  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
-  window.addEventListener('resize', hide);
 
-  // ── 목차 현재 위치 표시 ─────────────────────────────
-  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
-  var map = {};
-  links.forEach(function (a) {
-    var s = document.getElementById(a.getAttribute('href').slice(1));
-    if (s) map[s.id] = a;
-  });
-  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
-  if ('IntersectionObserver' in window && targets.length) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (!en.isIntersecting) return;
-        links.forEach(function (a) { a.classList.remove('active'); });
-        map[en.target.id].classList.add('active');
-      });
-    }, { rootMargin: '-10% 0px -75% 0px' });
-    targets.forEach(function (t) { io.observe(t); });
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
   }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
 })();
 </script>
+
 </body>
 </html>
