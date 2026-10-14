@@ -24,7 +24,9 @@
 </script>
 <!-- yn-lock:end -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>코딩 에이전트와 함께하는 스펙 주도 개발(SDD) 풀코스</title>
+<title>코딩 에이전트와 함께하는 스펙 주도 개발 (풀코스)</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 <style>
   :root{
     --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
@@ -32,7 +34,10 @@
     --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
     --warn:#ff8a00; --warn-soft:#fff4e6;
     --info:#00b8a9; --info-soft:#e4f8f6;
-    --radius:16px; --maxw:760px;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
   }
   @media (prefers-color-scheme:dark){
     :root{
@@ -41,6 +46,8 @@
       --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
       --warn:#ffab4a; --warn-soft:#3a2a13;
       --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
     }
   }
   *{box-sizing:border-box}
@@ -78,13 +85,29 @@
   .keypoints li strong{color:var(--text)}
 
   /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
   nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
     border-radius:var(--radius)}
   nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
   nav.toc ol{margin:0; padding-left:20px}
-  nav.toc li{margin:6px 0; font-size:15px}
-  nav.toc a{color:var(--text-sub)}
-  nav.toc a.active{color:var(--brand); font-weight:600}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
 
   /* ── 본문 ──────────────────────────────────────────── */
   section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
@@ -99,6 +122,16 @@
     background:var(--surface-2); color:var(--text-mute);
     font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
   a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
 
   /* ── 그림 ──────────────────────────────────────────── */
   figure{margin:28px 0}
@@ -115,23 +148,33 @@
   thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
     font-weight:700; white-space:nowrap}
   tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
   td code{font-size:13.5px}
 
-  /* ── 용어 툴팁 ─────────────────────────────────────── */
-  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
-    font-weight:600; background:none}
-  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
-  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
-    background:var(--text); color:var(--bg); border-radius:12px;
-    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
-    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
-    transition:opacity .12s ease; pointer-events:none}
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
   #tip.on{opacity:1; visibility:visible}
-  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
 
   /* ── 박스 두 종류 ───────────────────────────────────
      .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
-     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
   aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
   aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
   aside p{margin:8px 0}
@@ -144,6 +187,92 @@
   aside .table-scroll{margin:12px 0 0}
   aside table{min-width:320px; font-size:14.5px}
   aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
 
   /* ── 인용 ──────────────────────────────────────────── */
   blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
@@ -159,13 +288,14 @@
   pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
     border:1px solid var(--line); overflow-x:auto; line-height:1.6}
   pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
 
   /* ── 꼬리말 ────────────────────────────────────────── */
   .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
   .tail h2{font-size:20px; margin:0 0 14px}
   .tail + .tail{margin-top:40px}
   .tail ol{padding-left:20px}
-  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
   footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
     font-size:13.5px; color:var(--text-mute)}
 
@@ -181,12 +311,12 @@
 <div class="wrap">
 
 <header>
-  <h1>코딩 에이전트와 함께하는 스펙 주도 개발(SDD) 풀코스</h1>
-  <p class="lede">사양을 먼저 쓰고 에이전트에게 구현을 맡기는 흐름을 처음부터 끝까지 따라가요</p>
+  <h1>코딩 에이전트와 함께하는 스펙 주도 개발 (풀코스)</h1>
+  <p class="lede">헌법에서 기능 루프, 재계획, 자동화까지 한 흐름으로 따라가요</p>
   <div class="meta">
     <span>DeepLearningAI</span><span class="dot">·</span>
-    <span>01:01:33</span><span class="dot">·</span>
-    <span>유튜브 영상 정리</span>
+    <span>영상 1:01:33</span><span class="dot">·</span>
+    <span>읽는 데 약 29분</span>
   </div>
   <a class="src-btn" href="https://www.youtube.com/watch?v=hy8UstR2NEg" target="_blank" rel="noopener">
     원본 영상 보러 가기 →
@@ -196,390 +326,415 @@
 <div class="keypoints">
   <h2>핵심만 먼저</h2>
   <ol>
-    <li>사양 한 문장이 코드 수백 줄을 좌우해요. 그래서 코드보다 사양을 다듬는 시간이 더 값져요.</li>
-    <li>프로젝트마다 헌법(mission · tech-stack · roadmap)을 한 번 쓰고, 기능마다 브랜치를 따서 계획 → 구현 → 검증을 돌려요.</li>
-    <li>기능 사이에는 재계획을 해요. 헌법과 로드맵, 워크플로 자체를 고치는 시간이에요.</li>
-    <li>사람은 설계와 검토를 맡아요. 세부는 에이전트에게 맡기고, 변경은 작게 나눠 잦게 커밋해요.</li>
-    <li>반복 프롬프트는 스킬로 묶고, MCP · AGENTS.md · 에이전트 스킬 · ACP 같은 표준으로 에이전트에 묶이지 않게 해요.</li>
+    <li>스펙 한 문장이 코드 수백 줄을 좌우해요. 그래서 코드보다 스펙을 고치는 편이 훨씬 싸요.</li>
+    <li>프로젝트에는 <span class="term" data-term="헌법" data-en="Constitution" data-desc="프로젝트 전체에 적용되는 상위 문서 묶음이에요. 이 강의에서는 mission.md, tech-stack.md, roadmap.md 세 파일이고, 기능을 만들 때마다 에이전트가 기준으로 읽어요." data-g="5">헌법</span>(미션·기술 스택·로드맵)을, 기능마다 plan·requirements·validation 세 파일을 둬요.</li>
+    <li>기능마다 브랜치를 따로 쓰고, 기능 사이에 재계획 시간을 둬서 스펙과 코드가 어긋나지 않게 해요.</li>
+    <li>사람의 일은 설계와 검토예요. 변경을 작게 쪼개야 <span class="term" data-term="인지 부채" data-en="Cognitive debt" data-desc="코드가 무엇을 하고 어떻게 바뀌어 왔는지 머릿속에 따라잡아야 하는 부담이에요. 에이전트가 빠르게 코드를 쏟아 낼수록 쌓이기 쉬워요." data-g="7">인지 부채</span>와 <span class="term" data-term="AI 피로" data-en="AI fatigue" data-desc="에이전트가 너무 많은 코드와 변경을 만들어서 사람이 검토하다 지치는 상태예요. 기능 사이를 깨끗이 끊고 작게 커밋하는 게 해법이에요." data-g="9">AI(Artificial Intelligence) 피로</span>를 줄일 수 있어요.</li>
+    <li>반복 프롬프트는 스킬로 만들고, 표준(MCP(Model Context Protocol)·<code>AGENTS.md</code>·Agent Skills·ACP(Agent Client Protocol))을 쓰면 에이전트를 바꿔도 워크플로가 남아요.</li>
   </ol>
 </div>
 
 <nav class="toc">
   <h2>목차</h2>
   <ol>
-    <li><a href="#s1">왜 사양부터 쓰나요</a></li>
-    <li><a href="#s2">바이브 코딩과 SDD, 그리고 전체 흐름</a></li>
-    <li><a href="#s3">준비하고 프로젝트 헌법 쓰기</a></li>
-    <li><a href="#s4">첫 기능 한 바퀴: 계획 · 구현 · 검증</a></li>
-    <li><a href="#s5">기능 사이의 재계획</a></li>
-    <li><a href="#s6">두 번째 기능과 MVP 실험</a></li>
-    <li><a href="#s7">기존 프로젝트(브라운필드)에 들이기</a></li>
-    <li><a href="#s8">스킬 · MCP · 플러그인으로 자동화하기</a></li>
-    <li><a href="#s9">에이전트를 바꿔도 남는 워크플로</a></li>
+    <li><a href="#s1">바이브 코딩 대신 스펙</a></li>
+    <li><a href="#s2">워크플로 한눈에 보기</a></li>
+    <li><a href="#s3">준비와 헌법 만들기</a></li>
+    <li><a href="#s4">첫 기능: 계획, 구현, 검증</a></li>
+    <li><a href="#s5">재계획: 한 박자 쉬어 가기</a></li>
+    <li><a href="#s6">두 번째 기능과 AI 피로</a></li>
+    <li><a href="#s7">MVP 실험과 레거시 프로젝트</a></li>
+    <li><a href="#s8">스킬로 워크플로 자동화하기</a></li>
+    <li><a href="#s9">에이전트에 묶이지 않기</a></li>
     <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
   </ol>
 </nav>
 
 <main>
 <section id="s1">
   <a class="stamp" href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=0s" target="_blank" rel="noopener">00:00</a>
-  <h2>왜 사양부터 쓰나요</h2>
-<p>DeepLearning.AI의 Andrew Ng이 강의를 열고, JetBrains의 개발자 애드보킷 Paul Everitt가 강사로 나와요. 스펙 주도 개발(<span class="term" data-term="SDD" data-desc="Spec-Driven Development, 스펙 주도 개발이에요. 무엇을 왜 만드는지 사양 문서로 먼저 적고, 에이전트가 그 사양을 구현하게 하는 방식이에요.">SDD</span>)은 코딩 에이전트에게 마크다운 파일이나 긴 프롬프트로 무엇을 만들지 정확히 알려 주고, 에이전트가 그 사양을 구현하게 하는 방식이에요. 사람은 코드를 손으로 짜는 대신 에이전트가 모르는 맥락을 적는 데 집중해요.</p>
+  <h2>바이브 코딩 대신 스펙</h2>
+<p>강의는 Andrew Ng의 소개로 시작해요. 그는 <span class="term" data-term="스펙 주도 개발" data-en="Spec-driven development" data-desc="무엇을 왜 만드는지 스펙 문서로 먼저 적고, 그 문서를 기준으로 에이전트가 구현하게 하는 방식이에요. 스펙이 사람과 에이전트 사이의 계약이 돼요." data-g="1">스펙 주도 개발</span>을 "코드를 직접 쓰는 대신, 에이전트가 아직 모르는 맥락을 적어 주는 일"로 정리해요. 에이전트가 20~30분씩 혼자 코드를 짠다면 그건 사람 개발자의 몇 시간 분량이에요. 그러니 3~4분 들여 지시를 분명하게 적는 편이 낫다는 거예요.</p>
+<p>강사인 JetBrains의 Paul Everitt는 먼저 <span class="term" data-term="바이브 코딩" data-en="Vibe coding" data-desc="짧게 시키고 결과를 보며 계속 고쳐 달라고 하는 방식이에요. 빠르지만 대화 기록이 남지 않아 큰 프로젝트로 이어지기 어려워요." data-g="2">바이브 코딩</span>과 비교해요. 슬라이드 왼쪽 터미널에 "Not so big!!!"이라고 적혀 있고, 오른쪽에 커다란 초록 버튼이 있어요. "버튼 만들어 줘"라고만 시키면 이렇게 비슷하지만 어딘가 어긋난 결과가 나오고, 고쳐 달라는 대화가 끝없이 이어져요.</p>
 <figure>
-  <img src="assets/frame-0000.png" alt="Spec-Driven Development with Coding Agents 강의 표지. JetBrains와 DeepLearning.AI 로고">
-  <figcaption>JetBrains와 DeepLearning.AI가 함께 만든 강의예요. 이 구간은 두 사람이 이야기하는 장면이라 표지 한 장만 실었어요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=0s" target="_blank" rel="noopener">영상 00:00에서 보기</a></figcaption>
+  <img src="assets/frame-0450.png" alt="Vibe coding 슬라이드. 터미널에 Not so big!!! 이라는 입력이 있고 옆에 큰 초록색 Button이 그려져 있다">
+  <figcaption>짧은 프롬프트와 고쳐 달라는 대화의 반복이에요. 버튼 하나는 이걸로 충분하지만, 대화 기록이 남지 않아 큰 프로젝트로는 이어지지 않아요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=290s" target="_blank" rel="noopener">영상 04:50에서 보기</a></figcaption>
 </figure>
-<h3>사양을 쓰면 좋아지는 세 가지</h3>
-<ul>
-  <li><strong>작은 사양 변경으로 큰 코드 변경을 조종해요.</strong> 'SQLite와 Prisma를 쓴다'는 한 문장이 코드 수백 줄을 좌우해요. 이걸 MongoDB로 바꿔도 똑같이 크게 퍼지죠. 그래서 사양을 쓰는 게 코드를 쓰는 것보다 훨씬 효율적이에요.</li>
-  <li><strong>세션 사이의 <span class="term" data-term="컨텍스트 감쇠" data-desc="대화가 길어지거나 세션이 바뀌면서 에이전트가 앞서 정한 중요한 맥락을 잃어 가는 현상이에요. 사양 파일은 세션이 바뀌어도 남아서 이걸 막아 줘요.">컨텍스트 감쇠</span>를 막아요.</strong> 에이전트는 상태가 없어요. 그래서 켜질 때 꼭 지켜야 할 것을 좋은 품질로 넣어 주는 게 중요해요.</li>
-  <li><strong><span class="term" data-term="의도 충실도" data-desc="에이전트가 만든 결과가 사람이 원래 의도한 목표와 얼마나 맞는지를 말해요. 문제·성공 기준·제약을 먼저 적을수록 높아져요.">의도 충실도</span>가 올라가요.</strong> 문제, 성공 기준, 제약을 사람이 정하면 에이전트가 그걸 더 자세한 계획으로 넓혀요.</li>
-</ul>
-<p>Andrew Ng은 에이전트와 대화하며 주요 아키텍처를 결정하고, 그 결정을 마크다운으로 요약시키는 방식을 자주 쓴다고 해요. 사양을 쓰려면 어떤 제품을 만들지, 어떤 기능과 구조를 가질지 직접 고민해야 해서 힘들어요. 하지만 이걸 건너뛰면 그 결정을 에이전트의 즉흥에 맡기는 셈이에요. 사양 없이 여러 개발자가 각자 에이전트로 빠르게, 그러나 서로 어긋나게 만들다가 뒤에서 고생한 팀도 봤다고 해요.</p>
-<p>짧은 프롬프트 하나로 끝나는 일이면 그렇게 해도 돼요. 다만 에이전트가 20~30분 코드를 쓸 일이라면 사정이 달라요.</p>
+<p>강의는 이 방식이 일회용 코드와 쌓이는 기술 부채로 이어진다고 봐요. 대안은 무엇과 왜를 적은 스펙을 어떻게(구현)와 떼어 두는 거예요. 아래 슬라이드가 그 전환을 보여 줘요. 왼쪽 말풍선에는 "고객용 웹앱", "TypeScript?", "색은?" 같은 흐릿한 의도가 떠 있어요. 오른쪽 터미널에는 그것이 대상 사용자, 기술 스택, Phase 1의 테이블 두 개(users, appointments)로 정리돼 있어요.</p>
+<figure>
+  <img src="assets/frame-0550.png" alt="Convert your intentions into spec 슬라이드. 왼쪽은 생각하는 사람과 말풍선 속 의도들, 오른쪽은 Define project requirements로 시작하는 스펙 텍스트">
+  <figcaption>사람의 일이 코드를 쓰는 데서 의도를 분명한 스펙으로 바꾸는 쪽으로 옮겨 가요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=350s" target="_blank" rel="noopener">영상 05:50에서 보기</a></figcaption>
+</figure>
+<p>스펙을 쓰면 좋은 점은 세 가지예요. 슬라이드의 세 카드가 순서대로 그 내용이에요.</p>
+<figure>
+  <img src="assets/frame-0650.png" alt="Benefits of spec-driven development 슬라이드. Control code with small changes to spec, Eliminate context decay, Improve intent fidelity 세 카드">
+  <figcaption>세 가지 이점이 강의 전체에서 반복돼요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=410s" target="_blank" rel="noopener">영상 06:50에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>이점</th><th>영상이 든 예</th></tr></thead>
+    <tbody>
+      <tr><td>작은 스펙 변경으로 큰 코드 변경을 다뤄요</td><td>"SQLite와 Prisma를 쓴다" 한 줄이 코드 수백 줄을 바꿔요. MongoDB로 바꾸면 그만큼 또 바뀌어요. 앱의 느낌을 적은 몇 문장은 CSS(Cascading Style Sheets) 수백 줄이 돼요</td></tr>
+      <tr><td><span class="term" data-term="컨텍스트 감쇠" data-en="Context decay" data-desc="세션이 길어져 컨텍스트 창이 차거나 새 세션이 시작되면서 에이전트가 중요한 맥락을 놓치는 현상이에요. 스펙 파일은 세션을 넘어 남아서 이걸 막아 줘요." data-g="3">컨텍스트 감쇠</span>를 막아요</td><td>에이전트는 상태가 없어서, 컨텍스트 창이 차면 실수가 늘어요. 스펙은 세션과 에이전트를 넘어 남아요</td></tr>
+      <tr><td><span class="term" data-term="의도 충실도" data-en="Intent fidelity" data-desc="에이전트가 만든 결과가 사람이 원래 의도한 목표와 얼마나 맞는지를 말해요. 문제, 성공 기준, 제약을 먼저 적을수록 높아져요." data-g="4">의도 충실도</span>가 올라가요</td><td>문제, 성공 기준, 제약, 사용자 흐름을 코드 생성 전에 적게 돼요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>Andrew Ng은 짧은 프롬프트로 될 일이면 그걸로 충분하다고 해요. 다만 그가 아는 뛰어난 개발자들은 복잡한 프로젝트에서는 거의 언제나 자세한 스펙을 쓴다고 해요. 그들에게는 모델에게 없는 맥락과 '어떻게 만들지'에 대한 의견이 있기 때문이에요.</p>
 <blockquote>
-  <p>You're often better off sitting down for three or four minutes and writing really clear instructions.</p>
-  <p>3~4분 앉아서 아주 명확한 지시를 쓰는 편이 대개 더 나아요.</p>
-  <cite>— 영상 03:56</cite>
+  <p>Specs are a key differentiator between vibe coding some slop and engineering a viable software product.</p>
+  <p>스펙이 엉성한 바이브 코딩과 쓸 만한 소프트웨어 엔지니어링을 가르는 핵심 차이예요.</p>
+  <cite>— 영상 06:45</cite>
 </blockquote>
 </section>
 
 <section id="s2">
-  <a class="stamp" href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=260s" target="_blank" rel="noopener">04:20</a>
-  <h2>바이브 코딩과 SDD, 그리고 전체 흐름</h2>
-<p><span class="term" data-term="바이브 코딩" data-desc="요구를 대충 던지고 결과를 보며 고쳐 달라고 반복하는 방식이에요. 빠르지만 큰 프로젝트에선 일회용 코드와 기술 부채가 쌓여요.">바이브 코딩</span>은 '버튼 만들어 줘'라고 던지고, 결과를 보며 고쳐 달라는 말을 반복하는 방식이에요. 버튼 하나엔 괜찮아요. 하지만 큰 프로젝트에선 일회용 코드와 기술 부채가 쌓이고, 그 긴 대화 기록은 남지도 않아요.</p>
-<figure>
-  <img src="assets/frame-0540.png" alt="왼쪽에 색·모서리·글자색을 적은 버튼 사양, 오른쪽에 그대로 만들어진 초록 버튼을 보여 주는 슬라이드">
-  <figcaption>사양(무엇을)과 구현(어떻게)을 떼어 놓는 게 SDD의 출발점이에요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=340s" target="_blank" rel="noopener">영상 05:40에서 보기</a></figcaption>
-</figure>
-<p>SDD는 무엇과 왜를 적은 사양을, 어떻게에 해당하는 구현과 분리해요. 사양은 사람끼리, 그리고 사람과 에이전트 사이의 계약이 돼요. 컴파일러가 소스 코드를 기계어로 바꾸듯 SDD는 사양을 소스 코드로 바꾼다는 비유도 나와요. 게다가 사양은 사람의 언어라 이해관계자도 읽을 수 있어요.</p>
-<figure>
-  <img src="assets/frame-0700.png" alt="SDD의 세 가지 이점 아이콘: Control code with small changes to spec, Eliminate context decay, Improve intent fidelity">
-  <figcaption>앞 구간에서 말한 세 가지 이점을 정리한 슬라이드예요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=420s" target="_blank" rel="noopener">영상 07:00에서 보기</a></figcaption>
-</figure>
-<h3>챗봇이 아니라 에이전트와 써요</h3>
-<p>챗봇은 코드에 대해 말만 할 수 있어요. 에이전트는 계획을 세우고, 코드베이스와 개발 도구에 직접 접근해 스스로 결과까지 가요. 강의는 에이전트를 유능한 페어 프로그래머로, 사람을 설계도를 주는 시니어 아키텍트로 봐요.</p>
-<figure>
-  <img src="assets/frame-0840.png" alt="Agent 상자가 파일, 데이터베이스, 웹, 터미널에 접근하고 plan.md 체크리스트를 만드는 그림">
-  <figcaption>에이전트는 파일·DB·웹·터미널을 쓰며 계획(plan.md)을 실행해요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=520s" target="_blank" rel="noopener">영상 08:40에서 보기</a></figcaption>
-</figure>
+  <a class="stamp" href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=506s" target="_blank" rel="noopener">08:26</a>
+  <h2>워크플로 한눈에 보기</h2>
+<p>스펙 주도 개발은 챗봇이 아니라 코딩 에이전트와 함께 써요. 챗봇은 코드에 대해 말할 수는 있어도 프로젝트 코드나 설치된 도구에 접근하지 못해요. 에이전트는 계획을 세우고, 코드베이스와 개발 도구를 직접 다뤄요. 강의는 에이전트를 유능한 페어 프로그래머로, 사람을 설계도를 주는 시니어 아키텍트로 봐요.</p>
 <blockquote>
   <p>The agent is the muscle, but the spec is the brain.</p>
-  <p>에이전트는 근육이고, 사양은 뇌예요.</p>
+  <p>에이전트는 근육이고, 스펙은 뇌예요.</p>
   <cite>— 영상 08:26</cite>
 </blockquote>
-<p>핵심 기술은 알맞은 상세 수준을 고르는 거예요. 목표, 미션, 대상 사용자, 제약은 많이 적어요. 에이전트가 알아서 정할 수 있는 낮은 수준의 결정은 적게 적어요.</p>
-<h3>워크플로 한눈에 보기</h3>
-<div class="table-scroll">
-  <table>
-    <thead><tr><th>단계</th><th>무엇을 하나요</th></tr></thead>
-    <tbody>
-      <tr><td>헌법(constitution)</td><td>mission: 왜 만드는지, 누구를 위한지, 범위<br>tech stack: 개발·배포 기술과 제약<br>roadmap: 작은 단계들의 순서, 계속 고치는 문서</td></tr>
-      <tr><td>기능 단계</td><td>기능마다 사양 → 구현 → 검증을 반복해요</td></tr>
-      <tr><td>재계획</td><td>기능 사이에 헌법과 로드맵을 고치고, 프로세스 자체도 개선해요</td></tr>
-    </tbody>
-  </table>
-</div>
-<p>많은 개발자가 최상위 AGENTS.md 파일로 비슷한 일을 해요. 강의는 헌법이 특정 에이전트에 매이지 않고 더 구조화돼 있다고 설명해요. 헌법은 사람과 에이전트 사이의 합의이면서, 사람끼리의 합의이기도 해요.</p>
+<p>스펙은 두 층으로 나뉘어요. 위 칸이 프로젝트 수준, 아래 칸이 기능 수준이에요. 오른쪽 체크리스트가 '알맞은 디테일'의 기준이에요. 목표, 미션, 대상 사용자, 제약에는 체크가 있고, 맨 아래 저수준 결정에만 빨간 X가 있어요.</p>
 <figure>
-  <img src="assets/frame-1120.png" alt="시간축 위에 Constitution, Feature phase 1, Replanning, Feature phase 2, Replanning이 이어지는 Project evolution 슬라이드">
-  <figcaption>헌법을 한 번 쓰고, 기능 단계와 재계획을 번갈아 돌리는 구조예요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=680s" target="_blank" rel="noopener">영상 11:20에서 보기</a></figcaption>
+  <img src="assets/frame-0950.png" alt="Spec-driven development 슬라이드. Project level에서 Feature level로 내려가는 화살표와, The right level of detail 체크리스트(Goals, Mission, Target audience, Constraints는 체크, Low level decisions는 X)">
+  <figcaption>에이전트가 스스로 정할 수 있는 저수준 결정은 스펙에 적지 않아요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=590s" target="_blank" rel="noopener">영상 09:50에서 보기</a></figcaption>
 </figure>
-<p>사람의 역할은 건축가와 같아요. 시공자에게 자세한 도면을 주고, 공사를 감독하고, 결과를 받아들이거나 수정을 요청해요. 시공자에게 일하는 법을 가르치지는 않고, 그들이 모르는 맥락을 주는 데 집중해요.</p>
+<p>프로젝트 수준 문서는 헌법이라고 불러요. 미션(왜, 비전, 대상, 범위), 기술 스택(개발·배포 기술과 제약), 로드맵(단계별 작업 순서) 세 가지로 이뤄져요. <code>AGENTS.md</code>를 같은 목적으로 쓰는 개발자도 많지만, 헌법은 특정 에이전트에 묶이지 않고 더 구조적이라는 게 강의의 설명이에요. 헌법은 사람과 에이전트 사이의 합의이면서, 사람들 사이의 합의이기도 해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p><code>AGENTS.md</code>는 코딩 에이전트에게 주는 안내를 담는 공개 형식이에요. 공식 사이트는 이를 'README for agents'라고 소개해요. 사람용 README와 따로 두고, 빌드·테스트 명령이나 코드 규칙처럼 에이전트에게 필요한 내용을 적는 파일이에요.</p>
+  <p class="cite">출처: <a href="https://agents.md/" target="_blank" rel="noopener">AGENTS.md 공식 사이트</a></p>
+</aside>
+<p>전체 흐름은 아래 슬라이드 한 장에 담겨 있어요. 왼쪽 위 Constitution에서 시작해 시간축을 따라가요. 아래에는 Feature phase 1, 2가 있고, 각각 Specification → Implementation → Validation 세 단계예요. 기능 사이마다 Replanning이 끼어 있어요.</p>
 <figure>
-  <img src="assets/frame-1200.png" alt="Act as a supervisor 슬라이드. 왼쪽 You 아래 Design, Supervise, Review, Accept, Or ask for changes, 오른쪽 Builders(and agents) 아래 Know how to do their jobs">
-  <figcaption>사람은 설계·감독·검토·승인을 맡고, 시공은 에이전트가 맡아요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=720s" target="_blank" rel="noopener">영상 12:00에서 보기</a></figcaption>
+  <img src="assets/frame-1050.png" alt="Project evolution 슬라이드. 시간축 위에 Constitution과 Replanning 두 번, 아래에 Feature phase 1과 2가 있고 각각 Specification, Implementation, Validation 세 칸">
+  <figcaption>기능 루프 사이의 재계획에서 헌법과 로드맵, 그리고 일하는 방식 자체를 손봐요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=650s" target="_blank" rel="noopener">영상 10:50에서 보기</a></figcaption>
+</figure>
+<p>사람의 역할은 건축가에 비유돼요. 왼쪽 'You' 아래 설계도와 함께 Design, Supervise, Review, Accept, 그리고 '…또는 변경 요청'이 적혀 있어요. 오른쪽은 공사 현장의 Builders(그리고 에이전트)예요. 시공자에게 일하는 방법을 가르치지 말고, 그들이 모르는 맥락을 주라는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-1150.png" alt="Act as a supervisor 슬라이드. 왼쪽은 You와 설계도, 그리고 Design, Supervise, Review, Accept, Or ask for changes 목록. 오른쪽은 Builders (and agents)와 크레인 그림">
+  <figcaption>설계와 감독, 검토가 사람 몫이고 시공은 에이전트 몫이에요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=710s" target="_blank" rel="noopener">영상 11:50에서 보기</a></figcaption>
 </figure>
 </section>
 
 <section id="s3">
   <a class="stamp" href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=745s" target="_blank" rel="noopener">12:25</a>
-  <h2>준비하고 프로젝트 헌법 쓰기</h2>
-<p>SDD는 특정 IDE나 에이전트에 묶이지 않아요. VS Code와 Codex CLI, 로컬 모델을 붙인 Zed 등 무엇을 써도 돼요. 강의는 웹 앱을 만들 거라 WebStorm에 Claude Code를 붙여 써요.</p>
+  <h2>준비와 헌법 만들기</h2>
+<p>스펙 주도 개발은 특정 IDE(Integrated Development Environment)나 에이전트에 묶인 방법이 아니에요. 슬라이드 왼쪽 IDE 칸과 오른쪽 Agent 칸에 로고 몇 개와 물음표가 함께 있어요. 쓰던 도구를 그대로 써도 된다는 뜻이에요. 강의는 웹 앱을 만들 계획이라 WebStorm과 Claude Code를 써요.</p>
 <figure>
-  <img src="assets/frame-1325.png" alt="Choose your own tools 슬라이드. IDE 칸에 WebStorm, VS Code 등, Agent 칸에 Claude 등 여러 에이전트 아이콘">
-  <figcaption>도구는 익숙한 걸 골라도 된다는 슬라이드예요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=805s" target="_blank" rel="noopener">영상 13:25에서 보기</a></figcaption>
+  <img src="assets/frame-1320.png" alt="Choose your own tools! 슬라이드. IDE 칸에 WebStorm, VS Code, Zed 등의 로고와 물음표, Agent 칸에 Claude 등의 로고와 물음표">
+  <figcaption>물음표 칸이 핵심이에요. 어떤 조합이든 워크플로는 같아요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=800s" target="_blank" rel="noopener">영상 13:20에서 보기</a></figcaption>
 </figure>
-<p>새 TypeScript 프로젝트를 Git 저장소와 함께 만들어요. 코드와 사양의 버전을 꼼꼼히 남기는 게 SDD에서 중요하거든요. 에이전트는 명령을 실행할 때마다 확인을 받아요. 무엇을 허락하는지 잘 보라고 해요. 코드의 최종 책임은 사람에게 있으니까요.</p>
+<p>새 TypeScript 프로젝트를 Git 저장소와 함께 만들어요. 코드와 스펙의 버전을 꼼꼼히 남기려는 거예요. 에이전트가 명령을 실행할 때마다 확인을 묻는데, 무엇을 허락하는지 잘 보라고 해요. 코드의 최종 책임은 사람에게 있어요.</p>
+<h3>헌법의 세 기둥</h3>
+<p>이제 프로젝트를 에이전트에게 알려 줄 차례예요. 슬라이드의 Constitution 상자에 Mission, Tech stack, Roadmap이 있고, 오른쪽에 각각이 답하는 질문이 있어요. 핵심 아이디어가 무엇인지, 회사의 기술 스택과 어떻게 맞는지, 어떤 기능이 계획돼 있는지예요.</p>
+<figure>
+  <img src="assets/frame-1450.png" alt="The constitution 슬라이드. Mission, Tech stack, Roadmap 세 칸과 각각 What's the core idea?, How does it fit with the tech stack?, What features are planned? 질문">
+  <figcaption>세 질문은 새 프로젝트든 오래된 코드베이스든 똑같이 적용돼요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=890s" target="_blank" rel="noopener">영상 14:50에서 보기</a></figcaption>
+</figure>
+<p>헌법은 혼자 쓰지 않고 에이전트와 대화하며 써요. 에이전트가 생각지 못한 아키텍처 패턴, 이미 그 일을 해 주는 외부 패키지, 속도와 데이터 정확성 같은 트레이드오프를 물어 오기 때문이에요.</p>
 <h3>예제 앱 Agent Clinic</h3>
-<p>Agent Clinic은 유명한 학습용 프로젝트 Pet Clinic을 비튼 앱이에요. 환각, 컨텍스트 부패, 메모리 문제, <span class="term" data-term="서브에이전트" data-desc="메인 에이전트가 따로 띄우는 보조 에이전트예요. 자기 컨텍스트에서 일하고 결과만 돌려줘서 메인 컨텍스트를 아껴요.">서브에이전트</span>와의 협업에 지친 AI 에이전트가 치료받는 병원이라는 설정이에요. 예약, 질환(환각 같은 것), 치료(컨텍스트 주입 같은 것)를 관리해요.</p>
+<p>예제는 Agent Clinic이에요. 유명한 학습용 프로젝트 Pet Clinic을 비튼 것으로, 환각과 컨텍스트 부패에 지친 AI 에이전트가 치료받으러 오는 병원이에요. 슬라이드 속 화면에 Ailments(증상) 목록이 표로 보여요. 앱은 예약, 증상, 치료(예: 컨텍스트 주입)를 관리해요.</p>
 <figure>
-  <img src="assets/frame-1625.png" alt="Agent Clinic 소개 슬라이드. 'Coding agents are doing a lot of work' 문구와 어두운 테마의 AgentClinic 홈 화면">
-  <figcaption>강의 내내 만들어 갈 예제 앱이에요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=985s" target="_blank" rel="noopener">영상 16:25에서 보기</a></figcaption>
+  <img src="assets/frame-1620.png" alt="Agent Clinic 슬라이드. Coding agents are doing a lot of work. Let's build a clinic where they can get help with their issues. 문구와 Ailments 표가 있는 어두운 웹 화면">
+  <figcaption>강의 내내 이 앱 하나를 키워 가요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=980s" target="_blank" rel="noopener">영상 16:20에서 보기</a></figcaption>
 </figure>
-<h3>헌법은 에이전트와 대화하며 써요</h3>
-<p>먼저 프로젝트 설명을 주고, 이해관계자 의견은 README.md에 있다고 알려 줘요. 그리고 mission, tech-stack, roadmap 세 파일을 만들되 로드맵은 아주 작은 단계로 나누라고 해요. SDD는 사람이 작은 변경을 검토하는 방식에서 가장 잘 돌아가거든요. 프롬프트에는 Claude Code의 AskUserQuestion 도구로 질문하라는 지시도 넣었어요. 꼭 필요하진 않고, 화면이 보기 좋아서 썼대요.</p>
+<p>말로는 "Next.js 백엔드와 React 프런트엔드"라고 소개하지만, 실제 데모에서 에이전트와 정한 스택은 다르게 끝나요. 에이전트가 서버 프레임워크로 Hono를 추천하고, SQLite와 Vitest를 붙이고, 클라이언트 프레임워크는 쓰지 않는 쪽으로 정해요. 이 글은 데모 기준으로 적었어요.</p>
+<p>첫 프롬프트가 아래 화면이에요. 위 편집기의 README.md에는 이해관계자 세 사람의 요구가 있어요. Mary(엔지니어링)는 TypeScript 기반의 믿을 만한 사이트를, Susan(제품)은 에이전트·증상·치료·예약 기능을, Steve(마케팅)는 보기 좋은 사이트를 원해요. 아래 터미널 프롬프트는 specs 폴더에 mission.md, tech-stack.md, roadmap.md를 만들라고 해요. 로드맵은 '아주 작은 단계'로 쪼개라는 조건도 붙어요.</p>
 <figure>
-  <img src="assets/frame-1745.png" alt="Claude Code 터미널에서 'What tone should the mission.md take?' 질문과 Playful/satirical, Straight-faced, Mixed 선택지">
-  <figcaption>에이전트가 미션 문서의 톤을 물어요. 강의는 장난스러운 쪽을 골라요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1065s" target="_blank" rel="noopener">영상 17:45에서 보기</a></figcaption>
+  <img src="assets/frame-1750.png" alt="WebStorm 화면. 위에는 README.md의 Input from stakeholders 목록, 아래 터미널에는 constitution을 specs 디렉터리에 만들고 AskUserQuestion 도구를 반드시 쓰라는 프롬프트">
+  <figcaption>마지막 줄의 Important가 요령이에요. 파일을 쓰기 전에 질문부터 하게 만들어요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1070s" target="_blank" rel="noopener">영상 17:50에서 보기</a></figcaption>
 </figure>
-<p>에이전트는 미션의 톤, 기술 스택(백엔드 엔지니어가 TypeScript에 익숙하다는 점), 로드맵 단계의 크기를 물어요. 로드맵은 가장 잘게 나누는 'Nano phases'를 골라요. 답을 제출하면 <code>specs/</code> 아래 <code>mission.md</code>, <code>tech-stack.md</code>, <code>roadmap.md</code>가 생겨요.</p>
+<p>마지막 줄은 Claude Code의 AskUserQuestion 도구를 쓰라는 지시예요. 꼭 필요하지는 않지만 질문이 보기 좋게 나와서 쓴다고 해요. 에이전트는 미션의 말투(장난스럽게), 프런트엔드 방식, 로드맵 단위 같은 질문을 해요. 답을 마치면 specs 폴더에 세 파일이 생겨요.</p>
+<p>이제 사람이 검토할 차례예요. 미션에 대상 사용자가 빠져 있었어요. 에이전트가 회사 사정을 알 수 없으니 당연한 일이에요. 아래 화면 맨 아래 프롬프트처럼, 파일을 직접 고치지 않고 에이전트에게 '스펙 주도 개발을 배우는 수강생'과 '콘퍼런스 부스에서 데모하는 개발자'를 대상으로 넣으라고 해요. 터미널 위쪽에는 에이전트의 요약이 보여요. tech-stack.md는 Hono를 추천하고, roadmap.md는 Hello Hono부터 시작하는 10개의 작은 단계로 나뉘어 있어요.</p>
 <figure>
-  <img src="assets/frame-1845.png" alt="WebStorm 프로젝트 트리에 specs 폴더와 mission.md, roadmap.md, tech-stack.md가 생긴 화면">
-  <figcaption>헌법 세 파일이 생긴 모습이에요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1125s" target="_blank" rel="noopener">영상 18:45에서 보기</a></figcaption>
+  <img src="assets/frame-1920.png" alt="커밋 창에 mission.md 변경이 보이고, 터미널에는 tech-stack.md와 roadmap.md 요약, 그리고 Add a target audience to the mission 프롬프트">
+  <figcaption>직접 고치면 관련 문서 하나를 놓치기 쉬워요. 에이전트에게 고치게 하면 문서들이 함께 맞춰져요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1160s" target="_blank" rel="noopener">영상 19:20에서 보기</a></figcaption>
 </figure>
-<p>이제 <span class="term" data-term="휴먼 인 더 루프" data-desc="에이전트가 만들고 사람이 단계마다 검토·승인하는 방식이에요. 변경을 작게 유지해야 사람이 실제로 검토할 수 있어요.">휴먼 인 더 루프</span>로 검토해요. 미션에 대상 독자가 빠져 있었는데, 에이전트가 회사 사정을 알 리 없으니 당연해요. 이걸 직접 고치지 않고 에이전트에게 고치게 해요. 손으로 고치면 연관 문서를 빠뜨리기 쉬워요. 빠른 프로토타입이라 SQLite를 따로 말하지 않았는데, 에이전트가 추천해서 기술 스택에 들어갔어요. 마지막으로 다시 훑어보고 헌법을 커밋해요.</p>
+<p>SQLite를 쓰고 싶었는데 프롬프트에 적지 않았어도 에이전트가 추천에 넣었어요. 마지막으로 한 번 더 검토하고 헌법을 커밋해요. 이제 헌법은 프로젝트와 함께 자라는 살아 있는 문서예요.</p>
 </section>
 
 <section id="s4">
   <a class="stamp" href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1212s" target="_blank" rel="noopener">20:12</a>
-  <h2>첫 기능 한 바퀴: 계획 · 구현 · 검증</h2>
-<p>로드맵의 첫 기능은 'Hello <span class="term" data-term="Hono" data-desc="웹 표준 위에서 돌아가는 작고 빠른 TypeScript 웹 프레임워크예요. Node.js, Cloudflare Workers, Deno, Bun 등에서 같은 코드로 돌아가요.">Hono</span>'예요. 슬라이드의 프로젝트 소개에서는 Next.js 백엔드와 React 프런트엔드라고 했지만, 실제 데모는 Hono와 JSX로 만들어요. 화면의 기술 스택 문서에도 Hono가 적혀 있어요.</p>
+  <h2>첫 기능: 계획, 구현, 검증</h2>
+<p>로드맵 1단계는 Hello Hono예요. Hono를 설치하고, "AgentClinic is open for business"를 돌려주는 경로 하나를 만드는 작은 단계예요. 바로 코딩하지 않고, 먼저 스펙을 놓고 대화해요. 좋은 계획에는 접근 방식, 작업 순서, 성공을 확인하는 방법이 들어가요.</p>
+<h3>계획: 스펙 세 파일 만들기</h3>
+<p>새 컨텍스트로 시작해요. 에이전트는 필요한 것을 공식 출처인 헌법에서 읽어 오면 돼요. 기능은 별도 브랜치에서 작업한다고 알려 줘요. 그러면 에이전트가 결정해야 할 것을 물어요. 아래 화면에서 "Phase 1 요구 사항에 넣을 결정이나 제약이 있나요?"라는 질문에 Hono 버전 고정(Pin Hono version)과 엄격한 TypeScript 적용(Enforce strict TypeScript)을 골랐어요.</p>
 <figure>
-  <img src="assets/frame-2032.png" alt="roadmap.md의 Phase 1 – Hello Hono 항목. Hono와 tsx dev server 설치, '/' 경로에서 인사말 반환, TypeScript 확인">
-  <figcaption>첫 기능은 Hono 서버를 띄우고 인사말 한 줄을 돌려주는 아주 작은 단계예요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1232s" target="_blank" rel="noopener">영상 20:32에서 보기</a></figcaption>
+  <img src="assets/frame-2112.png" alt="터미널에 Any decisions or constraints you want locked into the requirements doc for Phase 1? 질문과 Pin Hono version, Enforce strict TS, No test setup yet, Dev script required 선택지">
+  <figcaption>에이전트가 내민 답에 꼭 동의할 필요는 없어요. 마음에 걸리는 건 이 단계에서 풀어요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1272s" target="_blank" rel="noopener">영상 21:12에서 보기</a></figcaption>
 </figure>
-<h3>계획: 사양 세 파일 만들기</h3>
-<p>코딩은 아직 일러요. 좋은 계획은 접근 방법, 작업 순서, 성공을 확인하는 법을 담아요. 컨텍스트를 새로 비우고 시작해요. 에이전트는 공식 출처인 헌법에서 필요한 걸 읽어요. 이 기능은 별도 브랜치에서 진행한다고 알려 줘요.</p>
-<p>에이전트가 범위와 결정 사항을 물어요. 범위는 로드맵 그대로 두고, Hono 버전 고정과 strict TypeScript를 요구사항에 넣고, 확인은 curl로 직접 하기로 해요. 에이전트 제안에 다 동의할 필요는 없어요. 걸리는 게 있으면 꼭 짚고 넘어가요.</p>
+<p>결과는 아래 화면이에요. phase-1-hello-hono 브랜치가 생겼고, specs/2026-03-30-hello-hono/ 폴더에 세 파일이 생겼어요. requirements.md는 범위와 결정(Hono 버전 고정, strict: true)을, plan.md는 4개 작업 그룹과 10단계를, validation.md는 다섯 가지 완료 기준을 담았어요.</p>
 <figure>
-  <img src="assets/frame-2152.png" alt="에이전트가 phase-1-hello-hono 브랜치와 specs/2026-03-30-hello-hono 폴더에 requirements.md, plan.md, validation.md를 만들었다고 보고하는 터미널">
-  <figcaption>기능 사양은 날짜가 붙은 폴더에 세 파일로 생겨요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1312s" target="_blank" rel="noopener">영상 21:52에서 보기</a></figcaption>
+  <img src="assets/frame-2142.png" alt="위에는 roadmap.md의 Phase 1 Hello Hono 내용, 아래 터미널에는 Branch phase-1-hello-hono와 specs/2026-03-30-hello-hono/ 아래 requirements.md, plan.md, validation.md 설명">
+  <figcaption>validation.md의 기준은 구체적이에요. 타입 검사 통과, 서버 기동, curl이 정확한 인사말을 돌려주는지 등이에요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1302s" target="_blank" rel="noopener">영상 21:42에서 보기</a></figcaption>
 </figure>
-<div class="table-scroll">
-  <table>
-    <thead><tr><th>파일</th><th>담는 것</th><th>검토할 때 볼 점</th></tr></thead>
-    <tbody>
-      <tr><td><code>plan.md</code></td><td>번호 붙은 작업 그룹</td><td>작업 순서와 크기가 맞는지</td></tr>
-      <tr><td><code>requirements.md</code></td><td>범위, 결정, 맥락</td><td>중요한 기술 요구와 제약. 변수 이름 같은 세부는 쓰지 않아요</td></tr>
-      <tr><td><code>validation.md</code></td><td>구현이 성공했는지 판단할 기준</td><td>에이전트가 스스로 맞게 했는지 확인할 수 있는지</td></tr>
-    </tbody>
-  </table>
-</div>
-<p>잘못된 게 보이면 에이전트에게 고치게 해요. 그래야 요구사항과 검증이 함께 맞춰져요. 강의는 보기 좋은 홈페이지 플레이스홀더를 추가해 달라고 했고, 세 파일이 함께 바뀌었어요. 사람은 과정을 통제하되 에이전트를 지나치게 조종하지는 않아요. 여기서 바꾼 사양은 아래로 코드 수백 줄이 되니, 이 시간은 아깝지 않아요.</p>
-<h3>구현: 컨텍스트 비우고 한 번에</h3>
-<p><code>/clear</code>로 컨텍스트를 비우고 모든 작업 그룹을 구현하라고 해요. 보안이나 DB처럼 작은 실수가 나중에 커지는 영역이면 그룹을 하나씩 진행하며 커밋해도 좋아요. 실행 중에는 콘솔과 커밋 창으로 변경을 미리 봐 둬요. 끝나면 서버를 띄워 브라우저에서 확인해요. 'Nano'를 골랐으니 화면에 나온 건 많지 않아요.</p>
-<h3>검증: 사람이 하는 리뷰</h3>
-<p>병합은 아직이에요. 리뷰는 어떤 CSS 클래스를 썼는지보다 기능이 사양을 반영하는지에 집중해요. 홈 화면이 너무 빈약해서 header, main, footer 영역을 가진 레이아웃 컴포넌트를 요청했어요. 이건 계획에서 빠졌던 내용이라, 사양과 구현을 함께 고치게 해요.</p>
+<p>강의에서 만든 specs 폴더를 한 장에 모으면 이렇게 돼요. 위층 세 파일이 헌법이고, 기능마다 날짜가 붙은 폴더 안에 같은 세 파일이 반복돼요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 250" role="img" aria-label="specs 폴더 구조. 헌법 파일 세 개와 기능 폴더 안의 plan, requirements, validation 파일">
+    <g id="fig-specs"></g>
+  </svg>
+  <figcaption>헌법은 프로젝트에 하나, 세 파일 묶음은 기능마다 하나씩이에요. 이름과 날짜는 데모 화면 그대로예요.</figcaption>
+</figure>
+<p>검토는 계획부터 해요. 문제가 보이면 에이전트에게 고치게 해서 requirements와 validation이 함께 맞춰지게 해요. 이번에는 첫 기능에 보기 좋은 임시 홈페이지를 넣어 달라고 했어요. requirements는 중요한 기술적 요구와 제약을 적는 곳이에요. 하지만 변수명 같은 사소한 건 적지 않아요. 과정은 통제하되 에이전트를 지나치게 몰지 않는 거예요. 확인을 마치면 커밋해요.</p>
+<h3>구현: 컨텍스트를 비우고 시작</h3>
+<p>구현 전에 /clear로 컨텍스트를 비우고, 모든 작업 그룹을 구현하라고 해요. 보안이나 DB(Database) 관리처럼 작은 실수가 나중에 커지는 영역이라면 작업 그룹을 하나씩 구현하고 커밋해도 좋아요. 아래 화면 초록 상자가 끝난 뒤의 요약이에요. Group 1에서 Group 4까지 무엇을 했는지 한 줄씩 정리돼 있어요.</p>
 <figure>
-  <img src="assets/frame-2712.png" alt="plan.md에 새로 추가된 Group 5 – Layout Component 항목이 초록 테두리로 강조된 화면">
-  <figcaption>리뷰에서 나온 요청이 코드만이 아니라 plan.md의 새 작업 그룹으로도 들어가요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1632s" target="_blank" rel="noopener">영상 27:12에서 보기</a></figcaption>
+  <img src="assets/frame-2442.png" alt="위 편집기에 src/index.tsx의 Hono 코드, 아래 터미널 초록 상자에 Group 1부터 Group 4까지의 구현 요약">
+  <figcaption>에이전트의 요약은 검토를 시작할 지도로 쓰기 좋아요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1482s" target="_blank" rel="noopener">영상 24:42에서 보기</a></figcaption>
 </figure>
-<p>에이전트가 만들고 사람이 검증하는 이 과정이 휴먼 인 더 루프예요. 에이전트가 코드를 너무 빨리 쓰다 보니 요즘 개발자들은 <span class="term" data-term="인지 부채" data-desc="코드가 무엇을 하고 어떻게 바뀌어 왔는지 머릿속으로 따라가야 하는 부담이에요. 에이전트가 빨리 쓸수록 쌓이기 쉬워요.">인지 부채</span>를 이야기해요. 그래서 변경은 감당할 만한 크기로 유지해요.</p>
-<p>세 하위 컴포넌트가 한 파일에 들어 있어 IDE의 이동 도구로 나누려다 멈춰요. 손으로 하면 사양과 README가 코드와 어긋나는 드리프트가 생기거든요. 그래서 이것도 에이전트에게 맡겨 관련 언급까지 고치게 해요.</p>
-<p>로드맵에 체크 표시를 하는 정도의 작은 헌법 변경은 기능 브랜치에 같이 둬도 괜찮아요. 헌법을 크게 바꾼다면 별도 브랜치가 나아요. 어떤 사양이 어떤 코드를 만들었는지 연결하는 방법은 커뮤니티에서도 아직 정리 중인 주제라고 해요.</p>
+<p>package.json의 스크립트로 앱을 띄우면 브라우저에 "AgentClinic" 제목과 짧은 태그라인만 나와요. 단계 이름처럼 아주 작은 결과지만, 화면에 무언가 뜨는 걸 보는 건 기분 좋은 일이라고 해요.</p>
+<figure>
+  <img src="assets/frame-2459.png" alt="localhost:3000을 연 브라우저에 AgentClinic 제목과 Where AI agents come to get better 한 줄이 보이는 화면">
+  <figcaption>에이전트는 자기 검증을 마쳤어요. 사람의 검증은 다음 단계예요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1499s" target="_blank" rel="noopener">영상 24:59에서 보기</a></figcaption>
+</figure>
+<h3>검증: 사람이 보는 단계</h3>
+<p>병합은 아직이에요. 커밋 창에서 변경을 훑되, 어떤 CSS 클래스를 썼는지보다 기능이 스펙을 따르는지를 봐요. 홈 화면 코드는 너무 빈약했어요. 헤더·본문·푸터가 있는 레이아웃 컴포넌트와 CSS 파일이 필요했어요. 원인은 계획에 그걸 요청하지 않은 데 있었어요. 그래서 에이전트에게 스펙과 구현을 함께 고치게 해요. 아래 화면의 초록 상자가 plan.md에 새로 생긴 Group 5 레이아웃 컴포넌트예요.</p>
+<figure>
+  <img src="assets/frame-2712.png" alt="plan.md에 추가된 Group 5 Layout Component 단계가 초록 상자로 강조되어 있고, 터미널에는 새 파일 src/components/Layout.tsx와 static/style.css 목록">
+  <figcaption>코드의 실수가 계획의 빈틈에서 왔으니 계획부터 고쳤어요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1632s" target="_blank" rel="noopener">영상 27:12에서 보기</a></figcaption>
+</figure>
+<p>에이전트가 만들어 내고 사람이 확인하는 이 과정을 <span class="term" data-term="휴먼 인 더 루프" data-en="Human in the loop" data-desc="에이전트가 만들고 사람이 확인하는 과정을 반복하는 방식이에요. 변경이 작아야 사람이 제대로 확인할 수 있어요." data-g="6">휴먼 인 더 루프</span>라고 해요. 에이전트가 너무 빨리 코드를 쓰다 보니, 요즘 개발자들은 인지 부채를 이야기해요. 그래서 변경은 감당할 만한 크기여야 해요.</p>
+<p>세 하위 컴포넌트가 한 파일에 몰려 있어서 각자 파일로 옮기려고 해요. IDE의 이동 기능으로 하면 금방이지만, 그러면 <span class="term" data-term="드리프트" data-en="Drift" data-desc="코드만 바뀌고 스펙이나 README 같은 다른 산출물이 따라가지 못해 서로 어긋나는 상태예요. 작은 리팩터링도 에이전트에게 맡기면 관련 문서까지 함께 고쳐요." data-g="8">드리프트</span>가 생겨요. 스펙과 README가 코드와 어긋나는 거예요. 그래서 이것도 에이전트에게 시켜서 관련 언급까지 고치게 해요.</p>
+<p>로드맵에서 단계를 체크하는 정도의 작은 헌법 변경은 같은 브랜치에 둬도 괜찮아요. 더 큰 헌법 변경은 별도 브랜치가 나을 수 있어요. 스펙의 버전 관리와, 어떤 스펙이 어떤 코드를 만들었는지 잇는 방법은 커뮤니티에서도 아직 정리 중인 주제라고 해요.</p>
 </section>
 
 <section id="s5">
-  <a class="stamp" href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1750s" target="_blank" rel="noopener">29:10</a>
-  <h2>기능 사이의 재계획</h2>
-<p>첫 기능이 끝났다고 바로 다음으로 달려가지 말라고 해요. 한 발 물러서서 재계획하는 단계예요.</p>
-<blockquote>
-  <p>You have to run slow to run fast.</p>
-  <p>빨리 가려면 천천히 가야 해요.</p>
-  <cite>— 영상 29:17</cite>
-</blockquote>
-<p>헌법을 고칠 때는 따로 브랜치를 따는 게 좋아요. 그러면 어떤 버전의 헌법이 어떤 코드를 만들었는지 추적할 수 있어요. 이번 재계획에서는 네 가지를 해요.</p>
-<h3>1. 테스트 방침 넣기</h3>
-<p>검증 단계에 테스트가 좋은데, 에이전트에게 테스트 선호를 알려 준 적이 없었어요. 기술 스택에 Vitest를 쓰는 방침을 넣고, 기존 기능 사양과 구현에도 반영하게 해요. 에이전트는 설정만 하고 테스트는 쓰지 않아서 테스트 작성을 따로 요청해요. 그다음 테스트를 디버거로 돌리며 코드 흐름을 직접 따라가 봐요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1738s" target="_blank" rel="noopener">28:58</a>
+  <h2>재계획: 한 박자 쉬어 가기</h2>
+<p>첫 기능을 끝냈다고 바로 다음으로 달려가지 않아요. 한 걸음 물러서서 재계획을 해요. 강의의 표현으로는 "빨리 가려면 천천히 가야" 해요. 헌법은 살아 있는 문서라서, 고칠 때는 별도 replanning 브랜치를 만들어요. 그래야 어떤 버전의 헌법이 어떤 코드를 만들었는지 따라갈 수 있어요.</p>
+<h3>테스트 방침 넣기</h3>
+<p>검증 단계에 테스트가 좋지만, 에이전트에게 테스트 선호를 알려 준 적이 없었어요. 그래서 기술 스택에 테스트 방침을 넣어요. 처음에는 에이전트가 package.json에 스크립트만 넣고 의존성은 넣지 않았어요. 이 변경은 앞으로의 코드에 적용되니, 기존 기능 스펙과 구현도 맞추라고 따로 말해요. 그다음 테스트를 직접 쓰게 해요.</p>
+<p>테스트는 디버거로 돌려 봐요. 아래 화면에서 tests/app.test.tsx의 'returns 200' 테스트 한 줄에 중단점이 걸려 있고, 아래 Debug 패널에 변수가 보여요. 코드가 어떻게 실행되는지 한 줄씩 따라가는 것도 휴먼 인 더 루프의 일부예요.</p>
 <figure>
-  <img src="assets/frame-3010.png" alt="package.json에 test와 test:watch 스크립트가 추가되고, tech-stack.md에 Vitest가 검증 수단으로 적혔다는 에이전트 보고">
-  <figcaption>처음엔 스크립트만 추가되고 vitest 의존성은 아직 없다는 점까지 에이전트가 알려 줘요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1810s" target="_blank" rel="noopener">영상 30:10에서 보기</a></figcaption>
+  <img src="assets/frame-3028.png" alt="tests/app.test.tsx에서 describe GET / 아래 returns 200 테스트에 중단점이 걸려 있고, 아래에 Debug 패널이 열린 WebStorm 화면">
+  <figcaption>테스트를 읽고 디버거로 따라가면 에이전트가 쓴 코드를 이해하는 데 도움이 돼요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1828s" target="_blank" rel="noopener">영상 30:28에서 보기</a></figcaption>
 </figure>
-<h3>2. 제품 방향 바꾸기</h3>
-<p>제품 매니저가 사용자 40%가 모바일이라며 반응형 디자인을 강조하자고 해요. 에이전트에게 제품 사양, 기능 사양, 코드를 함께 고치라고 해요. 지금은 초기라 작은 변경이니 재계획 중에 바로 처리해요. 일이 크면 로드맵에 별도 기능 단계로 올리는 게 나아요. 사양에는 코드만이 아니라 결정도 남아야 팀이 소통하기 쉬워요.</p>
-<h3>3. 로드맵 다시 보기</h3>
-<p>다음 항목이 여전히 맞는지 봐요. 2~5단계가 서로 붙어 있어서 한 단계로 합쳐요.</p>
+<h3>제품 계획이 바뀌었을 때</h3>
+<p>제품 관리자에게서 소식이 와요. 사용자의 40%가 모바일이니 반응형 디자인을 챙겨 달래요. 아래 화면 맨 아래 프롬프트가 에이전트에게 준 지시예요. 제품 스펙과 모든 기능 스펙, 그리고 코드를 함께 고치라고 해요. 그 위에는 직전 테스트 작업의 요약(vitest.config.ts, tests/app.test.tsx 추가)이 보여요.</p>
 <figure>
-  <img src="assets/frame-3310.png" alt="roadmap.md 수정 결과. 단계가 10개에서 7개로 줄고 2~5단계가 Phase 2 – Layout, Agents &amp; Ailments로 합쳐졌다는 보고">
-  <figcaption>로드맵이 10단계에서 7단계로 줄었어요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1990s" target="_blank" rel="noopener">영상 33:10에서 보기</a></figcaption>
+  <img src="assets/frame-3128.png" alt="터미널에 직전 테스트 작업 요약과, The product's web UI should follow responsive design으로 시작하는 프롬프트">
+  <figcaption>코드만이 아니라 스펙까지 고치라고 한 점이 중요해요. 결정은 스펙에 남아야 해요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=1888s" target="_blank" rel="noopener">영상 31:28에서 보기</a></figcaption>
 </figure>
-<h3>4. 워크플로 자체 고치기</h3>
-<p>재계획은 기능이나 프로젝트만이 아니라 워크플로 자체를 개선하는 자리이기도 해요. 예를 들어 비개발 이해관계자가 진행 상황을 보고 싶어 하면, 병합할 때마다 CHANGELOG를 갱신하면 돼요. 이런 정해진 반복 작업에 <span class="term" data-term="에이전트 스킬" data-desc="SKILL.md 파일과 딸린 자원을 담은 폴더로, 에이전트에게 새 능력이나 반복 워크플로를 가르치는 열린 형식이에요.">에이전트 스킬</span>이 잘 맞아요. 스킬은 에이전트에게 새 능력을 주는 지시와 자원의 묶음이에요.</p>
-<p>스킬은 손으로 써도 되지만, 많은 에이전트에 스킬 작성을 돕는 스킬이 있어요. 에이전트는 이번 changelog 스킬을 전역 스킬 영역에 만들었어요. 그래서 모든 프로젝트에서 쓸 수 있어요. 이 프로젝트 전용으로 둘지 전역으로 둘지는 취향의 문제라고 해요.</p>
+<p>개발 초기라 작은 변경이어서 재계획에서 바로 반영했어요. 새 작업이 크다면 재계획에서 해치우지 말고 로드맵에 별도 기능 단계로 올리는 편이 나아요. 판단은 각자의 몫이에요. 변경을 리뷰하고 커밋해요. 작은 단계로 자주 커밋해야 검토가 머리를 짓누르지 않아요.</p>
+<h3>로드맵 다시 보기</h3>
+<p>다음 기능이 여전히 맞는지도 봐요. 로드맵을 훑어보니 2~5단계가 서로 엮여 있어서 한 번에 다루기로 해요. 아래 화면에서 빨간 줄 'Phase 10 — Hardening'이 초록 줄 'Phase 7 — Hardening'으로 바뀌었어요. 그 아래 요약대로 로드맵이 10단계에서 7단계가 됐고, 2~5단계는 'Phase 2 — Layout, Agents &amp; Ailments' 하나로 합쳐졌어요.</p>
 <figure>
-  <img src="assets/frame-3450.png" alt="CHANGELOG.md가 세 날짜에 걸쳐 7개 항목으로 만들어졌고, 앞으로는 /changelog만 입력하면 된다는 에이전트 안내">
-  <figcaption>새 스킬로 CHANGELOG.md를 바로 만들어 봤어요. 체인지로그는 이해관계자와, 그리고 에이전트와 소통하는 수단이에요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2090s" target="_blank" rel="noopener">영상 34:50에서 보기</a></figcaption>
+  <img src="assets/frame-3330.png" alt="터미널 diff에서 Phase 10 Hardening이 Phase 7 Hardening으로 바뀌고, The roadmap now has 7 phases (down from 10) 요약이 나온 화면">
+  <figcaption>재계획은 기능 하나가 아니라 로드맵 전체를 손볼 기회이기도 해요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2010s" target="_blank" rel="noopener">영상 33:30에서 보기</a></figcaption>
 </figure>
-<p>이제 개발자의 일은 구현보다 계획과 검증에 더 많이 있어요. 그러니 기능 사이에 재계획할 시간을 꼭 떼어 두라고 해요.</p>
+<h3>워크플로 자체를 다듬기: 변경 로그 스킬</h3>
+<p>재계획은 일하는 방식 자체를 고치는 시간이기도 해요. 진행 상황을 보고 싶어 하는 비개발 이해관계자가 있다고 해 봐요. 병합할 때마다 변경 로그를 갱신하고 싶어요. 이렇게 정의할 수 있고 반복되는 일에 스킬이 잘 맞아요. 많은 에이전트에는 스킬을 쓰도록 돕는 스킬이 있어서, 그걸로 changelog 스킬을 함께 만들어요.</p>
+<p>에이전트는 이 스킬을 전역 스킬 영역에 만들었어요. 그래서 모든 프로젝트에서 쓸 수 있어요. 프로젝트 전용으로 둘지 모든 프로젝트에 둘지는 쓰면서 익히게 되는 스타일 문제라고 해요. 아래 화면 초록 상자는 Claude Code가 새 스킬의 스크립트(~/.claude/skills/changelog/scripts/changelog.py)를 돌려 CHANGELOG.md를 만든 장면이에요. 세 날짜에 걸쳐 일곱 항목이 생겼어요.</p>
+<figure>
+  <img src="assets/frame-3458.png" alt="터미널 초록 상자에 python3 changelog.py 실행과 Created CHANGELOG.md with 7 entries across 3 date(s) 결과">
+  <figcaption>변경 로그는 이해관계자에게, 그리고 에이전트에게 말을 거는 방법이에요. 그래서 사람이 직접 읽고 검토해요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2098s" target="_blank" rel="noopener">영상 34:58에서 보기</a></figcaption>
+</figure>
+<p>같은 방식으로 README 갱신, 린트, 포매팅, 테스트 실행 같은 검증 작업도 검증 스킬 하나로 묶을 수 있다고 해요. 재계획을 커밋하고 브랜치를 병합해요. 이제 개발자 일의 대부분은 구현이 아니라 계획과 검증이니, 기능 사이 재계획 시간을 꼭 챙기라고 해요.</p>
 </section>
 
 <section id="s6">
-  <a class="stamp" href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2135s" target="_blank" rel="noopener">35:35</a>
-  <h2>두 번째 기능과 MVP 실험</h2>
-<p>에이전트는 변경을 많이, 빠르게 만들어요. 그걸 사람이 하나하나 검토하다 보면 지쳐요. 강의는 이걸 AI 피로라고 불러요.</p>
-<h3>AI 피로를 줄이는 깔끔한 시작</h3>
-<p>기능 단계 사이를 확실히 끊어요. 새 기능을 시작하기 전에 이렇게 물어봐요.</p>
-<ul>
-  <li>끝나지 않은 작업이 남아 있나요?</li>
+  <a class="stamp" href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2138s" target="_blank" rel="noopener">35:38</a>
+  <h2>두 번째 기능과 AI 피로</h2>
+<p>다음 기능 전에 흔한 고통 하나를 다뤄요. AI 피로예요. 에이전트가 만드는 코드와 변경이 너무 많으면 사람이 검증하다 지쳐요. 해법은 기능 단계 사이를 깨끗하게 끊는 거예요. 새 기능을 시작하기 전에 이렇게 확인해요.</p>
+<ul class="checklist">
+  <li>끝내지 않은 작업이 남아 있나요?</li>
   <li>지난 기능 브랜치를 main에 병합했나요?</li>
-  <li>다음 로드맵 항목이 지금 할 일이 맞나요?</li>
-  <li>에이전트 컨텍스트를 비웠나요? 그래야 기억이 아니라 사양이 의도를 담고, 한정된 컨텍스트를 다음 일에 쓸 수 있어요.</li>
+  <li>로드맵의 다음 항목이 지금 할 일이 맞나요?</li>
+  <li>에이전트의 컨텍스트를 비웠나요? 기억의 조각 대신 스펙이 의도를 담게 하고, 한정된 컨텍스트를 다음 일에 쓰게 하려는 거예요.</li>
 </ul>
-<h3>두 번째 기능: Agents &amp; Ailments</h3>
-<p>에이전트가 이번에도 좋은 질문을 해요. 합친 기능을 한 단계로 둘지 물어서 그대로 두기로 해요. 마이그레이션은 순수 SQL로 정해요. 사양 초안이 나온 뒤 CSS 프레임워크로 Pico CSS를 쓰자는 의도를 추가하고, 다른 파일에도 반영하게 해요.</p>
+<h3>두 번째 기능: 계획</h3>
+<p>컨텍스트를 비우고 agents와 ailments 기능을 시작해요. 같은 프롬프트를 또 치는데, 이건 나중에 스킬로 자동화해요. 에이전트의 첫 질문이 아래 화면이에요. "Phase 2가 레이아웃, CSS, SQLite, agents, ailments를 다 덮어서 범위가 넓은데, 한 단계로 둘까요, 나눌까요?" 재계획 때 이미 합치기로 했으니 첫 선택지(한 단계로 유지)를 골라요.</p>
 <figure>
-  <img src="assets/frame-3715.png" alt="'Phase 2 covers layout, CSS, SQLite, agents, and ailments — Should we keep it as one phase or split it?' 질문과 선택지">
-  <figcaption>범위가 넓은 기능을 한 단계로 둘지 나눌지 에이전트가 먼저 물어요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2235s" target="_blank" rel="noopener">영상 37:15에서 보기</a></figcaption>
+  <img src="assets/frame-3710.png" alt="터미널에 Phase 2 covers layout, CSS, SQLite, agents, and ailments — that's a wide slice. Should we keep it as one phase or split it? 질문과 Keep as one phase (Recommended) 등 선택지">
+  <figcaption>이전 재계획의 결정이 여기서 그대로 쓰여요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2230s" target="_blank" rel="noopener">영상 37:10에서 보기</a></figcaption>
 </figure>
-<p>계획 단계와 기능 단계를 나누면 사람과 에이전트 모두 컨텍스트가 넘치지 않아요. 기능이 너무 커 보이면 계획의 일부만 먼저 구현하라고 해도 돼요.</p>
-<p>구현이 끝나면 천천히 깊게 리뷰해요. AI 피로를 줄이려면 높은 수준의 요구사항만 챙기고 변수 이름 같은 건 따지지 않아요. 내 이름으로 커밋할 수 있는 코드인지만 보면 돼요. 강의는 props 타입을 인라인으로 쓴 걸 별도 TypeScript 타입으로 빼라고 코드 전체에 요청해요. 이런 누락은 실패가 아니에요. 새 세부를 발견하며 사양이 자라는 과정이고, 그걸 남기면 다음 결과가 좋아져요.</p>
-<h3>검증: 서브에이전트로 한 번 더 보기</h3>
-<p>앱을 실행해 보는 것만이 아니라, 변경을 내가 이해했는지도 검증해요. 그래야 인지 부채가 쌓이지 않아요. 테스트를 읽고 디버거로 돌려 보면 흐름을 따라가기 좋아요.</p>
-<p>가끔은 에이전트가 거짓말을 하지 않았는지도 확인해야 해요. 서브에이전트 여러 개를 띄워 이번 변경을 포함한 프로젝트 전체를 깊게 리뷰하게 해요. 서브에이전트를 쓰면 메인 에이전트의 컨텍스트를 더럽히지 않고 생각할 공간을 더 줄 수 있어요.</p>
+<p>마이그레이션은 plain SQL(Structured Query Language)로, 검증은 1~3번 항목을 골랐어요. 에이전트가 초안을 쓰는 동안 그 추론 과정을 지켜보는 것도 쓸모가 있어요. 초안을 본 뒤 의도를 하나 더 넣어요. CSS 프레임워크로 Pico CSS를 쓰고 싶어요. 아래 화면에서 에이전트가 세 파일을 함께 고친 걸 볼 수 있어요. requirements.md는 PicoCSS(classless 변형)를, plan.md는 @picocss/pico 설치 단계를, validation.md는 Pico 스타일이 실제로 적용되는지 확인하는 <span class="term" data-term="스모크 테스트" data-en="Smoke test" data-desc="기본 동작이 되는지만 빠르게 확인하는 가벼운 테스트예요. 여기서는 Pico 스타일과 스타일시트가 제대로 불러와지는지만 봐요." data-g="13">스모크 테스트</span>를 담아요.</p>
 <figure>
-  <img src="assets/frame-4125.png" alt="서브에이전트 리뷰 결과 목록. @types/better-sqlite3 위치 오류, 요청마다 prepared statement 생성, SQLite 외래 키 비활성, 매 시작마다 seed 실행 등">
-  <figcaption>두 번째 시선이 꽤 실질적인 문제를 찾아요. 외래 키가 꺼져 있다거나 매번 시드 데이터를 넣는다거나 하는 것들이에요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2485s" target="_blank" rel="noopener">영상 41:25에서 보기</a></figcaption>
+  <img src="assets/frame-3810.png" alt="위에는 requirements.md의 Out of Scope 목록, 아래 터미널에는 Updated three files 요약. requirements.md, plan.md, validation.md가 각각 PicoCSS 관련으로 바뀐 내용">
+  <figcaption>요구 하나를 바꾸면 세 파일이 함께 바뀌어야 해요. 그래서 에이전트에게 맡겨요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2290s" target="_blank" rel="noopener">영상 38:10에서 보기</a></figcaption>
 </figure>
-<p>권고를 받아들이면 에이전트가 고치고 테스트를 돌려 프로젝트를 좋은 상태로 만들어요. 마지막으로 지난번에 만든 changelog 스킬을 돌리고, 커밋하고, 병합해요. 로드맵을 다시 훑어 다음 기능이 맞는지 보는 짧은 재계획도 해요. 이렇게 기능 사이를 깔끔히 끊으면 AI 피로를 다스릴 수 있어요.</p>
-<h3>MVP 실험: 남은 로드맵을 한 번에</h3>
-<p>경영진이 MVP를 원해요. 지금까지의 헌법과 사양으로 충분한지 시험해 보기로 해요. 평소 기능 사양 프롬프트를 조금 바꿔 남은 로드맵 전체를 구현하라고 하고, 기존 기능 사양을 참고하라고 해요.</p>
+<h3>구현과 깊은 검토</h3>
+<p>계획과 구현 단계를 나누면 사람과 에이전트 모두의 컨텍스트가 넘치지 않아요. 기능이 너무 크면 계획의 일부만 먼저 구현하라고 해도 돼요. 구현이 끝나면 천천히 깊게 리뷰해요. 다만 변수명 같은 걸 트집 잡지 말고, 내 이름으로 커밋해도 될 코드인지 보는 수준에서 해요.</p>
+<p>리뷰 중에 마음에 안 드는 점이 하나 보였어요. props의 타입이 인라인으로 적혀 있었어요. 독립된 TypeScript 타입으로 빼서 코드 전체에 적용하라고 해요. 아래 화면의 AgentsList.tsx에 AgentsListProps 타입이 따로 선언돼 있어요.</p>
 <figure>
-  <img src="assets/frame-4355.png" alt="'Which phases should be included in the MVP spec?' 질문에 Phase 3 Therapies부터 Phase 6 &amp; 7 Polish + Hardening까지 체크된 선택지">
-  <figcaption>MVP에 넣을 단계를 에이전트가 확인해요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2635s" target="_blank" rel="noopener">영상 43:55에서 보기</a></figcaption>
+  <img src="assets/frame-3940.png" alt="커밋 창의 AgentsList.tsx diff. type AgentsListProps = { agents: Agent[] } 선언과 이를 쓰는 AgentsList 컴포넌트">
+  <figcaption>스펙에 없던 결정이 리뷰에서 나와도 괜찮아요. 그걸 스펙에 남기면 다음 결과가 좋아져요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2380s" target="_blank" rel="noopener">영상 39:40에서 보기</a></figcaption>
 </figure>
-<p>이렇게 큰 덩어리는 헌법과 사양 품질에 자신이 있고, 검토와 검증을 감당할 수 있을 때만 하라고 해요. 결과가 원하는 것과 다르면, 무엇이 에이전트를 엇나가게 했는지 찾는 재계획을 꼭 해야 해요.</p>
-<p>MVP를 띄우니 각 화면이 DB의 샘플 데이터로 채워져 있어요. 보통은 코드를 검증하겠지만 MVP라서 사양을 검증하게 했어요. 그랬더니 MVP가 계획의 빈틈을 드러냈어요. 이 평가를 이해관계자와 공유한 뒤 브랜치를 병합하거나 보관하면 돼요.</p>
+<p>스펙에 미처 적지 못한 결정은 실패가 아니라고 해요. 새 디테일을 발견하면서 스펙이 자라는 거예요. 검증 단계에서는 앱을 돌려 보는 것과 함께, 내가 변경을 이해하는지도 확인해요. 테스트를 읽고 디버거로 돌려 보며 탐색해요.</p>
+<p>때로는 "속은 건 아닌지"도 확인해야 해요. 에이전트에게 <span class="term" data-term="서브에이전트" data-en="Subagent" data-desc="메인 에이전트가 따로 띄워 일을 맡기는 보조 에이전트예요. 자기 컨텍스트에서 일하고 결과만 돌려주니 메인 에이전트의 컨텍스트가 덜 차요." data-g="10">서브에이전트</span> 여러 개를 띄워 프로젝트 전체를 깊게 검토하라고 해요. 아래 화면에서 "전체 diff를 확보했어요. 리뷰어 세 명을 병렬로 띄울게요"라는 말과 함께 TypeScript·코드 품질 리뷰가 시작돼요.</p>
 <figure>
-  <img src="assets/frame-4510.png" alt="MVP 사양 검증 결과. validation.md의 예약 테스트 경로 오류, requirements.md의 질환-치료 매핑 미구현 등이 적힌 터미널">
-  <figcaption>사양을 검증하게 하자 구현되지 않은 요구사항과 잘못된 테스트 경로가 나왔어요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2710s" target="_blank" rel="noopener">영상 45:10에서 보기</a></figcaption>
+  <img src="assets/frame-4110.png" alt="터미널에 Good, I have the full diff. Spawning three reviewers in parallel. 문구와 Explore(TypeScript &amp; code quality review) 작업이 시작된 화면">
+  <figcaption>서브에이전트에게 맡기면 메인 에이전트의 컨텍스트를 더럽히지 않고 두 번째 시선을 얻어요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2470s" target="_blank" rel="noopener">영상 41:10에서 보기</a></figcaption>
 </figure>
+<p>서브에이전트들이 찾은 문제와 권고를 받아들이자 에이전트가 고치고 테스트를 돌려 프로젝트를 좋은 상태로 돌려놓아요. 두 번째로 볼 때 중요한 문제를 찾는 경우가 많다고 해요. 마지막으로 changelog 스킬로 변경을 기록하고 커밋·병합해요. 짧은 재계획으로 다음 기능이 여전히 맞는지 보고 나면, 커피 한 잔 하러 가도 돼요.</p>
 </section>
 
 <section id="s7">
-  <a class="stamp" href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2745s" target="_blank" rel="noopener">45:45</a>
-  <h2>기존 프로젝트(브라운필드)에 들이기</h2>
-<p>SDD나 AI는 <span class="term" data-term="그린필드" data-desc="아무 코드도 없는 상태에서 새로 시작하는 프로젝트예요. 헌법을 에이전트와 대화하며 처음부터 써요.">그린필드</span>에만 쓸모 있다는 말이 있어요. 강의는 이미 돌아가는 <span class="term" data-term="브라운필드" data-desc="이미 돌아가는 코드베이스가 있는 프로젝트예요. 헌법을 기존 코드와 문서에서 거꾸로 만들어 내요.">브라운필드</span> 프로젝트에도 잘 맞는다고 보여 줘요. 익숙한 Agent Clinic MVP를 main에서 specs 폴더 없이, 다른 디렉터리의 새 Claude Code 세션으로 열어 '레거시'로 삼아요. 남은 건 프로젝트 배경을 담은 README.md와 할 일 목록 TODO.md뿐이에요. 실제 레거시라면 이슈 트래커, 스프레드시트, 워드 문서에 계획이 흩어져 있겠죠.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2547s" target="_blank" rel="noopener">42:27</a>
+  <h2>MVP 실험과 레거시 프로젝트</h2>
+<h3>MVP로 스펙을 시험하기</h3>
+<p>기능 두 개를 스펙 워크플로로 만들었을 때, 경영진이 MVP(Minimum Viable Product)를 요구해요. 그래서 실험을 해요. 평소의 기능 스펙 프롬프트를 조금 바꿔 로드맵의 남은 기능 전부를 다루게 해요. 아래 화면의 프롬프트는 roadmap.md의 모든 기능을 훑고, mvp 브랜치를 만들고, MVP에 필요한 기능 스펙을 물어보라고 해요. 기존 mission.md, tech-stack.md, 그리고 이미 있는 기능 스펙을 참고하라는 말도 들어 있어요.</p>
 <figure>
-  <img src="assets/frame-4648.png" alt="README.md를 이해관계자 의견으로 보고, roadmap.md는 TODO.md를 바탕으로 아주 작은 단계로 만들라는 헌법 프롬프트">
-  <figcaption>그린필드 때와 거의 같은 프롬프트에, 로드맵은 TODO.md에서 가져오라는 지시만 더했어요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2808s" target="_blank" rel="noopener">영상 46:48에서 보기</a></figcaption>
+  <img src="assets/frame-4310.png" alt="터미널 프롬프트. Go through all the features on specs/roadmap.md, make a mvp branch, and ask me about the feature specs needed to complete an MVP. 그 아래 plan.md, requirements.md, validation.md를 만들라는 지시">
+  <figcaption>평소 프롬프트와 구조는 같고, 범위만 로드맵 전체로 넓혔어요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2590s" target="_blank" rel="noopener">영상 43:10에서 보기</a></figcaption>
 </figure>
-<p>에이전트는 코드베이스를 탐색하며 SDD 산출물을 거꾸로 만들어 내요. 도구 호출이 많이 보이는 이유예요. 이렇게 만든 헌법은 앞으로 에이전트가 하는 변경을 과거 개발자들이 만든 것과 맞춰 줘요. 코드, 커밋, 문서 같은 재료가 많아서 대화는 그린필드보다 오히려 풍부해요.</p>
+<p>이렇게 큰 덩어리는 헌법과 스펙의 품질에 자신이 있을 때만 맡겨야 해요. 그리고 검토와 검증을 감당할 수 있어야 해요. 강의는 이 MVP를 헌법과 기존 스펙에 대한 극단적인 시험으로 봐요. 원하던 것과 다른 결과가 나오면, 무엇이 에이전트를 잘못 이끌었는지 재계획에서 찾아 없애야 해요.</p>
+<p>에이전트가 크게 구현한 뒤 앱을 띄우면, 각 화면이 DB에서 읽은 샘플 데이터로 채워져 있어요. 아래는 대시보드예요. Agents 표에 Gemini-nano, GPT-47B 같은 가상 모델 이름의 에이전트와 상태(discharged, active, on leave)가 있고, 그 아래 다가오는 예약이 있어요.</p>
 <figure>
-  <img src="assets/frame-4812.png" alt="specs에 세 파일을 썼다는 보고. mission.md는 README의 설정과 대상, tech-stack.md는 Hono·JSX·SQLite·Vitest 등 실제 스택, roadmap.md는 TODO를 5개 작은 단계로 나눔">
-  <figcaption>기술 스택에는 실제 파일 구조와 프레임워크 버전이, 로드맵에는 TODO에 맞춘 단계가 들어가요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2892s" target="_blank" rel="noopener">영상 48:12에서 보기</a></figcaption>
+  <img src="assets/frame-4500.png" alt="localhost:3000/dashboard 화면. Agents 표(이름, 모델, 상태)와 Upcoming Appointments 표(에이전트, 치료사, 일정, 상태), 그 아래 Ailments 제목">
+  <figcaption>헌법과 기능 스펙 두 개만으로 이 정도 데모가 나왔어요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2700s" target="_blank" rel="noopener">영상 45:00에서 보기</a></figcaption>
 </figure>
-<p>헌법을 커밋하면 레거시 프로젝트가 SDD 위에 올라가요. 그다음은 앞에서 본 그대로예요. 로드맵의 첫 기능(피드백 폼)을 에이전트와 대화하며 계획하고, 사양 세 파일을 검토하고 커밋해요. 구현하고, 검증하고, 병합해요. SDD를 막 들였으니 재계획에서 손볼 게 많을 거예요.</p>
-<blockquote>
-  <p>The spec is now the memory of the project.</p>
-  <p>이제 사양이 프로젝트의 기억이에요.</p>
-  <cite>— 영상 49:54</cite>
-</blockquote>
+<p>보통이라면 이제 코드를 검증하겠지만, MVP라서 다른 걸 해요. 에이전트에게 스펙을 검증하라고 해요. 이게 쓸모가 있었어요. 아래 화면 초록 상자에서 에이전트가 "스펙과 실제 구현 사이에 어긋난 곳을 몇 개 찾았어요"라고 해요. requirements.md에는 appointments 테이블에 therapist와 datetime 컬럼이 있는데, 구현은 therapist_name과 scheduled_at을 썼어요. plan.md는 평평한 /appointments 경로를 그렸지만, 구현은 /agents/:id/appointments 아래에 중첩했어요.</p>
+<figure>
+  <img src="assets/frame-4516.png" alt="터미널 초록 상자에 Yes, I found several discrepancies between the specs and the actual implementation. 그 아래 requirements.md 컬럼명 불일치와 plan.md 예약 경로 구조 차이 설명">
+  <figcaption>MVP가 계획의 구멍을 드러냈어요. 이 평가는 이해관계자의 MVP 리뷰 자료로 쓸 수 있어요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2716s" target="_blank" rel="noopener">영상 45:16에서 보기</a></figcaption>
+</figure>
+<p>이 평가를 이해관계자와 공유한 뒤 브랜치를 병합하거나 보관해요. 헌법 하나와 기능 두 개만으로 쓸 만한 데모가 나왔으니 실험은 성공이에요.</p>
+<h3>레거시 프로젝트에 도입하기</h3>
+<p>많은 프로젝트는 기존 코드베이스에서 시작하는 <span class="term" data-term="브라운필드" data-en="Brownfield" data-desc="이미 돌아가는 코드베이스 위에서 하는 프로젝트예요. 처음부터 새로 시작하는 프로젝트는 그린필드라고 불러요." data-g="12">브라운필드</span>예요. 스펙 주도 개발이나 AI가 그린필드에만 좋다는 말이 있지만, 강의는 아니라고 해요. 쉽게 보여 주려고 방금 만든 MVP를 레거시로 삼아요. specs 폴더가 없는 main에서, 다른 프로젝트 폴더의 새 Claude Code 세션으로 시작해요.</p>
+<p>프로젝트 배경은 README.md에, 남은 일은 TODO.md에 있어요. 실제 레거시라면 이슈 트래커, 스프레드시트, 문서에 흩어져 있겠죠. 아래 화면 위쪽 TODO.md에 Now(피드백 폼)와 Next(고객 리뷰, 주소와 지도가 있는 About us 페이지)가 있어요. 아래 프롬프트는 4강의 헌법 프롬프트와 거의 같지만, roadmap.md를 TODO.md에 맞춰 만들라는 점이 달라요.</p>
+<figure>
+  <img src="assets/frame-4646.png" alt="위에는 TODO.md(Now: Feedback form, Next: Customer reviews, About us page with address and map), 아래 터미널에는 헌법을 만들고 roadmap.md는 TODO.md를 바탕으로 하라는 프롬프트">
+  <figcaption>기존 산출물에서 로드맵 항목을 찾게 하는 한 줄만 달라졌어요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2806s" target="_blank" rel="noopener">영상 46:46에서 보기</a></figcaption>
+</figure>
+<p>에이전트는 코드베이스를 탐색하며 도구를 많이 호출해요. 사실상 기존 코드에서 스펙 산출물을 역설계하는 거예요. 아래 화면이 결과예요. 위 편집기의 tech-stack.md는 Backend / API(Application Programming Interface) Layer 아래 Hono 4.x, src/routes/ 경로들, 미들웨어를 정리했어요. 터미널 요약대로 roadmap.md는 TODO를 다섯 개의 작은 단계(피드백 폼 → About us 내용 → 지도 → 리뷰 표시 → 리뷰 제출)로 나눴어요.</p>
+<figure>
+  <img src="assets/frame-4752.png" alt="위에는 tech-stack.md의 Backend / API Layer 항목(Hono 4.x, 라우트와 미들웨어 경로), 아래 터미널에는 mission.md, tech-stack.md, roadmap.md 세 파일 요약">
+  <figcaption>기존 코드가 많을수록 에이전트가 읽을 재료도 많아서 대화가 더 풍부해져요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2872s" target="_blank" rel="noopener">영상 47:52에서 보기</a></figcaption>
+</figure>
+<p>헌법을 커밋하면 그다음은 지금까지와 똑같아요. 로드맵의 첫 기능(피드백 폼)을 대화로 계획하고, 세 스펙 파일을 검토하고, 구현하고 검증해요. 아래 화면이 완성된 피드백 페이지예요. Submit Feedback 버튼 아래 What Others Have Said 목록에 에이전트들이 남긴 평점과 후기가 보여요.</p>
+<figure>
+  <img src="assets/frame-4920.png" alt="브라우저의 피드백 페이지. Submit Feedback 버튼과 What Others Have Said 목록에 Agatha-nano 등의 평점과 후기">
+  <figcaption>레거시 위에서도 기능 루프 한 바퀴가 그대로 돌았어요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2960s" target="_blank" rel="noopener">영상 49:20에서 보기</a></figcaption>
+</figure>
+<p>병합한 뒤에는 재계획 시간을 꼭 가지라고 해요. 이제 막 도입했으니 손볼 곳이 많을 거예요. 강의는 이렇게 정리해요. 이제 스펙이 프로젝트의 기억이에요.</p>
 </section>
 
 <section id="s8">
   <a class="stamp" href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=2994s" target="_blank" rel="noopener">49:54</a>
-  <h2>스킬 · MCP · 플러그인으로 자동화하기</h2>
+  <h2>스킬로 워크플로 자동화하기</h2>
+<p>워크플로를 익혔으니 더 빠르고 가볍게 만들 차례예요. 다만 남이 만든 걸 그대로 쓰지 않고, 내 방식대로 자동화해요.</p>
 <h3>반복 프롬프트를 스킬로</h3>
-<p>기능 사양을 시작할 때마다 '이거 하고, 저거 하고, 이 세 파일 써'를 똑같이 쳤어요. 이걸 에이전트 스킬로 자동화해요. 에이전트의 스킬 생성기를 써서 대화하며 만들어요. 커뮤니티에도 이런 스킬이 많아 설치해 써도 돼요.</p>
+<p>기능 스펙을 시작할 때마다 "이걸 하고, 저걸 하고, 이 세 파일을 써라"를 반복해서 쳤어요. 이걸 스킬로 만들어요. 에이전트에게 skill-creator로 함께 이야기하며 만들자고 해요. 커뮤니티에도 이런 '스킬 만드는 스킬'이 많아요. 에이전트가 후속 질문을 하면 답하고, 작업하는 동안 출력을 지켜보며 원하는 선택을 하는지 확인해요.</p>
+<p>아래 화면 왼쪽 파일 트리의 .claude/skills/feature-spec/SKILL.md가 만들어진 스킬이에요. 터미널 맨 위 Skill(feature-spec)은 그 스킬이 불려서 시작되는 장면이고, 바로 다음에 specs/roadmap.md를 읽어요.</p>
 <figure>
-  <img src="assets/frame-5034.png" alt="'I want to stop repeating the feature spec prompt. Use your skill creator to help me write a feature-spec local skill' 로 시작하는 프롬프트와 그 아래 기존 기능 사양 프롬프트 전문">
-  <figcaption>매번 치던 기능 사양 프롬프트를 그대로 넘겨주고 스킬로 만들어 달라고 해요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3034s" target="_blank" rel="noopener">영상 50:34에서 보기</a></figcaption>
+  <img src="assets/frame-5125.png" alt="파일 트리에 .claude/skills/feature-spec/SKILL.md, 터미널에 Skill(feature-spec) Initializing과 specs/roadmap.md를 읽는 단계가 보이는 화면">
+  <figcaption>로드맵 읽기부터 시작하는 순서가 이제 스킬 안에 들어 있어요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3085s" target="_blank" rel="noopener">영상 51:25에서 보기</a></figcaption>
 </figure>
-<p>스킬은 프로젝트별로도, 전역으로도 둘 수 있어요. 부르는 방법도 여러 가지예요. 프롬프트에서 스킬을 먼저 언급하고 할 일을 말해도 되고, 스킬 안에서 다른 스킬을 부르게 해도 돼요. 에이전트는 스킬 설명을 보고 언제 부를지 정해요. 이걸 <span class="term" data-term="점진적 공개" data-desc="에이전트가 평소엔 스킬 이름과 설명만 보고, 필요할 때만 전체 지시를 읽는 방식이에요. 스킬이 많아도 컨텍스트를 적게 써요.">점진적 공개</span>라고 해요. 다만 컨텍스트가 커질수록 이 판단이 흔들려요. 파일을 태그하듯, 꼭 쓰고 싶은 스킬은 이름을 불러 주는 게 확실해요. 한때 인기였던 커스텀 슬래시 명령에서 스킬로 옮겨 가는 에이전트가 많다고 해요.</p>
+<p>스킬은 프로젝트용으로도 전역으로도 둘 수 있어요. 부르는 방법도 여러 가지예요. 프롬프트에서 스킬 이름을 먼저 말하고 할 일을 적거나, 다른 스킬에서 부르게 할 수 있어요. 에이전트는 스킬 설명을 보고 언제 쓸지 스스로 정하는데, 이걸 <span class="term" data-term="점진적 공개" data-en="Progressive disclosure" data-desc="에이전트가 평소에는 스킬의 이름과 설명만 보고 있다가, 필요할 때만 본문을 읽어 오는 방식이에요. 컨텍스트를 아끼지만 고르는 판단이 틀릴 수도 있어요." data-g="11">점진적 공개</span>라고 해요. 하지만 컨텍스트가 커질수록 그 판단이 늘 정확하지는 않아요. 그래서 파일 태그를 달 때처럼, 쓰고 싶은 스킬은 이름을 불러 주는 게 좋아요. 사고 토큰도 아껴요.</p>
+<p>/clear 같은 기본 슬래시 명령은 그대로지만, 많은 에이전트가 사용자 정의 슬래시 명령에서 스킬로 옮겨 가고 있다고 해요.</p>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>Agent Skills 공식 문서는 점진적 공개를 세 단계로 설명해요. 시작할 때는 각 스킬의 이름과 설명만 읽어요(발견). 작업이 설명과 맞으면 SKILL.md 전체를 읽어요(활성화). 그다음 지시를 따르며 필요할 때 딸린 코드나 파일을 불러와요(실행). 그래서 스킬을 많이 깔아 둬도 컨텍스트를 적게 써요.</p>
-  <p class="cite">출처: <a href="https://agentskills.io/home" target="_blank" rel="noopener">Agent Skills — Overview</a></p>
+  <p>Agent Skills 공식 사이트는 이 형식을 'AI 에이전트에 전문 지식과 워크플로를 더하는 가볍고 열린 형식'으로 소개해요. 처음에는 Anthropic이 만들었고, 열린 표준으로 공개된 뒤 여러 에이전트 제품이 채택했다고 적혀 있어요. 그래서 한 에이전트에서 만든 스킬을 다른 에이전트로 옮길 수 있어요.</p>
+  <p class="cite">출처: <a href="https://agentskills.io/home" target="_blank" rel="noopener">Agent Skills 공식 사이트</a></p>
 </aside>
-<h3>MCP와 CLI + 스킬</h3>
-<p>API, 사내 지식 베이스, 데이터베이스 같은 자원을 붙일 때는 그동안 <span class="term" data-term="MCP" data-desc="Model Context Protocol이에요. 에이전트를 외부 도구·데이터와 잇는 표준 프로토콜이에요.">MCP</span>가 표준이었어요. 예를 들어 에이전트는 패키지에 대한 최신 맥락이 필요해요. 가장 많이 쓰이는 Context7은 패키지의 최신 문서를 에이전트 컨텍스트에 넣어 줘요.</p>
+<h3>MCP에서 CLI와 스킬로</h3>
+<p>API, 사내 지식 베이스, DB처럼 에이전트에게 자원을 더 줘야 할 때가 있어요. 지금까지 보편적인 방법은 MCP였어요. 예를 들어 에이전트는 패키지에 대한 최신 문서가 필요해요. 가장 인기 있는 선택이 Context7이에요. 패키지의 최신 문서를 에이전트 컨텍스트로 가져와서, React의 예전 버전이 아니라 최신 버전 기준으로 일하게 해 줘요.</p>
+<p>MCP 서버는 여전히 인기지만, CLI(Command Line Interface)를 부르는 스킬이 같은 일을 더 깔끔하게 하는 경우가 많다고 해요. 아래 화면은 Context7 README예요. 초록 상자의 'Works in two modes'에 두 방식이 나란히 있어요. CLI + Skills는 ctx7 CLI 명령으로 문서를 가져오도록 안내하는 스킬을 깔고(MCP 불필요), MCP는 Context7 MCP 서버를 등록하는 방식이에요.</p>
 <figure>
-  <img src="assets/frame-5214.png" alt="Model Context Protocol 공식 문서의 'What is the Model Context Protocol (MCP)?' 페이지와 구조도">
-  <figcaption>MCP 공식 문서 화면이에요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3134s" target="_blank" rel="noopener">영상 52:14에서 보기</a></figcaption>
+  <img src="assets/frame-5325.png" alt="Context7 GitHub README. Works in two modes 초록 상자에 CLI + Skills와 MCP 두 항목, 아래 Installation과 npx ctx7 setup 명령">
+  <figcaption>설치 단계에서 바로 MCP 서버와 CLI + 스킬 중 하나를 고르게 해요. 강의는 두 번째를 골라요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3205s" target="_blank" rel="noopener">영상 53:25에서 보기</a></figcaption>
 </figure>
-<p>MCP 서버는 여전히 많이 쓰여요. 하지만 CLI 도구를 부르는 스킬이 같은 일을 더 깔끔하게 하는 경우가 많아요. Context7도 지금은 CLI를 부르는 스킬 방식을 권해요. 설치할 때 MCP 서버와 'CLI + 스킬' 중 하나를 고르게 하고, 강의는 'CLI + 스킬'을 골라요. CLI는 설정이 적고 컨텍스트도 덜 써서 이 흐름이 빨라지고 있다고 해요.</p>
-<figure>
-  <img src="assets/frame-5254.png" alt="Context7 README의 'Works in two modes' 부분. CLI + Skills와 MCP 두 방식, npx ctx7 setup 설치 명령">
-  <figcaption>Context7은 두 가지 방식으로 동작해요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3174s" target="_blank" rel="noopener">영상 52:54에서 보기</a></figcaption>
-</figure>
+<p>설치를 마치고 Context7을 쓰는 예제 프롬프트를 주면, 에이전트가 Context7이 필요하다는 걸 알아채고 기술 스택 정보를 찾아요. 강의는 MCP 서버에서 스킬 + CLI로 가는 흐름이 빨라지고 있다고 봐요. CLI 도구는 설정이 적고 컨텍스트를 덜 쓰기 때문이에요.</p>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>Context7 README에 따르면 'CLI + Skills' 방식은 에이전트가 <code>ctx7</code> CLI 명령으로 문서를 가져오게 하는 스킬을 깔아요. MCP 서버는 필요 없어요. 설정은 <code>npx ctx7 setup</code> 한 줄이고 Node.js 18 이상이 필요해요. <code>--claude</code>, <code>--cursor</code>, <code>--opencode</code>로 대상 에이전트를 고를 수 있어요.</p>
-  <p class="cite">출처: <a href="https://github.com/upstash/context7" target="_blank" rel="noopener">upstash/context7 — GitHub</a></p>
+  <p>Context7 README에 따르면 설정은 <code>npx ctx7 setup</code> 한 줄이에요. OAuth로 인증하고 API 키를 만든 뒤, CLI + Skills와 MCP 중 고른 방식에 맞게 설치해요. <code>--claude</code>, <code>--cursor</code>, <code>--opencode</code>로 대상 에이전트를 지정할 수 있고, ctx7 CLI는 Node.js 22.13 이상이 필요하다고 적혀 있어요.</p>
+  <p class="cite">출처: <a href="https://github.com/upstash/context7" target="_blank" rel="noopener">upstash/context7 GitHub README</a></p>
 </aside>
-<h3>플러그인으로 나누기</h3>
-<p>워크플로가 커지면 다른 기기, 팀원, 바깥 세상과 나누고 싶어져요. Claude Code 같은 일부 에이전트에는 확장을 묶어 설치·업데이트하는 플러그인이 있어요. 다만 아직 에이전트 공통 표준은 아니에요. 앱이나 의존성처럼 코드를 실행하니, 설치하고 업데이트할 때 믿을 수 있는지 확인해요.</p>
-<h3>이미 나온 SDD 도구</h3>
-<div class="table-scroll">
-  <table>
-    <thead><tr><th>도구</th><th>영상에서 소개한 흐름</th><th>이 강의 흐름과의 대응</th></tr></thead>
-    <tbody>
-      <tr><td>GitHub Spec Kit</td><td>constitution → plan → tasks → implement 슬래시 명령</td><td>강의에서 쓴 흐름과 거의 같아요</td></tr>
-      <tr><td>OpenSpec</td><td>propose → explore → apply → archive</td><td>propose·explore는 계획, apply는 구현, archive는 재계획이에요</td></tr>
-    </tbody>
-  </table>
-</div>
-<p>둘 다 브랜치 관리, 검증 스크립트, 정해진 사양 문서 형식을 갖추고 있어요. OpenSpec은 작은 기능을 빠르게 처리하는 정형 패턴도 있어요. 이런 오픈소스 워크플로를 써 보며 내 워크플로를 다듬어 보라고 해요.</p>
+<p>워크플로가 커지면 여러 기기, 팀원, 바깥 세상과 나누고 싶어져요. Claude Code 같은 일부 에이전트에는 설치하고 갱신할 수 있는 확장 묶음인 플러그인이 있어요. 무료 플러그인 커뮤니티도 커지고 있어요. 다만 플러그인은 아직 에이전트 간 표준이 아니고, 앱이나 의존성처럼 코드를 실행해요. 설치하고 갱신할 때 믿을 수 있는지 꼭 확인하라고 해요.</p>
+<h3>오픈소스 SDD 워크플로</h3>
+<p>GitHub의 Spec Kit은 스펙 주도 개발 워크플로를 정형화하려는 시도예요. 프로젝트에 설치하면 강의의 흐름과 비슷한 슬래시 명령이 생겨요. constitution, plan, tasks, implement 같은 명령이에요. 아래 화면이 Spec Kit README의 첫 부분이에요. 'Build high-quality software faster'라는 문구 아래, 바이브 코딩 대신 제품 시나리오와 예측 가능한 결과에 집중하게 해 주는 오픈소스 도구라고 소개해요.</p>
 <figure>
-  <img src="assets/frame-5454.png" alt="GitHub Spec Kit README 첫 화면. 'Build high-quality software faster.' 문구와 목차">
-  <figcaption>GitHub Spec Kit 저장소예요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3294s" target="_blank" rel="noopener">영상 54:54에서 보기</a></figcaption>
+  <img src="assets/frame-5455.png" alt="GitHub Spec Kit README 첫 화면. Spec Kit 제목과 Build high-quality software faster 문구, 그 아래 Table of Contents">
+  <figcaption>강의가 손으로 해 본 흐름을 명령어로 묶어 둔 도구예요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3295s" target="_blank" rel="noopener">영상 54:55에서 보기</a></figcaption>
 </figure>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>지금 Spec Kit README는 명령을 <code>/speckit-constitution</code>처럼 하이픈으로 적고, 터미널 명령이 아니라 에이전트 채팅에서 부르는 스킬이라고 설명해요. 흐름도 '헌법은 프로젝트당 한 번, 기능마다 specify → plan → tasks → implement → converge'로 적혀 있어요. 영상에서 말한 단계 앞뒤로 specify와 converge가 있는 셈이에요.</p>
-  <p class="cite">출처: <a href="https://github.com/github/spec-kit" target="_blank" rel="noopener">github/spec-kit — GitHub</a></p>
+  <p>영상은 명령을 speckit.constitution처럼 점으로 읽는데, 지금 README는 <code>/speckit-constitution</code>, <code>/speckit-specify</code>, <code>/speckit-plan</code>, <code>/speckit-tasks</code>, <code>/speckit-implement</code>처럼 하이픈으로 적어요. 영상이 빼고 말한 specify(무엇을 만들지 적는 단계)도 순서에 들어 있어요. 옛 표기로 검색하면 다른 버전 문서가 나올 수 있어요.</p>
+  <p class="cite">출처: <a href="https://github.com/github/spec-kit" target="_blank" rel="noopener">github/spec-kit GitHub README</a></p>
 </aside>
+<p>또 다른 대안은 OpenSpec이에요. propose, explore, apply, archive 흐름을 따르는데, 강의는 이를 자기 워크플로에 이렇게 대응시켜요. 아래 화면 README의 'See it in action'에도 /opsx:propose로 제안을 만들고, /opsx:apply로 구현하고, /opsx:archive로 보관하는 예가 나와요.</p>
 <figure>
-  <img src="assets/frame-5514.png" alt="OpenSpec README의 'See it in action' 예시. /opsx:propose add-dark-mode로 proposal.md, specs/, design.md, tasks.md를 만들고 /opsx:apply로 구현">
-  <figcaption>OpenSpec은 propose로 변경 제안과 사양을 만들고 apply로 구현해요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3314s" target="_blank" rel="noopener">영상 55:14에서 보기</a></figcaption>
+  <img src="assets/frame-5525.png" alt="OpenSpec README의 See it in action 예시. You: /opsx:propose add-dark-mode, /opsx:apply, /opsx:archive 순서의 대화">
+  <figcaption>OpenSpec에는 빠른 기능용 표준 패턴도 있다고 해요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3325s" target="_blank" rel="noopener">영상 55:25에서 보기</a></figcaption>
 </figure>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  P["propose · explore"] --> A["계획 (plan)"]
+  I["apply"] --> B["구현 (implement)"]
+  R["archive"] --> C["재계획 (replan)"]
+</pre>
+  <figcaption>영상이 말한 대응 관계예요. 이름은 달라도 계획 → 구현 → 정리의 뼈대는 같아요.</figcaption>
+</figure>
+<p>두 패키지 모두 브랜치 관리, 검증 스크립트, 정해진 스펙 문서 형식 같은 기능을 담고 있어요. 강의는 이런 오픈소스 워크플로를 써 보며 내 방식을 다듬으라고 권해요.</p>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>OpenSpec은 Fission AI가 만든 오픈소스예요. 명령은 <code>/opsx:explore</code>, <code>/opsx:propose</code>, <code>/opsx:apply</code>, <code>/opsx:archive</code>예요. README는 무엇을 만들지 아직 모를 때 explore로 먼저 생각해 보고, 이미 알면 바로 propose로 가라고 안내해요. propose는 <code>proposal.md</code>, <code>specs/</code>, <code>design.md</code>, <code>tasks.md</code>를 만들어요.</p>
-  <p class="cite">출처: <a href="https://github.com/Fission-AI/OpenSpec" target="_blank" rel="noopener">Fission-AI/OpenSpec — GitHub</a></p>
+  <p>자막에는 'visionai'로 받아적혔지만 OpenSpec 저장소는 Fission-AI 조직에 있어요. 지금 README는 탐색만 하고 싶을 때 <code>/opsx:explore</code>, 만들 것이 정해졌을 때 <code>/opsx:propose</code>로 시작하라고 안내해요. 쓰는 도구에 따라 <code>/opsx-propose</code>처럼 표기가 달라질 수 있다고 해요.</p>
+  <p class="cite">출처: <a href="https://github.com/Fission-AI/OpenSpec" target="_blank" rel="noopener">Fission-AI/OpenSpec GitHub README</a></p>
 </aside>
-<h3>떠오른 아이디어는 백로그로</h3>
-<p>기능 작업 중에 아이디어가 떠오를 때가 있어요. 예를 들어 배포용 DB를 무엇으로 할지 같은 거요. 브랜치 작업을 멈추긴 싫고, 아직 로드맵에 올릴 만큼 확정된 것도 아니에요. 이럴 땐 에이전트와 조사한 뒤, 정해진 위치에 보고서로 남기게 해요. 나중에 이 백로그 파일을 링크해서 로드맵에 올리면 돼요. 이 일이 잦아지면 조사용 스킬을 만들어도 좋아요.</p>
+<h3>떠오른 아이디어는 backlog로</h3>
+<p>기능 작업 도중에 아이디어가 떠오를 때가 있어요. 예를 들어 DB를 무엇으로 할지예요. 에이전트와 조사하고 싶지만, 아직 확정한 건 아니라 로드맵에 올리고 싶지는 않아요. 대화하며 추천을 대부분 받아들이고 하나는 마음을 바꿨어요. 이걸 잃지 않으려고 정해 둔 위치에 보고서로 쓰게 해요. 아래 화면 터미널 맨 아래에 backlog/2026-04-07-vercel-database-options.md에 썼다는 메시지가 있고, 위에 1순위 추천 Neon이 보여요.</p>
 <figure>
-  <img src="assets/frame-5634.png" alt="Vercel 배포용 DB 선택지(Neon 추천 등) 조사 결과를 backlog/2026-04-07-vercel-database-options.md에 썼다는 터미널">
-  <figcaption>조사 결과가 backlog 폴더의 파일로 남아요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3394s" target="_blank" rel="noopener">영상 56:34에서 보기</a></figcaption>
+  <img src="assets/frame-5625.png" alt="파일 트리에 backlog 폴더, 터미널에 Neon (Recommended) 항목과 Written to backlog/2026-04-07-vercel-database-options.md 메시지">
+  <figcaption>나중에 이 파일 링크를 달아 로드맵에 올리라고 하면 돼요. 쌓이면 조사 자체를 스킬로 만들 수도 있어요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3385s" target="_blank" rel="noopener">영상 56:25에서 보기</a></figcaption>
 </figure>
 </section>
 
 <section id="s9">
-  <a class="stamp" href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3400s" target="_blank" rel="noopener">56:40</a>
-  <h2>에이전트를 바꿔도 남는 워크플로</h2>
-<p>SDD는 일의 중심을 '어떻게'에서 '무엇과 왜'로 옮겨요. 에이전트와 모델은 워낙 빨리 바뀌니, 워크플로를 한 가지 선택에 묶어 두지 않는 게 좋아요. 표준을 쓰면 에이전트를 바꿔도 워크플로와 도구가 남아요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3403s" target="_blank" rel="noopener">56:43</a>
+  <h2>에이전트에 묶이지 않기</h2>
+<p>스펙 주도 개발은 일의 중심을 '어떻게'에서 '무엇과 왜'로 옮겨요. 에이전트와 모델은 빠르게 바뀌니, 워크플로를 하나의 선택에 묶어 두지 않는 게 좋아요. 강의는 에이전트를 바꿔도 워크플로와 도구를 그대로 가져가게 해 주는 표준 네 가지를 꼽아요.</p>
 <div class="table-scroll">
   <table>
-    <thead><tr><th>표준</th><th>영상에서 말한 역할</th></tr></thead>
+    <thead><tr><th>표준</th><th>영상이 말한 쓰임</th></tr></thead>
     <tbody>
       <tr><td>MCP</td><td>외부 도구 연결</td></tr>
-      <tr><td>AGENTS.md</td><td>규칙</td></tr>
-      <tr><td>에이전트 스킬</td><td>추가 맥락을 담은 반복 워크플로</td></tr>
-      <tr><td><span class="term" data-term="ACP" data-desc="Agent Client Protocol이에요. 코딩 에이전트와 에디터 사이의 통신을 표준화해서, 에디터를 바꾸지 않고 에이전트를 바꿔 쓸 수 있게 해요.">ACP</span></td><td>에이전트와 클라이언트(에디터) 연결</td></tr>
+      <tr><td><code>AGENTS.md</code></td><td>규칙</td></tr>
+      <tr><td>Agent Skills</td><td>추가 맥락이 필요한 반복 워크플로 담기</td></tr>
+      <tr><td>ACP</td><td>에이전트를 클라이언트(편집기)에 연결</td></tr>
     </tbody>
   </table>
 </div>
-<figure>
-  <img src="assets/frame-5720.png" alt="AGENTS.md 공식 사이트. 'A simple, open format for guiding coding agents' 문구와 예시 파일">
-  <figcaption>규칙을 담는 표준으로 소개된 AGENTS.md 사이트예요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3440s" target="_blank" rel="noopener">영상 57:20에서 보기</a></figcaption>
-</figure>
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>AGENTS.md 공식 사이트는 이 파일을 '에이전트를 위한 README'라고 소개해요. 에이전트가 프로젝트에서 일할 때 필요한 맥락과 지시를 두는 예측 가능한 자리라는 뜻이에요. 사람용 README와 따로 두어서, 빌드·테스트 명령이나 코드 규칙처럼 에이전트에게만 필요한 내용을 담아요.</p>
-  <p class="cite">출처: <a href="https://agents.md/" target="_blank" rel="noopener">AGENTS.md</a></p>
-</aside>
 <h3>스킬을 다른 에이전트로 옮기기</h3>
-<p>OpenAI의 Codex는 데스크톱 앱, 에디터, 터미널에서 돌아가는 에이전트예요. 앞에서 만든 feature-spec 스킬을 Codex가 쓰는 경로로 복사하자 그대로 잘 돌아가요. 같은 프로젝트에서 에이전트를 바꿔 가며 SDD 워크플로를 유지할 수 있다는 뜻이에요.</p>
-<h3>ACP로 에이전트와 에디터 잇기</h3>
-<p>ACP는 에이전트와 에디터를 쉽게 연결하는 표준이에요. 둘 다 ACP를 지원하면 바로 맞물려요. 구조는 LSP와 같은 방식을 따라요. 다음 편집 제안(next edit suggestion)이나 플랜 모드 같은 것까지 다루고, 직접 만든 커스텀 에이전트를 붙일 수도 있어요.</p>
+<p>OpenAI의 Codex는 데스크톱 앱, 편집기, 터미널에서 도는 대표적인 에이전트예요. 12강에서 만든 feature-spec 스킬을 Codex로 복사해요. Codex는 스킬을 다른 경로에 둬요. 아래 화면 왼쪽 트리에서 .claude/skills/feature-spec과 별도로 .codex/skills/feature-spec/SKILL.md가 보여요. 터미널은 Codex 탭이고, 맨 아래에 "feature-spec 스킬로 다음 로드맵 기능을 진행해"라는 프롬프트가 있어요.</p>
 <figure>
-  <img src="assets/frame-5820.png" alt="Agent Client Protocol 공식 문서의 Introduction과 Why ACP? 부분">
-  <figcaption>ACP 공식 문서예요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3500s" target="_blank" rel="noopener">영상 58:20에서 보기</a></figcaption>
+  <img src="assets/frame-5755.png" alt="파일 트리에 .codex/skills/feature-spec/SKILL.md, 터미널의 Codex 탭에 OpenAI Codex 정보와 Use your feature-spec skill to work on the next roadmap feature 프롬프트">
+  <figcaption>옮긴 스킬이 그대로 잘 돌아요. 같은 프로젝트에서 에이전트를 오가도 워크플로가 남아요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3475s" target="_blank" rel="noopener">영상 57:55에서 보기</a></figcaption>
 </figure>
-<p>ACP 레지스트리는 에이전트를 찾고, 설치하고, 클라이언트에 연결하는 과정을 자동화해요. JetBrains IDE에서는 AI 채팅 창에서 레지스트리로 들어가 호환 에이전트 목록을 볼 수 있어요. 오픈소스 에이전트 OpenCode를 설치하자 OpenCode 자체 설치와 IDE 연동이 한 번에 끝났어요. 이제 같은 에디터에서 다른 에이전트들과 나란히 쓸 수 있어요.</p>
+<h3>ACP로 편집기와 에이전트 잇기</h3>
+<p>ACP를 쓰면 다른 편집기에서 다른 에이전트를 쓸 수 있어요. 에이전트와 클라이언트가 둘 다 ACP를 지원하면 바로 맞물려요. ACP 레지스트리는 클라이언트 안에서 에이전트를 찾고 설치하고 연결하는 과정을 자동화해요. 아래 화면은 JetBrains IDE의 설정 창 Tools › AI Assistant › Agents예요. Gemini CLI, Amp, Auggie CLI, Claude Agent, Cline 같은 호환 에이전트가 목록으로 나오고, 오른쪽에 Install 버튼이 있어요.</p>
 <figure>
-  <img src="assets/frame-5900.png" alt="JetBrains IDE 설정의 AI Assistant &gt; Agents 화면. ACP 레지스트리에서 가져온 Kilo, Kimi CLI, Mistral Vibe, OpenCode 등 에이전트 목록과 Install 버튼">
-  <figcaption>IDE 안에서 레지스트리의 에이전트를 골라 설치해요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3540s" target="_blank" rel="noopener">영상 59:00에서 보기</a></figcaption>
+  <img src="assets/frame-5845.png" alt="IDE 설정 창의 AI Assistant › Agents 화면. Gemini CLI, Amp, Auggie CLI, Autohand Code, Claude Agent, Cline, Codebuddy Code 등이 Install 버튼과 함께 나열됨">
+  <figcaption>AI 채팅 창에서 레지스트리로 들어가 에이전트를 골라 설치하는 흐름이에요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3525s" target="_blank" rel="noopener">영상 58:45에서 보기</a></figcaption>
+</figure>
+<p>강의는 인기 오픈소스 에이전트 OpenCode를 이렇게 추가해요. Install을 누르면 OpenCode 설치와 IDE 연동이 한 번에 끝나고, 같은 편집기에서 다른 에이전트들과 나란히 쓸 수 있어요.</p>
+<p>ACP는 에이전트와 클라이언트를 끼워 맞추기 쉽게 설계됐고, 프로토콜은 LSP(Language Server Protocol)에서 쓰는 방식을 따른다고 해요. 아래 화면은 ACP 문서의 Overview예요. Communication Model 아래에 JSON-RPC 2.0을 따르며 메시지가 두 종류(응답을 기대하는 Methods, 일방향 Notifications)라고 적혀 있어요. 아래 Message Flow는 initialize로 시작해 세션을 만드는 순서를 보여 줘요.</p>
+<figure>
+  <img src="assets/frame-5935.png" alt="Agent Client Protocol 문서의 Overview 페이지. Communication Model(JSON-RPC 2.0, Methods와 Notifications)과 Message Flow(Initialization Phase, Session Setup)">
+  <figcaption>강의는 ACP가 편집기의 다음 편집 제안이나 플랜 모드까지 다룬다고 덧붙여요. 직접 만든 에이전트를 로컬에 붙이는 것도 가능하다고 해요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3575s" target="_blank" rel="noopener">영상 59:35에서 보기</a></figcaption>
 </figure>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>ACP는 Zed가 만들어 2025년 8월에 발표했어요. 언어 서버 프로토콜(LSP)이 IDE에서 언어 기능을 떼어 냈듯, 에디터를 바꾸지 않고 에이전트를 바꿔 쓰게 하려는 목적이에요. JetBrains는 2025년 10월에 Zed와 함께 ACP를 발전시킨다고 밝혔어요. 공식 문서에는 ACP 레지스트리 목록과, 클라이언트가 레지스트리 JSON을 받아 가는 방법이 나와 있어요.</p>
-  <p class="cite">출처: <a href="https://zed.dev/blog/bring-your-own-agent-to-zed" target="_blank" rel="noopener">Zed 블로그 — Bring Your Own Agent to Zed</a> · <a href="https://blog.jetbrains.com/ai/2025/10/jetbrains-zed-open-interoperability-for-ai-coding-agents-in-your-ide/" target="_blank" rel="noopener">JetBrains 블로그 — JetBrains × Zed</a> · <a href="https://agentclientprotocol.com/get-started/registry" target="_blank" rel="noopener">ACP Registry</a></p>
+  <p>ACP 공식 문서는 ACP를 '코드 편집기·IDE와 코딩 에이전트 사이의 통신을 표준화하는 프로토콜'로 소개하고, LSP가 언어 서버 연동을 표준화한 것과 비슷하다고 설명해요. 로컬 에이전트는 편집기의 하위 프로세스로 돌며 stdio 위의 JSON-RPC로 통신해요. ACP는 Zed가 처음 발표했고, 공식 문서 사이트 상단에 Zed Industries와 JetBrains가 함께 걸려 있어요.</p>
+  <p class="cite">출처: <a href="https://agentclientprotocol.com/overview/introduction" target="_blank" rel="noopener">Agent Client Protocol 공식 문서</a> · <a href="https://zed.dev/blog/bring-your-own-agent-to-zed" target="_blank" rel="noopener">Zed 블로그 — Bring your own agent to Zed</a></p>
 </aside>
-<h3>어떤 에이전트를 고를까요</h3>
-<p>업계가 빨리 바뀌어서 벤치마크 리더보드도 금방 바뀌어요. 최신 정보를 챙기되, 나에게 중요한 기준으로 고르라고 해요. 사양은 특정 에이전트나 IDE보다 한 단계 위에서 동작하니, 표준이 늘수록 이 유연성도 커져요.</p>
+<h3>어떤 에이전트를 고를까</h3>
+<p>업계가 빨리 바뀌면서 여러 평가를 내건 벤치마크 리더보드가 생겼어요. 아래 슬라이드의 Leaderboard에 1위부터 6위까지 에이전트와 점수가 막대로 나와 있어요. 하지만 이런 순위는 금방 바뀌어요. 최신 정보를 챙기되, 나에게 중요한 기준으로 고르라고 해요.</p>
 <figure>
-  <img src="assets/frame-010000.png" alt="Leaderboards 슬라이드. 여러 코딩 에이전트의 점수가 막대로 나열된 리더보드 예시">
-  <figcaption>리더보드는 참고만 하고, 고르는 기준은 스스로 정해요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3600s" target="_blank" rel="noopener">영상 01:00:00에서 보기</a></figcaption>
+  <img src="assets/frame-010000.png" alt="Leaderboards 슬라이드. 에이전트별 성공률이 96.1%, 95.7%, 92.8%, 87.0%, 64.0%, 61.0% 순으로 막대와 함께 나열된 리더보드">
+  <figcaption>슬라이드는 리더보드의 예시예요. 순위 자체보다 순위가 빨리 바뀐다는 점이 요지예요. <a href="https://www.youtube.com/watch?v=hy8UstR2NEg&amp;t=3600s" target="_blank" rel="noopener">영상 01:00:00에서 보기</a></figcaption>
 </figure>
-<h3>마무리</h3>
-<p>바이브 코딩에서 원하는 걸 바라기만 하던 데서, SDD로 실제로 필요한 것에 다가가는 과정을 밟았어요. 헌법을 쓰고, 대화로 기능을 계획하고, 휴먼 인 더 루프로 검증하고, 스킬과 표준으로 워크플로를 자동화했죠. 강사는 너무 빨리 움직인 대가를 본 엔지니어가 많다며, 다시 엔지니어링을 가져오자고 말해요.</p>
+<p>스펙은 특정 에이전트나 IDE에 묶이지 않는 더 높은 층에서 일해요. 강의는 이렇게 마무리해요. 헌법을 쓰고, 대화로 기능을 계획하고, 휴먼 인 더 루프로 검증하고, 스킬과 표준으로 워크플로를 자동화했어요. 오늘 쓴 스펙이 내일 프로젝트의 기억이 된다고요.</p>
 <blockquote>
-  <p>The specs you write today become the memory of your projects tomorrow.</p>
-  <p>오늘 쓴 사양이 내일 프로젝트의 기억이 돼요.</p>
+  <p>The best code starts with a great spec.</p>
+  <p>가장 좋은 코드는 좋은 스펙에서 시작해요.</p>
   <cite>— 영상 01:00:38</cite>
 </blockquote>
 </section>
@@ -588,154 +743,332 @@
   <h2>자막 표기 바로잡기</h2>
 <aside class="note">
   <span class="tag">자막 관련 참고</span>
-  <p>자동생성 자막이라 이름과 도구 이름이 잘못 받아적힌 곳이 많아요. 화면에 나온 표기를 기준으로 이렇게 바로잡았어요.</p>
+  <p>자동생성 영어 자막이라 이름과 용어가 잘못 받아적힌 곳이 많아요. 화면과 문맥으로 이렇게 바로잡았어요.</p>
   <div class="table-scroll"><table>
     <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
     <tbody>
-      <tr><td>Paul Everett</td><td>Paul Everitt</td><td>터미널 경로 /Users/pauleveritt 기준</td></tr>
-      <tr><td>Spectrum development, specri, STD, SD, SDDD</td><td>Spec-driven development (SDD)</td><td></td></tr>
+      <tr><td>Paul Everett</td><td>Paul Everitt</td><td>화면의 홈 디렉터리 /Users/pauleveritt</td></tr>
+      <tr><td>Spectrum development, specri development, Speciven development</td><td>spec-driven development</td><td></td></tr>
+      <tr><td>STD, SD, SDDD</td><td>SDD (spec-driven development)</td><td></td></tr>
       <tr><td>cloud code, Claw Code, clawed code</td><td>Claude Code</td><td></td></tr>
-      <tr><td>Hello Hano, HANA</td><td>Hello Hono, Hono</td><td>roadmap.md 화면 기준</td></tr>
-      <tr><td>text stack, text.md</td><td>tech stack, tech-stack.md</td><td></td></tr>
+      <tr><td>text stack, text.md</td><td>tech stack, tech-stack.md</td><td>화면의 파일 이름</td></tr>
       <tr><td>roadmap.mmd</td><td>roadmap.md</td><td></td></tr>
-      <tr><td>emission</td><td>mission</td><td></td></tr>
+      <tr><td>Hello Hano, HANA</td><td>Hello Hono, Hono</td><td>화면의 roadmap.md와 브랜치 이름</td></tr>
+      <tr><td>The emission (15:45)</td><td>The mission</td><td></td></tr>
+      <tr><td>an emission (39:37)</td><td>an omission (빠뜨린 것)</td><td></td></tr>
+      <tr><td>OM</td><td>LLM</td><td></td></tr>
       <tr><td>slashclear, slashcle</td><td>/clear</td><td></td></tr>
       <tr><td>merge domain</td><td>merge to main</td><td></td></tr>
-      <tr><td>Contact 7, context 7</td><td>Context7</td><td></td></tr>
-      <tr><td>React 9.2, React 9.0</td><td>React 19.2, React 19.0 (추정)</td><td></td></tr>
-      <tr><td>specit, Specit.comstitution</td><td>Spec Kit, /speckit.constitution</td><td></td></tr>
-      <tr><td>openspec from visionai</td><td>OpenSpec (Fission AI)</td><td></td></tr>
-      <tr><td>Codeex, codecs, CHB codeex</td><td>Codex (ChatGPT Codex로 추정)</td><td></td></tr>
-      <tr><td>Open Code</td><td>OpenCode</td><td></td></tr>
-      <tr><td>OM</td><td>LLM</td><td></td></tr>
+      <tr><td>sub aents</td><td>subagents</td><td></td></tr>
+      <tr><td>context 7, Contact 7</td><td>Context7</td><td></td></tr>
+      <tr><td>React 9.2, React 9.0</td><td>React 19.2, React 19.0</td><td>(추정)</td></tr>
+      <tr><td>visionai</td><td>Fission AI</td><td>OpenSpec 저장소 소유 조직</td></tr>
+      <tr><td>specit, Specit.comstitution</td><td>Spec Kit, speckit.constitution</td><td></td></tr>
+      <tr><td>codec CLI, Codeex, codecs</td><td>Codex CLI, Codex</td><td></td></tr>
+      <tr><td>CHB codeex</td><td>ChatGPT Codex</td><td>(추정)</td></tr>
+      <tr><td>Z editor</td><td>Zed 편집기</td><td></td></tr>
     </tbody>
   </table></div>
 </aside>
 </section>
 </main>
 
-<div class="tail">
+<div class="tail" id="glossary">
   <h2>이 글에 나온 용어</h2>
-  <div class="table-scroll">
-    <table>
-      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
-      <tbody>
-        <tr><td>SDD</td><td>Spec-Driven Development, 스펙 주도 개발이에요. 무엇을 왜 만드는지 사양 문서로 먼저 적고, 에이전트가 그 사양을 구현하게 하는 방식이에요.</td></tr>
-        <tr><td>컨텍스트 감쇠</td><td>대화가 길어지거나 세션이 바뀌면서 에이전트가 앞서 정한 중요한 맥락을 잃어 가는 현상이에요. 사양 파일은 세션이 바뀌어도 남아서 이걸 막아 줘요.</td></tr>
-        <tr><td>의도 충실도</td><td>에이전트가 만든 결과가 사람이 원래 의도한 목표와 얼마나 맞는지를 말해요. 문제·성공 기준·제약을 먼저 적을수록 높아져요.</td></tr>
-        <tr><td>바이브 코딩</td><td>요구를 대충 던지고 결과를 보며 고쳐 달라고 반복하는 방식이에요. 빠르지만 큰 프로젝트에선 일회용 코드와 기술 부채가 쌓여요.</td></tr>
-        <tr><td>휴먼 인 더 루프</td><td>에이전트가 만들고 사람이 단계마다 검토·승인하는 방식이에요. 변경을 작게 유지해야 사람이 실제로 검토할 수 있어요.</td></tr>
-        <tr><td>인지 부채</td><td>코드가 무엇을 하고 어떻게 바뀌어 왔는지 머릿속으로 따라가야 하는 부담이에요. 에이전트가 빨리 쓸수록 쌓이기 쉬워요.</td></tr>
-        <tr><td>그린필드</td><td>아무 코드도 없는 상태에서 새로 시작하는 프로젝트예요. 헌법을 에이전트와 대화하며 처음부터 써요.</td></tr>
-        <tr><td>브라운필드</td><td>이미 돌아가는 코드베이스가 있는 프로젝트예요. 헌법을 기존 코드와 문서에서 거꾸로 만들어 내요.</td></tr>
-        <tr><td>서브에이전트</td><td>메인 에이전트가 따로 띄우는 보조 에이전트예요. 자기 컨텍스트에서 일하고 결과만 돌려줘서 메인 컨텍스트를 아껴요.</td></tr>
-        <tr><td>에이전트 스킬</td><td>SKILL.md 파일과 딸린 자원을 담은 폴더로, 에이전트에게 새 능력이나 반복 워크플로를 가르치는 열린 형식이에요.</td></tr>
-        <tr><td>점진적 공개</td><td>에이전트가 평소엔 스킬 이름과 설명만 보고, 필요할 때만 전체 지시를 읽는 방식이에요. 스킬이 많아도 컨텍스트를 적게 써요.</td></tr>
-        <tr><td>MCP</td><td>Model Context Protocol이에요. 에이전트를 외부 도구·데이터와 잇는 표준 프로토콜이에요.</td></tr>
-        <tr><td>ACP</td><td>Agent Client Protocol이에요. 코딩 에이전트와 에디터 사이의 통신을 표준화해서, 에디터를 바꾸지 않고 에이전트를 바꿔 쓸 수 있게 해요.</td></tr>
-        <tr><td>Hono</td><td>웹 표준 위에서 돌아가는 작고 빠른 TypeScript 웹 프레임워크예요. Node.js, Cloudflare Workers, Deno, Bun 등에서 같은 코드로 돌아가요.</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-8"><dt>드리프트<span class="en">Drift</span></dt><dd>코드만 바뀌고 스펙이나 README 같은 다른 산출물이 따라가지 못해 서로 어긋나는 상태예요. 작은 리팩터링도 에이전트에게 맡기면 관련 문서까지 함께 고쳐요.</dd></div>
+    <div class="g" id="g-2"><dt>바이브 코딩<span class="en">Vibe coding</span></dt><dd>짧게 시키고 결과를 보며 계속 고쳐 달라고 하는 방식이에요. 빠르지만 대화 기록이 남지 않아 큰 프로젝트로 이어지기 어려워요.</dd></div>
+    <div class="g" id="g-12"><dt>브라운필드<span class="en">Brownfield</span></dt><dd>이미 돌아가는 코드베이스 위에서 하는 프로젝트예요. 처음부터 새로 시작하는 프로젝트는 그린필드라고 불러요.</dd></div>
+    <div class="g" id="g-10"><dt>서브에이전트<span class="en">Subagent</span></dt><dd>메인 에이전트가 따로 띄워 일을 맡기는 보조 에이전트예요. 자기 컨텍스트에서 일하고 결과만 돌려주니 메인 에이전트의 컨텍스트가 덜 차요.</dd></div>
+    <div class="g" id="g-13"><dt>스모크 테스트<span class="en">Smoke test</span></dt><dd>기본 동작이 되는지만 빠르게 확인하는 가벼운 테스트예요. 여기서는 Pico 스타일과 스타일시트가 제대로 불러와지는지만 봐요.</dd></div>
+    <div class="g" id="g-1"><dt>스펙 주도 개발<span class="en">Spec-driven development</span></dt><dd>무엇을 왜 만드는지 스펙 문서로 먼저 적고, 그 문서를 기준으로 에이전트가 구현하게 하는 방식이에요. 스펙이 사람과 에이전트 사이의 계약이 돼요.</dd></div>
+    <div class="g" id="g-4"><dt>의도 충실도<span class="en">Intent fidelity</span></dt><dd>에이전트가 만든 결과가 사람이 원래 의도한 목표와 얼마나 맞는지를 말해요. 문제, 성공 기준, 제약을 먼저 적을수록 높아져요.</dd></div>
+    <div class="g" id="g-7"><dt>인지 부채<span class="en">Cognitive debt</span></dt><dd>코드가 무엇을 하고 어떻게 바뀌어 왔는지 머릿속에 따라잡아야 하는 부담이에요. 에이전트가 빠르게 코드를 쏟아 낼수록 쌓이기 쉬워요.</dd></div>
+    <div class="g" id="g-11"><dt>점진적 공개<span class="en">Progressive disclosure</span></dt><dd>에이전트가 평소에는 스킬의 이름과 설명만 보고 있다가, 필요할 때만 본문을 읽어 오는 방식이에요. 컨텍스트를 아끼지만 고르는 판단이 틀릴 수도 있어요.</dd></div>
+    <div class="g" id="g-3"><dt>컨텍스트 감쇠<span class="en">Context decay</span></dt><dd>세션이 길어져 컨텍스트 창이 차거나 새 세션이 시작되면서 에이전트가 중요한 맥락을 놓치는 현상이에요. 스펙 파일은 세션을 넘어 남아서 이걸 막아 줘요.</dd></div>
+    <div class="g" id="g-5"><dt>헌법<span class="en">Constitution</span></dt><dd>프로젝트 전체에 적용되는 상위 문서 묶음이에요. 이 강의에서는 mission.md, tech-stack.md, roadmap.md 세 파일이고, 기능을 만들 때마다 에이전트가 기준으로 읽어요.</dd></div>
+    <div class="g" id="g-6"><dt>휴먼 인 더 루프<span class="en">Human in the loop</span></dt><dd>에이전트가 만들고 사람이 확인하는 과정을 반복하는 방식이에요. 변경이 작아야 사람이 제대로 확인할 수 있어요.</dd></div>
+    <div class="g"><dt>ACP</dt><dd>Agent Client Protocol</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g" id="g-9"><dt>AI 피로<span class="en">AI fatigue</span></dt><dd>에이전트가 너무 많은 코드와 변경을 만들어서 사람이 검토하다 지치는 상태예요. 기능 사이를 깨끗이 끊고 작게 커밋하는 게 해법이에요.</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>CLI</dt><dd>Command Line Interface</dd></div>
+    <div class="g"><dt>CSS</dt><dd>Cascading Style Sheets</dd></div>
+    <div class="g"><dt>DB</dt><dd>Database</dd></div>
+    <div class="g"><dt>IDE</dt><dd>Integrated Development Environment</dd></div>
+    <div class="g"><dt>LSP</dt><dd>Language Server Protocol</dd></div>
+    <div class="g"><dt>MCP</dt><dd>Model Context Protocol</dd></div>
+    <div class="g"><dt>MVP</dt><dd>Minimum Viable Product</dd></div>
+    <div class="g"><dt>SQL</dt><dd>Structured Query Language</dd></div>
+  </dl>
 </div>
 
-<div class="tail">
+<div class="tail" id="sources">
   <h2>참고한 곳</h2>
   <ol>
-    <li><a href="https://www.youtube.com/watch?v=hy8UstR2NEg" target="_blank" rel="noopener">원본 영상 — DeepLearningAI, Full Course: Spec-Driven Development with Coding Agents</a></li>
-    <li><a href="https://agentskills.io/home" target="_blank" rel="noopener">Agent Skills — Overview</a></li>
-    <li><a href="https://github.com/upstash/context7" target="_blank" rel="noopener">upstash/context7 — GitHub</a></li>
-    <li><a href="https://github.com/github/spec-kit" target="_blank" rel="noopener">github/spec-kit — GitHub</a></li>
-    <li><a href="https://github.com/Fission-AI/OpenSpec" target="_blank" rel="noopener">Fission-AI/OpenSpec — GitHub</a></li>
-    <li><a href="https://agents.md/" target="_blank" rel="noopener">AGENTS.md</a></li>
-    <li><a href="https://zed.dev/blog/bring-your-own-agent-to-zed" target="_blank" rel="noopener">Zed 블로그 — Bring Your Own Agent to Zed (ACP 발표)</a></li>
-    <li><a href="https://blog.jetbrains.com/ai/2025/10/jetbrains-zed-open-interoperability-for-ai-coding-agents-in-your-ide/" target="_blank" rel="noopener">JetBrains 블로그 — JetBrains × Zed: Open Interoperability for AI Coding Agents</a></li>
-    <li><a href="https://agentclientprotocol.com/get-started/registry" target="_blank" rel="noopener">Agent Client Protocol — ACP Registry</a></li>
-    <li><a href="https://hono.dev/" target="_blank" rel="noopener">Hono 공식 사이트</a></li>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=hy8UstR2NEg" target="_blank" rel="noopener">원본 영상 — DeepLearningAI, Full Course: Spec-Driven Development with Coding Agents</a></li>
+    <li id="src-2"><a href="https://agents.md/" target="_blank" rel="noopener">AGENTS.md 공식 사이트</a></li>
+    <li id="src-3"><a href="https://agentskills.io/home" target="_blank" rel="noopener">Agent Skills 공식 사이트</a></li>
+    <li id="src-4"><a href="https://github.com/upstash/context7" target="_blank" rel="noopener">upstash/context7 GitHub README</a></li>
+    <li id="src-5"><a href="https://github.com/github/spec-kit" target="_blank" rel="noopener">github/spec-kit GitHub README</a></li>
+    <li id="src-6"><a href="https://github.com/Fission-AI/OpenSpec" target="_blank" rel="noopener">Fission-AI/OpenSpec GitHub README</a></li>
+    <li id="src-7"><a href="https://agentclientprotocol.com/overview/introduction" target="_blank" rel="noopener">Agent Client Protocol 공식 문서 — Introduction</a></li>
+    <li id="src-8"><a href="https://zed.dev/blog/bring-your-own-agent-to-zed" target="_blank" rel="noopener">Zed 블로그 — Bring your own agent to Zed</a></li>
   </ol>
 </div>
 
-<footer>2026년 10월 1일에 이 영상을 보고 정리했어요. 원본은 DeepLearningAI 채널에 있어요.</footer>
+<footer>2026년 10월 14일에 이 영상을 보고 정리했어요. 원본은 DeepLearningAI 채널에 있어요.</footer>
 
 </div>
 
-<div id="tip" role="tooltip"></div>
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
 <script>
 (function () {
-  // ── 용어 툴팁 ───────────────────────────────────────
-  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
-  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
-  var tip = document.getElementById('tip');
-  var open = null;
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
 
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
   function show(el) {
+    clearTimeout(hideTimer);
     var desc = el.getAttribute('data-desc');
     if (!desc) return;
-    var name = el.getAttribute('data-term') || el.textContent;
+    if (open && open !== el) open.classList.remove('open');
     tip.innerHTML = '';
-    var b = document.createElement('b');
-    b.textContent = name;
-    tip.appendChild(b);
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
     tip.appendChild(document.createTextNode(desc));
-    tip.classList.add('on');
-
-    var r = el.getBoundingClientRect();
-    var t = tip.getBoundingClientRect();
-    var pad = 12;
-    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
-    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
-    var top = r.top + window.scrollY - t.height - 10;
-    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
-    tip.style.left = left + 'px';
-    tip.style.top = top + 'px';
-    open = el;
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
   }
-
-  function hide() {
-    tip.classList.remove('on');
-    open = null;
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
   }
 
   document.querySelectorAll('.term').forEach(function (el) {
-    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
-    el.addEventListener('mouseenter', function () { show(el); });
-    el.addEventListener('mouseleave', hide);
-    el.addEventListener('focus', function () { show(el); });
-    el.addEventListener('blur', hide);
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
     el.addEventListener('click', function (e) {
-      e.preventDefault();
-      open === el ? hide() : show(el);
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
     });
   });
 
-  document.addEventListener('click', function (e) {
-    if (open && !e.target.closest('.term')) hide();
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
   });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') hide();
-  });
-  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
-  window.addEventListener('resize', hide);
 
-  // ── 목차 현재 위치 표시 ─────────────────────────────
-  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
-  var map = {};
-  links.forEach(function (a) {
-    var s = document.getElementById(a.getAttribute('href').slice(1));
-    if (s) map[s.id] = a;
-  });
-  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
-  if ('IntersectionObserver' in window && targets.length) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (!en.isIntersecting) return;
-        links.forEach(function (a) { a.classList.remove('active'); });
-        map[en.target.id].classList.add('active');
-      });
-    }, { rootMargin: '-10% 0px -75% 0px' });
-    targets.forEach(function (t) { io.observe(t); });
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
   }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+// specs 폴더 구조 그림
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+(() => {
+  const g = document.getElementById('fig-specs');
+  if (!g) return;
+  g.append(el('text', { x: 320, y: 22, 'text-anchor': 'middle', class: 'mono' }, 'specs/'));
+  const groups = [
+    { x: 20, cls: 'c1', title: '헌법 · 프로젝트 수준', sub: 'specs/ 바로 아래',
+      rows: [['mission.md', '왜, 누구를 위해'], ['tech-stack.md', '기술과 제약'], ['roadmap.md', '작은 단계의 순서']] },
+    { x: 330, cls: 'c2', title: '기능 수준 · 기능마다 하나', sub: '2026-03-30-hello-hono/',
+      rows: [['plan.md', '작업 그룹과 순서'], ['requirements.md', '범위, 결정, 맥락'], ['validation.md', '끝났다고 볼 기준']] },
+  ];
+  groups.forEach((grp) => {
+    g.append(el('rect', { x: grp.x, y: 36, width: 290, height: 204, rx: 12, class: `${grp.cls} cell` }));
+    g.append(el('text', { x: grp.x + 145, y: 62, 'text-anchor': 'middle' }, grp.title));
+    g.append(el('text', { x: grp.x + 145, y: 82, 'text-anchor': 'middle', class: 'sub mono' }, grp.sub));
+    grp.rows.forEach(([file, desc], i) => {
+      const y = 96 + i * 46;
+      g.append(el('rect', { x: grp.x + 14, y, width: 262, height: 38, rx: 8, class: 'box' }));
+      g.append(el('text', { x: grp.x + 26, y: y + 24, class: 'mono' }, file));
+      g.append(el('text', { x: grp.x + 266, y: y + 24, 'text-anchor': 'end', class: 'sub' }, desc));
+    });
+  });
 })();
 </script>
 </body>

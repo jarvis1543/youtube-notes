@@ -25,6 +25,8 @@
 <!-- yn-lock:end -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>모두가 &#x27;나를 아는 AI OS&#x27;를 설계하는 시대, 격차는 어디서 오는가?</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 <style>
   :root{
     --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
@@ -32,7 +34,10 @@
     --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
     --warn:#ff8a00; --warn-soft:#fff4e6;
     --info:#00b8a9; --info-soft:#e4f8f6;
-    --radius:16px; --maxw:760px;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
   }
   @media (prefers-color-scheme:dark){
     :root{
@@ -41,6 +46,8 @@
       --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
       --warn:#ffab4a; --warn-soft:#3a2a13;
       --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
     }
   }
   *{box-sizing:border-box}
@@ -78,13 +85,29 @@
   .keypoints li strong{color:var(--text)}
 
   /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
   nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
     border-radius:var(--radius)}
   nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
   nav.toc ol{margin:0; padding-left:20px}
-  nav.toc li{margin:6px 0; font-size:15px}
-  nav.toc a{color:var(--text-sub)}
-  nav.toc a.active{color:var(--brand); font-weight:600}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
 
   /* ── 본문 ──────────────────────────────────────────── */
   section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
@@ -99,6 +122,16 @@
     background:var(--surface-2); color:var(--text-mute);
     font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
   a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
 
   /* ── 그림 ──────────────────────────────────────────── */
   figure{margin:28px 0}
@@ -115,23 +148,33 @@
   thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
     font-weight:700; white-space:nowrap}
   tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
   td code{font-size:13.5px}
 
-  /* ── 용어 툴팁 ─────────────────────────────────────── */
-  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
-    font-weight:600; background:none}
-  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
-  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
-    background:var(--text); color:var(--bg); border-radius:12px;
-    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
-    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
-    transition:opacity .12s ease; pointer-events:none}
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
   #tip.on{opacity:1; visibility:visible}
-  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
 
   /* ── 박스 두 종류 ───────────────────────────────────
      .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
-     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
   aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
   aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
   aside p{margin:8px 0}
@@ -144,6 +187,92 @@
   aside .table-scroll{margin:12px 0 0}
   aside table{min-width:320px; font-size:14.5px}
   aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
 
   /* ── 인용 ──────────────────────────────────────────── */
   blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
@@ -159,13 +288,14 @@
   pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
     border:1px solid var(--line); overflow-x:auto; line-height:1.6}
   pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
 
   /* ── 꼬리말 ────────────────────────────────────────── */
   .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
   .tail h2{font-size:20px; margin:0 0 14px}
   .tail + .tail{margin-top:40px}
   .tail ol{padding-left:20px}
-  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
   footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
     font-size:13.5px; color:var(--text-mute)}
 
@@ -182,11 +312,11 @@
 
 <header>
   <h1>모두가 &#x27;나를 아는 AI OS&#x27;를 설계하는 시대, 격차는 어디서 오는가?</h1>
-  <p class="lede">옵시디언과 클로드 코드로 만든 AI OS, 그리고 격차를 만드는 &#x27;나의 맥락&#x27;</p>
+  <p class="lede">옵시디언과 클로드 코드로 만든 AI OS 사례와, 도구보다 중요한 &#x27;나의 맥락&#x27; 이야기예요</p>
   <div class="meta">
     <span>Brian&#x27;s Brain Trinity</span><span class="dot">·</span>
-    <span>40:09</span><span class="dot">·</span>
-    <span>유튜브 영상 정리</span>
+    <span>영상 40:09</span><span class="dot">·</span>
+    <span>읽는 데 약 25분</span>
   </div>
   <a class="src-btn" href="https://www.youtube.com/watch?v=LWd5J-srk9w" target="_blank" rel="noopener">
     원본 영상 보러 가기 →
@@ -196,456 +326,898 @@
 <div class="keypoints">
   <h2>핵심만 먼저</h2>
   <ol>
-    <li>AI 도구는 누구나 똑같이 쓸 수 있어요. 격차는 AI에게 '나의 맥락'을 얼마나 잘 건네느냐에서 생겨요.</li>
-    <li>지난 반년의 흐름은 두 갈래예요. 코딩 도구가 지식 노동 도구로 번졌고, 폰에서 부르는 개인 비서 에이전트가 퍼졌어요.</li>
-    <li>카파시의 LLM 위키가 'AI 모델 + 나의 지식'을 합친 AI OS에 불을 붙였어요. 1945년 메멕스부터 이어진 지식관리 흐름이 AI와 만난 거예요.</li>
-    <li>AI OS는 판단하는 나(1st), 지식 저장소(2nd), AI(3rd) 세 두뇌로 돌아가요. 사람들은 AI만 보지만 1st와 2nd가 더 중요해요.</li>
-    <li>지식(PKM)을 넘어 맥락(PCM)을 관리해야 해요. MAAP(Meaning·Asset·Action·Persona) 지도로 지금 필요한 맥락만 골라 줘요.</li>
+    <li>지난 반년의 AI(Artificial Intelligence) 활용은 두 갈래예요. 코딩 도구가 문서·PPT(PowerPoint)를 만드는 지식노동 도구가 됐고, 메신저로 언제든 부르는 개인 비서가 생겼어요.</li>
+    <li>AI 모델과 내 지식이 합쳐진 것이 <span class="term" data-term="AI OS" data-en="AI Operating System" data-desc="AI 도구와 내가 쌓은 지식 베이스를 하나로 묶어, AI가 나를 알고 일하게 만드는 개인 시스템이에요. 발표자가 쓰는 말이고, 에이전틱 OS·클로드 OS라고도 불러요." data-g="1">AI OS(Operating System)</span>예요. 생각을 기계에 맡기려는 꿈은 1945년 <span class="term" data-term="메멕스" data-en="Memex" data-desc="1945년 버니바 부시가 제안한 가상의 책상형 기계예요. 사람이 읽고 쓴 모든 것을 저장하고 연결해 다시 꺼내 준다는 아이디어로, 개인 지식관리의 원조로 꼽혀요." data-g="5">메멕스</span>까지 거슬러 올라가요.</li>
+    <li>세 개의 두뇌(나·지식·AI) 가운데 사람들은 AI에만 관심을 두지만, 더 중요한 건 2번째 두뇌에 무엇을 쌓느냐예요.</li>
+    <li>발표자는 옵시디언에 쌓은 기록으로 계획, 지식 정리, 콘텐츠 작성, 자동 회고를 AI에게 맡겨요.</li>
+    <li>격차는 도구가 아니라 맥락에서 나와요. 지금 이 순간 관련 있는 나의 맥락만 골라 MAAP(Meaning, Asset, Action, Persona) 지도로 건네야 '나를 아는 AI'가 돼요.</li>
   </ol>
 </div>
 
 <nav class="toc">
   <h2>목차</h2>
   <ol>
-    <li><a href="#s1">코딩 도구가 지식 노동 도구가 됐어요</a></li>
-    <li><a href="#s2">내 폰 속의 AI 비서와 LLM 위키</a></li>
-    <li><a href="#s3">AI OS, 사실은 70년 된 꿈이에요</a></li>
-    <li><a href="#s4">세 개의 두뇌, 브레인 트리니티</a></li>
-    <li><a href="#s5">왜 옵시디언인가요?</a></li>
+    <li><a href="#s1">AI 활용은 두 갈래로 갈려요</a></li>
+    <li><a href="#s2">개인 비서와 LLM 위키</a></li>
+    <li><a href="#s3">AI OS는 새로운 생각이 아니에요</a></li>
+    <li><a href="#s4">세 개의 두뇌로 보는 AI OS</a></li>
+    <li><a href="#s5">왜 옵시디언일까요?</a></li>
     <li><a href="#s6">시연: 아침 계획과 지식 기록</a></li>
-    <li><a href="#s7">시연: 콘텐츠 작성과 자동 회고, 그리고 다른 사람들</a></li>
-    <li><a href="#s8">PKM에서 PCM으로: 맥락이 격차를 만들어요</a></li>
+    <li><a href="#s7">시연: 콘텐츠 작성과 자동 회고</a></li>
+    <li><a href="#s8">다른 사람들의 AI OS</a></li>
+    <li><a href="#s9">결국 중요한 건 나의 맥락</a></li>
     <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
   </ol>
 </nav>
 
 <main>
 <section id="s1">
-  <a class="stamp" href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=0s" target="_blank" rel="noopener">00:00</a>
-  <h2>코딩 도구가 지식 노동 도구가 됐어요</h2>
-<p>발표자 브라이언은 낮에는 대기업 AI 연구소에서 기업과 조직의 <span class="term" data-term="AX" data-desc="AI Transformation의 줄임말이에요. 조직의 업무 방식과 시스템을 AI 중심으로 바꾸는 일을 말해요.">AX</span> 업무를 하고, 저녁에는 유튜브 채널 Brain Trinity를 운영해요. 이 발표는 METACON 2026(서울 메타위크) 둘째 날 무대에서 했고, 세 가지 질문을 차례로 다뤄요.</p>
-<ol>
-  <li>지금 무슨 일이 일어나고 있나요? (트렌드)</li>
-  <li>실제로 어떻게 쓰고 있나요? (브라이언과 주변 사람들의 사례)</li>
-  <li>그래서 무엇이 중요한가요? (결론)</li>
-</ol>
-<h3>따라가기 벅찰 만큼 빨라요</h3>
-<p>2025년 11월부터 2026년 6월까지 반년 남짓 동안 도구와 에이전트, 모델이 한꺼번에 쏟아졌어요. 도구 쪽에는 클로드 코드와 코덱스가, 에이전트 쪽에는 오픈클로와 헤르메스 에이전트가 있어요. 모델도 GPT 5.5, Opus 4.8, Fable 5, GLM 5.2가 나란히 나왔어요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=144s" target="_blank" rel="noopener">02:24</a>
+  <h2>AI 활용은 두 갈래로 갈려요</h2>
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>서울메타위크 2026 메타콘(2026년 7월 4일) 무대 발표를 찍은 영상이에요. 화면 왼쪽은 발표 슬라이드나 발표자의 옵시디언·텔레그램 화면이고, 오른쪽은 무대 위 발표자예요.</p>
+</aside>
+<p>발표자 브라이언은 낮에는 큰 기업 AI 연구소에서 조직의 AX(AI Transformation)를 맡고, 밤에는 브레인 트리니티라는 유튜브 채널을 운영해요. 발표는 세 단계로 짜여 있어요. 슬라이드의 세 칸이 순서대로 '지금 무슨 일이 일어나는가', '어떻게 쓰이고 있는가', '앞으로 무엇이 중요한가'예요.</p>
 <figure>
-  <img src="assets/frame-0242.png" alt="'AI는 따라가기 벅찰 만큼 빠르다' 슬라이드. 2025.11~2026.6 기간의 도구·에이전트(Claude Code, Codex, OpenClaw, Hermes Agent)와 모델(GPT 5.5, Opus 4.8, Fable 5, GLM 5.2)이 정리돼 있어요">
-  <figcaption>반년 사이에 나온 도구와 모델을 한 장에 모은 슬라이드예요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=162s" target="_blank" rel="noopener">영상 02:42에서 보기</a></figcaption>
+  <img src="assets/frame-0205.png" alt="'오늘의 여정 — 트렌드 + 무엇이 중요한가' 슬라이드. What & Why, How, Why So 세 칸에 각 단계의 질문이 적혀 있어요">
+  <figcaption>
+    트렌드를 정리하고, 사례를 보고, 결론으로 가는 순서예요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=125s" target="_blank" rel="noopener">영상 02:05에서 보기</a>
+  </figcaption>
 </figure>
-<p>발표자는 말로는 '챗GPT 5.6'이 지난주에 나왔다고 했는데, 슬라이드에는 GPT 5.5로 적혀 있어요. 또 Fable 모델이 너무 강력해서 미국 정부가 수출을 통제했고, 2주쯤은 선택된 기관만 쓸 수 있었다고 말해요. 이 부분은 발표자의 설명이에요.</p>
-<h3>첫 번째 흐름: 만들기</h3>
-<p>발표자는 이 흐름을 두 갈래로 나눠요. 첫째는 '만들기'예요. 클로드 코드는 원래 내 컴퓨터의 파일을 직접 다뤄 코딩을 잘하려고 만든 도구예요. 그런데 사람들이 이걸로 문서를 편집하고, 마케팅 전략을 짜고, PPT를 만들기 시작했어요.</p>
-<p>발표자는 이게 자연스러운 일이라고 봐요. 코드는 패키지와 용어, 논리가 엮인 구조물인데 문서도 알고 보면 마찬가지예요. 그러니 AI가 코딩하듯 PPT, 엑셀, 영상까지 만들어 낼 수 있다는 거예요. '코드 한 줄로 PPT 끝' 같은 영상이 넘쳐 나는 것도 이 때문이에요.</p>
+<h3>따라가기 벅찰 만큼 빠른 반년</h3>
+<p>발표자는 2025년 11월부터 2026년 6월까지를 한 장에 모아요. 왼쪽은 툴·에이전트(클로드 코드, 코덱스, 오픈클로, 헤르메스 에이전트)이고, 오른쪽 검은 칸은 같은 기간에 나온 모델 이름이에요. 발표자는 '페이블'이라는 모델이 너무 위험하다는 이유로 미국 정부가 수출을 통제해, 2주쯤 선택된 기관만 쓸 수 있었던 일도 언급해요.</p>
 <figure>
-  <img src="assets/frame-0420.png" alt="'만들기: 코딩 도구가 지식노동 도구로 번졌다' 슬라이드. 왼쪽은 코딩 도구 Claude Code, 오른쪽은 지식노동 도구 Claude Cowork예요">
-  <figcaption>원래는 코딩 도구였던 것이 지금은 지식 노동 도구로 쓰인다는 슬라이드예요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=260s" target="_blank" rel="noopener">영상 04:20에서 보기</a></figcaption>
+  <img src="assets/frame-0250.png" alt="'AI는 따라가기 벅찰 만큼 빠르다' 슬라이드. 2025.11 → 2026.6 기간에 Claude Code, Codex, OpenClaw, Hermes Agent와 GPT 5.5, Opus 4.8, Fable 5, GLM 5.2 같은 모델이 나열돼 있어요">
+  <figcaption>
+    툴, 에이전트, 모델이 동시에 쏟아진 기간이에요. 말로는 'GPT 5.6'이라고 했지만 슬라이드에는 GPT(Generative Pre-trained Transformer) 5.5로 적혀 있어요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=170s" target="_blank" rel="noopener">영상 02:50에서 보기</a>
+  </figcaption>
+</figure>
+<p>이 복잡한 흐름을 발표자는 두 갈래로 묶어요. 아래 두 버튼이 그 이름이에요. ① 만들기, ② 개인 비서예요.</p>
+<figure>
+  <img src="assets/frame-0345.png" alt="'최근 AI 활용은 크게 두 갈래로 갈린다' 슬라이드. ① 만들기, ② 개인 비서 두 버튼이 있어요">
+  <figcaption>
+    이 두 갈래가 1부 전체의 뼈대예요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=225s" target="_blank" rel="noopener">영상 03:45에서 보기</a>
+  </figcaption>
+</figure>
+<h3>만들기: 코딩 도구가 지식노동 도구가 됐어요</h3>
+<p>왼쪽이 '원래', 오른쪽이 '현재는'이에요. 클로드 코드 아래에는 '2025년 2월 말 베타 출시, 5월 말 공개', 오른쪽 클로드 코워크 아래에는 '2025년 1월 출시'라고 적혀 있어요. 클로드 코드는 원래 내 컴퓨터의 파일을 직접 다뤄 코딩을 잘하려고 만든 도구였어요. 그런데 사람들이 이걸로 문서를 편집하고, 마케팅 전략을 세우고, PPT를 만들기 시작했다고 해요.</p>
+<figure>
+  <img src="assets/frame-0430.png" alt="'만들기: 코딩 도구가 지식노동 도구로 번졌다' 슬라이드. 왼쪽 코딩 도구 CLAUDE CODE, 오른쪽 지식노동 도구 CLAUDE COWORK가 화살표로 이어져 있어요">
+  <figcaption>
+    같은 기술이 개발 밖으로 번진 흐름이에요. 날짜 표기는 아래 보충 설명과 함께 보세요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=270s" target="_blank" rel="noopener">영상 04:30에서 보기</a>
+  </figcaption>
 </figure>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>슬라이드에는 Claude Cowork가 '2025년 1월 출시'라고 적혀 있지만, Anthropic 릴리스 노트를 보면 Cowork 연구 프리뷰는 2026년 1월 12일에 Max 요금제용 macOS 데스크톱 앱으로 처음 나왔어요. 1월 16일에는 Pro 요금제로 넓어졌어요. 클로드 코드의 에이전트 기능을 코딩이 아닌 일에 쓰게 한 제품이라, 발표가 말하는 '만들기' 흐름을 Anthropic이 직접 제품으로 만든 셈이에요.</p>
-  <p class="cite">출처: <a href="https://support.claude.com/en/articles/12138966-release-notes" target="_blank" rel="noopener">Claude 릴리스 노트</a></p>
+  <p>클로드 코드는 2025년 5월 22일 Claude 4 발표와 함께 정식 출시됐어요. 슬라이드의 '5월 말 공개'와 맞아요.</p>
+  <p>코워크(Cowork)는 앤트로픽 릴리스 노트에 2026년 1월 12일 Max 요금제 macOS용 리서치 프리뷰로 처음 올라와 있어요. 슬라이드의 '2025년 1월'은 연도가 한 해 빨라요. 릴리스 노트는 코워크를 '클로드 코드의 에이전트 기능을 코딩 밖 지식노동으로 가져온 것'이라고 설명해요. 발표자가 말한 흐름과 같은 방향이에요.</p>
+  <p class="cite">출처: <a href="https://www.anthropic.com/news/claude-4" target="_blank" rel="noopener">Anthropic — Introducing Claude 4</a> · <a href="https://support.claude.com/en/articles/12138966-release-notes" target="_blank" rel="noopener">Claude 릴리스 노트</a></p>
 </aside>
+<p>발표자는 이 현상을 당연하게 봐요. 슬라이드 제목처럼 문서도 속은 코드라서예요. 왼쪽 상자에는 DOC(Document)·PPT·XLS(Excel Spreadsheet)·MP4(MPEG-4 Part 14) 아이콘이 있고 '속을 들여다보면 결국 다 코드'라고 적혀 있어요. 오른쪽에는 '코드 한 줄로 PPT 끝' 같은 유튜브 영상 썸네일이 보여요.</p>
+<figure>
+  <img src="assets/frame-0505.png" alt="'문서도 속은 코드' 슬라이드. 문서·PPT·영상 상자와 DOC, PPT, XLS, MP4 아이콘, 오른쪽에 '코드 한 줄로 PPT 끝' 썸네일과 PPT 장례식 사진이 있어요">
+  <figcaption>
+    파일이 결국 코드라서, 코드를 잘 쓰는 AI가 문서도 잘 만들어요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=305s" target="_blank" rel="noopener">영상 05:05에서 보기</a>
+  </figcaption>
+</figure>
 </section>
 
 <section id="s2">
   <a class="stamp" href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=322s" target="_blank" rel="noopener">05:22</a>
-  <h2>내 폰 속의 AI 비서와 LLM 위키</h2>
-<p>두 번째 흐름은 '개인 비서'예요. 예전에는 클로드 코드나 코덱스를 내 컴퓨터 앞에 앉아서만 쓸 수 있었어요. 오픈클로와 헤르메스 에이전트는 이 제약을 풀었어요.</p>
-<p>방식은 이래요. 에이전트를 내 컴퓨터에서 실행하면서 <span class="term" data-term="게이트웨이" data-desc="내 컴퓨터에서 도는 에이전트와 텔레그램·슬랙 같은 메신저 사이를 이어 주는 중계 프로세스예요. 덕분에 밖에서도 폰으로 에이전트를 불러요.">게이트웨이</span>를 하나 열어 둬요. 이 게이트웨이가 텔레그램, 디스코드, 슬랙 같은 메신저와 연결돼요. 그러면 밖에서도 폰 메신저로 나를 아는 AI 에이전트에게 일을 시킬 수 있어요.</p>
+  <h2>개인 비서와 LLM 위키</h2>
+<p>두 번째 갈래는 개인 비서예요. 슬라이드 왼쪽 검은 칸이 'PC · <span class="term" data-term="게이트웨이" data-en="Gateway" data-desc="내 컴퓨터에서 계속 돌면서 에이전트와 텔레그램·디스코드 같은 메신저를 이어 주는 프로세스예요. 이게 있어서 휴대폰으로도 집 컴퓨터의 에이전트를 부를 수 있어요." data-g="3">게이트웨이</span> · 24시간 가동'이고, 가운데 텔레그램·디스코드·슬랙을 거쳐 오른쪽 '폰 · 어디서나 · 나만의 AI'로 이어져요. 오픈클로와 헤르메스 에이전트는 내 컴퓨터에 게이트웨이를 띄워 두고 메신저와 이어 줘요. 그래서 컴퓨터 앞에 없어도 휴대폰으로 나를 아는 AI를 부를 수 있어요.</p>
 <figure>
-  <img src="assets/frame-0538.png" alt="'개인 비서: 나만의 AI가 모바일에서 24시간' 슬라이드. PC의 게이트웨이가 Telegram, Discord, Slack을 거쳐 휴대폰과 연결되는 그림이에요">
-  <figcaption>집에 있는 PC가 24시간 게이트웨이 역할을 하고, 메신저를 통해 폰에서 그 에이전트를 불러요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=338s" target="_blank" rel="noopener">영상 05:38에서 보기</a></figcaption>
+  <img src="assets/frame-0555.png" alt="'개인 비서: 나만의 AI가 모바일서 24시간' 슬라이드. PC 게이트웨이에서 Telegram, Discord, Slack을 거쳐 폰으로 이어지는 흐름도예요">
+  <figcaption>
+    컴퓨터는 집에서 계속 켜 두고, 사람은 메신저로만 말을 걸어요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=355s" target="_blank" rel="noopener">영상 05:55에서 보기</a>
+  </figcaption>
 </figure>
-<p>이 흐름이 실제 시장도 흔들었어요. 24시간 켜 둘 컴퓨터로 맥미니를 사는 사람이 몰리면서, 89만 원이던 가장 싼 모델이 품절되고 130만 원까지 올랐어요(2월 기준). 중국에서는 오픈클로의 상징인 가재를 빗대 '1인 1 가재'라며 사람들이 모여 에이전트를 설치하는 일까지 생겼어요.</p>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>오픈클로 공식 문서는 오픈클로를 '디스코드, 슬랙, 텔레그램, 왓츠앱 같은 채팅 앱을 AI 코딩 에이전트에 이어 주는 셀프 호스팅 게이트웨이'라고 소개해요. 헤르메스 에이전트(Nous Research)도 '메시징 게이트웨이' 문서에서 게이트웨이 프로세스 하나로 여러 메신저를 동시에 받아요. 두 도구 모두 에이전트가 내 컴퓨터나 서버에서 돌고, 메신저는 창구 역할만 한다는 점이 같아요.</p>
-  <p class="cite">출처: <a href="https://docs.openclaw.ai/" target="_blank" rel="noopener">OpenClaw 공식 문서</a> · <a href="https://hermes-agent.nousresearch.com/docs/user-guide/messaging/" target="_blank" rel="noopener">Hermes Agent 문서 — Messaging Gateway</a></p>
+  <p>두 프로젝트 모두 공식 저장소에서 같은 구조를 설명해요. 오픈클로는 '내 기기에서 돌아가며 디스코드·슬랙·텔레그램 등 이미 쓰는 채널에서 만나는 오픈소스 AI 비서'이고, 게이트웨이 하나를 띄워 개인 비서로 쓴다고 적혀 있어요. 헤르메스 에이전트는 Nous Research가 만들었고, 게이트웨이 프로세스 하나로 텔레그램·디스코드·슬랙 등을 지원한다고 해요. 두 저장소 모두 MIT(Massachusetts Institute of Technology) 라이선스예요.</p>
+  <p class="cite">출처: <a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">openclaw/openclaw (GitHub)</a> · <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">NousResearch/hermes-agent (GitHub)</a></p>
 </aside>
-<h3>카파시가 불을 붙인 LLM 위키</h3>
-<p>이 붐에 불을 하나 더 지핀 사람이 안드레 카파시예요. OpenAI 공동 창립자이자 테슬라 AI 디렉터였던 인물로, 발표자는 지금 Anthropic에 있다고 소개해요. 그가 4월 초 X에 '<span class="term" data-term="LLM 위키" data-desc="원본 자료를 LLM이 읽고 요약·연결해서 마크다운 위키로 계속 쌓아 가는 지식 베이스 방식이에요. 카파시가 2026년 4월 아이디어 파일로 공개했어요.">LLM 위키</span>'를 언급하면서 관심이 확 터졌어요.</p>
-<p>LLM 위키는 AI와 함께 편집하는 지식 베이스예요. PPT나 PDF는 AI가 읽고 이해하기 어려운 형태예요. 그래서 원본 PPT·PDF·웹 문서를 AI에게 던지면, AI가 이걸 소화해서 분해하고 연결한 다음 AI가 쓰기 좋은 형태로 저장해 둬요. 원본을 한 번 손질해 두는 셈이에요.</p>
+<p>이 바람은 하드웨어로도 번졌어요. 슬라이드에는 '가성비 좋은 맥미니로 24시간 나를 아는 에이전트를?'과 '중국에서 1인 1 가재를 위해 1000명 대기'가 적혀 있어요. 발표자 말로는 89만 원이던 가장 싼 맥미니가 2월에 품절되고 130만 원까지 올랐다고 해요. '가재'는 오픈클로의 마스코트예요.</p>
 <figure>
-  <img src="assets/frame-0746.png" alt="'LLM Wiki? AI가 함께 편집하는 지식베이스' 슬라이드. 원본(raw, 수집한 자료)을 ingest해서 wiki·지식그래프(분해, 연결, 축적)로 만드는 흐름이에요">
-  <figcaption>수집한 원본을 '소화(ingest)'하면 위키 안에서 노드끼리 연결된 지식 그래프가 계속 자라요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=466s" target="_blank" rel="noopener">영상 07:46에서 보기</a></figcaption>
+  <img src="assets/frame-0625.png" alt="'내 폰에도 나를 아는 AI!' 슬라이드. 맥미니 대란 설명 상자, '손바닥 PC 맥미니 품절대란' 기사 제목, 줄 선 사람들 사진(Source: Tencent)이 있어요">
+  <figcaption>
+    24시간 켜 둘 작고 싼 컴퓨터를 찾는 사람이 몰렸어요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=385s" target="_blank" rel="noopener">영상 06:25에서 보기</a>
+  </figcaption>
+</figure>
+<h3>카파시가 불붙인 LLM 위키</h3>
+<p>여기에 불을 붙인 사람이 안드레 카파시예요. 슬라이드 가운데 상자에 '2026.04.04 · LLM Wiki'와 경력(오픈AI 공동창립자, 전 테슬라 AI 디렉터, 현 Anthropic)이 적혀 있고, 오른쪽은 그가 X에 올린 'LLM Knowledge Bases' 글이에요.</p>
+<figure>
+  <img src="assets/frame-0712.png" alt="'안드레 카파시가 LLM 위키로 불을 붙였다' 슬라이드. 카파시 사진, 2026.04.04 LLM Wiki 상자, X 게시물 캡처가 있어요">
+  <figcaption>
+    발표자는 이 글을 계기로 트렌드가 한 번 더 붐을 맞았다고 봐요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=432s" target="_blank" rel="noopener">영상 07:12에서 보기</a>
+  </figcaption>
+</figure>
+<p><span class="term" data-term="LLM 위키" data-en="LLM Wiki" data-desc="원본 자료를 AI가 읽고 잘게 나눠 서로 연결한 마크다운 위키로 쌓아 두는 방식이에요. 카파시가 2026년 4월 제안했고, AI가 다시 읽고 쓰기 좋은 형태로 지식을 저장하는 게 목적이에요." data-g="2">LLM(Large Language Model) 위키</span>는 AI와 함께 편집하는 지식 베이스예요. PPT나 PDF(Portable Document Format)는 AI가 읽고 이해하기 어려운 형태예요. 그래서 슬라이드 왼쪽 'raw · 원본(수집한 자료)'을 AI에게 넘기면, AI가 이를 소화(ingest)해 오른쪽 '위키 · 지식그래프'로 만들어요. 위키 상자에는 '분해 + 연결 + 축적', '노드들이 서로 연결되며 계속 쌓인다'고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0800.png" alt="'LLM Wiki? AI가 함께 편집하는 지식베이스' 슬라이드. raw 원본 상자에서 ingest 화살표를 거쳐 wiki·지식그래프 상자로 이어지는 그림이에요">
+  <figcaption>
+    원본은 그대로 두고, AI가 다시 쓰기 좋은 형태로 한 번 손질해 쌓아 두는 거예요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=480s" target="_blank" rel="noopener">영상 08:00에서 보기</a>
+  </figcaption>
 </figure>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>카파시의 원문은 2026년 4월 4일 GitHub Gist에 올린 'llm-wiki.md'예요. 그는 이것을 '아이디어 파일'이라고 부르며 코덱스나 클로드 코드 같은 에이전트에 그대로 붙여 넣어 쓰라고 해요. 핵심은 RAG처럼 질문할 때마다 원본에서 조각을 다시 찾는 대신, LLM이 마크다운 위키를 계속 쌓고 고쳐 나간다는 점이에요. 원문에는 옵시디언과 직접 이어지는 문장도 있어요.</p>
-  <blockquote>
-    <p>Obsidian is the IDE; the LLM is the programmer; the wiki is the codebase.</p>
-    <p>옵시디언은 IDE, LLM은 프로그래머, 위키는 코드베이스예요.</p>
-    <cite>— Andrej Karpathy, llm-wiki.md</cite>
-  </blockquote>
-  <p class="cite">출처: <a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">Andrej Karpathy — llm-wiki.md (GitHub Gist)</a></p>
+  <p>카파시의 원문은 GitHub gist 'LLM Wiki'(llm-wiki.md, 2026년 4월 4일 작성)예요. 원본 자료는 'LLM이 읽기만 하고 고치지 않는(immutable)' 층으로 두고, 위키는 'LLM이 만든 마크다운 파일 디렉터리'로 LLM이 전부 관리해요. 그는 옵시디언을 이렇게 비유해요. "Obsidian is the IDE; the LLM is the programmer; the wiki is the codebase." 옵시디언이 개발 도구, LLM이 프로그래머, 위키가 코드베이스라는 뜻이에요. 발표자가 옵시디언을 고른 이유와 이어지는 대목이에요.</p>
+  <p>슬라이드의 '현 Anthropic' 경력은 이 gist에서 확인되지 않았어요. 발표자의 소개로 받아들이면 돼요.</p>
+  <p class="cite">출처: <a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">Andrej Karpathy — LLM Wiki (GitHub gist)</a></p>
 </aside>
 </section>
 
 <section id="s3">
   <a class="stamp" href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=505s" target="_blank" rel="noopener">08:25</a>
-  <h2>AI OS, 사실은 70년 된 꿈이에요</h2>
-<p>LLM 위키가 떠오르면서 발표자는 두 개의 축이 또렷해졌다고 봐요.</p>
-<ul>
-  <li><strong>AI 모델</strong>: 기억력이 길어지고 대화 이력도 오래 기억하고, 성능도 좋아졌어요. 발표자의 표현으로는 '알잘딱깔센'하게 똑똑해졌어요. 발표자는 Anthropic이 2026년 6월 4일에 AI 모델이 스스로 발전할 수 있는 수준이 됐다고 공개했다고 말해요. 슬라이드에는 이 부분에 물음표 세 개가 붙어 있어요.</li>
-  <li><strong>지식</strong>: 내가 쌓은 데이터, 도메인 지식, 암묵지와 형식지처럼 나만 가진 지식이에요.</li>
-</ul>
+  <h2>AI OS는 새로운 생각이 아니에요</h2>
+<p>발표자는 지금의 흐름을 두 축으로 정리해요. 왼쪽 초록 칸 'AI 모델'에는 '긴 기억력 + 히스토리', '뛰어난 성능', '자기 발전???(2026. 6. 4.)'이 있고, 아래에 '알잘딱깔센!'이라고 적혀 있어요. 오른쪽 빨간 칸 '지식'에는 '나의 고유 지식', '내가 쌓은 데이터, 도메인 지식, 암묵지/형식지'가 들어 있어요.</p>
 <figure>
-  <img src="assets/frame-0844.png" alt="'두 개의 축 — AI 모델 + 지식' 슬라이드. 왼쪽 AI 모델(긴 기억력과 히스토리, 뛰어난 성능, 자기 발전???(2026.6.4.), 알잘딱깔센), 오른쪽 지식(나의 고유 지식: 내가 쌓은 데이터, 도메인 지식, 암묵지/형식지)이에요">
-  <figcaption>AI 모델과 나의 고유한 지식, 이 둘을 더하면 AI OS가 돼요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=524s" target="_blank" rel="noopener">영상 08:44에서 보기</a></figcaption>
+  <img src="assets/frame-0915.png" alt="'두 개의 축 — AI 모델 + 지식' 슬라이드. AI 모델 칸과 지식 칸이 더하기 기호로 이어져 있어요">
+  <figcaption>
+    모델은 알아서 똑똑해지고, 지식은 내가 쌓아요. 둘이 더해져야 해요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=555s" target="_blank" rel="noopener">영상 09:15에서 보기</a>
+  </figcaption>
 </figure>
-<p>발표자는 이 둘을 합친 것을 '나만의 AI OS'라고 불러요. 온라인에서는 '에이전틱 OS', '클로드 OS' 같은 이름으로도 돌아다녀요. 아이언맨의 자비스처럼 사람의 인지 능력 일부를 AI에게 맡기는 시대가 왔다는 뜻이에요.</p>
-<h3>사실 새로운 게 아니에요</h3>
-<p>발표자는 이 흐름이 결코 새롭지 않다고 강조해요. 생각과 기억을 기계에 맡기려는 시도는 1945년까지 거슬러 올라가요. 미국의 과학자 버니바 부시가 '메모리 익스텐더', 곧 <span class="term" data-term="메멕스" data-desc="1945년 버니바 부시가 구상한 가상의 기계예요. 사람이 읽고 쓴 모든 것을 저장하고 연결해 기억을 넓혀 준다는 아이디어로, 하이퍼텍스트의 원조로 꼽혀요.">메멕스</span>라는 아이디어를 내놨어요. 사람이 읽고 생각하는 일을 기계에 맡긴다는 구상이었어요.</p>
+<p>'자기 발전'에 물음표 세 개가 붙은 데는 이유가 있어요. 발표자는 2026년 6월 4일 앤트로픽이 'AI 모델이 스스로 발전할 수 있는 수준이 됐다'고 공개했다고 말해요. 이 날짜와 발표는 발표자가 든 근거이고, 이 문서에서 따로 확인하지는 않았어요.</p>
+<p>두 축이 합쳐진 것을 발표자는 '나만의 AI OS의 시대'라고 불러요. 슬라이드 공식은 'AI(툴·프로세스) + KB(나의 지식)'예요. 아래에는 'AGENTIC OS 2.0', 'Claude OS' 같은 유튜브 영상 썸네일이 있어요. 온라인에서 같은 생각을 여러 이름으로 부른다는 뜻이에요.</p>
 <figure>
-  <img src="assets/frame-1019.png" alt="'인지 확장의 꿈은 70년 전부터' 슬라이드. 1945년 Memex(Memory Extender, 'As We May Think')와 Vannevar Bush 사진이 있어요">
-  <figcaption>읽고 쓴 모든 것을 기계가 대신 기억하고 꺼내 주는 메멕스 구상이에요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=619s" target="_blank" rel="noopener">영상 10:19에서 보기</a></figcaption>
+  <img src="assets/frame-0940.png" alt="'나만의 AI OS의 시대' 슬라이드. AI(툴·프로세스) Artificial Intelligence + KB(나의 지식) Knowledge Base 공식과 AGENTIC OS 2.0, Claude OS 썸네일이 있어요">
+  <figcaption>
+    발표자가 말하는 AI OS는 '도구 + 내 지식'이에요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=580s" target="_blank" rel="noopener">영상 09:40에서 보기</a>
+  </figcaption>
 </figure>
-<p>그 뒤에도 지식을 잘 관리하려는 시도는 이어졌어요. 생성형 AI가 대중화되기 전에는 티아고 포르테가 책 『<span class="term" data-term="세컨드 브레인" data-desc="머릿속 대신 디지털 노트에 지식을 모아 두고 다시 꺼내 쓰는 개인 지식 저장소예요. 티아고 포르테가 같은 이름의 책으로 널리 알렸어요.">세컨드 브레인</span>』으로 이 흐름을 대중화했어요. 우리는 늘 많이 보고 읽고 듣지만, 그 정보는 흩어지고 휘발돼요. 이것을 나중에 찾고 다시 쓸 수 있게 관리하자는 게 개인 지식관리, 곧 <span class="term" data-term="PKM" data-desc="Personal Knowledge Management, 개인 지식관리예요. 보고 읽고 들은 것을 흩어지지 않게 모아서 나중에 찾고 다시 쓰도록 관리하는 방법이에요.">PKM</span>이에요.</p>
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>발표자는 '2021년도부터' 세컨드 브레인이 대중화됐다고 말해요. 티아고 포르테의 책 『Building a Second Brain』이 실제로 나온 날은 2022년 6월 17일이에요. 포르테는 책보다 앞서 몇 년 동안 같은 이름의 온라인 강의를 운영했어요. 그래서 '그 무렵부터 알려졌다'는 말과 책 출간 연도는 따로 봐야 해요.</p>
-  <p class="cite">출처: <a href="https://fortelabs.com/blog/final-book-update-my-book-is-out-in-the-world/" target="_blank" rel="noopener">Forte Labs — Building a Second Brain Is Out in the World</a></p>
-</aside>
-<p>그럼 이번엔 뭐가 다를까요? 오래된 지식관리 분야(1945~)와 새로운 AI 에이전트 흐름(2022년 11월~)이 카파시의 LLM 위키에서 만났어요. AI가 지식을 알아서 이해할 만큼 똑똑해진 지금, 발표자는 모든 개인과 조직이 자기 OS를 만드는 속도가 크게 붙을 거라고 내다봐요.</p>
+<h3>사실, 새로운 게 아니에요</h3>
+<p>발표자는 이 꿈이 70년도 더 됐다고 강조해요. 1945년 버니바 부시가 제안한 메멕스(Memory Extender)예요. 슬라이드 설명은 '읽고 쓰는 모든 걸 외부 기계가 사람 대신 기억하고 꺼내 준다는 아이디어'예요. 왼쪽 사진이 메멕스 책상 모형, 아래가 부시예요.</p>
 <figure>
-  <img src="assets/frame-1210.png" alt="'PKM × AI = 폭발 → AI OS' 슬라이드. 개인지식관리(PKM, 1945~)와 AI 에이전트(2022.11~)가 만나 LLM Wiki에서 터졌다고 정리해요">
-  <figcaption>두 흐름이 LLM 위키에서 만나 'AI OS'로 터졌다는 정리예요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=730s" target="_blank" rel="noopener">영상 12:10에서 보기</a></figcaption>
+  <img src="assets/frame-1042.png" alt="'인지 확장의 꿈은 70년 전부터' 슬라이드. 1945 MemeX, Memory Extender, As We May Think 설명과 메멕스 책상 사진, Vannevar Bush 사진이 있어요">
+  <figcaption>
+    사람의 기억과 생각을 기계에 맡기려는 생각은 생성형 AI보다 훨씬 오래됐어요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=642s" target="_blank" rel="noopener">영상 10:42에서 보기</a>
+  </figcaption>
+</figure>
+<p>그 뒤로도 지식을 잘 관리하려는 시도는 계속됐어요. 슬라이드 왼쪽 '흩어진 정보'(카톡·드라이브, 이메일·다운로드, 다양한 경로에 산재)가 '휘발되는 우리의 기억'이에요. 이를 '<span class="term" data-term="세컨드 브레인" data-en="Second Brain" data-desc="흩어진 메모·자료를 한곳에 모아 다시 찾고 재활용하게 만든 개인 지식 저장소예요. 티아고 포르테의 책으로 널리 알려졌고, 발표에서는 &#x27;2번째 두뇌&#x27;에 해당해요." data-g="6">세컨드 브레인</span> · PKM(Personal Knowledge Management)'으로 한곳에 모아 관리하자는 흐름을 2021년쯤 티아고 포르테가 책으로 대중화했어요. 오른쪽이 그 책 『Building a Second Brain』과 한국어판 『세컨드 브레인』이에요.</p>
+<figure>
+  <img src="assets/frame-1112.png" alt="'지식관리도 오래된 분야' 슬라이드. 흩어진 정보 상자에서 Second Brain·PKM 상자로 이어지고, Tiago Forte 사진과 책 표지 두 권이 있어요">
+  <figcaption>
+    흩어지고 휘발되는 정보를 다시 찾아 쓸 수 있게 모아 두는 게 개인지식관리예요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=672s" target="_blank" rel="noopener">영상 11:12에서 보기</a>
+  </figcaption>
+</figure>
+<p>그럼 이번엔 뭐가 다를까요? 왼쪽 '과거 · 정적 도구'에는 '사람이 다 정리·유지해야'라고, 오른쪽 '지금 · AI 학습 + <span class="term" data-term="하네스" data-en="Harness" data-desc="모델을 감싸 실제 일을 하게 만드는 실행 틀이에요. 도구 호출, 파일 접근, 기억 관리 같은 걸 맡아요. 클로드 코드나 헤르메스 에이전트가 이 역할을 해요." data-g="4">하네스</span>'에는 '대충 말해도 알아서…, 효율성에 대한 기대 + 환상'이라고 적혀 있어요. 예전 지식관리는 정리하는 수고 때문에 포기하기 쉬웠어요. 이제는 클로드 코드나 헤르메스 에이전트가 그 수고를 맡아요.</p>
+<figure>
+  <img src="assets/frame-1145.png" alt="'그런데 이번엔 다르다' 슬라이드. 과거 정적 도구와 지금 AI 학습 + 하네스를 비교하고, 오른쪽에 CLAUDE CODE, HERMES AGENT 로고가 있어요">
+  <figcaption>
+    '환상'이라는 단어도 함께 적혀 있어요. 발표자도 기대가 과장될 수 있다는 걸 짚어요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=705s" target="_blank" rel="noopener">영상 11:45에서 보기</a>
+  </figcaption>
+</figure>
+<p>그래서 발표자의 공식은 'PKM × AI = 폭발 → AI OS'예요. 왼쪽 위 '개인지식관리(PKM)'는 1945년부터 이어진 오래된 분야이고, 왼쪽 아래 'AI 에이전트'는 2022년 11월부터의 새 흐름이에요. 둘이 카파시의 LLM 위키에서 만나 '빵 터졌다'는 거예요. 발표자는 앞으로 모든 개인과 조직이 자기 OS를 만드는 속도가 붙을 거라고 봐요.</p>
+<figure>
+  <img src="assets/frame-1212.png" alt="'PKM × AI = 폭발 → AI OS' 슬라이드. 개인지식관리(PKM, 1945~)와 AI 에이전트(2022.11~)가 더해져 LLM Wiki 상자로 이어져요">
+  <figcaption>
+    오래된 지식관리와 새로운 AI 에이전트가 만난 지점이 AI OS예요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=732s" target="_blank" rel="noopener">영상 12:12에서 보기</a>
+  </figcaption>
 </figure>
 </section>
 
 <section id="s4">
   <a class="stamp" href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=732s" target="_blank" rel="noopener">12:12</a>
-  <h2>세 개의 두뇌, 브레인 트리니티</h2>
-<p>AI OS, LLM 위키, 세컨드 브레인, <span class="term" data-term="하네스" data-desc="모델 바깥에서 도구, 메모리, 규칙, 실행 환경을 묶어 에이전트가 일하게 해 주는 틀이에요. 같은 모델도 하네스에 따라 성능이 크게 달라져요.">하네스</span>처럼 인터넷에는 같은 아이디어를 가리키는 말이 너무 많아요. 발표자는 이 트렌드를 이해할 하나의 틀로 '세 개의 두뇌'를 제안해요. 이름하여 브레인 트리니티이고, 채널 이름이기도 해요. 우리가 AI를 쓸 때는 세 개의 두뇌가 동시에 움직인다는 거예요.</p>
-<div class="table-scroll">
-  <table>
-    <thead><tr><th>두뇌</th><th>무엇인가요</th><th>하는 일</th></tr></thead>
-    <tbody>
-      <tr><td>1st 브레인 · 나</td><td>내 전전두엽, 내 판단</td><td>관찰, 판단, 영감, 결정</td></tr>
-      <tr><td>2nd 브레인 · 지식</td><td>내 컴퓨터에 쌓인 지식과 정보</td><td>저장, 검색, 분류</td></tr>
-      <tr><td>3rd 브레인 · AI</td><td>생성형 AI 기반 에이전트</td><td>확장, 응용, 적용</td></tr>
-    </tbody>
-  </table>
-</div>
+  <h2>세 개의 두뇌로 보는 AI OS</h2>
+<p>AI OS, LLM 위키, 에이전트, 세컨드 브레인, 하네스. 슬라이드 왼쪽에 흐리게 나열된 말들이에요. 같은 생각을 가리키는데 부르는 이름이 제각각이에요. 발표자는 이걸 '세 개의 두뇌, Brain Trinity'라는 직관적인 틀 하나로 정리해요. 그의 유튜브 채널 이름이기도 해요.</p>
 <figure>
-  <img src="assets/frame-1407.png" alt="'세 두뇌의 역할' 슬라이드. 1st 나(관찰·판단·영감·결정), 2nd 지식(저장·검색·분류), 3rd AI(확장·응용·적용) 세 칸이에요">
-  <figcaption>세 두뇌가 맡는 일이 서로 달라요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=847s" target="_blank" rel="noopener">영상 14:07에서 보기</a></figcaption>
+  <img src="assets/frame-1245.png" alt="'표현은 제각각 → 하나의 프레임으로' 슬라이드. 왼쪽에 AI OS? LLM 위키? 에이전트? 세컨드 브레인? 하네스? 가 있고, 오른쪽에 세 개의 두뇌 3 Brains, Brain Trinity가 있어요">
+  <figcaption>
+    용어는 달라도 구조는 같다는 게 발표자의 주장이에요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=765s" target="_blank" rel="noopener">영상 12:45에서 보기</a>
+  </figcaption>
 </figure>
-<p>1st 브레인은 사람만 할 수 있는 일을 해요. 발표자는 지금 무대에서 떨리는 이 감정을 AI가 느낄 수 없다고 예를 들어요. 이 경험을 기록해 두면 2nd 브레인에 쌓이고, 3rd 브레인은 사람이 느끼고 저장한 데이터를 가지고 넓히고 응용해요.</p>
-<h3>셋은 이렇게 서로 주고받아요</h3>
-<p>맛집 예시로 보면 쉬워요.</p>
-<ol>
-  <li>인터넷에서 좋은 맛집을 보고 옵시디언(2nd)에 저장해요.</li>
-  <li>AI(3rd)에게 '이번 주말 아내와 서울에서 갈 맛집'을 물어봐요.</li>
-  <li>AI가 내가 전에 저장해 둔 맛집을 꺼내 와서 추천해요.</li>
-  <li>'계획 세워 드릴까요?'에 그렇다고 하면, AI가 일정 문서를 만들어 다시 옵시디언에 저장해요.</li>
-  <li>나(1st)는 그 문서를 보며 기억을 강화하거나 결정을 내려요.</li>
-</ol>
+<p>세 두뇌는 위에서부터 '제1의 두뇌 · 나', 왼쪽 아래 노트북 옆 '제2의 두뇌 · 지식', 오른쪽 아래 '제3의 두뇌 · AI'예요. AI를 활용할 때 이 셋이 동시에 작용한다고 해요.</p>
 <figure>
-  <img src="assets/frame-1539.png" alt="'셋은 연결돼 상호작용한다' 슬라이드. 1st 나, 2nd 지식, 3rd AI 사이로 저장·활용·결과·기억 강화 화살표가 순환하는 그림이에요">
-  <figcaption>나·지식·AI 사이에서 저장과 활용, 기억 강화가 돌고 도는 구조예요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=939s" target="_blank" rel="noopener">영상 15:39에서 보기</a></figcaption>
+  <img src="assets/frame-1330.png" alt="'브레인 트리니티 — 세 개의 두뇌' 슬라이드. 뇌 그림 아래 나, 노트북 옆 지식, AI 로고 옆 AI 상자가 삼각형으로 놓여 있어요">
+  <figcaption>
+    나·지식·AI가 꼭짓점 하나씩을 맡아요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=810s" target="_blank" rel="noopener">영상 13:30에서 보기</a>
+  </figcaption>
 </figure>
-<p>그런데 대중의 관심은 오직 3rd 브레인, 곧 어떤 AI 도구가 좋은지에만 쏠려 있어요. 발표자는 정작 더 중요한 건 어떤 데이터를 저장하느냐, 그리고 내가 그걸 어떻게 쓰느냐라고 짚어요. 좋은 도구만 찾는 대신 1st와 2nd를 챙기라는 게 이 발표 전체를 꿰는 메시지예요.</p>
+<p>각 두뇌가 맡는 일은 아래 세 칸에 적혀 있어요. 1st·나는 '관찰·판단·영감·결정', 2nd·지식은 '저장·검색·분류', 3rd·AI는 '확장·응용·적용'이에요. 발표자는 무대에서 느끼는 떨림을 예로 들어요. 그 감정은 AI가 느낄 수 없어요. 내가 그 경험을 기록하면 2번째 두뇌에 들어가고, AI는 그 기록을 가지고 확장하고 응용해요.</p>
+<figure>
+  <img src="assets/frame-1420.png" alt="'세 두뇌의 역할' 슬라이드. 1st·나 관찰·판단·영감·결정, 2nd·지식 저장·검색·분류, 3rd·AI 확장·응용·적용 세 칸이에요">
+  <figcaption>
+    판단은 사람에게 남고, AI는 쌓인 기록을 넓혀 써요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=860s" target="_blank" rel="noopener">영상 14:20에서 보기</a>
+  </figcaption>
+</figure>
+<p>셋이 어떻게 맞물리는지는 다음 슬라이드에 화살표로 그려져 있어요. 부제는 '내가 AI에 명령하면, AI가 제2의 두뇌에 쌓인 지식으로 해낸다'예요. 빨간 화살표는 나→지식 '저장', 지식→AI '활용', 나→AI '명령'이에요. 파란 화살표는 지식→나 '기억 강화', AI→지식 '작성'이에요.</p>
+<figure>
+  <img src="assets/frame-1600.png" alt="'셋은 연결돼 상호작용한다' 슬라이드. 1st 나, 2nd 지식, 3rd AI 사이에 저장·활용·명령(빨강)과 기억 강화·작성(파랑) 화살표가 있어요">
+  <figcaption>
+    파란 화살표 두 개가 핵심이에요. AI가 쓴 결과가 다시 지식이 되고, 그 지식이 다시 나를 일깨워요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=960s" target="_blank" rel="noopener">영상 16:00에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 이 고리를 맛집 예시로 풀어요. 아래 그림은 발표자가 말로 설명한 순서를 옮긴 거예요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  participant Me as 1번째 두뇌 · 나
+  participant Ob as 2번째 두뇌 · 옵시디언
+  participant AI as 3번째 두뇌 · AI
+  Me->>Ob: 인터넷에서 본 맛집 저장
+  Me->>AI: 이번 주말 아내랑 갈 서울 맛집 추천해 줘
+  AI->>Ob: 지난번 저장한 맛집 꺼내 오기
+  AI-->>Me: 저장해 둔 곳 중에서 추천
+  Me->>AI: 계획 세워 줘
+  AI->>Ob: 계획 문서 작성해 저장
+  Ob-->>Me: 문서를 보며 기억 강화와 결정
+</pre>
+  <figcaption>AI가 답을 지어내는 게 아니라, 내가 쌓아 둔 2번째 두뇌에서 꺼내 와요. 결과도 다시 2번째 두뇌에 쌓여요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=893s" target="_blank" rel="noopener">영상 14:53에서 보기</a></figcaption>
+</figure>
+<p>발표자가 안타까워하는 건 관심의 쏠림이에요. 슬라이드에서 1st·나와 2nd·저장은 흐리게, 빨간 테두리 안 3rd·AI만 진하게 그려져 있어요. 그 안의 아이콘은 클로드 코드, 코덱스, 오픈클로, 헤르메스예요. 다들 좋은 도구만 찾지만, 발표자는 어떤 데이터를 쌓고 어떻게 쓰는지가 더 중요하다고 말해요.</p>
+<figure>
+  <img src="assets/frame-1615.png" alt="'요즘 대중들의 관심은 오직 제3의 두뇌(AI)' 슬라이드. 흐린 1st 나, 2nd 저장 옆에 빨간 테두리로 강조된 3rd AI 상자와 도구 아이콘 네 개가 있어요">
+  <figcaption>
+    도구는 바꿀 수 있지만, 쌓은 기록은 내 것으로 남아요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=975s" target="_blank" rel="noopener">영상 16:15에서 보기</a>
+  </figcaption>
+</figure>
 </section>
 
 <section id="s5">
   <a class="stamp" href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1005s" target="_blank" rel="noopener">16:45</a>
-  <h2>왜 옵시디언인가요?</h2>
-<p>더 중요하다고 한 2nd 브레인으로 요즘 가장 많이 선택되는 게 옵시디언이에요. 객석에 물어보니 3분의 1 정도가 이름을 들어 봤다고 했어요. 발표자는 옵시디언을 'AI를 위해 최적화된 노트 앱'이라고 소개하며 이유를 네 가지 들어요.</p>
-<ol>
-  <li><strong>로컬</strong>: 모든 노트가 클라우드가 아니라 내 컴퓨터에 저장돼요. 클라우드에 있으면 결국 내 데이터가 아니라는 게 발표자의 생각이에요.</li>
-  <li><strong>마크다운</strong>: AI가 문서를 만들고 읽고 이해하는 형식이에요. 그래서 클로드 코드나 코덱스가 내 노트를 바로 읽을 수 있어요.</li>
-  <li><strong>무료</strong>: 업무용으로도 무료로 쓸 수 있고, 플러그인 생태계가 있어요.</li>
-  <li><strong>연결</strong>: 가장 큰 장점이에요. 노트끼리 링크로 이어져요.</li>
-</ol>
+  <h2>왜 옵시디언일까요?</h2>
+<p>그래서 발표자는 더 중요한 2번째 두뇌로 넘어가요. 슬라이드 왼쪽 상자는 'Obsidian + Claude Code · 요즘 제일 인기 조합 · 제2의 두뇌로 가장 많이 선택되는 옵시디언, 그 위에 클로드 코드'예요. 오른쪽은 '이 조합이면 두 번째 두뇌가 완성됩니다', 'KNOWS EVERYTHING' 같은 유튜브 썸네일이에요. 청중 가운데 옵시디언을 들어 본 사람은 3분의 1쯤이었어요.</p>
 <figure>
-  <img src="assets/frame-1723.png" alt="'왜 옵시디언인가' 슬라이드. 왼쪽에 로컬·마크다운·무료+플러그인 생태계, 오른쪽에 최대 장점인 '노트끼리 이어진다'가 적혀 있어요">
-  <figcaption>로컬, 마크다운, 무료, 그리고 노트 간 연결이 옵시디언을 고르는 이유예요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1043s" target="_blank" rel="noopener">영상 17:23에서 보기</a></figcaption>
+  <img src="assets/frame-1650.png" alt="'더 중요한 2nd Brain — 옵시디언' 슬라이드. Obsidian + Claude Code 인기 조합 설명 상자와 유튜브 썸네일 두 장이 있어요">
+  <figcaption>
+    2번째 두뇌로는 옵시디언, 3번째 두뇌로는 클로드 코드를 얹는 조합이에요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1010s" target="_blank" rel="noopener">영상 16:50에서 보기</a>
+  </figcaption>
 </figure>
-<p>연결이 왜 중요할까요? 사람은 평소에 연결하고 연상하면서 생각해요. 그 원리 그대로 기록해 두면, AI도 사람의 생각을 따라 링크를 하나씩 타고 가며 관련 파일을 읽어 올 수 있어요.</p>
+<p>발표자는 옵시디언이 'AI 활용을 위해 최적화된 노트 앱'이라고 말해요. 왼쪽 상자의 세 가지가 그 이유예요. ① 로컬: 내 컴퓨터에 저장, 안전하다. ② <span class="term" data-term="마크다운" data-en="Markdown" data-desc="#, - 같은 기호로 제목과 목록을 표시하는 평범한 텍스트 문서 형식이에요. 구조가 단순해서 AI가 읽고 쓰기 쉬워요. 옵시디언 노트가 이 형식이에요." data-g="7">마크다운</span>: AI와의 소통 언어. ③ 무료 + 플러그인 생태계. 오른쪽 검은 상자가 최대 장점인 연결이에요. '노트끼리 이어진다, 두뇌가 생각하는 방식대로 AI도 흩어진 노트를 넘나든다.'</p>
+<figure>
+  <img src="assets/frame-1740.png" alt="'왜 옵시디언인가' 슬라이드. 왼쪽에 로컬, 마크다운, 무료 + 플러그인 생태계 세 이유, 오른쪽에 최대 장점 · 연결 상자가 있어요">
+  <figcaption>
+    파일이 내 컴퓨터에 마크다운으로 있으니, 클로드 코드가 바로 열어 읽을 수 있어요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1060s" target="_blank" rel="noopener">영상 17:40에서 보기</a>
+  </figcaption>
+</figure>
+<p>로컬과 마크다운이 합쳐지면 이런 일이 돼요. 클로드 코드나 코덱스는 내 컴퓨터의 파일을 직접 읽어요. 옵시디언 노트는 바로 그 컴퓨터에, AI가 잘 읽는 마크다운으로 저장돼 있어요. 클라우드 노트 앱처럼 내보내기나 연동을 거칠 필요가 없어요. 연결은 사람이 연상하며 생각하는 방식 그대로 기록하게 해 줘요. 그러면 AI도 그 연결을 따라가며 관련 파일을 읽어 와요.</p>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>옵시디언은 예전에는 회사에서 쓰려면 유료 상업용 라이선스가 필요했어요. 2025년 2월 20일 공식 블로그에서 '이제 업무용으로도 무료'라고 발표했고, 지금 라이선스 페이지에는 개인·상업·비영리·교육·정부 등 어떤 용도로든 무료로 쓸 수 있다고 적혀 있어요. 상업용 라이선스는 이제 후원 성격의 선택 사항이에요.</p>
-  <p class="cite">출처: <a href="https://obsidian.md/blog/free-for-work/" target="_blank" rel="noopener">Obsidian 블로그 — Obsidian is now free for work</a> · <a href="https://obsidian.md/license" target="_blank" rel="noopener">Obsidian 라이선스</a></p>
+  <p>'업무용으로도 무료'는 옵시디언 공식 블로그에서 확인돼요. 2025년 2월 20일 공지에 따르면, 예전에는 직원 2명 이상 회사에서 업무로 쓰려면 상업용 라이선스를 사야 했어요. 이제는 그 라이선스가 선택 사항이 됐고, 노트는 여전히 로컬에 평범한 마크다운 파일로 저장된다고 해요.</p>
+  <p class="cite">출처: <a href="https://obsidian.md/blog/free-for-work/" target="_blank" rel="noopener">Obsidian 공식 블로그 — Obsidian is now free for work</a></p>
 </aside>
-<h3>2021년부터 쌓인 인생 기록</h3>
-<p>발표자는 2021년부터 옵시디언을 써 왔어요. 실제 <span class="term" data-term="볼트" data-desc="옵시디언에서 노트를 모아 두는 폴더 하나를 부르는 말이에요. 그냥 내 컴퓨터의 폴더라서 다른 AI 도구도 그대로 읽을 수 있어요.">볼트</span>를 열어 그래프 뷰를 보여 주는데, 점 하나하나가 노트예요. 화면에 보이는 건 최근 2년치이고, 그 전 기록은 아카이브로 옮겼어요. 새로운 걸 받아들일 때마다 관련된 기억과 노트를 일일이 연결해서 만든 '나의 두뇌'라고 설명해요.</p>
+<p>발표자는 2021년부터 옵시디언을 써 왔어요. 슬라이드 오른쪽 상자에는 'Brain Trinity · 제 두뇌 + 제 인생 · 계획·일기·콘텐츠·공부·업무. 이 발표조차 제 AIOS로.'라고 적혀 있어요. 가운데 둥근 덩어리가 노트끼리의 연결을 보여 주는 <span class="term" data-term="그래프 뷰" data-en="Graph view" data-desc="옵시디언에서 노트를 점으로, 노트 사이 링크를 선으로 보여 주는 화면이에요. 노트가 얼마나 서로 이어져 있는지 한눈에 볼 수 있어요." data-g="8">그래프 뷰</span>예요.</p>
 <figure>
-  <img src="assets/frame-1958.png" alt="발표자의 옵시디언 볼트 화면. 왼쪽에 Brain, Calendar, Goals, Journal 같은 폴더와 데일리 노트 목록이, 오른쪽에 수많은 노트가 점으로 얽힌 그래프 뷰가 있어요">
-  <figcaption>왼쪽 폴더에 일기, 연간 목표, 개인적인 생각이 들어 있고, 오른쪽 그래프 뷰의 점이 각각 노트예요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1198s" target="_blank" rel="noopener">영상 19:58에서 보기</a></figcaption>
+  <img src="assets/frame-1900.png" alt="'2021~ 나의 인생이 여기에' 슬라이드. 옵시디언 화면과 수많은 점으로 된 원형 그래프, Brain Trinity 상자가 있어요">
+  <figcaption>
+    이 발표 자료도 같은 AI OS로 만들었다고 해요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1140s" target="_blank" rel="noopener">영상 19:00에서 보기</a>
+  </figcaption>
 </figure>
-<p>화려하게 꾸민 볼트는 아니에요. 대신 개인적인 생각, 일기, 연간 목표까지 인생이 통째로 담겨 있어요. 발표자는 컴퓨터를 도난당하면 기계보다 데이터를 잃는 게 더 크다고 말할 정도예요. 이 볼트를 AI에게 넘겨주고 네 가지 방식으로 쓰고 있어요.</p>
+<p>이어서 실제 볼트를 열어 보여 줘요. 왼쪽 폴더 목록에는 Brain(Archive, Brain Trinity, Daily QnA, Knowledge, Me Myself &amp; I, Zettels 등)과 Calendar(AI_Logs, Briefings, Goals, Journal 등)가 보여요. 오른쪽 그래프 뷰의 점 하나하나가 노트예요. 발표자 말로는 이게 2년 치이고, 그 전 2~3년 치는 따로 보관했다고 해요. 새로운 걸 받아들일 때마다 관련 기억과 노트를 하나하나 이어 만든 자신의 두뇌라고 소개해요.</p>
+<figure>
+  <img src="assets/frame-2000.png" alt="발표자의 옵시디언 화면. 왼쪽에 Brain, Calendar 아래 여러 폴더, 가운데 날짜별 데일리 노트 목록, 오른쪽에 원형 그래프 뷰가 있어요">
+  <figcaption>
+    일기, 연간 목표, 개인적인 생각까지 다 들어 있어요. 발표자는 컴퓨터를 도난당하면 컴퓨터보다 이 데이터가 더 아깝다고 말해요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1200s" target="_blank" rel="noopener">영상 20:00에서 보기</a>
+  </figcaption>
+</figure>
 </section>
 
 <section id="s6">
   <a class="stamp" href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1230s" target="_blank" rel="noopener">20:30</a>
   <h2>시연: 아침 계획과 지식 기록</h2>
-<h3>시연 1: 아침 계획 세우기</h3>
-<p>플래너에 오늘의 일정과 중점 과제를 매일 아침 적는 건 꽤 번거로워요. 발표자는 이 일을 헤르메스 에이전트에게 맡겨요. 흐름은 이래요. 내가(1st) 오늘 계획을 부탁하면, 에이전트(3rd)가 캘린더·할 일·메일을 확인하고, 옵시디언(2nd)에 기록한 다음 할 일과 캘린더에 자동으로 등록해요.</p>
+<p>여기서부터는 발표자가 실제로 쓰는 장면이에요. 그는 네 가지 쓰임을 준비했어요. 각 시연 슬라이드는 어느 두뇌가 무엇을 맡는지 순서대로 보여 줘요. 네 장을 한 표로 모으면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>시연</th><th>사람(1번째 두뇌)</th><th>AI(3번째 두뇌)</th><th>남는 곳(2번째 두뇌)</th></tr></thead>
+    <tbody>
+      <tr><td>① 아침 계획 세우기</td><td>오늘의 계획을 물어요</td><td>헤르메스가 일정·할 일·기록을 보고 우선순위를 정해요</td><td>옵시디언 플래너, Todo + Calendar 자동 등록</td></tr>
+      <tr><td>② 지식 입력·기록</td><td>클리핑과 음성으로 인사이트를 말해요</td><td>헤르메스가 구조화하고 자동 정리해요</td><td>정해진 형식대로 노트에 저장</td></tr>
+      <tr><td>③ 콘텐츠 작성</td><td>아이디어를 발산해요</td><td>구조화하고 정리해요</td><td>옵시디언에 기록, 연관 노트와 연결</td></tr>
+      <tr><td>④ 자동 회고</td><td>24시간 활동 데이터를 남겨요</td><td>하루·주·월·분기·년 단위로 돌아봐요</td><td>계획과 회고가 함께 쌓여요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>네 시연 모두 같은 고리를 돌아요. 사람이 던지고, AI가 2번째 두뇌를 읽어 처리하고, 결과가 다시 2번째 두뇌에 쌓여요.</p>
+<h3>① 아침 계획 세우기</h3>
+<p>플래너에 오늘 일정과 할 일을 적고 중점을 정하는 건 번거로워요. 슬라이드는 이 과정을 '오늘의 계획(1st Brain) → 헤르메스(3rd Brain) → 옵시디언 기록(2nd Brain) → Todo + Calendar 자동 등록'으로 그려요. 위의 달력·체크·편지 아이콘이 에이전트가 확인하는 일정, 할 일, 메일이에요.</p>
 <figure>
-  <img src="assets/frame-2055.png" alt="'시연 1: 아침 계획 세우기' 슬라이드. 오늘의 계획(1st Brain) → 캘린더·할 일·메일을 읽는 에이전트(3rd Brain) → 옵시디언 기록(2nd Brain) → Todo+Calendar 자동 등록 흐름이에요">
-  <figcaption>세 두뇌가 아침 계획에서 어떤 순서로 움직이는지 보여 주는 슬라이드예요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1255s" target="_blank" rel="noopener">영상 20:55에서 보기</a></figcaption>
+  <img src="assets/frame-2050.png" alt="'시연 ① 아침 계획 세우기' 슬라이드. 오늘의 계획(뇌) → 헤르메스 캐릭터 → 옵시디언 기록 → Todo + Calendar 자동 등록 상자가 이어져요">
+  <figcaption>
+    사람은 묻기만 하고, 확인과 등록은 에이전트가 해요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1250s" target="_blank" rel="noopener">영상 20:50에서 보기</a>
+  </figcaption>
 </figure>
-<p>시연에서 에이전트는 캘린더와 할 일 앱, 지난 일주일·한 달 기록을 다 확인한 뒤 '오늘은 METACON 발표를 최종 점검하고 라이브 시연을 확인하는 게 우선'이라고 먼저 정리해 줘요. 이어서 플래너에 등록해 달라고 하자, 집에 있는 맥미니에서 돌던 에이전트가 옵시디언 데일리 노트의 비어 있던 플래너를 채웠어요. 오늘 무엇을 할지 고민하는 시간이 줄어서, 이동하면서도 계획을 세울 수 있다는 게 핵심이에요.</p>
-<h3>시연 2: 지식을 입력하고 기록하기</h3>
-<p>길에서 영상을 보다가 인사이트가 떠오르면 기록해야겠죠. 발표자는 뉴스레터 롱블랙을 즐겨 읽어요. 이번에 인상 깊었던 글은 '노인력: 끝없이 더하는 시대에 힘을 빼는 것'이었어요. 스스로 맥시멀리스트인 발표자에게 '빼고 덜어 내는 삶'이라는 메시지가 와닿았대요. 그래서 처음에는 그냥 막 적어 뒀어요.</p>
+<p>실제 화면은 텔레그램의 'Brainy' 대화창이에요. 발표자가 아침에 집을 나서며 오늘 계획을 세우자고 메시지를 보냈어요. 에이전트는 personal-knowledge-productivity-ops <span class="term" data-term="스킬" data-en="Skill" data-desc="에이전트가 특정 일을 할 때 불러 쓰는 지침과 스크립트 묶음이에요. 시연의 brain-add-seed처럼 &#x27;노트를 내 템플릿으로 정리하기&#x27; 같은 반복 작업을 담아 둬요." data-g="12">스킬</span>을 불러와 오늘 계획, 플래너, 브리핑, Todoist 정리 같은 관련 키워드와 파일 위치를 정리해 답해요. 뒤쪽 옵시디언 창에는 Calendar 폴더와 그래프 뷰가 보여요.</p>
 <figure>
-  <img src="assets/frame-2300.png" alt="'시연 2: 지식의 입력/기록하기' 슬라이드. 입력(1st Brain, 음성 메모) → 구조화(3rd Brain, 헤르메스) → 정해진 양식대로 저장(2nd Brain, 옵시디언) 흐름이에요">
-  <figcaption>대충 남긴 메모를 AI가 정해진 양식으로 구조화해 옵시디언에 저장하는 흐름이에요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1380s" target="_blank" rel="noopener">영상 23:00에서 보기</a></figcaption>
+  <img src="assets/frame-2130.png" alt="텔레그램 Brainy 대화창 화면. 계획 질문에 에이전트가 스킬을 불러와 핵심 키워드와 관련 파일 위치를 목록으로 답하고 있어요">
+  <figcaption>
+    에이전트가 캘린더, 할 일 앱, 지난 일주일·한 달의 기록을 스스로 찾아봐요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1290s" target="_blank" rel="noopener">영상 21:30에서 보기</a>
+  </figcaption>
 </figure>
-<p>AI가 나중에 이 노트를 잘 쓰려면 일정한 템플릿으로 정리돼 있어야 해요. 그래서 대충 적거나 폰으로 말로 남긴 메모를 AI에게 넘기며 '이 노트를 내 템플릿대로 정리해 줘'라고 해요. 발표자의 템플릿은 다음을 담아요.</p>
-<ul>
-  <li>언제, 어디서, 무엇을 읽었는지</li>
-  <li>그래서 내 생각은 무엇인지</li>
-  <li>이 내용을 나에게 어떻게 적용할 수 있는지</li>
-</ul>
-<p>AI는 여기에 'AI 관찰'도 덧붙여요. '브라이언, 이 노트는 네가 평소 중요하게 여기는 이것과 닮았어' 같은 식이에요. 마지막으로 볼트 안의 관련 노트를 찾아 알아서 연결해 줘요. 생각 하나가 기존 노트들과 이어지며 넓어지는 거예요.</p>
+<p>에이전트는 "메타콘 발표 최종 체크와 라이브 시연 체크가 우선순위"라고 답해요. 발표자가 "오케이 플래너에 등록해 줘"라고 하자, 집에 있는 맥미니에서 옵시디언 플래너 파일을 고쳐요. 대화창에는 '12:00 발표 준비 리허설', '계획: METACON 2026 발표 — 40분 + 라이브 시연', 'Planner 반영 위치: BriansBrain/Calendar/Planners/2026-07-04 D.md'가 보이고, 파일을 고치는 patch 기록도 이어져요.</p>
 <figure>
-  <img src="assets/frame-2555.png" alt="시연 화면. 왼쪽 에이전트 창에서 'brain add' 요청으로 brain-add-seed 스킬이 실행되고, 오른쪽 옵시디언에는 개요·기록의 이유·원본 소스·AI 관찰(brainify)·생각 섹션으로 정리된 노트가 열려 있어요">
-  <figcaption>'brain add'라는 짧은 명령으로 스킬을 불러 메모를 템플릿 노트로 바꾼 결과예요. AI 관찰 칸이 따로 붙어 있어요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1555s" target="_blank" rel="noopener">영상 25:55에서 보기</a></figcaption>
+  <img src="assets/frame-2230.png" alt="텔레그램 대화창에서 에이전트가 오늘 일정과 플래너 반영 위치를 알려 주고, 플래너 파일을 patch로 수정한 기록이 보이는 화면이에요. 뒤로 Main Focus 질문이 적힌 플래너가 보여요">
+  <figcaption>
+    이동하면서 메신저로 계획을 세우고, 기록은 집 컴퓨터의 옵시디언에 남아요. 발표자는 잠시 뒤 플래너가 그대로 채워진 것을 확인해요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1350s" target="_blank" rel="noopener">영상 22:30에서 보기</a>
+  </figcaption>
+</figure>
+<h3>② 지식을 입력하고 기록하기</h3>
+<p>길에서 영상을 보다 인사이트가 떠오르면 기록해야 해요. 슬라이드 흐름은 '입력: 클리핑 + 음성, 인사이트를 말로(1st Brain) → 헤르메스: 구조화, 자동 정리(3rd Brain) → 노트: 형식대로 저장(2nd Brain)'이에요.</p>
+<figure>
+  <img src="assets/frame-2310.png" alt="'시연 ② 지식의 입력 / 기록하기' 슬라이드. 입력(클리핑 + 음성) → 헤르메스(구조화, 자동 정리) → 노트(형식대로 저장) 세 상자예요">
+  <figcaption>
+    사람은 대충 말하고, 형식을 맞추는 건 AI가 해요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1390s" target="_blank" rel="noopener">영상 23:10에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 매일 아침 7~8시에 오는 롱블랙 뉴스레터를 읽어요. 왼쪽이 인상 깊게 읽은 글 '노인력: 끝없이 더하는 시대에 힘을 뺀다는 것'이에요. 맥시멀리스트인 그에게 '빼고 덜어 내며 살기'라는 메시지가 와닿았어요. 오른쪽 옵시디언 노트 '힘을 빼는 힘, 의식적으로 빼는다는 것 (RAW - 시연용)'이 그가 그냥 막 적은 메모예요.</p>
+<figure>
+  <img src="assets/frame-2340.png" alt="왼쪽에 롱블랙 글 '노인력: 끝없이 더하는 시대에 힘을 뺀다는 것', 오른쪽에 옵시디언 RAW 메모 노트가 열린 화면이에요">
+  <figcaption>
+    원본 메모는 형식 없이 생각나는 대로 적은 상태예요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1420s" target="_blank" rel="noopener">영상 23:40에서 보기</a>
+  </figcaption>
+</figure>
+<p>이 메모를 AI가 잘 쓰려면 템플릿대로 정리돼 있어야 해요. 발표자는 음성으로 "노인력 노트를 인상 깊게 읽었어, 정리해 줘"라고 말하고 brain add라고 붙여요. 왼쪽 창에서 AI가 brain-add-seed 스킬을 실행해요. 오른쪽에는 정리된 노트가 생겨요. '원본 소스 및 출처' 아래 'AI 관찰' 칸이 있고, 이어서 '2. 생각 - Resonate 공명 / Amplify 확장'이 붙어요.</p>
+<figure>
+  <img src="assets/frame-2530.png" alt="왼쪽 AI 창에서 brain-add-seed 스킬이 RAW 노트를 읽고 있고, 오른쪽에 원본 소스 및 출처, AI 관찰, 생각 - Resonate 공명 / Amplify 확장 항목이 생긴 정리 노트가 보이는 화면이에요">
+  <figcaption>
+    발표자만의 템플릿은 언제 어디서 무엇을 읽었는지, 내 생각, 나에게 어떻게 적용할지를 담아요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1530s" target="_blank" rel="noopener">영상 25:30에서 보기</a>
+  </figcaption>
+</figure>
+<p>AI 관찰은 "브라이언, 너는 이렇게 적었는데 이건 너의 본질과 닮았어" 같은 덧붙임이에요. 마지막 단계는 연결이에요. 'Integrate 통합' 아래 '연관 / 유사(Similar)'와 '다름 / 반대(Different)'로 나눠, 기존 옵시디언에 있던 관련 노트 링크를 달아 줘요. 이렇게 새 생각 하나가 기존 노트들과 이어지며 넓어져요.</p>
+<figure>
+  <img src="assets/frame-2610.png" alt="정리 노트의 Integrate 통합 부분. 연관/유사(Similar)와 다름/반대(Different) 항목 아래 기존 노트 링크와 설명이 달려 있어요">
+  <figcaption>
+    비슷한 노트만이 아니라 반대되는 노트도 이어 줘요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1570s" target="_blank" rel="noopener">영상 26:10에서 보기</a>
+  </figcaption>
 </figure>
 </section>
 
 <section id="s7">
   <a class="stamp" href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1573s" target="_blank" rel="noopener">26:13</a>
-  <h2>시연: 콘텐츠 작성과 자동 회고, 그리고 다른 사람들</h2>
-<h3>시연 3: 발산은 사람, 수렴은 AI</h3>
-<p>발표자가 가장 자주 쓰는 활용은 콘텐츠 작성이에요. 스스로 구조화는 어렵지만 발산은 누구보다 잘한다고 말해요. 그래서 생각을 쏟아 내는 건 사람이 하고, 정리하고 구조화하는 건 AI에게 맡겨요.</p>
+  <h2>시연: 콘텐츠 작성과 자동 회고</h2>
+<h3>③ 콘텐츠 작성: 발산은 사람, 수렴은 AI</h3>
+<p>발표자가 가장 많이 하는 일이에요. 그는 자신이 구조화는 어렵지만 발산은 누구보다 잘한다고 말해요. 슬라이드 위 두 칸이 '사람 · 발산 · 흩어진 생각을 막 풀어낸다'와 'AI · 수렴 · 맥락 정리 → 구조화'예요. 아래 네 칸은 '아이디어 발산(1st) → 옵시디언 기록(2nd) → 구조화 + 정리(3rd) → 연관 노트 연결(2nd)' 순서예요.</p>
 <figure>
-  <img src="assets/frame-2638.png" alt="'시연 3: 콘텐츠 작성 — 발산은 사람, 수렴은 AI' 슬라이드. 사람이 아이디어를 발산하고, 옵시디언에 기록하고, AI가 구조화·정리하고, 연관 노트와 연결하는 흐름이에요">
-  <figcaption>사람이 펼쳐 놓으면 AI가 모으고 정리해요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1598s" target="_blank" rel="noopener">영상 26:38에서 보기</a></figcaption>
+  <img src="assets/frame-2632.png" alt="'시연 ③ 콘텐츠 작성: 발산은 사람, 수렴은 AI' 슬라이드. 사람 발산, AI 수렴 상자 아래 아이디어 발산 → 옵시디언 기록 → 구조화 + 정리 → 연관 노트 연결 네 칸이 있어요">
+  <figcaption>
+    자기 약점인 구조화를 AI에게 맡기는 방식이에요. 슬라이드의 '3nd Brain'은 3rd Brain을 잘못 적은 거예요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1592s" target="_blank" rel="noopener">영상 26:32에서 보기</a>
+  </figcaption>
 </figure>
-<p>이 발표가 실제 사례예요. 발표 제안을 받고 30분 동안 의식의 흐름대로 담고 싶은 걸 다 쏟아 냈어요. 그리고 AI에게 구조화를 부탁하자, 이메일 내용 같은 행사 관련 정보까지 함께 묶어 아웃라인을 만들어 줬어요. 다시 요청하면 메시지별 기승전결 흐름을, 그다음엔 슬라이드별 와이어프레임을 짜 줘요. 마지막으로 PPT를 만들어 달라고 하면 초안이 나오고, 최종 편집은 발표자가 해요. 그동안 모아 둔 지식이 함께 반영된다는 점이 좋다고 말해요.</p>
-<h3>시연 4: 자동 회고</h3>
-<p>발표자는 <span class="term" data-term="라이프 로깅" data-desc="화면, 음성, 위치, 활동 같은 일상 데이터를 자동으로 계속 기록하는 일이에요. 나중에 회고하거나 분석할 원재료가 돼요.">라이프 로깅</span>을 해요. 노트북 화면을 1초마다 캡처하고, 목걸이형 녹음기로 24시간 녹음해요. 일정을 기준으로 이 활동 데이터를 엮으면 '브라이언이 오늘 뭘 했는지'가 나와요.</p>
+<p>메타콘 발표가 실제 예시예요. 제의를 받은 뒤 30분 동안 의식이 흐르는 대로 담고 싶은 걸 다 말로 쏟아 놓고, AI에게 구조화를 부탁했어요. 화면의 노트 '2026-06-10 메타콘 2026 강연 기획 - Obsidian + AI'에는 '1. Outline'과 '1-1. What is it about?' 아래 행사, 일시·장소, 세션 주제, 형식, 청중이 표로 정리돼 있어요. 이메일 내용이나 연락하며 오간 요점까지 함께 모은 거예요.</p>
 <figure>
-  <img src="assets/frame-2843.png" alt="'시연 4: 자동 회고' 슬라이드. 24h 기록(녹음·화면 캡처·계획·일정·기록 등 개인 활동 데이터 수집)이 누적 회고(하루·주·월·분기·년)로 이어져요">
-  <figcaption>24시간 모은 활동 데이터가 하루부터 1년까지 겹겹이 회고로 쌓여요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1723s" target="_blank" rel="noopener">영상 28:43에서 보기</a></figcaption>
+  <img src="assets/frame-2715.png" alt="옵시디언 노트 '2026-06-10 메타콘 2026 강연 기획 - Obsidian + AI'. 1. Outline, 1-1. What is it about? 아래 행사·일시·세션 주제 표가 있어요">
+  <figcaption>
+    쏟아 놓은 말과 관련 자료를 AI가 아웃라인으로 묶었어요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1635s" target="_blank" rel="noopener">영상 27:15에서 보기</a>
+  </figcaption>
 </figure>
-<p>회고는 매일 새벽 2시에 자동으로 돌아요. 할 일 앱, 폰 사용 내역, 일기, AI와 나눈 대화, 컴퓨터 화면 기록을 모아 '오늘 무엇을 했고, 너의 개인 서사는 이랬고, 감정은 이랬고, 성과는 이랬다'고 정리해요. 발표자는 나를 아는 다른 사람이 나에 대해 알려 주는 것 같다고 표현해요.</p>
-<p>하루 회고를 다시 요약해서 주간, 월간, 분기 회고를 만들어요. 그러면 연말에 한 해를 돌아볼 때 압축된 기록과 원본을 함께 보며 내가 실제로 무엇을 했는지 확인할 수 있어요. 데이터를 모아 분기 대시보드도 만들었어요. 목표 완주율, 월별 시간 투입, 강의 횟수, 주간 집중 시간 같은 지표를 보여 줘요. 3~4월부터 시작해서 아직 빠진 데이터가 많지만, 객관적으로 돌아보기에 좋다고 말해요.</p>
+<p>그다음 AI는 메시지별로 기승전결을 생각해 흐름을 짜요. 화면에는 '흐름 ① — 만들기 위해 AI를 쓴다(바이브 코딩)', '흐름 ② — 개인화 비서를 만든다(모바일화)'처럼 이 발표 1부의 흐름이 보여요. 한 번 더 요청하면 슬라이드별 와이어프레임을 만들고, "파워포인트 만들어 줘"라고 하면 초안이 나와요. 초안은 당연히 발표자가 직접 고쳐요.</p>
 <figure>
-  <img src="assets/frame-3048.png" alt="옵시디언에 띄운 분기 대시보드 화면. 할 일 지연 추세 꺾은선 그래프와 월별 목표 진행률 막대가 보여요">
-  <figcaption>회고 데이터로 만든 2분기 대시보드예요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1848s" target="_blank" rel="noopener">영상 30:48에서 보기</a></figcaption>
+  <img src="assets/frame-2735.png" alt="발표 기획 노트의 흐름 정리 부분. 흐름 ① 만들기 위해 AI를 쓴다, 흐름 ② 개인화 비서를 만든다 아래에 세부 논점이 글머리표로 적혀 있어요">
+  <figcaption>
+    오늘 들은 1부 내용이 이 노트에서 나왔어요. 발표자는 발산형인 사람에게 생산성이 크게 오른다고 말해요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1655s" target="_blank" rel="noopener">영상 27:35에서 보기</a>
+  </figcaption>
 </figure>
-<p>발표자가 이렇게 기록에 매달리는 이유는 시간이 가장 희소한 자원이라고 보기 때문이에요. 남겨 두지 않으면 휘발되고, 자세히 남겨 둘수록 나중에 그 경험을 더 풍부하게 돌아볼 수 있어요. 발표자의 활용은 대부분 자기 성찰을 향해 있어요.</p>
-<h3>다른 사람들은 이렇게 써요</h3>
-<p>같은 옵시디언과 에이전트라도 목적은 사람마다 달라요. 발표자는 세 가지 사례를 소개해요.</p>
-<div class="table-scroll">
-  <table>
-    <thead><tr><th>누가</th><th>어떻게</th><th>무엇에 쓰나요</th></tr></thead>
-    <tbody>
-      <tr><td>김재경(쓰레드 @tofukyung)</td><td>카파시, 스티브 잡스 같은 캐릭터 페르소나 에이전트끼리 대화시켜요</td><td>의사결정에 도움을 받아요</td></tr>
-      <tr><td>지피터스(AI 커뮤니티)</td><td>오픈클로 에이전트들에게 역할을 나눠 주고 서로 대화하며 일하게 해요</td><td>조직 안에서 AI가 한 팀처럼 협업해요</td></tr>
-      <tr><td>안창현 교수(한림대)</td><td>옵시디언과 AI를 직접 고쳐 자기만의 인터페이스를 만들어요</td><td>공공기관이 많이 쓰는 한글(HWP) 파일을 마크다운으로 바꿔 AI와 함께 써요</td></tr>
-    </tbody>
-  </table>
-</div>
+<h3>④ 자동 회고</h3>
+<p>발표자가 가장 많이 쓰는 방법이에요. 그는 <span class="term" data-term="라이프 로깅" data-en="Lifelogging" data-desc="화면, 음성, 위치, 앱 사용 같은 일상 활동을 계속 자동으로 기록하는 일이에요. 발표자는 이 기록을 AI 회고의 재료로 써요." data-g="9">라이프 로깅</span>을 해요. 노트북 화면을 1초마다 캡처하고, 목걸이형 녹음기로 24시간 녹음해요. 슬라이드 왼쪽 '24h 기록 · 개인 활동 데이터 수집(녹음·화면 캡처·계획·일정·기록) · 말 안 해도 하루를 돌아본다'가 이 부분이에요. 오른쪽이 '누적 회고 · 하루·주·월·분기·년 · 계획과 회고를 AI와 함께'예요.</p>
 <figure>
-  <img src="assets/frame-3228.png" alt="'옵시디언 마개조 — 워크플로우 엔지니어링' 슬라이드. 안창현 교수(한림대) 사례로, 옵시디언+AI로 자기 기능을 만들고 HWP를 마크다운으로 손쉽게 변환하는 도구를 소개해요">
-  <figcaption>옵시디언을 '마개조'해 HWP를 마크다운으로 바꾸는 사례예요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1948s" target="_blank" rel="noopener">영상 32:28에서 보기</a></figcaption>
+  <img src="assets/frame-2840.png" alt="'시연 ④ 자동 회고' 슬라이드. 옵시디언, REC, 달력, 체크, 메일 아이콘 아래 24h 기록 상자와 누적 회고 상자가 화살표로 이어져요">
+  <figcaption>
+    기록이 쌓이면 묻지 않아도 AI가 하루를 돌아봐 줘요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1720s" target="_blank" rel="noopener">영상 28:40에서 보기</a>
+  </figcaption>
 </figure>
-<p>발표자는 사람·지식·AI가 엮인 이 AI OS 덕분에, 개인부터 작은 팀과 큰 조직까지 어떻게 AI 네이티브로 갈지 이제야 본격적으로 고민하게 될 거라고 정리해요.</p>
+<p>발표자가 말로 설명한 흐름을 그림으로 옮기면 이래요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["할 일 앱"] --> R
+  B["휴대폰 사용 내역"] --> R
+  C["일기장"] --> R
+  D["AI와 나눈 대화"] --> R
+  E["컴퓨터 화면 기록"] --> R
+  R["매일 새벽 2시<br/>AI 일일 회고"] --> W["주간 회고"] --> M["월간 회고"] --> Q["분기 회고"]
+  Q --> P["다음 해 계획"]
+</pre>
+  <figcaption>위 단계 회고는 아래 단계 회고를 다시 요약해요. '요약분의 요약분'이라서 원본을 잃지 않고도 크게 돌아볼 수 있어요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1736s" target="_blank" rel="noopener">영상 28:56에서 보기</a></figcaption>
+</figure>
+<p>어제의 회고 노트를 열면 맨 위에 'Source Inventory' 표가 있어요. Personal Planner, Daily Note, AI Log, Journal, Todoist, RescueTime, Toggl, Screenpipe 같은 데이터 출처마다 쓰였는지(used), 비었는지(sparse), 없는지(no-data)를 적어 둬요. 그 아래에 '한 줄 요약'이 이어져요.</p>
+<figure>
+  <img src="assets/frame-2917.png" alt="회고 노트 '2026-07-03 - Hermes'의 Source Inventory 표. Source, Status, Notes 열에 Personal Planner, Todoist, RescueTime, Toggl, Screenpipe 등의 사용 상태가 적혀 있어요">
+  <figcaption>
+    AI가 무엇을 근거로 회고했는지 먼저 밝혀 둬요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1757s" target="_blank" rel="noopener">영상 29:17에서 보기</a>
+  </figcaption>
+</figure>
+<p>본문에는 '3) Personal / Brain Trinity 관점의 성과', '4) 개인 쪽 열린 고리' 같은 항목이 있어요. 메타콘 발표 준비, 리모컨 배터리 확인 같은 일이 적혀 있어요. 발표자는 저를 아는 다른 사람이 저에 대해 알려 주는 것 같다고 말해요.</p>
+<figure>
+  <img src="assets/frame-2957.png" alt="회고 노트 본문. 3) Personal / Brain Trinity 관점의 성과, 4) 개인 쪽 열린 고리 아래 그날의 일과 남은 일이 글머리표로 정리돼 있어요">
+  <figcaption>
+    한 일뿐 아니라 아직 닫히지 않은 일도 짚어 줘요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1797s" target="_blank" rel="noopener">영상 29:57에서 보기</a>
+  </figcaption>
+</figure>
+<p>쌓인 데이터로 대시보드도 만들어요. 화면은 2분기 '분기 차트'예요. 왼쪽 'Todoist Overdue 궤적'은 밀린 할 일 수의 변화이고, 오른쪽 '월간 목표 완료율'은 4월 20%, 5월 42%, 6월 45%예요. 아래에는 '월별 시간 투입: 자동 추적 vs 의도적 추적', '월별 강의·발표·교육 이벤트' 칸이 이어져요. 발표자는 3~4월부터 시작해 아직 빠진 데이터가 많다고 덧붙여요.</p>
+<figure>
+  <img src="assets/frame-3057.png" alt="분기 차트 대시보드. Todoist Overdue 궤적 꺾은선 그래프와 월간 목표 완료율 막대(4월 20%, 5월 42%, 6월 45%)가 보여요">
+  <figcaption>
+    숫자로 보면 내가 실제로 무엇을 했는지 객관적으로 돌아볼 수 있어요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1857s" target="_blank" rel="noopener">영상 30:57에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 자기 사례를 '성찰을 위한 AI OS'라고 정리해요. 슬라이드 세 줄이 그 이유예요. 주로 개인의 성찰을 위해 쓰고, 시간이 제일 가치 있는 자산이며, 디테일까지 기록하면 그 경험이 더 풍성해진다는 거예요.</p>
+<figure>
+  <img src="assets/frame-3120.png" alt="'성찰을 위한 브라이언의 AI OS 사례' 슬라이드. 세 두뇌의 상호작용 = 나의 AIOS 아래 세 줄 요약이 있어요">
+  <figcaption>
+    발표자에게 AI OS는 일을 빨리 하는 도구보다 나를 돌아보는 도구에 가까워요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1880s" target="_blank" rel="noopener">영상 31:20에서 보기</a>
+  </figcaption>
+</figure>
 </section>
 
 <section id="s8">
-  <a class="stamp" href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=2003s" target="_blank" rel="noopener">33:23</a>
-  <h2>PKM에서 PCM으로: 맥락이 격차를 만들어요</h2>
-<p>AI가 이렇게 빨리 달리는데, 그럼 나는 뭘 해야 할까요? 발표자의 답은 '결국 나로 돌아간다'예요. 비인간적인 것이 많아질수록 인간다움, 곧 나다움이 더 중요해진다는 거예요.</p>
-<h3>PKM을 넘어 PCM으로</h3>
-<p>나다움은 두 가지로 나눠 볼 수 있어요. 첫째는 개인 지식이에요. AI는 이미 세상의 데이터를 거의 다 배웠으니, 남은 새로운 데이터는 나의 경험과 나만의 것이에요. 발표자는 여기서 한 걸음 더 나아가 '나의 맥락'을 줘야 한다고 말해요. 슬라이드에서는 이것을 PKM(개인 지식관리)에서 <span class="term" data-term="PCM" data-desc="Personal Context Management, 발표자가 PKM에 빗대 만든 말이에요. 지식뿐 아니라 나·프로젝트·태스크 맥락까지 관리해 AI에게 필요한 만큼만 건네자는 뜻이에요.">PCM</span>(개인 맥락 관리)으로 넘어가는 변화로 정리해요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1882s" target="_blank" rel="noopener">31:22</a>
+  <h2>다른 사람들의 AI OS</h2>
+<p>발표자는 다른 사람들은 다른 목적으로 AI OS를 쓴다며 세 사례를 소개해요.</p>
+<p>첫째는 스레드에서 활동하는 김재경(@tofukyung)이에요. 슬라이드 오른쪽 상자에 '캐릭터 페르소나들 · 각 캐릭터가 역할을 갖고, 옵시디언 내용으로 디스코드에서 대화'라고 적혀 있어요. 왼쪽 캡처에는 '코난봇(최신 Claude Code 업데이트 수집)', '팩트체커봇(3개 출처 교차검증 완료)', '에디터봇(초안 작성 시작)' 같은 에이전트가 보여요. 발표자 말로는 카파시, 스티브 잡스 같은 인물끼리 대화를 시켜 의사결정에 도움을 받는다고 해요.</p>
 <figure>
-  <img src="assets/frame-3413.png" alt="'개인 데이터를 넘어 개인 맥락으로' 슬라이드. PKM(Personal Knowledge Management, 나의 개인 지식)에서 PCM(Personal Context Management, 나의 맥락의 지도)으로 넘어가는 화살표와 'AI가 세상 지식을 다 학습한 시대, 남는 건 나만의 것입니다'라는 문장이 있어요">
-  <figcaption>지식을 모으는 데서 그치지 말고 맥락을 관리하자는 게 결론의 출발점이에요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=2053s" target="_blank" rel="noopener">영상 34:13에서 보기</a></figcaption>
+  <img src="assets/frame-3140.png" alt="'다양한 페르소나를 지닌 에이전트 활용' 슬라이드. 코난봇, 팩트체커봇, 에디터봇 대화 캡처와 김재경(threads@tofukyung) 캐릭터 페르소나들 설명 상자가 있어요(Source: Threads @tofukyung)">
+  <figcaption>
+    같은 옵시디언을 두고 역할이 다른 에이전트 여럿이 대화해요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1900s" target="_blank" rel="noopener">영상 31:40에서 보기</a>
+  </figcaption>
 </figure>
-<p>보통 맥락이라고 하면 채팅창에 입력하는 내용, 곧 컨텍스트를 떠올려요. 발표자가 말하는 맥락은 '지금 이 순간의 의도와 상황'이에요. 같은 시간 같은 자리에 앉아 있어도 사람마다 왜 왔는지, 무엇을 기대하는지가 다르잖아요. 그게 나의 맥락이에요.</p>
-<h3>맥락은 세 겹이에요</h3>
+<p>둘째는 국내 최대 AI 커뮤니티 GPTers예요. 슬라이드 제목이 'AI들이 하나의 팀처럼 협업'이에요. 왼쪽 그림이 마스코트 '뽀피터스' 네 마리이고, 각자 MBTI(Myers-Briggs Type Indicator)와 역할(팀장, 운영 시스템, 마케팅, 콘텐츠)이 붙어 있어요. 오른쪽 상자 설명은 'AI마다 각자 역할, 서로 대화 주고받으며 실제 조직처럼 협업'이에요. 오픈클로 기반 에이전트들에게 관련 지식과 역할을 주고 지시하면 서로 알아서 일한다고 해요.</p>
+<figure>
+  <img src="assets/frame-3220.png" alt="'AI들이 하나의 팀처럼 협업' 슬라이드. GPTers 뽀피터스 고양이 캐릭터 네 마리 그림, 대화 캡처, 조직 내에서 AI의 활용 설명 상자가 있어요(Source: GPTers 송다혜 커뮤니티 리더)">
+  <figcaption>
+    개인이 아니라 조직 단위로 AI OS를 쓰는 사례예요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1940s" target="_blank" rel="noopener">영상 32:20에서 보기</a>
+  </figcaption>
+</figure>
+<p>셋째는 한림대 안창현 교수예요. 'AI도 뜯어고치고 옵시디언도 뜯어고쳐' 자기만의 인터페이스를 만들어요. 슬라이드 설명은 '옵시디언+AI 툴에 자기 기능을 만들어 붙임. 예: HWP → 마크다운으로 손실 없이 변환해 주는 도구'예요. 공공기관이 많이 쓰는 한글 파일을 AI가 다룰 수 있게 바꿔 쓰는 거예요. 왼쪽 화면에는 '3-Layer Architecture'라는 구조도가 보여요.</p>
+<figure>
+  <img src="assets/frame-3240.png" alt="'옵시디언 마개조 — 워크플로우 엔지니어링' 슬라이드. 3-Layer Architecture 화면 캡처와 안창현 교수·한림대 워크플로우 마개조 설명 상자가 있어요">
+  <figcaption>
+    한국 업무 환경에 맞게 도구를 직접 고친 사례예요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1960s" target="_blank" rel="noopener">영상 32:40에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 이 사례들을 'AI 네이티브 개인·조직이 퍼진다'로 묶어요. 왼쪽에 다시 'AI 모델 + 지식' 두 축이 있고, 오른쪽에 '개인 → 소규모 조직 → 조직', '지식 저장 비용↓ · 모델↑ · 에이전트 간 소통', '+ AI끼리 공유하는 지식의 형태 표준화'가 적혀 있어요. 그 아래 'Introducing the Open Knowledge Format(June 13, 2026)'이라는 글 캡처가 있어요. 발표자는 이 캡처를 말로 따로 설명하지는 않아요.</p>
+<figure>
+  <img src="assets/frame-3300.png" alt="'AI 네이티브 개인·조직이 퍼진다' 슬라이드. AI 모델 + 지식 두 상자 옆에 개인 → 소규모 조직 → 조직 흐름과 Introducing the Open Knowledge Format 글 캡처가 있어요">
+  <figcaption>
+    사람, 지식, AI의 결합이 개인에서 조직으로 번져 갈 거라는 전망이에요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=1980s" target="_blank" rel="noopener">영상 33:00에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s9">
+  <a class="stamp" href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=2003s" target="_blank" rel="noopener">33:23</a>
+  <h2>결국 중요한 건 나의 맥락</h2>
+<p>AI가 이렇게 빨리 가는데 나는 어떻게 해야 할까요? 발표자의 답은 '결국, 나로 돌아간다'예요. 비인간적인 것이 많아질수록 나다움이 더 중요해진다는 거예요. 그는 나다움을 두 가지로 나눠요. 첫째는 내가 아는 지식과 데이터를 AI에게 주는 것, 둘째는 그보다 한 걸음 더 나아가 나의 맥락을 주는 것이에요.</p>
+<p>슬라이드는 이 전환을 PKM에서 PCM(Personal Context Management)으로 그려요. 왼쪽 회색이 'PKM · Personal Knowledge Management · 나의 개인 지식', 오른쪽 빨간색이 'PCM · Personal Context Management · 나의 맥락의 지도'예요. 아래 문장이 이유예요. 'AI가 세상 지식을 다 학습한 시대, 남는 건 나만의 것입니다.'</p>
+<figure>
+  <img src="assets/frame-3405.png" alt="'개인 데이터를 넘어 개인 맥락으로' 슬라이드. PKM(Personal Knowledge Management, 나의 개인 지식)에서 PCM(Personal Context Management, 나의 맥락의 지도)으로 화살표가 있어요">
+  <figcaption>
+    지식을 쌓는 데서 멈추지 말고, 그 지식을 언제 어떻게 쓸지의 맥락까지 관리하자는 거예요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=2045s" target="_blank" rel="noopener">영상 34:05에서 보기</a>
+  </figcaption>
+</figure>
+<h3>맥락은 '지금 이 순간'이에요</h3>
+<p>보통은 채팅창에 입력하는 모든 걸 <span class="term" data-term="컨텍스트" data-en="Context" data-desc="AI가 답할 때 참고하도록 함께 넣어 주는 정보예요. 발표자는 이를 &#x27;지금 이 순간 내가 하려는 것&#x27;이라는 일상적 의미의 맥락으로 넓혀 봐요." data-g="10">컨텍스트</span>라고 생각해요. 슬라이드 왼쪽 질문도 'AI 모델 안에 들어가는 모든 입력 정보?'예요. 발표자는 일상에서 쓰는 '맥락'의 뜻을 꺼내요. 오른쪽 상자의 '지금, 이 순간'이에요.</p>
+<figure>
+  <img src="assets/frame-3425.png" alt="'맥락, Context?' 슬라이드. 왼쪽에 AI 모델 안에 들어가는 모든 입력 정보? 그림, 오른쪽에 사람 아이콘과 '지금, 이 순간' 타임라인 상자가 있어요">
+  <figcaption>
+    맥락은 입력한 글자 전부가 아니라, 지금 내가 무엇을 하려는지예요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=2065s" target="_blank" rel="noopener">영상 34:25에서 보기</a>
+  </figcaption>
+</figure>
+<p>슬라이드 공식은 '나의 맥락 = 지금 + 의도 + 상황'이에요. 발표자는 청중에게 묻어요. "지금 어떤 목적과 기대로 이 자리에 계시나요?" 상자에는 '지금 이 행사장에서 모인 여러분처럼, 내 맥락 ≠ 다른 사람들의 맥락', '주제·기대·7월 4일 토요일 오후, 그 순간 무엇을 하려는지의 의도가 곧 맥락'이라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-3450.png" alt="'나의 맥락 = 지금 + 의도 + 상황' 슬라이드. 지금 어떤 목적과 기대로 이 자리에 계시나요? 질문 아래 설명 상자가 있어요">
+  <figcaption>
+    같은 시간 같은 장소에 있어도 사람마다 맥락은 달라요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=2090s" target="_blank" rel="noopener">영상 34:50에서 보기</a>
+  </figcaption>
+</figure>
+<p>AI에게 줘야 할 맥락은 세 겹이에요. 가운데 원부터 '나(영속)', '프로젝트', '태스크' 순서로 겹쳐 있어요. 오른쪽 상자 설명은 이래요.</p>
+<ul>
+  <li><b>나 = 영속적 맥락(Persistent)</b>: 역할·취향·사고방식. 내가 어떤 사람이고 목표가 무엇인지예요.</li>
+  <li><b>프로젝트 맥락(Project)</b>: 프로젝트·이해관계자·규모. 몇 달 이어지는 큰 일이에요.</li>
+  <li><b>태스크(Task), 일시적 맥락(Perishable)</b>: 지금 이 순간 하려는 것·의도. 프로젝트 안의 여러 작업 중 지금 대화에서 하는 하나예요.</li>
+</ul>
+<figure>
+  <img src="assets/frame-3545.png" alt="'나의 맥락 3종 — 태스크·프로젝트·나' 슬라이드. 나(영속), 프로젝트, 태스크가 동심원으로 겹쳐 있고, 오른쪽에 세 맥락 설명 상자가 있어요">
+  <figcaption>
+    안쪽일수록 오래가고, 바깥일수록 금방 바뀌어요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=2145s" target="_blank" rel="noopener">영상 35:45에서 보기</a>
+  </figcaption>
+</figure>
+<p>세 겹을 다 줘야 한다는 게 아니에요. 슬라이드 제목이 핵심이에요. '(1) 현재 이 순간, (2) 관련 있는, (3) 나의 맥락만 넣는다.' 왼쪽 '다 때려넣기'는 '혼란·<span class="term" data-term="환각" data-en="Hallucination" data-desc="AI가 사실이 아닌 내용을 그럴듯하게 지어내는 현상이에요. 관련 없는 정보를 너무 많이 넣어도 무엇이 중요한지 헷갈려 더 잘 생겨요." data-g="11">환각</span>, 관련 없는 정보까지 전부'예요. LLM 상자가 빨간 빗금으로 꽉 차 있어요. 오른쪽 '관련 맥락만'은 '정확·생산적, 실수·환각이 줄어든다'이고 LLM 상자에 작은 네모 세 개만 있어요.</p>
+<figure>
+  <img src="assets/frame-3625.png" alt="'(1) 현재 이 순간, (2) 관련 있는, (3) 나의 맥락만 넣는다' 슬라이드. 다 때려넣기(혼란·환각)와 관련 맥락만(정확·생산적)을 LLM 상자 그림으로 비교해요">
+  <figcaption>
+    발표자는 모든 맥락을 다 주면 AI가 무엇이 중요한지 몰라 환각이 생기고, 생산성은 떨어지고 비용은 늘어난다고 말해요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=2185s" target="_blank" rel="noopener">영상 36:25에서 보기</a>
+  </figcaption>
+</figure>
+<h3>맥락의 지도, MAAP</h3>
+<p>이 맥락을 AI OS 안에 넣는 방법으로 발표자는 '나의 지도'를 제안해요. 이름이 MAAP이에요. 지도(map)와 발음이 같아요. 슬라이드 왼쪽 상자에 'AI에게 주는 나의 맥락의 지도, M·A·A·P, AIOS 세계지도를 이루는 네 가지 요소'라고 적혀 있고, 오른쪽에는 옵시디언·클로드 코드·헤르메스 아이콘이 얹힌 지도가 있어요.</p>
+<figure>
+  <img src="assets/frame-3645.png" alt="'AI에게 제공해줘야 될 나의 맥락 지도' 슬라이드. M·A·A·P 설명 상자와 세계지도, 지도 위 도구 아이콘 그림이 있어요">
+  <figcaption>
+    세 두뇌 모두 이 지도를 함께 봐야 한다는 뜻이에요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=2205s" target="_blank" rel="noopener">영상 36:45에서 보기</a>
+  </figcaption>
+</figure>
+<p>네 요소는 위아래 두 줄로 나뉘어요. 위 줄이 사람의 영역, 아래 줄이 AI의 영역이에요.</p>
+<figure>
+  <img src="assets/frame-3730.png" alt="'개인 맥락의 4가지 요소' 슬라이드. 위에 M-Meaning(의미, 나는 누구인가?)과 A-Asset(자산, 나만의 재료는 무엇인가?)이 사람의 영역, 아래에 A-Action(액션, 어떻게 행동할 것인가? MCP·스킬·워크플로우)과 P-Persona(누가 날 도울 것인가? AI의 역할·동반자)가 AI의 영역으로 나뉘어 있어요">
+  <figcaption>
+    사람은 나를 설명하는 문서와 재료를 준비하고, AI에게는 행동할 도구와 역할을 줘요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=2250s" target="_blank" rel="noopener">영상 37:30에서 보기</a>
+  </figcaption>
+</figure>
 <div class="table-scroll">
   <table>
-    <thead><tr><th>맥락</th><th>성격</th><th>담기는 것</th></tr></thead>
+    <thead><tr><th>요소</th><th>묻는 것</th><th>담기는 것</th><th>영역</th></tr></thead>
     <tbody>
-      <tr><td>나</td><td>영속적이에요(Persistent)</td><td>역할, 취향, 사고방식, 목표. 내가 어떤 사람인지예요</td></tr>
-      <tr><td>프로젝트</td><td>몇 달 이어져요</td><td>프로젝트의 목표, 이해관계자, 규모</td></tr>
-      <tr><td>태스크</td><td>일시적이에요(Perishable)</td><td>지금 이 대화에서 하려는 일과 의도</td></tr>
+      <tr><td>M · Meaning</td><td>나는 누구인가?</td><td>정체성·가치·목표·역할·소속된 기관, 내 일대기를 설명하는 문서</td><td>사람</td></tr>
+      <tr><td>A · Asset</td><td>나만의 재료는 무엇인가?</td><td>나만의 지식·데이터·히스토리, 언제든 재활용할 최고의 산출물</td><td>사람</td></tr>
+      <tr><td>A · Action</td><td>어떻게 행동할 것인가?</td><td>MCP(Model Context Protocol)·스킬·<span class="term" data-term="워크플로우" data-en="Workflow" data-desc="일을 처리하는 단계와 순서를 정해 둔 흐름이에요. 조직에서는 이게 문서로 정리돼 있지 않아 AI에게 넘기기 어렵다고 발표자는 말해요." data-g="13">워크플로우</span>·루프</td><td>AI</td></tr>
+      <tr><td>P · Persona</td><td>누가 날 도울 것인가?</td><td>AI의 역할·동반자. 나의 클로드 코드, 나의 헤르메스는 어떤 존재인가</td><td>AI</td></tr>
     </tbody>
   </table>
 </div>
-<figure>
-  <img src="assets/frame-3528.png" alt="'나의 맥락 3종 — 태스크·프로젝트·나' 슬라이드. 가운데 나(영속), 그 바깥 프로젝트, 가장 바깥 태스크로 이뤄진 동심원과 각 설명이 있어요">
-  <figcaption>가운데의 나는 잘 바뀌지 않고, 바깥으로 갈수록 자주 바뀌어요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=2128s" target="_blank" rel="noopener">영상 35:28에서 보기</a></figcaption>
-</figure>
-<p>이 세 겹이 합쳐져야 AI가 '지금 이 사람이 무엇을 하려는지'를 알아요. 그런데 맥락을 몽땅 넣으면 오히려 역효과예요. 관련 없는 정보까지 들어가면 AI가 무엇이 중요한지 몰라 <span class="term" data-term="환각" data-desc="AI가 사실이 아닌 내용을 그럴듯하게 지어내는 현상이에요. 관련 없는 정보가 많이 섞일수록 잘 생겨요.">환각</span>이 생기고, 생산성은 떨어지고 비용은 늘어요. 지금 이 순간, 관련 있는, 나의 맥락만 넣어야 AI가 정확하고 빠르게 원하는 품질을 내요.</p>
-<figure>
-  <img src="assets/frame-3618.png" alt="'(1) 현재 이 순간, (2) 관련 있는, (3) 나의 맥락만 넣는다' 슬라이드. 왼쪽 '다 때려넣기(혼란·환각)'는 LLM 창이 꽉 찬 그림, 오른쪽 '관련 맥락만(정확·생산적)'은 필요한 조각만 들어간 그림이에요">
-  <figcaption>컨텍스트를 꽉 채우는 것과 필요한 조각만 넣는 것의 차이예요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=2178s" target="_blank" rel="noopener">영상 36:18에서 보기</a></figcaption>
-</figure>
-<h3>MAAP: AI에게 건넬 나의 지도</h3>
-<p>필요한 맥락만 골라 주려면 AI OS 안에 '나의 지도'가 있어야 해요. 발표자는 이것을 MAAP이라고 불러요. 네 글자 중 둘은 사람이, 둘은 AI 쪽이 채워요.</p>
-<ul>
-  <li><strong>M · Meaning</strong>: 나는 누구인가요? 정체성, 가치, 목표, 역할, 내 일대기를 담은 문서예요.</li>
-  <li><strong>A · Asset</strong>: 나만의 재료는 무엇인가요? 내 지식과 데이터, 가장 잘 만든 산출물처럼 언제든 다시 쓸 자산이에요.</li>
-  <li><strong>A · Action</strong>: AI가 나를 돕기 위해 어떻게 행동하나요? <span class="term" data-term="MCP" data-desc="Model Context Protocol이에요. AI가 외부 도구와 데이터에 붙는 방식을 표준으로 정해 둔 규약이라, 한 번 만든 연결을 여러 AI 앱에서 써요.">MCP</span>, <span class="term" data-term="스킬" data-desc="에이전트가 특정 작업을 할 때 꺼내 쓰는 지침과 스크립트 묶음이에요. 필요할 때만 불러와서 컨텍스트를 아껴요.">스킬</span>, 워크플로우, 루프 같은 도구예요.</li>
-  <li><strong>P · Persona</strong>: 누가 나를 돕나요? 내 클로드 코드나 헤르메스가 어떤 역할을 맡는지예요.</li>
-</ul>
-<figure>
-  <img src="assets/frame-3708.png" alt="'개인 맥락의 4가지 요소' 슬라이드. 위쪽 사람의 영역에 M-Meaning(의미: 나는 누구인가?)과 A-Asset(자산: 나만의 재료는 무엇인가?), 아래쪽 AI의 영역에 A-Action(MCP·스킬·워크플로우)과 P-Persona(AI의 역할·동반자)가 있어요">
-  <figcaption>위 두 칸은 사람이, 아래 두 칸은 AI 쪽이 채우는 MAAP 지도예요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=2228s" target="_blank" rel="noopener">영상 37:08에서 보기</a></figcaption>
-</figure>
-<p>이 지도가 있으면 AI에게 필요한 맥락만 건네고, 결국 나를 아는 AI를 만들 수 있다는 거예요.</p>
+<p>지도가 주어지면 AI에게 필요한 맥락만 건너가고, 그래야 나를 아는 AI가 된다는 게 발표자의 설명이에요.</p>
 <h3>개인은 쉽고, 조직은 어려워요</h3>
-<p>개인은 지식을 어떻게 저장하고 관리할지 나만 동의하면 되니 쉬워요. 조직은 규모가 커질수록 데이터는 엉망이고, 업무 방식은 매뉴얼로 정리돼 있지 않고, 보안 문제까지 얽혀요. 그래서 변화 관리가 훨씬 어렵고 오래 걸려요.</p>
+<p>발표자는 개인과 조직의 차이도 짚어요. 왼쪽 '개인 · 단순 · 나만 합의하면 된다', 오른쪽 '조직 · 복잡 · 보안·표준·교육·변화관리'예요. 조직은 데이터가 정리돼 있지 않고, 일하는 방식이 매뉴얼로 남아 있지 않고, 보안 문제도 있어요. 그래서 변화관리가 힘들고 시간이 더 걸린다고 해요.</p>
 <figure>
-  <img src="assets/frame-3823.png" alt="'개인은 쉽다, 조직은 어렵다' 슬라이드. 개인은 단순(나만 합의하면 된다), 조직은 복잡(보안·표준·교육, 변화관리)이라고 적혀 있어요">
-  <figcaption>개인과 조직이 AI OS를 만들 때 부딪히는 난이도 차이예요. <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=2303s" target="_blank" rel="noopener">영상 38:23에서 보기</a></figcaption>
+  <img src="assets/frame-3810.png" alt="'개인은 쉽다, 조직은 어렵다' 슬라이드. 개인(단순, 나만 합의하면 된다)과 조직(복잡, 보안·표준·교육·변화관리) 두 상자예요">
+  <figcaption>
+    같은 AI OS라도 조직에서는 합의할 사람과 정리할 데이터가 훨씬 많아요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=2290s" target="_blank" rel="noopener">영상 38:10에서 보기</a>
+  </figcaption>
 </figure>
-<p>마무리 메시지는 '당신만의 AI OS를 만드세요'예요. 모델은 언제든 갈아 끼울 수 있고 다른 앱이나 에이전트로 옮길 수도 있어요. 하지만 나의 맥락으로 쌓은 시스템은 평생 함께 자라요. 발표자는 AI를 쓰는 이유가 결국 세상에 의미 있는 변화를 만들기 위해서라고 말하며 발표를 끝내요.</p>
+<p>그래서 마지막 메시지는 '결국, 나다움'이에요. 슬라이드 부제는 '비인간의 시대일수록 가장 인간적인 것으로'예요. 나를 아는 AI를 만들려면 내가 누구인지, 무엇을 좋아하는지, 어떤 우선순위를 갖고 있는지 알아야 해요. 그걸 AI에게 건네야 클로드 코드든 코덱스든 어떤 도구로도 나를 아는 AI를 만들 수 있어요.</p>
+<figure>
+  <img src="assets/frame-3845.png" alt="'결국, 나다움' 슬라이드. 부제 '비인간의 시대일수록 가장 인간적인 것으로'가 적혀 있어요">
+  <figcaption>
+    도구 이야기로 시작한 발표가 '나'로 끝나요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=2325s" target="_blank" rel="noopener">영상 38:45에서 보기</a>
+  </figcaption>
+</figure>
 <blockquote>
-  <p>나를 아는 AI를 만들기 위해서는 결국에는 내가 누군지 알아야 되고</p>
-  <cite>— 영상 38:14</cite>
+  <p>결국에는 우리가 AI OS를 만드는 게 나의 맥락으로 평생 성장하는 나의 시스템 그러니까 그냥 한 번 쓰는 게 아니고요.</p>
+  <cite>— 영상 38:49</cite>
 </blockquote>
+<p>발표자는 모델을 갈아 치우거나 다른 에이전트를 써도, 나의 맥락으로 자라는 시스템은 계속 강해진다고 말해요. 마지막 슬라이드는 '당신만의 AI OS를 만드세요'예요. 아래 문장은 '당신만의 맥락으로 평생 성장하는 AI 워크스페이스로 세상에 의미 있는 변화를 만들어내길 바랍니다'예요.</p>
+<figure>
+  <img src="assets/frame-3930.png" alt="마지막 슬라이드 '당신만의 AI OS를 만드세요'. 아래에 당신만의 맥락으로 평생 성장하는 AI 워크스페이스로 세상에 의미 있는 변화를 만들어내길 바란다는 문장과 연락처가 있어요">
+  <figcaption>
+    도구는 바뀌어도 내 맥락으로 자란 시스템은 남는다는 게 마지막 당부예요.
+    <a href="https://www.youtube.com/watch?v=LWd5J-srk9w&amp;t=2370s" target="_blank" rel="noopener">영상 39:30에서 보기</a>
+  </figcaption>
+</figure>
 </section>
 
 <section id="corrections">
   <h2>자막 표기 바로잡기</h2>
 <aside class="note">
   <span class="tag">자막 관련 참고</span>
-  <p>사람이 직접 단 자막이지만 받아 적다가 틀린 곳이 몇 군데 있어요. 화면과 문맥으로 이렇게 바로잡았어요.</p>
+  <p>직접 작성된 자막이지만 몇 군데 받아 적기가 어긋난 곳이 있어요. 화면과 맥락으로 이렇게 바로잡았어요.</p>
   <div class="table-scroll"><table>
     <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
     <tbody>
       <tr><td>버니버 부시</td><td>버니바 부시(Vannevar Bush)</td><td>슬라이드 표기 기준</td></tr>
-      <tr><td>할리 랩들</td><td>할 일 앱들 (추정)</td><td>21:12 계획 세우기 시연</td></tr>
-      <tr><td>개발 직구</td><td>개발 직군 (추정)</td><td>04:47</td></tr>
-      <tr><td>기대상, 이해관계적 규모</td><td>목표, 이해관계자, 규모 (추정)</td><td>35:20, 슬라이드는 &#x27;프로젝트·이해관계자·규모&#x27;</td></tr>
+      <tr><td>메멕스, 메모리 익스텐더</td><td>Memex(Memory Extender)</td><td></td></tr>
+      <tr><td>티아고 포르테</td><td>Tiago Forte</td><td></td></tr>
+      <tr><td>할리 랩들</td><td>할 일 앱들</td><td>(추정) 캘린더와 함께 확인하는 Todoist 같은 앱</td></tr>
+      <tr><td>김재경 토프</td><td>김재경(@tofukyung)</td><td>슬라이드의 스레드 계정 표기</td></tr>
+      <tr><td>지피터스</td><td>GPTers</td><td></td></tr>
+      <tr><td>MAAP 지도 맵</td><td>M·A·A·P</td><td>Meaning·Asset·Action·Persona</td></tr>
     </tbody>
   </table></div>
 </aside>
 </section>
 </main>
 
-<div class="tail">
+<div class="tail" id="glossary">
   <h2>이 글에 나온 용어</h2>
-  <div class="table-scroll">
-    <table>
-      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
-      <tbody>
-        <tr><td>AX</td><td>AI Transformation의 줄임말이에요. 조직의 업무 방식과 시스템을 AI 중심으로 바꾸는 일을 말해요.</td></tr>
-        <tr><td>게이트웨이</td><td>내 컴퓨터에서 도는 에이전트와 텔레그램·슬랙 같은 메신저 사이를 이어 주는 중계 프로세스예요. 덕분에 밖에서도 폰으로 에이전트를 불러요.</td></tr>
-        <tr><td>LLM 위키</td><td>원본 자료를 LLM이 읽고 요약·연결해서 마크다운 위키로 계속 쌓아 가는 지식 베이스 방식이에요. 카파시가 2026년 4월 아이디어 파일로 공개했어요.</td></tr>
-        <tr><td>세컨드 브레인</td><td>머릿속 대신 디지털 노트에 지식을 모아 두고 다시 꺼내 쓰는 개인 지식 저장소예요. 티아고 포르테가 같은 이름의 책으로 널리 알렸어요.</td></tr>
-        <tr><td>PKM</td><td>Personal Knowledge Management, 개인 지식관리예요. 보고 읽고 들은 것을 흩어지지 않게 모아서 나중에 찾고 다시 쓰도록 관리하는 방법이에요.</td></tr>
-        <tr><td>메멕스</td><td>1945년 버니바 부시가 구상한 가상의 기계예요. 사람이 읽고 쓴 모든 것을 저장하고 연결해 기억을 넓혀 준다는 아이디어로, 하이퍼텍스트의 원조로 꼽혀요.</td></tr>
-        <tr><td>하네스</td><td>모델 바깥에서 도구, 메모리, 규칙, 실행 환경을 묶어 에이전트가 일하게 해 주는 틀이에요. 같은 모델도 하네스에 따라 성능이 크게 달라져요.</td></tr>
-        <tr><td>볼트</td><td>옵시디언에서 노트를 모아 두는 폴더 하나를 부르는 말이에요. 그냥 내 컴퓨터의 폴더라서 다른 AI 도구도 그대로 읽을 수 있어요.</td></tr>
-        <tr><td>라이프 로깅</td><td>화면, 음성, 위치, 활동 같은 일상 데이터를 자동으로 계속 기록하는 일이에요. 나중에 회고하거나 분석할 원재료가 돼요.</td></tr>
-        <tr><td>환각</td><td>AI가 사실이 아닌 내용을 그럴듯하게 지어내는 현상이에요. 관련 없는 정보가 많이 섞일수록 잘 생겨요.</td></tr>
-        <tr><td>MCP</td><td>Model Context Protocol이에요. AI가 외부 도구와 데이터에 붙는 방식을 표준으로 정해 둔 규약이라, 한 번 만든 연결을 여러 AI 앱에서 써요.</td></tr>
-        <tr><td>스킬</td><td>에이전트가 특정 작업을 할 때 꺼내 쓰는 지침과 스크립트 묶음이에요. 필요할 때만 불러와서 컨텍스트를 아껴요.</td></tr>
-        <tr><td>PCM</td><td>Personal Context Management, 발표자가 PKM에 빗대 만든 말이에요. 지식뿐 아니라 나·프로젝트·태스크 맥락까지 관리해 AI에게 필요한 만큼만 건네자는 뜻이에요.</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-3"><dt>게이트웨이<span class="en">Gateway</span></dt><dd>내 컴퓨터에서 계속 돌면서 에이전트와 텔레그램·디스코드 같은 메신저를 이어 주는 프로세스예요. 이게 있어서 휴대폰으로도 집 컴퓨터의 에이전트를 부를 수 있어요.</dd></div>
+    <div class="g" id="g-8"><dt>그래프 뷰<span class="en">Graph view</span></dt><dd>옵시디언에서 노트를 점으로, 노트 사이 링크를 선으로 보여 주는 화면이에요. 노트가 얼마나 서로 이어져 있는지 한눈에 볼 수 있어요.</dd></div>
+    <div class="g" id="g-9"><dt>라이프 로깅<span class="en">Lifelogging</span></dt><dd>화면, 음성, 위치, 앱 사용 같은 일상 활동을 계속 자동으로 기록하는 일이에요. 발표자는 이 기록을 AI 회고의 재료로 써요.</dd></div>
+    <div class="g" id="g-7"><dt>마크다운<span class="en">Markdown</span></dt><dd>#, - 같은 기호로 제목과 목록을 표시하는 평범한 텍스트 문서 형식이에요. 구조가 단순해서 AI가 읽고 쓰기 쉬워요. 옵시디언 노트가 이 형식이에요.</dd></div>
+    <div class="g" id="g-5"><dt>메멕스<span class="en">Memex</span></dt><dd>1945년 버니바 부시가 제안한 가상의 책상형 기계예요. 사람이 읽고 쓴 모든 것을 저장하고 연결해 다시 꺼내 준다는 아이디어로, 개인 지식관리의 원조로 꼽혀요.</dd></div>
+    <div class="g" id="g-6"><dt>세컨드 브레인<span class="en">Second Brain</span></dt><dd>흩어진 메모·자료를 한곳에 모아 다시 찾고 재활용하게 만든 개인 지식 저장소예요. 티아고 포르테의 책으로 널리 알려졌고, 발표에서는 &#x27;2번째 두뇌&#x27;에 해당해요.</dd></div>
+    <div class="g" id="g-12"><dt>스킬<span class="en">Skill</span></dt><dd>에이전트가 특정 일을 할 때 불러 쓰는 지침과 스크립트 묶음이에요. 시연의 brain-add-seed처럼 &#x27;노트를 내 템플릿으로 정리하기&#x27; 같은 반복 작업을 담아 둬요.</dd></div>
+    <div class="g" id="g-13"><dt>워크플로우<span class="en">Workflow</span></dt><dd>일을 처리하는 단계와 순서를 정해 둔 흐름이에요. 조직에서는 이게 문서로 정리돼 있지 않아 AI에게 넘기기 어렵다고 발표자는 말해요.</dd></div>
+    <div class="g" id="g-10"><dt>컨텍스트<span class="en">Context</span></dt><dd>AI가 답할 때 참고하도록 함께 넣어 주는 정보예요. 발표자는 이를 &#x27;지금 이 순간 내가 하려는 것&#x27;이라는 일상적 의미의 맥락으로 넓혀 봐요.</dd></div>
+    <div class="g" id="g-4"><dt>하네스<span class="en">Harness</span></dt><dd>모델을 감싸 실제 일을 하게 만드는 실행 틀이에요. 도구 호출, 파일 접근, 기억 관리 같은 걸 맡아요. 클로드 코드나 헤르메스 에이전트가 이 역할을 해요.</dd></div>
+    <div class="g" id="g-11"><dt>환각<span class="en">Hallucination</span></dt><dd>AI가 사실이 아닌 내용을 그럴듯하게 지어내는 현상이에요. 관련 없는 정보를 너무 많이 넣어도 무엇이 중요한지 헷갈려 더 잘 생겨요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g" id="g-1"><dt>AI OS<span class="en">AI Operating System</span></dt><dd>AI 도구와 내가 쌓은 지식 베이스를 하나로 묶어, AI가 나를 알고 일하게 만드는 개인 시스템이에요. 발표자가 쓰는 말이고, 에이전틱 OS·클로드 OS라고도 불러요.</dd></div>
+    <div class="g"><dt>AX</dt><dd>AI Transformation</dd></div>
+    <div class="g"><dt>DOC</dt><dd>Document</dd></div>
+    <div class="g"><dt>GPT</dt><dd>Generative Pre-trained Transformer</dd></div>
+    <div class="g"><dt>LLM</dt><dd>Large Language Model</dd></div>
+    <div class="g" id="g-2"><dt>LLM 위키<span class="en">LLM Wiki</span></dt><dd>원본 자료를 AI가 읽고 잘게 나눠 서로 연결한 마크다운 위키로 쌓아 두는 방식이에요. 카파시가 2026년 4월 제안했고, AI가 다시 읽고 쓰기 좋은 형태로 지식을 저장하는 게 목적이에요.</dd></div>
+    <div class="g"><dt>MAAP</dt><dd>Meaning, Asset, Action, Persona</dd></div>
+    <div class="g"><dt>MBTI</dt><dd>Myers-Briggs Type Indicator</dd></div>
+    <div class="g"><dt>MCP</dt><dd>Model Context Protocol</dd></div>
+    <div class="g"><dt>MIT</dt><dd>Massachusetts Institute of Technology</dd></div>
+    <div class="g"><dt>MP4</dt><dd>MPEG-4 Part 14</dd></div>
+    <div class="g"><dt>OS</dt><dd>Operating System</dd></div>
+    <div class="g"><dt>PCM</dt><dd>Personal Context Management</dd></div>
+    <div class="g"><dt>PDF</dt><dd>Portable Document Format</dd></div>
+    <div class="g"><dt>PKM</dt><dd>Personal Knowledge Management</dd></div>
+    <div class="g"><dt>PPT</dt><dd>PowerPoint</dd></div>
+    <div class="g"><dt>XLS</dt><dd>Excel Spreadsheet</dd></div>
+  </dl>
 </div>
 
-<div class="tail">
+<div class="tail" id="sources">
   <h2>참고한 곳</h2>
   <ol>
-    <li><a href="https://www.youtube.com/watch?v=LWd5J-srk9w" target="_blank" rel="noopener">원본 영상 — Brian&#x27;s Brain Trinity</a></li>
-    <li><a href="https://support.claude.com/en/articles/12138966-release-notes" target="_blank" rel="noopener">Claude 릴리스 노트 (Cowork 연구 프리뷰, 2026년 1월)</a></li>
-    <li><a href="https://docs.openclaw.ai/" target="_blank" rel="noopener">OpenClaw 공식 문서</a></li>
-    <li><a href="https://hermes-agent.nousresearch.com/docs/user-guide/messaging/" target="_blank" rel="noopener">Hermes Agent 문서 — Messaging Gateway</a></li>
-    <li><a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">Andrej Karpathy — llm-wiki.md (GitHub Gist)</a></li>
-    <li><a href="https://fortelabs.com/blog/final-book-update-my-book-is-out-in-the-world/" target="_blank" rel="noopener">Forte Labs — Building a Second Brain Is Out in the World</a></li>
-    <li><a href="https://obsidian.md/blog/free-for-work/" target="_blank" rel="noopener">Obsidian 블로그 — Obsidian is now free for work</a></li>
-    <li><a href="https://obsidian.md/license" target="_blank" rel="noopener">Obsidian 라이선스</a></li>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=LWd5J-srk9w" target="_blank" rel="noopener">원본 영상 — Brian&#x27;s Brain Trinity</a></li>
+    <li id="src-2"><a href="https://www.anthropic.com/news/claude-4" target="_blank" rel="noopener">Anthropic — Introducing Claude 4 (클로드 코드 정식 출시, 2025-05-22)</a></li>
+    <li id="src-3"><a href="https://support.claude.com/en/articles/12138966-release-notes" target="_blank" rel="noopener">Claude 릴리스 노트 (Cowork 리서치 프리뷰, 2026-01-12)</a></li>
+    <li id="src-4"><a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">openclaw/openclaw — GitHub</a></li>
+    <li id="src-5"><a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">NousResearch/hermes-agent — GitHub</a></li>
+    <li id="src-6"><a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">Andrej Karpathy — LLM Wiki (GitHub gist)</a></li>
+    <li id="src-7"><a href="https://obsidian.md/blog/free-for-work/" target="_blank" rel="noopener">Obsidian 공식 블로그 — Obsidian is now free for work</a></li>
   </ol>
 </div>
 
-<footer>2026년 10월 1일에 이 영상을 보고 정리했어요. 원본은 Brian&#x27;s Brain Trinity 채널에 있어요.</footer>
+<footer>2026년 10월 14일에 이 영상을 보고 정리했어요. 원본은 Brian&#x27;s Brain Trinity 채널에 있어요.</footer>
 
 </div>
 
-<div id="tip" role="tooltip"></div>
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
 <script>
 (function () {
-  // ── 용어 툴팁 ───────────────────────────────────────
-  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
-  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
-  var tip = document.getElementById('tip');
-  var open = null;
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
 
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
   function show(el) {
+    clearTimeout(hideTimer);
     var desc = el.getAttribute('data-desc');
     if (!desc) return;
-    var name = el.getAttribute('data-term') || el.textContent;
+    if (open && open !== el) open.classList.remove('open');
     tip.innerHTML = '';
-    var b = document.createElement('b');
-    b.textContent = name;
-    tip.appendChild(b);
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
     tip.appendChild(document.createTextNode(desc));
-    tip.classList.add('on');
-
-    var r = el.getBoundingClientRect();
-    var t = tip.getBoundingClientRect();
-    var pad = 12;
-    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
-    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
-    var top = r.top + window.scrollY - t.height - 10;
-    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
-    tip.style.left = left + 'px';
-    tip.style.top = top + 'px';
-    open = el;
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
   }
-
-  function hide() {
-    tip.classList.remove('on');
-    open = null;
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
   }
 
   document.querySelectorAll('.term').forEach(function (el) {
-    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
-    el.addEventListener('mouseenter', function () { show(el); });
-    el.addEventListener('mouseleave', hide);
-    el.addEventListener('focus', function () { show(el); });
-    el.addEventListener('blur', hide);
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
     el.addEventListener('click', function (e) {
-      e.preventDefault();
-      open === el ? hide() : show(el);
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
     });
   });
 
-  document.addEventListener('click', function (e) {
-    if (open && !e.target.closest('.term')) hide();
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
   });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') hide();
-  });
-  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
-  window.addEventListener('resize', hide);
 
-  // ── 목차 현재 위치 표시 ─────────────────────────────
-  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
-  var map = {};
-  links.forEach(function (a) {
-    var s = document.getElementById(a.getAttribute('href').slice(1));
-    if (s) map[s.id] = a;
-  });
-  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
-  if ('IntersectionObserver' in window && targets.length) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (!en.isIntersecting) return;
-        links.forEach(function (a) { a.classList.remove('active'); });
-        map[en.target.id].classList.add('active');
-      });
-    }, { rootMargin: '-10% 0px -75% 0px' });
-    targets.forEach(function (t) { io.observe(t); });
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
   }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
 })();
 </script>
+
 </body>
 </html>
