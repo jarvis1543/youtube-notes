@@ -24,7 +24,9 @@
 </script>
 <!-- yn-lock:end -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>18살 소년 혼자서 월 2억 5천만 조회수를 만드는 비결</title>
+<title>18살 소년이 혼자서 월 2억 5천만 조회수를 만드는 비결</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 <style>
   :root{
     --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
@@ -32,7 +34,10 @@
     --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
     --warn:#ff8a00; --warn-soft:#fff4e6;
     --info:#00b8a9; --info-soft:#e4f8f6;
-    --radius:16px; --maxw:760px;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
   }
   @media (prefers-color-scheme:dark){
     :root{
@@ -41,6 +46,8 @@
       --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
       --warn:#ffab4a; --warn-soft:#3a2a13;
       --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
     }
   }
   *{box-sizing:border-box}
@@ -78,13 +85,29 @@
   .keypoints li strong{color:var(--text)}
 
   /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
   nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
     border-radius:var(--radius)}
   nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
   nav.toc ol{margin:0; padding-left:20px}
-  nav.toc li{margin:6px 0; font-size:15px}
-  nav.toc a{color:var(--text-sub)}
-  nav.toc a.active{color:var(--brand); font-weight:600}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
 
   /* ── 본문 ──────────────────────────────────────────── */
   section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
@@ -99,6 +122,16 @@
     background:var(--surface-2); color:var(--text-mute);
     font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
   a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
 
   /* ── 그림 ──────────────────────────────────────────── */
   figure{margin:28px 0}
@@ -115,23 +148,33 @@
   thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
     font-weight:700; white-space:nowrap}
   tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
   td code{font-size:13.5px}
 
-  /* ── 용어 툴팁 ─────────────────────────────────────── */
-  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
-    font-weight:600; background:none}
-  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
-  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
-    background:var(--text); color:var(--bg); border-radius:12px;
-    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
-    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
-    transition:opacity .12s ease; pointer-events:none}
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
   #tip.on{opacity:1; visibility:visible}
-  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
 
   /* ── 박스 두 종류 ───────────────────────────────────
      .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
-     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
   aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
   aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
   aside p{margin:8px 0}
@@ -144,6 +187,92 @@
   aside .table-scroll{margin:12px 0 0}
   aside table{min-width:320px; font-size:14.5px}
   aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
 
   /* ── 인용 ──────────────────────────────────────────── */
   blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
@@ -159,13 +288,14 @@
   pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
     border:1px solid var(--line); overflow-x:auto; line-height:1.6}
   pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
 
   /* ── 꼬리말 ────────────────────────────────────────── */
   .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
   .tail h2{font-size:20px; margin:0 0 14px}
   .tail + .tail{margin-top:40px}
   .tail ol{padding-left:20px}
-  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
   footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
     font-size:13.5px; color:var(--text-mute)}
 
@@ -181,12 +311,12 @@
 <div class="wrap">
 
 <header>
-  <h1>18살 소년 혼자서 월 2억 5천만 조회수를 만드는 비결</h1>
-  <p class="lede">쇼츠 크리에이터 매티스의 이야기 구조와 제작 방식을 짚어요</p>
+  <h1>18살 소년이 혼자서 월 2억 5천만 조회수를 만드는 비결</h1>
+  <p class="lede">쇼츠 이야기 구조 세 단계와, 그걸 성과로 바꾼 꾸준함을 정리해요</p>
   <div class="meta">
     <span>동기부여학과</span><span class="dot">·</span>
-    <span>13:35</span><span class="dot">·</span>
-    <span>유튜브 영상 정리</span>
+    <span>영상 13:35</span><span class="dot">·</span>
+    <span>읽는 데 약 13분</span>
   </div>
   <a class="src-btn" href="https://www.youtube.com/watch?v=iAGDm1Y_7qM" target="_blank" rel="noopener">
     원본 영상 보러 가기 →
@@ -196,338 +326,648 @@
 <div class="keypoints">
   <h2>핵심만 먼저</h2>
   <ol>
-    <li>비결은 비밀 공식이 아니라, 영상마다 약 10시간씩 다듬고 반응이 약할 때 원인을 찾은 시간이에요.</li>
-    <li>짧은 이야기는 '훅 → 긴장 → 보상' 세 단계로 짜요. 영상의 약 90%는 결과를 모르게 만드는 긴장 구간이에요.</li>
-    <li>시청자의 약 95%가 피드를 넘기다 영상을 만나요. 그래서 배경 설명보다 강한 장면이 먼저예요.</li>
-    <li>AI는 대신 만들어 주는 기계가 아니라 장면을 찾고 초안을 냉정하게 평가해 주는 동료처럼 써요.</li>
-    <li>초보가 가장 많이 하는 실수는 한두 달 만에 분야를 바꾸는 거예요.</li>
+    <li>캐나다의 18살 매티스는 혼자서 한 달 아홉 편 정도의 <span class="term" data-term="쇼츠" data-en="YouTube Shorts" data-desc="유튜브의 1분 안팎 세로 영상이에요. 피드에서 손가락으로 밀어 넘기며 보기 때문에 첫 몇 초에 시청자를 붙잡는 게 중요해요." data-g="1">쇼츠</span>로 세 플랫폼 합쳐 월 2억 5천만 조회수를 내요.</li>
+    <li>이야기는 가장 강한 3~5초로 시작하고, 영상의 약 90%를 결과를 알 수 없는 긴장으로 채우고, 확실한 보상으로 끝내요.</li>
+    <li>인공지능은 편집을 대신하는 기계가 아니라 장면을 찾고 첫 편집본에 냉정한 피드백을 주는 동료로 써요.</li>
+    <li>시청자의 약 95%는 쇼츠 피드를 넘기다 들어와요. 유튜브의 천 회당 수익은 약 8센트에서 30센트로 올랐고, 옛 영상도 계속 돈을 벌어 줘요.</li>
+    <li>구조보다 중요한 건 한 분야에 머물며 영상마다 10시간씩 실험하고, 반응이 약하면 분야 대신 자기 편집에서 이유를 찾은 시간이에요.</li>
   </ol>
 </div>
 
 <nav class="toc">
   <h2>목차</h2>
   <ol>
-    <li><a href="#s1">취미 편집에서 동기부여 쇼츠 채널로</a></li>
-    <li><a href="#s2">끝까지 보게 만드는 3단계 이야기 구조</a></li>
-    <li><a href="#s3">소재 고르기부터 편집, AI 활용까지</a></li>
-    <li><a href="#s4">조회수와 수익은 어디서 나오나요</a></li>
-    <li><a href="#s5">번아웃, 꾸준함, 그리고 다음 목표</a></li>
+    <li><a href="#s1">게임 영상에서 동기부여 채널까지</a></li>
+    <li><a href="#s2">1분 안에 붙잡는 세 단계 이야기 구조</a></li>
+    <li><a href="#s3">소재 찾기와 제작 과정, 그리고 인공지능</a></li>
+    <li><a href="#s4">숫자로 보는 성과와 수익 구조</a></li>
+    <li><a href="#s5">번아웃, 한 분야에 머무르기, 다음 목표</a></li>
     <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
   </ol>
 </nav>
 
 <main>
 <section id="s1">
-  <a class="stamp" href="https://www.youtube.com/watch?v=iAGDm1Y_7qM&amp;t=0s" target="_blank" rel="noopener">00:00</a>
-  <h2>취미 편집에서 동기부여 쇼츠 채널로</h2>
+  <a class="stamp" href="https://www.youtube.com/watch?v=iAGDm1Y_7qM&amp;t=32s" target="_blank" rel="noopener">00:32</a>
+  <h2>게임 영상에서 동기부여 채널까지</h2>
 <aside class="note">
   <span class="tag">참고</span>
-  <p>이 영상은 Joel Huc(Motiversity) 채널의 영어 인터뷰 「18-Year-Old Shorts Genius Shares Everything He Knows」를 한국어 내레이션으로 다시 풀어 준 영상이에요. 숫자와 이름은 원래 인터뷰를 기준으로 썼어요.</p>
+  <p>이 영상은 Joel Huc 채널의 영어 인터뷰(46분)를 한국어 내레이션으로 다시 풀어 준 영상이에요. 화면도 원래 인터뷰 장면이에요. 숫자와 이름은 원래 인터뷰와 맞춰 봤고, 다른 곳은 따로 적었어요.</p>
 </aside>
-<p>주인공은 <span class="term" data-term="쇼츠" data-desc="유튜브의 1분 안팎 세로 영상이에요. 사람들이 화면을 위로 밀며 연달아 보기 때문에 처음 몇 초에 시선을 못 잡으면 바로 넘어가요.">쇼츠</span> 채널 Bolt Motivation을 혼자 운영하는 18살 매티스(Mathis)예요. 유튜브, 틱톡, 인스타그램을 합쳐 한 달에 2억 5천만 조회수를 내요. 다른 사람의 영상 클립을 모아 역경을 이겨 낸 사람들의 이야기를 1분 안팎으로 압축하는 게 그의 일이에요.</p>
+<p>주인공은 캐나다의 매티스 볼트(Mathis Bolt)예요. 'Bolt Motivation'이라는 이름으로 유튜브, 틱톡, 인스타그램에 동기부여 쇼츠를 올려요. 다른 사람이 찍은 장면을 가져와 역경을 이겨 낸 사람의 이야기를 1분 안팎으로 압축하는 방식이에요. 팀 없이 혼자, 한 달에 아홉 편 정도만 올리는데 세 플랫폼을 합쳐 월 2억 5천만 조회수가 나와요.</p>
+<p>영상 화면은 처음부터 끝까지 팟캐스트 대담이에요. 아래 왼쪽이 질문하는 진행자, 오른쪽이 매티스예요. 매티스 뒤 벽에는 유튜브 플레이 버튼 상패 두 개가 걸려 있어요.</p>
 <figure>
-  <img src="assets/frame-0016.png" alt="팟캐스트 스튜디오에서 마이크 앞에 앉아 인터뷰하는 매티스, 화면에 '그 주인공은 볼트 모티베이션을'이라는 한국어 자막">
+  <img src="assets/frame-0002.png" alt="어두운 스튜디오에서 마이크 앞에 앉아 웃고 있는 진행자, 화면 가운데에 '짧은 영상들이 한 달에 2억'이라는 한국어 자막">
   <figcaption>
-    원래 인터뷰 화면 위에 한국어 내레이션 자막을 얹은 형식이에요. 영상 전체가 대담 장면이라 화면 자료는 따로 없어요.
-    <a href="https://www.youtube.com/watch?v=iAGDm1Y_7qM&amp;t=16s" target="_blank" rel="noopener">영상 00:16에서 보기</a>
+    질문을 던지는 쪽이 원래 인터뷰의 진행자예요. 한국어 자막은 이 영상 채널이 입힌 거예요.
+    <a href="https://www.youtube.com/watch?v=iAGDm1Y_7qM&amp;t=2s" target="_blank" rel="noopener">영상 00:02에서 보기</a>
   </figcaption>
 </figure>
-<h3>좋아하던 주제를 골랐어요</h3>
-<p>매티스는 12살 때 포트나이트 게임 장면을 이어 붙인 영상을 만들며 편집에 재미를 붙였어요. 몇 년 뒤 콘텐츠로 부수입을 버는 사람들을 보고 16살에 다시 시작했어요. 분야는 동기부여로 정했어요. 원래 데이비드 고긴스(David Goggins)의 콘텐츠를 즐겨 보고 달리기와 자기 관리에 빠져 있었거든요.</p>
-<p>유행하는 분야를 계산해서 들어간 게 아니라는 점이 중요해요. 사람들이 어떤 장면에서 감동하고 다시 일어서고 싶어지는지 아는 감각은 오래 관심을 둔 데서 나와요.</p>
-<h3>왜 긴 영상이 아니라 쇼츠였을까요</h3>
-<p>이유는 완벽주의예요. 10분짜리 영상을 만들면 끝에 닿기도 전에 처음부터 다시 하고 싶어진다고 해요. 1분 안팎의 쇼츠는 만들고, 올리고, 반응을 보고, 다음 영상에 고치는 순환을 빠르게 돌릴 수 있어요. 자기에게 맞는 형식을 고른 게 꾸준함의 출발점이었어요.</p>
-<h3>200회에서 시작해 일을 그만두기까지</h3>
-<p>첫 영상 조회수는 약 200회였어요. 매티스는 200명이 자기 영상을 봤다는 데 신이 나서 계속 새로 고침을 했다고 해요. 약 2주 뒤 2만 회짜리 영상이 나왔고, 코비 브라이언트를 다룬 영상은 틱톡에서 100만 회를 넘겼어요.</p>
-<p>운만은 아니었어요. 그는 패스트푸드점에서 일하면서 남는 시간을 거의 다 영상에 썼어요. 여름방학 두 달을 통째로 쏟았고, 학교로 돌아갈 무렵 틱톡 팔로워가 10만 명을 넘었어요.</p>
-<p>전환점은 조회수에 따라 돈을 주는 광고 캠페인이었어요. 수백 명이 참여했는데, 작은 크리에이터였던 그가 가장 좋은 성과를 냈어요. 몇 달 치 아르바이트 월급을 영상으로 벌 수 있다는 걸 확인하고 일을 그만뒀어요.</p>
-<div class="table-scroll">
-  <table>
-    <thead><tr><th>항목</th><th>원래 인터뷰</th><th>이 영상(내레이션)</th></tr></thead>
-    <tbody>
-      <tr><td>캠페인 조회수</td><td>약 800만 회</td><td>음성은 약 800만, 화면 자막은 '8100만'</td></tr>
-      <tr><td>번 돈</td><td>3,000달러 (통화는 따로 안 밝혔어요)</td><td>캐나다 달러 3,000달러</td></tr>
-      <tr><td>지급 방식</td><td>1,000회당 약 20센트</td><td>조회수 천 회당 일정 금액</td></tr>
-    </tbody>
-  </table>
-</div>
 <figure>
-  <img src="assets/frame-0256.png" alt="인터뷰 중인 매티스, 화면에 '약 8100만 조회수를 만들고'라는 한국어 자막">
+  <img src="assets/frame-0031.png" alt="회색 맨투맨을 입은 매티스가 마이크 앞에 앉아 말하는 장면. 뒤로 유튜브 플레이 버튼 상패 두 개가 보이고, 자막은 '역경을 이겨낸 사람들의'">
   <figcaption>
-    화면 자막은 '8100만'이라고 적혀 있지만 음성과 원래 인터뷰는 약 800만 회예요. 숫자는 원래 인터뷰를 따르세요.
-    <a href="https://www.youtube.com/watch?v=iAGDm1Y_7qM&amp;t=176s" target="_blank" rel="noopener">영상 02:56에서 보기</a>
+    뒤 벽의 플레이 버튼 상패 두 개가 채널 규모를 보여 줘요. 원래 인터뷰에서 그는 이 자리가 처음 카메라 앞에 선 거라고 말해요.
+    <a href="https://www.youtube.com/watch?v=iAGDm1Y_7qM&amp;t=31s" target="_blank" rel="noopener">영상 00:31에서 보기</a>
   </figcaption>
 </figure>
+<p>대담 형식이라 화면에 자료가 없어요. 이 문서의 나머지 그림은 말로 설명한 구조와 숫자를 옮겨 그린 거예요.</p>
+
+<h3>좋아하던 분야, 자신에게 맞는 형식</h3>
+<p>시작은 사업 계획이 아니었어요. 12살 때 포트나이트에 빠져 게임 장면을 이어 붙인 영상을 만들면서 편집이 재미있다는 걸 알았고, 남들이 지나칠 작은 차이를 끝까지 다듬는 습관이 생겼어요.</p>
+<p>몇 년 뒤 콘텐츠로 부수입을 버는 사람들을 보고 다시 편집을 시작했어요. 분야는 동기부여였어요. 평소 데이비드 고긴스 영상을 즐겨 보고 달리기와 자기 관리에 빠져 있었거든요. 유행하는 분야를 계산해서 들어간 게 아니라, 무엇을 보면 사람이 다시 일어서고 싶어지는지 이미 감으로 알던 주제를 고른 거예요.</p>
+<p>형식은 일부러 짧은 영상을 택했어요. 완벽주의가 강해서 10분짜리를 만들면 끝내기도 전에 처음부터 다시 만들고 싶어질 것 같았대요. 1분 안팎이면 만들고, 올리고, 반응을 보고, 다음 영상에 고치는 순환을 빠르게 돌릴 수 있어요. 자기 성격에 맞는 형식을 고른 게 꾸준함의 출발점이었어요.</p>
+
+<h3>200회에서 아르바이트를 그만두기까지</h3>
+<p>아래 그림은 영상이 말한 성장 과정을 순서대로 놓은 거예요. 오른쪽 끝 칸이 결정적인 전환점이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 680 200" role="img" aria-label="첫 영상 200회, 2주 뒤 2만 회, 코비 브라이언트 영상 틱톡 100만 회, 여름방학 두 달 뒤 틱톡 팔로워 10만 명, 광고 캠페인 800만 조회수와 3,000달러로 이어지는 성장 단계">
+    <defs><marker id="arrow-growth" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-growth"></g>
+  </svg>
+  <figcaption>숫자가 커지는 속도보다, 첫 200회에 신나서 새로 고침을 하던 태도가 출발점이에요. 마지막 칸에서 그는 패스트푸드점 일을 그만뒀어요.</figcaption>
+</figure>
+<p>첫 영상의 조회수는 약 200회였어요. 실망할 수도 있는 숫자인데, 그는 200명이 자기 영상을 봤다는 데 흥분해서 계속 새로 고침을 했대요. 2주쯤 뒤 2만 회짜리가 나왔고, 코비 브라이언트를 다룬 영상은 틱톡에서 100만 회를 넘겨 어머니를 부르며 소리쳤대요.</p>
+<p>운이 좋아 보일 수 있지만, 그때 그는 패스트푸드점에서 일하면서 남는 시간을 거의 다 영상에 썼어요. 여름방학 두 달 동안 다른 선택지를 지운 채 몰입했고, 학교로 돌아갈 무렵 틱톡 팔로워가 10만 명을 넘었어요.</p>
+<p>전환점은 한 광고 캠페인이었어요. 조회수 천 회당 일정 금액을 주는 방식이었는데, 훨씬 큰 크리에이터들을 제치고 가장 좋은 성과를 냈어요. 약 800만 조회수로 3,000달러를 벌었고, 아르바이트로 몇 달 일해야 받을 돈이라는 걸 확인한 뒤 일을 그만뒀어요. 막연한 자신감이 아니라 시장에서 실력이 돈으로 바뀌는 걸 본 뒤 내린 결정이었어요.</p>
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>내레이션은 3,000달러를 '캐나다 달러'라고 말해요. 원래 인터뷰에서 캐나다 달러라고 밝힌 건 뒤에 나오는 천 회당 수익 이야기이고, 이 3,000달러에는 통화를 따로 말하지 않아요.</p>
+</aside>
 </section>
 
 <section id="s2">
-  <a class="stamp" href="https://www.youtube.com/watch?v=iAGDm1Y_7qM&amp;t=190s" target="_blank" rel="noopener">03:10</a>
-  <h2>끝까지 보게 만드는 3단계 이야기 구조</h2>
-<p>그의 영상은 왜 유독 많이 재생될까요. 매티스는 짧은 이야기를 세 단계로 짜요. 원래 인터뷰에서는 각각 hook, tension, payoff라고 불러요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=iAGDm1Y_7qM&amp;t=195s" target="_blank" rel="noopener">03:15</a>
+  <h2>1분 안에 붙잡는 세 단계 이야기 구조</h2>
+<p>그의 영상이 유독 많이 재생되는 이유로 매티스는 세 단계 이야기 구조를 들어요. 시선을 붙잡는 시작, 결과를 예측할 수 없게 만드는 긴장, 기다림에 보답하는 결말이에요. 아래 막대는 1분짜리 영상 안에서 세 단계가 차지하는 길이를 대략 나눈 거예요. 가운데 긴장 구간이 거의 전부예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 190" role="img" aria-label="1분 영상을 시작 3~5초, 긴장 약 90%, 결말 짧은 구간으로 나눈 막대">
+    <g id="fig-structure"></g>
+  </svg>
+  <figcaption>시작은 3~5초, 긴장은 영상의 약 90%라는 두 숫자만 영상에 나와요. 결말 칸 길이는 나머지를 채운 거예요.</figcaption>
+</figure>
+
+<h3>시작: 가장 강한 3~5초를 맨 앞에</h3>
+<p>매티스는 가진 원본에서 가장 강한 3~5초를 골라 맨 앞에 둬요. 배경부터 차분히 설명하지 않아요. 누군가 장애물을 넘으려 하거나 결정적인 실패를 맞는 순간처럼, 맥락을 몰라도 눈을 뗄 수 없는 장면이에요. 그다음 시간을 되돌려 이 사람이 누구이고 왜 이 도전이 중요한지 설명해요. 시청자는 이미 결과가 궁금해진 상태라 배경 설명까지 따라와요.</p>
+<p>많은 사람이 이 순서를 반대로 해요. 이해를 돕겠다고 배경을 길게 깔고 나서 핵심 장면을 보여 줘요. 그런데 쇼츠는 화면을 한 번 밀면 다음 영상이 바로 나와요. 친절한 설명보다 먼저 필요한 건 이 이야기를 계속 봐야 할 이유예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 210" role="img" aria-label="흔한 순서는 배경 설명 뒤에 핵심 장면, 매티스의 순서는 핵심 장면 뒤에 배경 설명과 긴장, 결말">
+    <defs><marker id="arrow-order" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-order"></g>
+  </svg>
+  <figcaption>같은 재료라도 순서만 바꾸면 첫 3초에 볼 이유가 생겨요. 흔한 순서에서는 시청자가 배경 설명 중에 화면을 넘겨요.</figcaption>
+</figure>
+
+<h3>중간: 영상의 90%를 차지하는 긴장</h3>
+<p>영상 대부분은 긴장을 만드는 데 써요. 매티스는 이 구간이 전체의 약 90%라고 말해요. 핵심은 불확실성이에요. 주인공이 결국 성공한다는 게 너무 빨리 확정되면 시청자는 떠나요. 실패할 수도 있다는 가능성, 예상하지 못한 장애물, 결과를 바꿀 선택이 남아 있어야 다음 장면을 기다려요.</p>
+<p>그는 <span class="term" data-term="시청 지속 시간 그래프" data-en="Audience retention" data-desc="영상의 각 시점에 시청자가 얼마나 남아 있는지 보여 주는 그래프예요. 선이 뚝 떨어지는 곳이 사람들이 빠져나간 지점이라, 어디서 지루해졌는지 찾는 데 써요." data-g="2">시청 지속 시간 그래프</span>에서 사람들이 빠져나간 지점을 찾고, 거기서 긴장이 풀린 이유를 따져 다음 영상에 반영했어요.</p>
+
+<h3>끝: 기다림에 보답하는 결말</h3>
+<p>마지막에는 반드시 충분한 보상이 있어야 해요. 오래 도전한 선수가 결승선을 통과하거나, 어려움을 견딘 사람이 가족과 포옹하거나, 거만하던 사람이 뜻밖의 방식으로 깨닫는 순간이에요. 시작에서 만든 궁금증과 중간에 쌓은 긴장을 결말이 풀어 줘야 이야기 하나가 완성돼요.</p>
+<blockquote>
+  <p>강한 시작만 있고 결말이 약하면 조회수는 나올 수 있어도 시청자에게 좋은 감정은 남지 않습니다.</p>
+  <cite>— 영상 04:22</cite>
+</blockquote>
+
+<h3>모든 영상에 같은 공식을 쓰지는 않아요</h3>
+<p>매티스는 자기 콘텐츠를 인생의 지혜, 따뜻한 선행, 스포츠의 역전, 역경 극복, 통쾌한 반전 같은 몇 묶음으로 나눠 봐요. 이야기형이라면 위의 세 단계가 맞지만, 행동을 직접 촉구하는 영상이라면 다른 순서가 더 어울릴 수 있어요.</p>
 <div class="table-scroll">
   <table>
-    <thead><tr><th>단계</th><th>비중</th><th>하는 일</th><th>예시 장면</th></tr></thead>
+    <thead><tr><th>영상 종류</th><th>처음</th><th>중간</th><th>끝</th></tr></thead>
     <tbody>
-      <tr><td><span class="term" data-term="훅" data-desc="영상 맨 앞에서 시청자를 붙잡는 장면이나 말이에요. 낚싯바늘처럼 걸어 둔다는 뜻이고, 짧은 영상일수록 중요해요.">훅</span></td><td>처음 3~5초</td><td>맥락을 몰라도 눈을 뗄 수 없는 순간을 맨 앞에 둬요</td><td>장애물을 넘으려는 순간, 결정적인 실패</td></tr>
-      <tr><td>긴장</td><td>약 90%</td><td>결과를 예측할 수 없게 만들어 다음 장면을 기다리게 해요</td><td>실패할 가능성, 예상 못 한 장애물, 남은 선택</td></tr>
-      <tr><td>보상</td><td>마지막</td><td>앞에서 쌓은 궁금증과 긴장을 풀어 줘요</td><td>결승선 통과, 가족과의 포옹, 뜻밖의 깨달음</td></tr>
+      <tr><td>이야기형 (역경 극복, 스포츠의 역전 등)</td><td>눈을 뗄 수 없는 3~5초 장면</td><td>결과를 알 수 없는 긴장</td><td>궁금증을 풀어 주는 보상</td></tr>
+      <tr><td>행동 촉구형</td><td>문제를 짚어요</td><td>그 문제의 고통을 선명하게 보여 줘요</td><td>구체적인 행동을 제안해요</td></tr>
     </tbody>
   </table>
 </div>
-<h3>배경보다 장면이 먼저예요</h3>
-<p>매티스는 가진 영상에서 가장 강한 3~5초를 먼저 골라요. 사건의 배경부터 차분히 설명하지 않아요. 강한 장면을 보여 준 다음 시간을 되돌려 이 사람이 누구인지, 왜 이 도전이 중요한지 설명해요. 시청자는 이미 결과가 궁금하니까 배경 설명까지 따라와요.</p>
-<p>많은 사람이 이 순서를 거꾸로 해요. 이해를 돕겠다고 배경부터 길게 풀고 나서 핵심 장면을 보여 줘요. 하지만 쇼츠에서는 화면을 한 번 밀면 다음 영상이 바로 나와요. 친절한 설명보다 먼저 필요한 건 이 이야기를 계속 볼 이유예요.</p>
-<h3>긴장은 불확실성에서 나와요</h3>
-<p>주인공이 결국 성공하리라는 게 너무 빨리 확정되면 시청자는 떠나요. 실패할 수도 있다는 가능성이 남아 있어야 해요. 매티스는 <span class="term" data-term="시청 지속 시간 그래프" data-desc="영상의 각 지점에서 시청자가 얼마나 남아 있는지 보여 주는 유튜브 분석 그래프예요. 그래프가 뚝 떨어지는 곳이 사람들이 떠난 지점이에요.">시청 지속 시간 그래프</span>에서 사람들이 빠져나간 지점을 확인했어요. 그리고 거기서 긴장이 풀린 이유를 찾아 다음 영상에 반영했어요.</p>
-<h3>보상이 약하면 아예 만들지 않아요</h3>
-<p>시작에서 만든 궁금증과 중간에서 쌓은 긴장을 마지막 장면이 풀어 줘야 이야기가 완성돼요. 강한 시작만 있고 결말이 약하면 조회수는 나와도 시청자에게 좋은 감정이 남지 않아요. 원래 인터뷰에서 그는 좋은 보상이 없는 소재는 만들 이유가 없다고까지 말해요.</p>
-<h3>모든 영상에 같은 틀을 쓰진 않아요</h3>
-<p>매티스는 자기 콘텐츠를 인생의 지혜, 따뜻한 선행, 스포츠, 통쾌한 반전 같은 묶음으로 나눠 봐요. 이야기형 영상에는 위의 세 단계가 맞아요. 하지만 시청자에게 직접 행동을 촉구하는 영상이라면 다른 틀이 어울려요.</p>
-<div class="table-scroll">
-  <table>
-    <thead><tr><th>영상 종류</th><th>시작</th><th>가운데</th><th>끝</th></tr></thead>
-    <tbody>
-      <tr><td>역경을 이겨 낸 이야기</td><td>훅: 가장 강한 장면</td><td>긴장: 결과를 모르게</td><td>보상: 극복의 순간</td></tr>
-      <tr><td>행동을 촉구하는 영상</td><td>문제를 지적해요</td><td>그 문제의 고통을 선명하게 보여 줘요</td><td>구체적인 행동을 제안해요 (예: 지금 팔굽혀펴기 20개)</td></tr>
-    </tbody>
-  </table>
-</div>
-<p>형식보다 중요한 건 시청자의 감정이 어떤 순서로 움직일지 설계하는 일이에요.</p>
+<p>형식보다 중요한 건 시청자의 감정이 어떤 순서로 움직여야 하는지 설계하는 일이라는 게 영상의 정리예요.</p>
 </section>
 
 <section id="s3">
   <a class="stamp" href="https://www.youtube.com/watch?v=iAGDm1Y_7qM&amp;t=326s" target="_blank" rel="noopener">05:26</a>
-  <h2>소재 고르기부터 편집, AI 활용까지</h2>
-<h3>경쟁 채널은 일부러 안 봐요</h3>
-<p>비슷한 채널을 많이 보면 자기도 모르게 아이디어와 표현이 닮아 간다고 생각해서예요. 대신 인터넷 문화, 스포츠, 스트리밍, 영화와 드라마처럼 넓은 곳에서 소재를 찾아요. 어떤 장면을 발견하면 이미 유행했는지보다 '내가 편집하면 10배 더 좋아질 수 있는지'를 따져요.</p>
-<blockquote>
-  <p>I don't want to stay stuck in my ways or follow the trend, you know, I want to be the trend.</p>
-  <p>제 방식에 갇히거나 유행을 따라가고 싶지 않아요. 제가 유행이 되고 싶어요.</p>
-  <cite>— 원래 인터뷰 (이 영상 05:26 부근)</cite>
-</blockquote>
-<p>그렇다고 세상과 담을 쌓는 건 아니에요. 지금 어떤 사건과 작품이 화제인지는 계속 챙겨요. 다만 같은 분야의 결과물을 베끼지 않고, 대중의 관심이 모인 원재료를 자기 방식으로 다시 풀어요. 유행을 따르는 것과 유행을 해석하는 건 전혀 다른 일이에요.</p>
-<h3>편집은 세 단계로 흘러가요</h3>
-<ol>
-  <li>화질이 가장 좋은 원본을 찾아 AI <span class="term" data-term="업스케일링" data-desc="저화질 영상을 더 높은 해상도로 키우는 작업이에요. 요즘은 AI가 빠진 디테일을 채워 넣어 더 선명하게 만들어 줘요.">업스케일링</span> 도구로 더 선명하게 만들어요.</li>
-  <li><span class="term" data-term="프리미어 프로" data-desc="어도비의 영상 편집 프로그램이에요. 클립을 자르고 순서를 맞춰 이야기의 뼈대를 만드는 데 많이 써요.">프리미어 프로</span>에서 이야기의 뼈대를 잡아요. 이 단계에선 효과보다 순서와 맥락이 먼저예요. 기본 편집만으로도 끝까지 볼 만한 이야기여야 해요.</li>
-  <li><span class="term" data-term="애프터 이펙트" data-desc="어도비의 모션 그래픽·특수 효과 프로그램이에요. 움직이는 자막, 색 보정, 화려한 전환 효과를 넣을 때 써요.">애프터 이펙트</span>에서 빛나는 자막, 눈에 띄는 색감, 전환 효과, 워터마크를 더해요. 매티스는 이 과정을 채널 이름을 따서 '볼트화'라고 불러요.</li>
-</ol>
-<p>화면을 넘기는 사람 눈에 밝고 선명한 영상이 먼저 들어오게 하려는 거예요. 그래도 그는 효과가 약한 이야기를 살려 준다고 착각하지 않아요. 좋은 이야기가 먼저고, 시각적 완성도는 그 힘을 키우는 장치예요.</p>
-<h3>AI는 옆자리 동료예요</h3>
-<p>AI는 제작 전 과정에 들어가 있어요. 아이디어와 제목을 다듬을 때도, 긴 원본에서 쓸 만한 순간을 찾을 때도 써요. 특히 자막만 읽는 도구가 아니라 화면과 화자를 함께 이해하는 도구로 누가 어떤 상황에서 무슨 말을 했는지 파악해요. 원래 인터뷰에서 그가 밝힌 도구는 Google AI Studio예요. 덕분에 긴 영상을 처음부터 끝까지 손으로 뒤지는 시간이 줄어요.</p>
-<p>AI가 초안을 만들었다고 바로 올리지는 않아요. 자기가 편집한 첫 버전을 다시 AI에게 보여 주고 물어요. 이해하기 어려운 부분은 없는지, 흐름이 끊기는 곳은 어디인지, 더 강한 장면은 없는지요. AI를 창작자 대신 일하는 기계가 아니라 냉정하게 피드백을 주는 동료처럼 써요.</p>
+  <h2>소재 찾기와 제작 과정, 그리고 인공지능</h2>
+<h3>경쟁 채널은 일부러 덜 봐요</h3>
+<p>매티스는 비슷한 채널을 따라 하지 않아요. 많이 보면 자기도 모르게 아이디어와 표현이 닮아 간다고 생각하거든요. 대신 인터넷 문화, 스포츠, 스트리밍 방송, 영화와 시리즈처럼 넓은 곳에서 소재를 찾아요.</p>
+<p>어떤 장면을 발견하면 이미 유행했는지만 보지 않아요. '내가 편집하면 열 배 더 좋아질 수 있나'를 따져요. 다만 세상과 담을 쌓는 건 아니에요. 사람들이 지금 무엇에 관심을 두는지는 계속 확인하고, 같은 분야 채널의 결과물 대신 대중의 관심이 모인 원재료를 자기 방식의 이야기로 바꿔요. 영상의 말로는 유행을 베끼는 것과 유행을 해석하는 것은 전혀 다른 일이에요.</p>
+
+<h3>원본에서 완성까지 다섯 단계</h3>
+<p>소재가 정해지면 아래 순서로 만들어요. 가운데 프리미어 프로 단계에서는 효과 없이 순서와 맥락만으로 이야기 뼈대를 세우는 게 포인트예요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["가장 화질 좋은 원본 찾기"] --> B["AI 도구로 화질 높이기"] --> C["프리미어 프로: 이야기 뼈대"] --> D["애프터 이펙트: 볼트화"] --> E["AI에게 첫 편집본 피드백 받기"]
+</pre>
+  <figcaption>효과를 더하는 '볼트화'는 네 번째 단계예요. 기본 편집만으로도 끝까지 볼 만한 이야기가 돼야 다음으로 넘어가요.</figcaption>
+</figure>
+<p>원본은 가장 화질 좋은 걸 구해도 흐릿한 경우가 많아서, 인공지능 <span class="term" data-term="업스케일링" data-en="Upscaling" data-desc="낮은 해상도의 영상을 더 높은 해상도로 키우는 작업이에요. 요즘은 인공지능이 빠진 디테일을 채워 넣어 흐릿한 원본을 선명하게 만들어 줘요." data-g="3">업스케일링</span>으로 먼저 선명하게 다듬어요. 원래 인터뷰에서도 이 단계를 따로 꼽아요. 기본 편집이 끝나면 애프터 이펙트에서 빛나는 자막, 색감, 전환 효과, 워터마크를 더해요. 매티스는 채널 이름을 따서 이 과정을 '<span class="term" data-term="볼트화" data-desc="매티스가 채널 이름 Bolt Motivation을 따서 붙인 말이에요. 기본 편집이 끝난 영상에 빛나는 자막, 색감, 전환 효과, 워터마크를 더해 한눈에 띄게 만드는 단계예요." data-g="4">볼트화</span>한다'고 불러요. 화면을 넘기는 사람 눈에 밝고 선명한 영상이 먼저 들어오게 하는 거예요.</p>
+<p>그래도 효과가 약한 이야기를 살려 줄 거라고 착각하지는 않아요. 좋은 이야기가 먼저이고, 시각적 완성도는 그 힘을 키우는 장치예요.</p>
+
+<h3>인공지능은 옆자리 동료처럼</h3>
+<p>인공지능은 제작 전반에 들어가 있어요. 쓰는 곳을 정리하면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>어디에</th><th>무엇을 맡기나요</th></tr></thead>
+    <tbody>
+      <tr><td>기획</td><td>아이디어와 제목 검토</td></tr>
+      <tr><td>원본 고르기</td><td>긴 원본에서 쓸 만한 순간 찾기. 말만 받아 적은 자막이 아니라 화면과 화자를 함께 이해하는 도구로, 누가 어떤 상황에서 무엇을 말했는지 파악해요</td></tr>
+      <tr><td>화질</td><td>원본 화질 높이기</td></tr>
+      <tr><td>검토</td><td>첫 편집본을 보여 주고 이해하기 어려운 곳, 흐름이 끊기는 곳, 더 강한 장면이 있는지 의견 받기</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>덕분에 긴 원본을 처음부터 끝까지 손으로 뒤지는 시간이 줄었어요. 하지만 인공지능이 초안을 만들었다고 바로 올리지는 않아요. 창작자를 대신하는 자동화 기계가 아니라 옆자리에서 냉정하게 피드백을 주는 동료처럼 써요. 원래 인터뷰에서 그가 이름을 댄 도구는 Google AI(Artificial Intelligence) Studio예요. 다른 도구들은 대본만 읽는데, 이건 화면까지 본다고 설명해요.</p>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>Google AI Studio는 구글의 Gemini 모델을 브라우저에서 바로 써 볼 수 있는 곳이에요. 구글 공식 문서는 Gemini가 영상의 소리와 화면을 함께 처리해서 영상 내용을 이해한다고 설명해요. 매티스가 말한 '누가 무슨 말을 했는지까지 아는' 기능이 이거예요.</p>
+  <p>Google AI Studio에서는 구글의 Gemini 모델을 써요. Gemini API(Application Programming Interface) 공식 문서는 Gemini가 영상의 소리와 화면을 함께 처리해서, 영상에서 일어나는 일을 설명하고, 내용에 대한 질문에 답하고, 특정 시점을 짚어 말할 수 있다고 안내해요. 매티스가 말한 '누가 무엇을 말했는지까지 아는' 장면 찾기가 이 기능이에요.</p>
   <p class="cite">출처: <a href="https://ai.google.dev/gemini-api/docs/video-understanding" target="_blank" rel="noopener">Google AI for Developers — Video understanding</a></p>
 </aside>
-<p>매티스는 중학생 때 ChatGPT가 대중화되기 전부터 AI 서비스의 조기 접근을 신청했어요. 이미지 생성 도구가 나왔을 때도 똑같이 먼저 배웠어요. 주변 사람들이 관심을 가질 무렵 그는 이미 질문을 잘 만드는 법과 결과를 검증하는 법을 익힌 뒤였어요.</p>
+<p>그가 빨리 성장한 건 새 도구를 겁내지 않아서라기보다, 그 도구를 자기 판단력을 높이는 데 깊게 썼기 때문이라고 영상은 말해요. 중학생 때, ChatGPT가 널리 퍼지기 전부터 인공지능 서비스의 <span class="term" data-term="조기 접근" data-en="Early access" data-desc="정식 출시 전에 일부 사용자에게 먼저 서비스를 열어 주는 방식이에요. 신청해서 승인받아야 쓸 수 있는 경우가 많아요." data-g="5">조기 접근</span>을 신청했고, 이미지 생성 도구가 나왔을 때도 똑같이 먼저 써 봤어요. 주변이 관심을 갖기 시작했을 땐 이미 질문을 잘 만드는 법과 결과를 검증하는 법을 익힌 뒤였어요.</p>
+<p>그렇다고 일이 쉬워진 건 아니에요. 영상 한 편에 약 10시간이 들어가요. 하루 대부분을 컴퓨터 앞에서 편집하고, 찾고, 배우고, 새 방식을 시험해요. 짧은 콘텐츠라서 짧게 일한 게 아니라, 짧은 시간 안에 더 많은 판단과 완성도를 밀어 넣은 셈이에요.</p>
 </section>
 
 <section id="s4">
   <a class="stamp" href="https://www.youtube.com/watch?v=iAGDm1Y_7qM&amp;t=490s" target="_blank" rel="noopener">08:10</a>
-  <h2>조회수와 수익은 어디서 나오나요</h2>
-<p>AI를 쓴다고 일이 쉬워진 건 아니에요. 영상 한 편에 약 10시간이 들어가요. 하루 대부분을 컴퓨터 앞에서 편집하고, 찾아보고, 새 방식을 시험하며 보내요. 1분짜리 결과물 뒤에 수천 시간 쌓은 감각이 있는 셈이에요.</p>
+  <h2>숫자로 보는 성과와 수익 구조</h2>
+<h3>성과</h3>
+<p>최근 영상은 올린 지 약 12시간 만에 유튜브 조회수 700만 회를 찍었고, 채널에서 가장 많이 본 영상은 1억 2천만 회를 넘었어요. 이걸 한 달 아홉 편 정도로 만들어요.</p>
+<p>이 숫자에서 중요한 건 사람들이 어떻게 들어오느냐예요. 시청자의 약 95%는 썸네일을 눌러서가 아니라 쇼츠 피드를 넘기다 영상을 만나요. 그래서 첫 장면은 선택이 아니라 생존 조건이에요. 앞 섹션의 '가장 강한 3~5초를 맨 앞에'가 여기서 나와요. 그래도 포장이 필요 없는 건 아니어서, 제목에 신경 쓰기 시작한 뒤 조회수가 더 늘었다고 해요.</p>
+
+<h3>유튜브가 돈을 주고, 틱톡과 인스타그램은 길을 넓혀요</h3>
+<p>수익 면에서는 유튜브가 특별했어요. 아래 막대는 조회수 천 회당 수익이 처음 시작할 때와 지금 얼마인지 비교한 거예요. 약 8센트에서 약 30센트로, 네 배 가까이 올랐어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 520 220" role="img" aria-label="유튜브 조회수 천 회당 수익: 시작할 때 약 8센트, 지금 약 30센트">
+    <line class="axis" x1="70" y1="180" x2="480" y2="180"/>
+    <rect class="bar dim" x="130" y="149" width="90" height="31"/>
+    <text x="175" y="141" text-anchor="middle">약 8센트</text>
+    <text x="175" y="200" text-anchor="middle" class="sub">시작할 때</text>
+    <rect class="bar accent" x="300" y="63" width="90" height="117"/>
+    <text x="345" y="55" text-anchor="middle">약 30센트</text>
+    <text x="345" y="200" text-anchor="middle" class="sub">지금</text>
+    <text x="70" y="24" class="sub">조회수 천 회당 수익 (캐나다 달러)</text>
+  </svg>
+  <figcaption>천 회당 차이는 몇 센트지만, 수천만 회가 쌓이면 큰 금액이 돼요. 화면 자막에도 '약 30센트'가 나와요. <a href="https://www.youtube.com/watch?v=iAGDm1Y_7qM&amp;t=540s" target="_blank" rel="noopener">영상 09:00에서 보기</a></figcaption>
+</figure>
+<p>틱톡과 인스타그램은 같은 영상을 올려도 직접 수익이 거의 없었어요. 그래도 세 플랫폼에 모두 올려 도달 범위를 넓혔어요. 영상 하나를 만들 때 플랫폼마다 다른 기회를 동시에 열어 두는 거예요.</p>
 <div class="table-scroll">
   <table>
-    <thead><tr><th>항목</th><th>수치</th></tr></thead>
+    <thead><tr><th>플랫폼</th><th>직접 수익</th><th>올리는 이유</th></tr></thead>
     <tbody>
-      <tr><td>월 조회수 (세 플랫폼 합계)</td><td>약 2억 5천만 회</td></tr>
-      <tr><td>최근 영상</td><td>업로드 약 12시간 만에 유튜브 700만 회</td></tr>
-      <tr><td>가장 많이 본 영상</td><td>유튜브 1억 2천만 회</td></tr>
-      <tr><td>쇼츠 피드를 넘기다 들어온 시청자</td><td>약 95%</td></tr>
-      <tr><td>홈 화면에서 썸네일을 눌러 들어온 시청자</td><td>약 4%</td></tr>
-      <tr><td>유튜브 1,000회당 수익</td><td>시작할 때 약 8센트 → 지금 약 30센트 (캐나다 달러)</td></tr>
+      <tr><td>유튜브</td><td>있어요. 천 회당 약 30센트까지 올랐어요</td><td>수익, 그리고 옛 영상이 계속 재생돼요</td></tr>
+      <tr><td>틱톡</td><td>거의 없어요</td><td>도달 범위를 넓혀요</td></tr>
+      <tr><td>인스타그램</td><td>거의 없어요</td><td>도달 범위를 넓혀요</td></tr>
     </tbody>
   </table>
 </div>
-<p>마지막 두 줄의 출처는 원래 인터뷰예요. 내레이션은 '약 8 수준에서 약 30 수준'이라고만 말해요.</p>
-<h3>첫 장면은 생존 조건이에요</h3>
-<p>시청자 대부분이 썸네일이 아니라 피드에서 영상을 만나요. 그래서 첫 장면은 고를 수 있는 옵션이 아니라 살아남기 위한 조건이에요. 그렇다고 포장을 무시하진 않아요. 제목에 신경 쓰기 시작한 뒤 조회수가 더 늘었다고 해요.</p>
-<h3>유튜브가 돈을 가장 많이 줘요</h3>
-<p>유튜브의 1,000회당 수익은 몇 센트 차이로 작아 보여도, 수천만, 수억 조회수가 쌓이면 큰돈이 돼요. 틱톡과 인스타그램에서는 수익이 거의 없지만 같은 영상을 다 올려 더 많은 사람에게 닿게 해요.</p>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>매티스가 말한 '1,000회당 수익'은 유튜브에서 <span class="term" data-term="RPM" data-desc="조회수 1,000회당 크리에이터가 실제로 번 돈이에요. 유튜브와 수익을 나눈 뒤의 금액이라 채널의 실제 벌이를 가늠할 때 봐요.">RPM</span>이라고 불러요. 유튜브 고객센터는 RPM을 조회수 1,000회당 크리에이터가 실제로 번 돈으로 설명해요. 유튜브와 나눈 뒤의 금액이에요. 광고주가 광고 1,000번 노출에 내는 돈인 CPM과는 달라요. 그래서 RPM이 CPM보다 낮게 나와요.</p>
-  <p class="cite">출처: <a href="https://support.google.com/youtube/answer/9314357?hl=en" target="_blank" rel="noopener">YouTube 고객센터 — Understand ad revenue analytics</a></p>
+  <p>원래 인터뷰에서 매티스는 이 숫자를 <span class="term" data-term="RPM" data-desc="유튜브가 몫을 나눈 뒤 크리에이터가 조회수 1,000회당 실제로 받는 금액이에요. 매티스가 말한 &#x27;천 회당 30센트&#x27;가 바로 이 숫자예요." data-g="8">RPM(Revenue Per Mille)</span>이라고 불러요. 유튜브 고객센터는 RPM을 조회수 1,000회당 크리에이터가 번 돈으로 정의해요. 유튜브가 수익을 나눈 뒤의 금액이라서, 광고주가 내는 금액인 CPM(Cost Per Mille)보다 낮게 나와요.</p>
+  <p>쇼츠는 영상 사이에 붙는 광고 수익을 한데 모아 크리에이터 몫과 음악 저작권 비용으로 나눈 뒤, 크리에이터가 자기 몫의 45%를 가져가는 구조예요. 지금 안내 페이지에는 2027년 2월 1일부터 최근 90일 동안 쇼츠 조회수 1,000만 회 이상이어야 이 수익을 나눠 받을 수 있다는 조건도 적혀 있어요.</p>
+  <p class="cite">출처: <a href="https://support.google.com/youtube/answer/9314357" target="_blank" rel="noopener">YouTube 고객센터 — 광고 수익 분석 이해하기</a> · <a href="https://support.google.com/youtube/answer/12504220" target="_blank" rel="noopener">YouTube 고객센터 — YouTube Shorts 수익 창출 정책</a></p>
 </aside>
+
 <h3>옛 영상이 계속 일해요</h3>
-<p>유튜브에서는 새 영상을 안 올려도 예전 영상이 꾸준히 재생돼요. 원래 인터뷰에서 매티스는 지금 게시를 멈춰도 앞으로 1년쯤은 하루 약 300달러가 들어올 거라고 했어요. 월 2억 5천만 조회수 가운데 새 영상 몫은 약 1억 5천만이고, 나머지는 옛 영상에서 나와요. 한 편씩 쌓인 영상이 새 시청자를 데려오는 자산이 된 거예요.</p>
-<h3>광고 말고도 수익이 있어요</h3>
-<p>영상 아래 워터마크 자리에 '이렇게 편집하고 싶다면 프로필 링크'라는 문구를 띄워 편집 자료(PDF)를 팔았어요. 같은 방식을 Cal AI라는 AI 앱 광고에도 썼고, 원래 인터뷰 기준으로 이 협찬이 가장 많이 번 달을 만들었어요.</p>
-<p>소니와는 영화 「가라데 키드: 레전드」 홍보 영상을 함께 만들었어요. 그가 활동 초기에 예전 「가라데 키드」 영화로 만든 영상이 2천만 회 넘게 재생된 걸 보고 회사가 먼저 연락했어요. 남의 영상을 편집하던 16살이 몇 년 만에 대형 영화사의 공식 의뢰를 받은 거예요. 실력이 공개적으로 쌓이면 이런 기회가 생겨요.</p>
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>다른 사람의 영상 클립으로 수익을 내려면 유튜브의 '재사용 콘텐츠' 정책을 알아 둬야 해요. 의미 있는 해설이나 상당한 수정, 교육적·오락적 가치를 더하지 않고 남의 콘텐츠를 다시 올리는 채널은 수익 창출이 안 돼요. 고객센터는 다른 크리에이터의 영상을 편집해 이야기와 해설을 붙인 경우를 허용되는 예로 들어요. 원래 인터뷰에서 매티스도 자기 영상이 충분히 변형돼 수익 창출 대상이 된다고 말해요.</p>
-  <p class="cite">출처: <a href="https://support.google.com/youtube/answer/1311392?hl=en" target="_blank" rel="noopener">YouTube 고객센터 — YouTube channel monetization policies</a></p>
+<p>유튜브의 또 다른 장점은 새 영상을 올리지 않아도 과거 영상이 꾸준히 재생된다는 점이에요. 매티스는 게시를 멈춰도 한동안 하루 수백 달러 수준의 수익이 이어질 거라고 말해요. 매달 조회수 중 상당 부분이 지난 영상에서 나와요. 한 편씩 쌓인 영상이 새 시청자를 데려오는 자산이 된 거예요.</p>
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>원래 인터뷰에서는 구체적으로 '하루 약 300달러를 앞으로 1년쯤'이라고 말해요. 월 2억 5천만 회 가운데 새 영상 몫을 1억 5천만 회 정도로 예를 들기도 해요. 예로 든 숫자라서 정확한 비율은 아니에요.</p>
 </aside>
+
+<h3>광고 말고 다른 수익</h3>
+<p>수익원은 조회수 광고에서 그치지 않았어요. 영상 아래에 자연스럽게 뜨는 문구로 편집 자료를 소개했고, 같은 방식을 인공지능 서비스 광고에도 썼어요.</p>
+<p>가장 눈에 띄는 건 소니와의 협업이에요. 예전에 옛 가라테 키드 영화로 만든 편집 영상이 2천만 회 넘게 재생된 걸 보고 소니가 먼저 연락해 왔고, 영화 '가라테 키드: 레전드' 홍보 영상을 만들었어요. 남의 영상을 편집하던 16살이 몇 년 뒤 대형 영화사의 공식 의뢰를 받은 거예요. 실력이 공개적으로 쌓이면 이런 기회가 찾아온다는 예로 영상은 이 일을 들어요.</p>
 </section>
 
 <section id="s5">
-  <a class="stamp" href="https://www.youtube.com/watch?v=iAGDm1Y_7qM&amp;t=620s" target="_blank" rel="noopener">10:20</a>
-  <h2>번아웃, 꾸준함, 그리고 다음 목표</h2>
-<h3>번아웃은 방향을 바꾸라는 신호예요</h3>
-<p>영상 하나에 10시간을 쓰면서 하루이틀마다 올리면 사실상 쉬는 날이 없어요. 매티스도 <span class="term" data-term="번아웃" data-desc="오랫동안 무리해서 몸과 마음이 다 타 버린 듯 지친 상태예요. 의욕이 사라지고 하던 일이 버겁게 느껴져요.">번아웃</span>을 여러 번 겪었어요. 그는 이걸 실패의 증거로만 보지 않았어요. 콘텐츠 방식이나 사업 모델을 바꾸라는 신호로 받아들였고, 스스로 재미있다고 느끼는 소재를 만들며 회복했어요.</p>
-<p>그가 보기에 많은 사람이 지치는 이유는 팔로워가 기대할 것 같은 한 가지 형식에 자신을 가두기 때문이에요. 그래서 수백만 명이 구독해도 자기가 멋지다고 생각하고 사람들에게 좋은 영향을 줄 수 있는 이야기를 골라요. 쇼츠 구독자는 긴 영상의 충성 시청자와 성격이 다르다는 점도 짚어요. 쇼츠에서는 사람들이 쉽게 구독하는 만큼 깊이 따라오지 않거든요.</p>
-<h3>초보가 가장 많이 하는 실수</h3>
-<p>분야를 너무 빨리 바꾸는 거예요. 한 달 해 보고 성과가 없으면 동기부여에서 음악으로, 또 다른 유행으로 옮겨 가요. 잘되는 채널의 겉모습만 따라 하고, 그 방식이 왜 통하는지는 공부하지 않아요.</p>
-<p>매티스는 처음부터 동기부여 분야를 떠날 생각을 거의 하지 않았어요. 반응이 약한 영상이 나오면 분야를 버리는 대신 자기 판단과 편집에서 이유를 찾았어요. 한곳에 오래 머물수록 실패는 감각을 훈련하는 데이터가 돼요.</p>
-<h3>다음 목표: 더 넓게가 아니라 더 깊게</h3>
-<p>그는 새 사업을 여러 개 벌일 생각이 없어요. 먼저 혼자 하던 제작 과정을 정리하고 팀을 꾸려, 월 2억 5천만 조회수를 5억, 다시 10억으로 키우려 해요. 강의도 당장은 팔지 않아요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=iAGDm1Y_7qM&amp;t=612s" target="_blank" rel="noopener">10:12</a>
+  <h2>번아웃, 한 분야에 머무르기, 다음 목표</h2>
+<h3>번아웃은 바꾸라는 신호</h3>
+<p>영상 한 편에 10시간을 쓰면서 하루 이틀마다 올리려 하면 쉬는 날이 사라져요. 뜻대로 안 되는 시기도 반복됐어요. 매티스는 <span class="term" data-term="번아웃" data-en="Burnout" data-desc="오랫동안 무리하게 일한 끝에 몸과 마음이 다 지쳐 의욕이 사라진 상태예요. 쉬는 날 없이 매일 콘텐츠를 올리는 창작자가 자주 겪어요." data-g="6">번아웃</span>을 실패의 증거로만 보지 않았어요. 콘텐츠 방식이나 사업 모델을 바꿔야 한다는 신호로 받아들였고, 자기가 재미있다고 느끼는 소재를 만들며 회복했어요.</p>
+<p>그가 보기에 많은 사람이 지치는 이유는 팔로워가 기대할 것 같은 한 가지 형식에 자신을 가두기 때문이에요. 그래서 수백만 명이 구독하고 있어도 자신이 멋지다고 생각하고 사람들에게 좋은 영향을 줄 수 있는 이야기를 골라요. 쇼츠 구독자는 쉽게 구독하는 만큼, 긴 영상을 꾸준히 보는 충성 시청자와 성격이 달라요. 숫자에 끌려다니기보다 자기가 계속 만들 수 있는 기준을 지키는 거예요.</p>
+
+<h3>초보가 가장 자주 하는 실수</h3>
+<p>반대로 초보 창작자들이 가장 자주 하는 실수는 너무 빨리 분야를 바꾸는 거예요. 아래 그림의 왼쪽이 그 흐름이에요. 한 달 해 보고 성과가 없으면 동기부여에서 음악으로, 다시 다른 유행으로 옮겨 가요. 성공한 채널의 겉모습만 따라 하고, 그 방식이 왜 통하는지는 공부하지 않아요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="왼쪽: 반응이 약하면 분야를 바꿔 동기부여에서 음악, 다른 유행으로 옮겨 가는 흐름. 오른쪽: 반응이 약하면 분야는 두고 자신의 판단과 편집에서 이유를 찾아 다음 영상에 반영하는 순환">
+    <defs><marker id="arrow-niche" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-niche"></g>
+  </svg>
+  <figcaption>왼쪽은 매번 처음부터 다시 시작해요. 오른쪽은 실패가 쌓일수록 감각을 훈련하는 데이터가 돼요.</figcaption>
+</figure>
+<p>매티스는 시작할 때부터 동기부여 분야를 떠날 생각을 거의 하지 않았어요. 반응이 약한 영상이 나오면 분야를 버리는 대신 자기 판단과 편집에서 이유를 찾았어요. 한 곳에 오래 집중할수록 실패는 감각을 훈련하는 데이터가 돼요.</p>
+
+<h3>다음 목표: 넓히기보다 깊게</h3>
+<p>그의 다음 목표는 새 사업을 여러 개 벌이는 게 아니에요. 혼자 하던 제작 과정을 정리하고 팀을 꾸려서, 월 2억 5천만 조회수를 5억, 다시 10억으로 키우는 거예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 520 220" role="img" aria-label="월 조회수 목표: 지금 2억 5천만, 다음 5억, 그다음 10억">
+    <line class="axis" x1="60" y1="180" x2="480" y2="180"/>
+    <rect class="bar dim" x="100" y="146" width="90" height="34"/>
+    <text x="145" y="138" text-anchor="middle">2억 5천만</text>
+    <text x="145" y="200" text-anchor="middle" class="sub">지금</text>
+    <rect class="bar" x="215" y="112" width="90" height="68"/>
+    <text x="260" y="104" text-anchor="middle">5억</text>
+    <text x="260" y="200" text-anchor="middle" class="sub">다음 목표</text>
+    <rect class="bar accent" x="330" y="44" width="90" height="136"/>
+    <text x="375" y="36" text-anchor="middle">10억</text>
+    <text x="375" y="200" text-anchor="middle" class="sub">그다음 목표</text>
+  </svg>
+  <figcaption>한 단계마다 두 배씩 키우는 목표예요. 방법은 새 사업이 아니라 팀을 꾸려 지금 하는 쇼츠를 더 많이 만드는 거예요.</figcaption>
+</figure>
+<p>당장 강의를 팔 생각도 없어요. 자기가 충분히 해내기도 전에 해내는 법부터 파는 사람이 되고 싶지 않대요. 지금 잘되는 일을 더 깊게 파는 게 먼저라는 판단이에요.</p>
+<p>앞으로는 <span class="term" data-term="개인 브랜드" data-en="Personal brand" data-desc="채널 이름이 아니라 자기 얼굴과 이름으로 사람들에게 알려지는 것이에요. 매티스는 지금까지 영상 뒤에만 있었는데, 앞으로 카메라 앞에 서서 이걸 만들고 싶어 해요." data-g="7">개인 브랜드</span>를 만들고 카메라 앞에 서는 법도 배우고 싶어 해요. 엄청난 조회수를 만든 그도 카메라 앞에서 말하는 건 별개의 기술이라고 인정해요. 처음 영상을 만들 때 아무도 안 봤기에 서툴러도 괜찮았던 것처럼, 새 분야에서도 서툰 자신을 허용하며 배울 생각이에요.</p>
+
+<h3>무엇을 하지 않았나</h3>
+<p>그는 피아노, 체스, 운동, 골프로 화면 밖의 시간도 만들어요. 하지만 꾸준함을 만든 핵심은 무엇을 했느냐보다 무엇을 하지 않았느냐에 있다고 봐요. 파티와 술을 포기하고 늦은 밤까지 혼자 작업하는 시간을 골랐어요. 모두가 같은 삶을 살 필요는 없지만, 큰 목표를 고른다는 건 그 목표와 경쟁하는 다른 선택을 줄이는 일이라는 게 영상의 말이에요.</p>
+
+<h3>진행자의 정리</h3>
+<p>영상 진행자가 가장 중요하게 본 건 매티스가 조회수를 비밀 공식으로 설명하지 않았다는 점이에요. 강한 시작, 긴장, 만족스러운 결말이라는 구조는 분명 쓸모 있어요. 하지만 그걸 실제 성과로 바꾼 건 영상마다 10시간씩 실험하고, 반응이 약할 때 분야를 바꾸지 않고 원인을 찾은 시간이었어요. 인공지능도 그 노력을 없애 주지 않고, 더 좋은 장면을 찾고 더 냉정하게 검토하도록 도왔을 뿐이에요.</p>
 <blockquote>
-  <p>I don't want to be one of these people that is selling a product on how to do the thing but hasn't actually done the thing themselves.</p>
-  <p>직접 해내지도 않고 해내는 법부터 파는 사람이 되고 싶지 않아요.</p>
-  <cite>— 원래 인터뷰 (이 영상 11:23 부근)</cite>
+  <p>자신이 오래 관심을 가질 주제를 정하고 작은 반응을 소중한 신호로 받아들이며 한 번의 결과에서 다음 개선점을 찾는 것. 그렇게 쌓인 감각은 누구도 단기간에 복사할 수 없는 경쟁력이 됩니다.</p>
+  <cite>— 영상 13:03</cite>
 </blockquote>
-<p>앞으로는 개인 브랜드를 만들고 카메라 앞에 서는 법도 배우려 해요. 엄청난 조회수를 낸 그도 카메라 앞에서 말하는 건 별개의 기술이라고 인정해요. 처음 영상을 만들 때 아무도 안 봐서 서툴러도 괜찮았던 것처럼, 새 분야에서도 서툰 자신을 허용하며 배울 계획이에요.</p>
-<h3>무엇을 하지 않았는지가 더 중요해요</h3>
-<p>그는 피아노, 체스, 운동, 골프로 화면 밖 시간도 만들어요. 그래도 꾸준함의 핵심은 무엇을 했느냐보다 무엇을 하지 않았느냐에 있다고 봐요. 파티와 술 대신 늦은 밤까지 혼자 작업하는 시간을 골랐어요. 모두가 같은 삶을 살 필요는 없지만, 큰 목표를 고른다는 건 그 목표와 경쟁하는 다른 선택을 줄이는 일이에요.</p>
-<h3>내레이터의 정리</h3>
-<p>마지막에 내레이터는 매티스가 조회수를 비밀 공식으로 설명하지 않았다는 점을 가장 중요하게 꼽아요. 훅, 긴장, 보상이라는 구조는 분명 쓸모 있어요. 하지만 그걸 성과로 바꾼 건 영상마다 10시간씩 실험하고, 반응이 약할 때 분야를 바꾸지 않고 원인을 찾은 시간이었어요. AI도 그 노력을 없애지 않았고, 더 좋은 장면을 찾고 더 냉정하게 검토하도록 도왔을 뿐이에요.</p>
-<p>오래 관심을 둘 주제를 정하고, 작은 반응도 신호로 받아들이고, 결과 하나하나에서 다음 개선점을 찾는 것. 그렇게 쌓인 감각은 남이 짧은 시간에 베낄 수 없어요.</p>
 </section>
 
 <section id="corrections">
   <h2>자막 표기 바로잡기</h2>
 <aside class="note">
   <span class="tag">자막 관련 참고</span>
-  <p>자동생성 자막이라 이름과 단어가 잘못 받아적힌 곳이 있어요. 원래 인터뷰와 문맥으로 이렇게 바로잡았어요.</p>
+  <p>자동생성 자막이라 잘못 받아적힌 곳이 있어요. 화면에 박힌 자막과 원래 인터뷰를 보고 이렇게 바로잡았어요.</p>
   <div class="table-scroll"><table>
     <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
     <tbody>
-      <tr><td>볼트 모티베이션</td><td>Bolt Motivation</td><td>채널 이름</td></tr>
-      <tr><td>매티스</td><td>Mathis</td><td>채널 운영자</td></tr>
+      <tr><td>볼트 모티베이션</td><td>Bolt Motivation</td><td>매티스의 채널 이름</td></tr>
+      <tr><td>매티스</td><td>Mathis Bolt (매티스 볼트)</td><td>원래 인터뷰 제목 기준</td></tr>
       <tr><td>데이비드 고인스</td><td>데이비드 고긴스 (David Goggins)</td><td></td></tr>
+      <tr><td>부회수 회당 약 8 / 약 30 수준</td><td>조회수 천 회당 약 8센트 / 약 30센트</td><td>화면 자막에 &#x27;약 30센트&#x27;</td></tr>
       <tr><td>채지T</td><td>ChatGPT</td><td></td></tr>
-      <tr><td>아라테키드 레전즈</td><td>가라데 키드: 레전드 (Karate Kid: Legends)</td><td>소니 영화</td></tr>
+      <tr><td>아라테키드 레전즈</td><td>가라테 키드: 레전드 (Karate Kid: Legends)</td><td></td></tr>
       <tr><td>번나웃</td><td>번아웃</td><td></td></tr>
-      <tr><td>부회수 회당 약 8</td><td>조회수 1,000회당 약 8센트</td><td>원래 인터뷰 기준</td></tr>
-      <tr><td>수천만. 추억 조회수</td><td>수천만, 수억 조회수</td><td></td></tr>
       <tr><td>투자업으로</td><td>수작업으로 (추정)</td><td></td></tr>
-      <tr><td>전화은</td><td>전환은</td><td></td></tr>
-      <tr><td>팔로</td><td>팔로워</td><td></td></tr>
       <tr><td>강한 시장만</td><td>강한 시작만</td><td></td></tr>
-      <tr><td>수익권</td><td>수익원</td><td></td></tr>
-      <tr><td>평과</td><td>성과</td><td></td></tr>
-      <tr><td>터툴 권리</td><td>서툴 권리</td><td></td></tr>
-      <tr><td>파티화수</td><td>파티와 술</td><td>원래 인터뷰의 parties, drinking</td></tr>
+      <tr><td>그가북이</td><td>그가 보기에 (추정)</td><td></td></tr>
+      <tr><td>파티화수</td><td>파티와 술</td><td>원래 인터뷰: parties, drinking</td></tr>
+      <tr><td>터툴 / 터툰</td><td>서툴 / 서툰</td><td></td></tr>
     </tbody>
   </table></div>
 </aside>
 </section>
 </main>
 
-<div class="tail">
+<div class="tail" id="glossary">
   <h2>이 글에 나온 용어</h2>
-  <div class="table-scroll">
-    <table>
-      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
-      <tbody>
-        <tr><td>쇼츠</td><td>유튜브의 1분 안팎 세로 영상이에요. 사람들이 화면을 위로 밀며 연달아 보기 때문에 처음 몇 초에 시선을 못 잡으면 바로 넘어가요.</td></tr>
-        <tr><td>훅</td><td>영상 맨 앞에서 시청자를 붙잡는 장면이나 말이에요. 낚싯바늘처럼 걸어 둔다는 뜻이고, 짧은 영상일수록 중요해요.</td></tr>
-        <tr><td>시청 지속 시간 그래프</td><td>영상의 각 지점에서 시청자가 얼마나 남아 있는지 보여 주는 유튜브 분석 그래프예요. 그래프가 뚝 떨어지는 곳이 사람들이 떠난 지점이에요.</td></tr>
-        <tr><td>업스케일링</td><td>저화질 영상을 더 높은 해상도로 키우는 작업이에요. 요즘은 AI가 빠진 디테일을 채워 넣어 더 선명하게 만들어 줘요.</td></tr>
-        <tr><td>프리미어 프로</td><td>어도비의 영상 편집 프로그램이에요. 클립을 자르고 순서를 맞춰 이야기의 뼈대를 만드는 데 많이 써요.</td></tr>
-        <tr><td>애프터 이펙트</td><td>어도비의 모션 그래픽·특수 효과 프로그램이에요. 움직이는 자막, 색 보정, 화려한 전환 효과를 넣을 때 써요.</td></tr>
-        <tr><td>RPM</td><td>조회수 1,000회당 크리에이터가 실제로 번 돈이에요. 유튜브와 수익을 나눈 뒤의 금액이라 채널의 실제 벌이를 가늠할 때 봐요.</td></tr>
-        <tr><td>번아웃</td><td>오랫동안 무리해서 몸과 마음이 다 타 버린 듯 지친 상태예요. 의욕이 사라지고 하던 일이 버겁게 느껴져요.</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-7"><dt>개인 브랜드<span class="en">Personal brand</span></dt><dd>채널 이름이 아니라 자기 얼굴과 이름으로 사람들에게 알려지는 것이에요. 매티스는 지금까지 영상 뒤에만 있었는데, 앞으로 카메라 앞에 서서 이걸 만들고 싶어 해요.</dd></div>
+    <div class="g" id="g-6"><dt>번아웃<span class="en">Burnout</span></dt><dd>오랫동안 무리하게 일한 끝에 몸과 마음이 다 지쳐 의욕이 사라진 상태예요. 쉬는 날 없이 매일 콘텐츠를 올리는 창작자가 자주 겪어요.</dd></div>
+    <div class="g" id="g-4"><dt>볼트화</dt><dd>매티스가 채널 이름 Bolt Motivation을 따서 붙인 말이에요. 기본 편집이 끝난 영상에 빛나는 자막, 색감, 전환 효과, 워터마크를 더해 한눈에 띄게 만드는 단계예요.</dd></div>
+    <div class="g" id="g-1"><dt>쇼츠<span class="en">YouTube Shorts</span></dt><dd>유튜브의 1분 안팎 세로 영상이에요. 피드에서 손가락으로 밀어 넘기며 보기 때문에 첫 몇 초에 시청자를 붙잡는 게 중요해요.</dd></div>
+    <div class="g" id="g-2"><dt>시청 지속 시간 그래프<span class="en">Audience retention</span></dt><dd>영상의 각 시점에 시청자가 얼마나 남아 있는지 보여 주는 그래프예요. 선이 뚝 떨어지는 곳이 사람들이 빠져나간 지점이라, 어디서 지루해졌는지 찾는 데 써요.</dd></div>
+    <div class="g" id="g-3"><dt>업스케일링<span class="en">Upscaling</span></dt><dd>낮은 해상도의 영상을 더 높은 해상도로 키우는 작업이에요. 요즘은 인공지능이 빠진 디테일을 채워 넣어 흐릿한 원본을 선명하게 만들어 줘요.</dd></div>
+    <div class="g" id="g-5"><dt>조기 접근<span class="en">Early access</span></dt><dd>정식 출시 전에 일부 사용자에게 먼저 서비스를 열어 주는 방식이에요. 신청해서 승인받아야 쓸 수 있는 경우가 많아요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>CPM</dt><dd>Cost Per Mille</dd></div>
+    <div class="g" id="g-8"><dt>RPM<span class="en">Revenue Per Mille</span></dt><dd>유튜브가 몫을 나눈 뒤 크리에이터가 조회수 1,000회당 실제로 받는 금액이에요. 매티스가 말한 &#x27;천 회당 30센트&#x27;가 바로 이 숫자예요.</dd></div>
+  </dl>
 </div>
 
-<div class="tail">
+<div class="tail" id="sources">
   <h2>참고한 곳</h2>
   <ol>
-    <li><a href="https://www.youtube.com/watch?v=iAGDm1Y_7qM" target="_blank" rel="noopener">원본 영상 — 동기부여학과</a></li>
-    <li><a href="https://www.youtube.com/watch?v=DehWFTu7yMo" target="_blank" rel="noopener">원래 인터뷰 — Joel Huc, 18-Year-Old Shorts Genius Shares Everything He Knows (Mathis Bolt Interview)</a></li>
-    <li><a href="https://ai.google.dev/gemini-api/docs/video-understanding" target="_blank" rel="noopener">Google AI for Developers — Video understanding</a></li>
-    <li><a href="https://support.google.com/youtube/answer/9314357?hl=en" target="_blank" rel="noopener">YouTube 고객센터 — Understand ad revenue analytics (RPM)</a></li>
-    <li><a href="https://support.google.com/youtube/answer/1311392?hl=en" target="_blank" rel="noopener">YouTube 고객센터 — YouTube channel monetization policies (재사용 콘텐츠)</a></li>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=iAGDm1Y_7qM" target="_blank" rel="noopener">원본 영상 — 동기부여학과</a></li>
+    <li id="src-2"><a href="https://www.youtube.com/watch?v=DehWFTu7yMo" target="_blank" rel="noopener">원래 인터뷰 — Joel Huc, 18-Year-Old Shorts Genius Shares Everything He Knows (Mathis Bolt Interview)</a></li>
+    <li id="src-3"><a href="https://ai.google.dev/gemini-api/docs/video-understanding" target="_blank" rel="noopener">Google AI for Developers — Video understanding (Gemini API)</a></li>
+    <li id="src-4"><a href="https://support.google.com/youtube/answer/9314357" target="_blank" rel="noopener">YouTube 고객센터 — 광고 수익 분석 이해하기 (RPM, CPM)</a></li>
+    <li id="src-5"><a href="https://support.google.com/youtube/answer/12504220" target="_blank" rel="noopener">YouTube 고객센터 — YouTube Shorts 수익 창출 정책</a></li>
   </ol>
 </div>
 
-<footer>2026년 10월 1일에 이 영상과 원래 인터뷰를 보고 정리했어요. 대담 형식이라 화면 자료가 거의 없어서 표로 대신 정리했어요.</footer>
+<footer>2026년 10월 14일에 이 영상을 보고 정리했어요. 원본은 동기부여학과 채널에 있고, 원래 인터뷰는 Joel Huc 채널에 있어요. 대담 형식이라 화면 자료가 없어서, 말로 설명한 구조와 숫자를 그림으로 옮겼어요.</footer>
 
 </div>
 
-<div id="tip" role="tooltip"></div>
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
 <script>
 (function () {
-  // ── 용어 툴팁 ───────────────────────────────────────
-  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
-  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
-  var tip = document.getElementById('tip');
-  var open = null;
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
 
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
   function show(el) {
+    clearTimeout(hideTimer);
     var desc = el.getAttribute('data-desc');
     if (!desc) return;
-    var name = el.getAttribute('data-term') || el.textContent;
+    if (open && open !== el) open.classList.remove('open');
     tip.innerHTML = '';
-    var b = document.createElement('b');
-    b.textContent = name;
-    tip.appendChild(b);
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
     tip.appendChild(document.createTextNode(desc));
-    tip.classList.add('on');
-
-    var r = el.getBoundingClientRect();
-    var t = tip.getBoundingClientRect();
-    var pad = 12;
-    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
-    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
-    var top = r.top + window.scrollY - t.height - 10;
-    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
-    tip.style.left = left + 'px';
-    tip.style.top = top + 'px';
-    open = el;
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
   }
-
-  function hide() {
-    tip.classList.remove('on');
-    open = null;
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
   }
 
   document.querySelectorAll('.term').forEach(function (el) {
-    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
-    el.addEventListener('mouseenter', function () { show(el); });
-    el.addEventListener('mouseleave', hide);
-    el.addEventListener('focus', function () { show(el); });
-    el.addEventListener('blur', hide);
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
     el.addEventListener('click', function (e) {
-      e.preventDefault();
-      open === el ? hide() : show(el);
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
     });
   });
 
-  document.addEventListener('click', function (e) {
-    if (open && !e.target.closest('.term')) hide();
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
   });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') hide();
-  });
-  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
-  window.addEventListener('resize', hide);
 
-  // ── 목차 현재 위치 표시 ─────────────────────────────
-  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
-  var map = {};
-  links.forEach(function (a) {
-    var s = document.getElementById(a.getAttribute('href').slice(1));
-    if (s) map[s.id] = a;
-  });
-  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
-  if ('IntersectionObserver' in window && targets.length) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (!en.isIntersecting) return;
-        links.forEach(function (a) { a.classList.remove('active'); });
-        map[en.target.id].classList.add('active');
-      });
-    }, { rootMargin: '-10% 0px -75% 0px' });
-    targets.forEach(function (t) { io.observe(t); });
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
   }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+
+// 섹션 1: 성장 단계
+(() => {
+  const g = document.getElementById('fig-growth');
+  if (!g) return;
+  const steps = [
+    ['200회', '첫 영상', ''],
+    ['2만 회', '약 2주 뒤', ''],
+    ['100만 회', '코비 브라이언트', '영상 (틱톡)'],
+    ['팔로워 10만', '여름방학', '두 달 뒤 (틱톡)'],
+    ['800만 회', '광고 캠페인', '3,000달러']
+  ];
+  steps.forEach(([big, s1, s2], i) => {
+    const x = 10 + i * 134;
+    const last = i === steps.length - 1;
+    g.append(el('rect', { x, y: 40, width: 118, height: 116, rx: 10, class: last ? 'box accent ring' : 'box' }));
+    g.append(el('text', { x: x + 59, y: 82, 'text-anchor': 'middle', 'font-size': 15 }, big));
+    g.append(el('text', { x: x + 59, y: 112, 'text-anchor': 'middle', class: 'sub', 'font-size': 12 }, s1));
+    if (s2) g.append(el('text', { x: x + 59, y: 132, 'text-anchor': 'middle', class: 'sub', 'font-size': 12 }, s2));
+    if (!last) g.append(el('path', { d: `M${x + 119} 98 h13`, class: 'line', 'marker-end': 'url(#arrow-growth)' }));
+  });
+  g.append(el('text', { x: 664, y: 182, 'text-anchor': 'end', class: 'sub', 'font-size': 12 }, '아르바이트를 그만둬요'));
+})();
+
+// 섹션 2: 세 단계 길이
+(() => {
+  const g = document.getElementById('fig-structure');
+  if (!g) return;
+  const y = 60, h = 50;
+  g.append(el('rect', { x: 20, y, width: 36, height: h, class: 'c1 cell' }));
+  g.append(el('rect', { x: 56, y, width: 540, height: h, class: 'c2 cell' }));
+  g.append(el('rect', { x: 596, y, width: 24, height: h, class: 'c3 cell' }));
+  g.append(el('text', { x: 326, y: 82, 'text-anchor': 'middle' }, '긴장 · 영상의 약 90%'));
+  g.append(el('text', { x: 326, y: 101, 'text-anchor': 'middle', class: 'sub', 'font-size': 12 }, '결과를 알 수 없게 끌고 가요'));
+  g.append(el('text', { x: 20, y: 40, class: 'sub', 'font-size': 12 }, '0초'));
+  g.append(el('text', { x: 620, y: 40, 'text-anchor': 'end', class: 'sub', 'font-size': 12 }, '약 1분'));
+  g.append(el('path', { d: 'M38 112 v18', class: 'line' }));
+  g.append(el('text', { x: 20, y: 150 }, '시작 · 3~5초'));
+  g.append(el('text', { x: 20, y: 170, class: 'sub', 'font-size': 12 }, '가장 강한 장면'));
+  g.append(el('path', { d: 'M608 112 v18', class: 'line' }));
+  g.append(el('text', { x: 620, y: 150, 'text-anchor': 'end' }, '결말 · 보상'));
+  g.append(el('text', { x: 620, y: 170, 'text-anchor': 'end', class: 'sub', 'font-size': 12 }, '궁금증을 풀어 줘요'));
+})();
+
+// 섹션 2: 흔한 순서와 매티스의 순서
+(() => {
+  const g = document.getElementById('fig-order');
+  if (!g) return;
+  const rows = [
+    { label: '흔한 순서', y: 30, boxes: [
+      [130, 242, '배경 설명', '이해를 돕겠다고 길게', 'box dim'],
+      [394, 110, '핵심 장면', '', 'box'],
+      [526, 110, '이미 넘겼어요', '', 'box bad']
+    ] },
+    { label: '매티스의 순서', y: 130, boxes: [
+      [130, 110, '핵심 장면', '3~5초', 'c1 cell'],
+      [262, 110, '배경 설명', '누구이고 왜', 'box dim'],
+      [394, 110, '긴장', '', 'c2 cell'],
+      [526, 110, '결말', '', 'c3 cell']
+    ] }
+  ];
+  rows.forEach(({ label, y, boxes }) => {
+    g.append(el('text', { x: 10, y: y + 34 }, label));
+    boxes.forEach(([x, w, t, s, cls], i) => {
+      g.append(el('rect', { x, y, width: w, height: 56, rx: 8, class: cls }));
+      g.append(el('text', { x: x + w / 2, y: s ? y + 25 : y + 33, 'text-anchor': 'middle' }, t));
+      if (s) g.append(el('text', { x: x + w / 2, y: y + 44, 'text-anchor': 'middle', class: 'sub', 'font-size': 12 }, s));
+      if (i < boxes.length - 1) g.append(el('path', { d: `M${x + w + 2} ${y + 28} h18`, class: 'line', 'marker-end': 'url(#arrow-order)' }));
+    });
+  });
+})();
+
+// 섹션 5: 분야를 바꾸는 흐름과 이유를 찾는 순환
+(() => {
+  const g = document.getElementById('fig-niche');
+  if (!g) return;
+  g.append(el('text', { x: 160, y: 36, 'text-anchor': 'middle' }, '흔한 초보의 흐름'));
+  ['동기부여', '음악', '다른 유행'].forEach((t, i) => {
+    const x = 20 + i * 100;
+    g.append(el('rect', { x, y: 70, width: 80, height: 56, rx: 8, class: 'box dim' }));
+    g.append(el('text', { x: x + 40, y: 103, 'text-anchor': 'middle' }, t));
+    if (i < 2) g.append(el('path', { d: `M${x + 81} 98 h17`, class: 'line', 'marker-end': 'url(#arrow-niche)' }));
+  });
+  g.append(el('text', { x: 160, y: 160, 'text-anchor': 'middle', class: 'sub', 'font-size': 12 }, '한 달 해 보고 반응이 없으면'));
+  g.append(el('text', { x: 160, y: 178, 'text-anchor': 'middle', class: 'sub', 'font-size': 12 }, '분야를 옮겨요'));
+
+  g.append(el('text', { x: 480, y: 36, 'text-anchor': 'middle' }, '매티스의 흐름'));
+  const cyc = [['영상 올리기', ''], ['반응 보기', ''], ['이유 찾기', '판단·편집에서']];
+  cyc.forEach(([t, s], i) => {
+    const x = 340 + i * 100;
+    g.append(el('rect', { x, y: 70, width: 84, height: 56, rx: 8, class: i === 2 ? 'box accent' : 'box' }));
+    g.append(el('text', { x: x + 42, y: s ? 95 : 103, 'text-anchor': 'middle', 'font-size': 12 }, t));
+    if (s) g.append(el('text', { x: x + 42, y: 113, 'text-anchor': 'middle', class: 'sub', 'font-size': 10 }, s));
+    if (i < 2) g.append(el('path', { d: `M${x + 85} 98 h13`, class: 'line', 'marker-end': 'url(#arrow-niche)' }));
+  });
+  g.append(el('path', { d: 'M582 127 v35 H382 v-33', class: 'line', fill: 'none', 'marker-end': 'url(#arrow-niche)' }));
+  g.append(el('text', { x: 482, y: 184, 'text-anchor': 'middle', class: 'sub', 'font-size': 12 }, '다음 영상에 반영, 분야는 그대로'));
 })();
 </script>
 </body>
