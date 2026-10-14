@@ -1,0 +1,1268 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>수백만 동시접속을 처리하는 예매 시스템 아키텍처 설계</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>수백만 동시접속을 처리하는 예매 시스템 아키텍처 설계</h1>
+  <p class="lede">KTX·SRT 예매처럼 몰리는 트래픽을 Redis 대기열과 폴링으로 받아 내는 법</p>
+  <div class="meta">
+    <span>코딩하는기술사</span><span class="dot">·</span>
+    <span>영상 1:03:32</span><span class="dot">·</span>
+    <span>읽는 데 약 22분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=EC2Xqyq6vg4" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>수백만 요청을 RDB(Relational Database)로 바로 보내면 DB(Database)가 먼저 쓰러져요. 메모리 기반 Redis에 줄을 세우고, 뒷단이 감당할 만큼만 들여보내요.</li>
+    <li>대기열은 Redis <span class="term" data-term="Sorted Set" data-en="Redis Sorted Set (ZSet)" data-desc="멤버마다 점수를 붙여 점수 순으로 늘 정렬해 두는 Redis 자료구조예요. 점수에 들어온 시각을 넣으면 그대로 선착순 줄이 돼요." data-g="1">Sorted Set</span>이에요. UUID(Universally Unique Identifier)를 멤버로, 들어온 시각을 점수로 넣으면 순서대로 정렬되고 내 순번은 <code>ZRANK</code>로 바로 나와요.</li>
+    <li><span class="term" data-term="스케줄러" data-en="Scheduler" data-desc="정해진 주기마다 작업을 실행하는 프로그램이에요. 여기서는 1초마다 대기열 앞에서 정해진 인원을 꺼내 입장시켜요." data-g="7">스케줄러</span>가 1초마다 뒷단 TPS(Transactions Per Second)에 맞춰 N명을 꺼내 Active User에 TTL(Time To Live)과 함께 넣어요. 좌석 차감은 <span class="term" data-term="Lua 스크립트" data-en="Redis Lua scripting" data-desc="Redis 서버 안에서 Lua로 쓴 로직을 실행하는 기능이에요. 스크립트 전체가 원자적으로 돌아서 &#x27;조회 후 조건부 차감&#x27; 같은 작업을 안전하게 묶을 수 있어요." data-g="6">Lua 스크립트</span>로 확인과 차감을 한 번에 해요.</li>
+    <li>Kafka 같은 MQ(Message Queue)는 순번 조회, 중복 클릭, 중간 취소에 약해서 대기열은 Redis, 저장 쪽 버퍼는 MQ로 나눠 써요.</li>
+    <li>순번 확인은 <span class="term" data-term="웹소켓" data-en="WebSocket" data-desc="브라우저와 서버가 연결 하나를 계속 열어 두고 양쪽에서 메시지를 주고받는 프로토콜이에요. 채팅·게임처럼 양방향 실시간에 맞아요." data-g="4">웹소켓</span>이 아니라 <span class="term" data-term="폴링" data-en="Polling" data-desc="클라이언트가 일정 간격으로 서버에 &#x27;바뀐 거 있어요?&#x27; 하고 묻는 방식이에요. 매번 연결을 맺고 끊어서 서버가 상태를 들고 있을 필요가 없어요." data-g="3">폴링</span>이에요. 50만 개 연결을 붙잡는 비용이 가볍게 자주 묻는 비용보다 비싸요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">왜 DB 앞에 줄을 세워야 할까요</a></li>
+    <li><a href="#s2">세 단계 설계: 대기열 등록과 입장</a></li>
+    <li><a href="#s3">예매 처리: Lua 스크립트로 좌석 차감</a></li>
+    <li><a href="#s4">댓글 질문 ①: 대기열을 어떻게 굴리나요</a></li>
+    <li><a href="#s5">댓글 질문 ②: 좌석 지정, 비행기 모드, 폴링 구현</a></li>
+    <li><a href="#s6">대기열에 Kafka 대신 Redis를 쓰는 이유</a></li>
+    <li><a href="#s7">SRT 대기열을 뜯어보면</a></li>
+    <li><a href="#s8">웹소켓 대신 폴링을 쓰는 이유</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>왜 DB 앞에 줄을 세워야 할까요</h2>
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>이 영상은 같은 채널의 다섯 편을 이어 붙인 풀영상이에요. 본편 설계(00:00), 댓글 답변(18:30), Kafka 대신 Redis(43:35), SRT(Super Rapid Train) 대기열 분석(50:01), 폴링 대 웹소켓(57:50) 순서예요. 앞의 둘은 화이트보드에 손으로 그리고, 뒤의 셋은 슬라이드를 써요.</p>
+</aside>
+<p>영상은 설 명절 KTX(Korea Train eXpress) 예매 화면으로 시작해요. 발표자도 오전 7시에 기다렸다가 바로 눌렀는데, 화면 가운데 '나의 대기 순서'가 524300이었어요. 그 아래 '내 뒤의 대기자 수'는 1983980이에요. 앞뒤를 합치면 250만 명 가까이가 같은 순간에 몰린 거예요.</p>
+<figure>
+  <img src="assets/frame-0020.png" alt="KTX 예매 대기 팝업. 나의 대기 순서 524300, 내 뒤의 대기자 수 1983980이 표시돼 있어요">
+  <figcaption>
+    이 숫자가 영상 전체의 출발점이에요. 이 사람들이 모두 DB에 직접 닿으면 어떻게 될까요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=20s" target="_blank" rel="noopener">영상 00:20에서 보기</a>
+  </figcaption>
+</figure>
+<h3>API를 늘려도 DB에서 막혀요</h3>
+<p>가장 단순한 백엔드는 API(Application Programming Interface) 한 대가 DB와 붙어 있는 구조예요. 사용자가 늘면 API를 여러 대로 늘리고, 앞에 로드 밸런서나 API 게이트웨이를 둬서 부하를 나눠요. 그런데 예매처럼 순간에 수백만 요청이 오면 API를 아무리 <span class="term" data-term="스케일 아웃" data-en="Scale-out" data-desc="서버를 여러 대로 늘려 부하를 나누는 방식이에요. 상태가 없는 API는 쉽지만, 데이터를 한곳에 모아야 하는 RDB는 어려워요." data-g="2">스케일 아웃</span>해도 결국 모든 요청이 DB로 모여요.</p>
+<p>예매 데이터는 정합성과 무결성이 중요해서 NoSQL보다 RDB를 써요. 그런데 RDB는 스케일 아웃이 어렵고, 스케일 업은 비용이 크게 늘어요. 그렇게 키워도 수백만 동시 요청은 버티기 힘들어요. 그래서 구조 자체를 바꿔야 한다는 게 영상의 출발점이에요.</p>
+<h3>선착순 예매가 지켜야 할 네 가지</h3>
+<p>발표자는 화이트보드에 요구사항을 네 개로 적어요. 왼쪽부터 대량 동시 트래픽, 순서 보장, 초과 예매 금지, 중복 예매 금지예요.</p>
+<figure>
+  <img src="assets/frame-0345.png" alt="화이트보드에 '대용량 트래픽 예매 시스템'이라고 쓰고 아래에 트래픽(동시), 순서 보장, 초과 예매 X, 중복 예매 X를 손글씨로 적은 화면">
+  <figcaption>
+    네 가지 중 '순서 보장'과 '초과 예매 금지'가 뒤에서 Redis Sorted Set과 Lua 스크립트로 각각 풀려요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=225s" target="_blank" rel="noopener">영상 03:45에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>요구사항</th><th>무슨 뜻인가요</th><th>영상이 쓰는 해법</th></tr></thead>
+    <tbody>
+      <tr><td>대량 트래픽</td><td>수십만~수백만 명이 동시에 요청해요</td><td>DB 앞 Redis 대기열</td></tr>
+      <tr><td>순서 보장</td><td>먼저 온 사람이 먼저 예매해요</td><td>타임스탬프 점수로 정렬하는 Sorted Set</td></tr>
+      <tr><td>초과 예매 금지</td><td>열차 좌석 수를 넘겨 팔면 안 돼요</td><td>Lua 스크립트로 <span class="term" data-term="원자적" data-en="Atomic" data-desc="여러 단계로 된 작업이 중간에 끊기거나 다른 작업이 끼어들지 않고 한 덩어리로 실행되는 성질이에요. 다 되거나 아예 안 되거나 둘 중 하나예요." data-g="5">원자적</span> 차감</td></tr>
+      <tr><td>중복 예매 금지</td><td>다른 사람이 같은 자리·같은 시간대를 잡으면 안 돼요</td><td>원자적 차감, 좌석 지정 시 <code>SET NX</code> 선점</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=240s" target="_blank" rel="noopener">04:00</a>
+  <h2>세 단계 설계: 대기열 등록과 입장</h2>
+<p>발표자는 '모든 걸 다 말할 순 없으니 추상화해서 핵심만' 보겠다고 하고, 문제를 세 단계로 나눠요. 화이트보드 왼쪽 ① 대기열 등록 아래에 사람이 길게 줄을 선 모양을 그리고, 거기서 화살표로 ② 예매 입장, 그 오른쪽에 ③ 예매 처리를 적어요.</p>
+<figure>
+  <img src="assets/frame-0500.png" alt="화이트보드에 '3단계'라고 쓰고 ① 대기열 등록, ② 예매 입장, ③ 예매 처리 세 칸을 그린 화면. ① 아래에 긴 줄을 나타내는 선이 그어져 있어요">
+  <figcaption>
+    핵심은 ①과 ② 사이예요. 줄은 수백만 명이 서도, ②로 넘어가는 문은 뒷단이 감당할 만큼만 열려요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=300s" target="_blank" rel="noopener">영상 05:00에서 보기</a>
+  </figcaption>
+</figure>
+<h3>① 대기열: Redis Sorted Set에 줄 세우기</h3>
+<p>요청은 DB 대신 인메모리 대기열로 가요. 발표자는 요즘 대기열에 가장 잘 맞는 솔루션으로 Redis를 꼽고, 그중 Sorted Set(ZSet) 자료구조를 써요.</p>
+<p>KTX는 로그인 없이 바로 '예약 접수' 버튼을 누르게 해요. 그래서 API가 UUID를 하나 만들어 사용자 식별값으로 써요. 이 UUID를 멤버로, 들어온 시각(타임스탬프)을 점수로 ZSet에 넣으면 들어온 순서대로 자동 정렬돼요. API는 UUID를 돌려주고, 브라우저는 다음 요청부터 그 UUID를 들고 와요. Redis는 메모리 기반이라 빠르고, 단일 서버가 아니라 클러스터로 구성해요.</p>
+<p>그다음부터 브라우저는 내 대기 상태를 계속 확인해요. 방법은 폴링, SSE(Server-Sent Events), 웹소켓 중 하나인데, 보통 폴링을 많이 써요. 웹소켓은 네트워크 장비 단에서 거부될 가능성도 있기 때문이에요. 이 선택은 맨 마지막 편에서 길게 다시 다뤄요. 내 순번은 <code>ZRANK</code>, 전체 대기자 수는 <code>ZCARD</code>로 바로 꺼낼 수 있어요.</p>
+<h3>② 입장: 스케줄러가 뒷단 처리량만큼 꺼내요</h3>
+<p>뒷단에서는 스케줄러가 1초에 한 번쯤 돌면서 대기열 앞에서부터 몇 명을 꺼내요. 몇 명인지는 예매 처리 시스템의 TPS로 정해요. 예를 들어 뒷단이 초당 100건을 처리할 수 있다면 여유를 두고 60~70건 정도만 꺼내요. 그 숫자를 정하려면 미리 부하 테스트가 돼 있어야 해요.</p>
+<p>꺼낸 사람은 Active User라는 '입장 가능' 목록에 넣어요. 이것도 메모리라 빨라요. 폴링하던 사용자가 Active User에 들어 있으면 예매 API로 넘어가요. 대기열 서버와 예매 서버가 다른 API라는 점도 눈여겨볼 만해요.</p>
+<p>아래 그림은 발표자가 마지막에 다시 정리한 화이트보드를 깔끔하게 옮긴 거예요. 위 줄이 대기열 서버, 아래 줄이 예매 서버예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 760 330" role="img" aria-label="대기열 서버와 예매 서버로 나뉜 세 단계 예매 아키텍처">
+    <defs><marker id="arrow-arch" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-arch"></g>
+  </svg>
+  <figcaption>DB에 닿는 건 아래 줄 맨 끝뿐이에요. 그 앞의 모든 단계가 Redis 메모리 안에서 끝나요.</figcaption>
+</figure>
+<p>화이트보드 원본은 이렇게 생겼어요. 위 상자에 '① 대기열 서버'와 Redis(대기열, Active User), 오른쪽 원에 스케줄러가 있고, 아래 상자에 '예매 서버'와 Redis(잔여 좌석, Lua Script, 차감), 그 오른쪽에 MQ와 Worker, RDB가 있어요.</p>
+<figure>
+  <img src="assets/frame-1410.png" alt="손으로 그린 최종 아키텍처. 사용자에서 L/B를 거쳐 대기열 서버의 API들과 Redis(대기열, Active User), 스케줄러로 이어지고, 아래에는 예매 서버 API들과 Redis(잔여 좌석 Lua Script 차감), MQ, Worker, RDB가 있어요">
+  <figcaption>
+    대기열 서버와 예매 서버 앞에 각각 로드 밸런서(L/B)가 따로 있어요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=850s" target="_blank" rel="noopener">영상 14:10에서 보기</a>
+  </figcaption>
+</figure>
+<h3>입장한 뒤 아무것도 안 하는 사람은 TTL로 빼요</h3>
+<p>스케줄러가 Active User에 넣을 때 타임아웃을 함께 넣어요. 입장시켰는데 브라우저를 켜 둔 채 떠난 사람이나 너무 오래 걸리는 사람을 자동으로 빼기 위해서예요. KTX는 3분이었어요. 3분이 지나면 Active User에서 사라지고, 폴링 API가 확인할 때 없으니 튕겨 내면 돼요.</p>
+<p>Redis를 대기열용과 예매용 두 대로 나눌지, 큰 클러스터 하나로 둘지, Active User를 어디에 둘지는 상황에 따라 달라요. 발표자는 이런 세부보다 '대기열, 입장, 예매 처리'라는 세 단계의 뼈대가 중요하다고 강조해요.</p>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=550s" target="_blank" rel="noopener">09:10</a>
+  <h2>예매 처리: Lua 스크립트로 좌석 차감</h2>
+<p>입장한 사용자는 이제 UI(User Interface)에서 인원과 행선지를 고르고 '예매하기'를 눌러요. KTX는 시간대별로 좌석 N개를 파는 구조라서, 이 순간에 총 좌석보다 많이 팔리지 않게 동시성을 제어해야 해요.</p>
+<h3>RDB 락 대신 Redis Lua 스크립트</h3>
+<p>RDB 락을 쓸 수도 있지만, 그러면 DB가 다시 부하를 받아요. 그래서 여기서도 Redis의 원자적 연산을 써요. 잔여 좌석 수는 미리 Redis에 넣어 둬요. 그리고 Lua 스크립트로 이런 로직을 짜요.</p>
+<ol class="steps">
+  <li><b>현재 잔여 좌석을 조회해요</b></li>
+  <li><b>잔여 좌석이 요청 좌석 수보다 많거나 같으면 그만큼 빼고 성공을 돌려줘요</b></li>
+  <li><b>부족하면 실패로 처리해요</b> — 누군가 조금 늦게 와서 그 시간대 좌석이 모자란 경우예요.</li>
+</ol>
+<p>Lua 스크립트는 통째로 원자적으로 실행돼요. 조회와 차감 사이에 다른 요청이 끼어들 수 없어서, 동시에 여러 요청이 와도 안전해요. 왜 단순한 차감 명령이 아니라 굳이 스크립트인지는 댓글 답변 편에서 한 번 더 나와요. 아래에서 직접 돌려 볼 수 있어요.</p>
+<div class="explore" id="seat">
+  <span class="tag">직접 돌려 보기</span>
+  <div class="controls">
+    <label>잔여 좌석 <input type="range" min="0" max="10" value="2"> <output>2</output>석</label>
+    <label>요청 좌석 <input type="range" min="1" max="6" value="3"> <output>3</output>석</label>
+  </div>
+  <div class="stage">
+    <svg viewBox="0 0 400 210" aria-label="DECRBY와 Lua 스크립트 결과 비교"></svg>
+    <div class="readout">
+      <p><b><code>DECRBY</code>만 쓸 때</b>: <span class="val" data-k="decr">-</span></p>
+      <p><b>Lua 스크립트</b>: <span class="val" data-k="lua">-</span></p>
+    </div>
+  </div>
+  <div class="try"><b>해 볼 것</b><ol>
+    <li>영상의 예처럼 잔여 2석, 요청 3석에 두세요. <code>DECRBY</code>는 -1이 되고, 이 마이너스를 되돌리는 처리가 따로 필요해져요.</li>
+    <li>요청을 1석으로 내려 보세요. 한 장씩만 팔 때는 두 방식 결과가 같아서 <code>DECR</code>로 충분하다는 말이 이해돼요.</li>
+    <li>잔여를 0으로 두면 Lua 쪽은 숫자를 건드리지 않고 실패만 돌려줘요.</li>
+  </ol></div>
+</div>
+<h3>성공한 요청만 DB로, 필요하면 MQ를 한 번 더</h3>
+<p>Lua 스크립트가 '예약해도 돼'라는 신호를 주면 그제야 API가 RDB에 저장해요. 부하를 더 줄이고 싶으면 그 사이에 MQ를 둬요. API는 MQ에 쓰고 바로 응답하고, 뒷단 워커가 꺼내 RDB에 저장해요. 다만 앞에서 스케줄러가 이미 뒷단이 받을 만큼만 보내므로, RDB에 바로 넣어도 큰 무리가 없을 수 있다고 해요.</p>
+<h3>결제는 뒤로 미뤄요</h3>
+<p>발표자는 이 과정에서 복잡한 건 최대한 덜어 내라고 해요. KTX도 이 단계에서는 결제를 받지 않고 좌석 예매까지만 해요. 결제를 넣으면 결제했다가 돌아오는 과정의 실패와 예외 처리가 크게 늘어요. 결제를 뒤로 미루면 결제 요청은 좌석 수만큼만 오니, 수십만~수백만이 아닌 훨씬 가벼운 시스템이 돼요.</p>
+<p>끝으로 이런 시스템은 오픈 전에 봇으로 전 과정을 돌리는 부하 테스트를 충분히 했을 거라고 덧붙여요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Redis 공식 문서는 스크립트 실행의 원자성을 보장한다고 적고 있어요. 스크립트가 도는 동안 다른 명령은 기다려요. 그래서 스크립트는 짧게 유지해야 해요. 길게 돌면 그동안 다른 요청이 모두 멈춰요.</p>
+  <p class="cite">출처: <a href="https://redis.io/docs/latest/develop/programmability/eval-intro/" target="_blank" rel="noopener">Redis 공식 문서 — Scripting with Lua</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=1110s" target="_blank" rel="noopener">18:30</a>
+  <h2>댓글 질문 ①: 대기열을 어떻게 굴리나요</h2>
+<p>본편을 올린 다음 날, 발표자는 댓글에 달린 질문에 답하는 영상을 따로 찍어요. 화면은 유튜브 댓글창과 앞의 화이트보드를 오가요. 여기서는 대기열을 굴리는 방식에 관한 질문을 묶었어요.</p>
+<h3>입장한 사람이 계속 쌓이지 않나요?</h3>
+<p>스케줄러가 1초마다 꺼내 보내는데, 입장한 사람이 예매를 안 끝내면 Active User가 계속 불어나지 않느냐는 질문이에요. 발표자는 방어 장치를 네 겹으로 설명해요.</p>
+<ol>
+  <li>TTL이 지나면 Active User에서 빠져요.</li>
+  <li>사람마다 로그인, 행선지 선택, 시간 선택 속도가 달라서 모두가 한 번에 '예매하기'를 누를 가능성은 낮아요.</li>
+  <li>우연히 한꺼번에 눌러도 Lua 스크립트가 잔여 좌석만큼만 성공시켜요. DB로 가는 건 그만큼뿐이에요.</li>
+  <li>마지막으로 DB 앞에 MQ를 두면 한 번 더 버퍼가 돼요.</li>
+</ol>
+<h3>대기 순번은 어떤 통신으로 보여 주나요?</h3>
+<p>소켓, SSE, 폴링 중 무엇이냐는 질문에 발표자는 폴링을 권해요. 소켓과 SSE는 연결을 유지해야 해서 서버가 수십만 개의 연결을 들고 있어야 해요. 그런데 요구사항은 '지금 내가 몇 번째인지 주기적으로 알고 싶다'는 아주 단순한 것이라, 완전한 실시간 연결은 필요 없어요.</p>
+<p>폴링 주기에도 요령이 있어요. 대기자가 많을 땐 5초에 한 번쯤 묻고, 입장이 가까워질수록 짧게 물어요. 모두가 같은 주기로 물어 부하가 한 시점에 몰릴 걱정이 있으면 <span class="term" data-term="지터" data-en="Jitter" data-desc="요청 간격에 무작위 시간을 조금씩 섞어 여러 클라이언트의 요청이 한 순간에 몰리지 않게 흩는 기법이에요." data-g="11">지터</span>를 써서 사용자마다 주기를 조금씩 흩어요.</p>
+<h3>왜 굳이 Lua 스크립트인가요?</h3>
+<p>인메모리 제어인데 왜 스크립트 언어를 쓰느냐는 질문이에요. '잔여 좌석이 있는지 확인'과 '있으면 차감' 사이에는 아주 짧은 틈이 생길 수 있고, 그 틈에 다른 요청이 들어오면 안 돼요. Redis의 <code>DECR</code>만으로 되는 건 딱 한 장씩 팔 때예요. KTX처럼 n장을 한 번에 사면, 2석 남았는데 3석을 빼서 -1이 되고 이를 되돌리는 처리가 필요해져요. 그래서 확인과 차감을 하나의 Lua 스크립트로 묶었다고 해요. 앞 섹션의 '직접 돌려 보기'가 바로 이 상황이에요.</p>
+<h3>대기 중에 브라우저를 닫으면 하트비트로 지워야 하지 않나요?</h3>
+<p>대기열에 있다가 사용자가 떠나도 서버는 모르니, TTL을 폴링 주기보다 조금 길게 걸고 폴링할 때마다 갱신하자는 제안이에요. 전형적인 <span class="term" data-term="하트비트" data-en="Heartbeat" data-desc="클라이언트가 살아 있다는 신호를 주기적으로 보내고, 신호가 끊기면 죽은 것으로 보고 정리하는 기법이에요." data-g="8">하트비트</span> 패턴이죠. 발표자는 두 가지 이유로 지금 설계에서는 하지 않는다고 답해요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>이유</th><th>내용</th></tr></thead>
+    <tbody>
+      <tr><td>기술적 제약</td><td>ZSet은 집합 전체에만 TTL을 걸 수 있어요. 멤버마다 따로 걸려면 사용자마다 키를 하나씩 더 만들어야 하고, 대용량에서는 수백만 개의 키가 부담이에요.</td></tr>
+      <tr><td>성능</td><td>지금 폴링은 ZSet을 읽기만 해요. 갱신을 넣으면 폴링마다 쓰기가 추가되고, 그 쓰기 부하가 더 중요한 입장 처리와 예매에 영향을 줄 수 있어요.</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>그럼 떠난 사람을 서버가 모르면 무슨 일이 생길까요. 발표자는 그 사람이 지나가는 길을 끝까지 따라가 봐요. 아래 그림은 그 설명을 옮긴 거예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 720 150" role="img" aria-label="대기 중 떠난 사용자가 대기열, Active User, TTL 삭제로 이어지는 흐름">
+    <defs><marker id="arrow-leave" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-leave"></g>
+  </svg>
+  <figcaption>떠난 사람은 Active User 자리를 TTL 동안 잠깐 차지할 뿐, 예매 서버에는 아무 부하도 주지 않아요.</figcaption>
+</figure>
+<p>결론은 비용 비교예요. 수십만~수백만 명의 생존을 매번 확인하는 것보다, 허수 몇 명을 Active User로 올려 두고 TTL로 지우는 편이 싸요. 하트비트는 채팅 서비스나 게임 서버의 접속 유지에는 꼭 필요한 기법이지만, 대기열에서는 오버헤드가 될 수 있다고 정리해요.</p>
+<h3>그 밖에 나온 개선 포인트</h3>
+<p>패킷이 버려지지 않게 랜카드, OS(Operating System) 커널의 큐 백로그, Nginx 커넥션 수를 튜닝하자는 댓글에는, 소프트웨어를 아무리 고쳐도 지나가는 통로가 좁으면 소용없다며 동의해요. 다만 랜카드와 커널은 자기 능력 밖이라고 솔직하게 말해요. Redis 접근에 WebFlux와 Netty를 썼다는 댓글에는, 대기열은 CPU(Central Processing Unit)보다 I/O 대기가 병목이라 <span class="term" data-term="논블로킹" data-en="Non-blocking I/O" data-desc="I/O 결과를 기다리는 동안 스레드를 붙잡지 않고 다른 요청을 처리하는 방식이에요. 적은 스레드로 많은 동시 요청을 받을 수 있어요." data-g="12">논블로킹</span>으로 짜면 적은 스레드로 많은 요청을 받을 수 있다고 답해요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=2110s" target="_blank" rel="noopener">35:10</a>
+  <h2>댓글 질문 ②: 좌석 지정, 비행기 모드, 폴링 구현</h2>
+<p>댓글 답변 영상의 후반부예요. 실제 예매 화면에서 겪은 일과, 직접 구현할 때의 질문이 이어져요.</p>
+<h3>비행기 모드를 켰다 끄면 대기열이 뚫린다던데요?</h3>
+<p>발표자는 질문을 정확히 이해하진 못했다고 먼저 말해요. '대기 중에 비행기 모드를 켰다 풀면 바로 예매 화면으로 들어간다'는 뜻이라면 두 가지 가능성을 들어요.</p>
+<ul>
+  <li>폴링이 몇 번 실패하면 프런트가 대기열 장애로 판단하고, 시스템이 죽은 것처럼 보이느니 예약 페이지로 보내는 일종의 페일오버 로직이 있을 수 있어요.</li>
+  <li>비행기 모드인 사이에 마침 서버에서 입장 가능으로 바뀌었고, 모드를 풀자 정상적으로 들어간 우연일 수도 있어요.</li>
+</ul>
+<p>매번 그렇게 된다면 로직 오류일 가능성이 크다고 봐요.</p>
+<h3>특정 자리까지 고르게 하려면?</h3>
+<p>그날 KTX 예매에는 자리 선택이 없었어요. 출발 시간과 좌석 수만으로 예매를 끝내고, 자리 지정과 결제는 나중에 해요. 대용량 구간에서 복잡함을 빼려고 일부러 나눈 것으로 봐요. 자리 지정과 결제는 좌석 수만큼만 들어오니 대용량이 아니에요.</p>
+<p>만약 특정 자리까지 골라야 한다면 '좌석 선점'을 추가해요. Redis의 <code>SET NX</code>를 써요.</p>
+<ul class="checklist">
+  <li>키는 좌석 번호, 값은 사용자 식별값으로 해요.</li>
+  <li>TTL은 반드시 줘요.</li>
+  <li>사용자가 좌석을 고르는 순간 <code>SET NX</code>로 선점해요. 이미 있으면 실패하니 먼저 잡은 한 명만 성공하고, 이 동작도 원자적이에요.</li>
+  <li>끝까지 진행하면 확정되고, 진행하지 않으면 TTL로 풀려요.</li>
+</ul>
+<h3>코레일 응답이 0.8K씩 끊겨 오던데요?</h3>
+<p>명절 예매 중에 개발자 도구를 열어 보니 다음 단계로 가는 페이로드가 0.8K씩 끊겨 오더라는 댓글이에요. 발표자는 두 가지로 추측해요. 다음 단계 처리가 오래 걸리면 브라우저가 연결을 끊어 버리니, 서버가 작은 데이터를 주기적으로 흘려 보내 연결을 살려 뒀을 수 있어요. 아니면 서버 사이드 렌더링이라면 수십만 명의 HTML(HyperText Markup Language)을 한꺼번에 메모리에서 만드는 게 부담이라, HTTP(HyperText Transfer Protocol) <span class="term" data-term="청크 응답" data-en="Chunked transfer encoding" data-desc="HTTP 응답 본문을 다 만들기 전에 조각으로 나눠 차례로 보내는 방식이에요. 서버가 큰 응답을 한꺼번에 메모리에 들고 있지 않아도 돼요." data-g="14">청크 응답</span>으로 나눠 보내 순간 메모리 사용을 낮췄을 수도 있어요. 어느 쪽이든 서버 부하를 덜려는 장치라고 봐요.</p>
+<h3>폴링은 어떻게 구현하나요?</h3>
+<p>백엔드 개발자인데 폴링을 해 본 적이 없다는 마지막 질문이에요. 흐름은 이래요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  participant B as 브라우저
+  participant A as 대기열 API
+  participant R as Redis
+  B->>A: 예약 접수
+  A->>R: ZSet에 UUID와 시각 저장
+  A-->>B: UUID 반환 (쿠키나 스토리지에 보관)
+  loop 가변 주기 + 지터
+    B->>A: 폴링 API 호출 (UUID)
+    A->>R: 내 순번, Active User 여부 조회
+    A-->>B: 순번 또는 입장 가능
+  end
+  B->>A: 입장 가능이면 예매 화면으로 이동
+</pre>
+  <figcaption>폴링 API는 대기열 API 안에 하나 더 만드는 조회 전용 API예요. 쓰기는 하지 않아요.</figcaption>
+</figure>
+<p>처음 접속 때 API가 UUID를 만들어 Redis 대기열에 넣고 바로 돌려줘요. 브라우저는 이 UUID를 HttpOnly 쿠키나 로컬 스토리지, 세션 스토리지에 넣어 다음 요청에 실어 보내요. 폴링 전용 API는 그 UUID로 대기열 순번과 Active User 존재 여부를 조회해 돌려줘요. 프런트는 자바스크립트나 React의 HTTP 요청으로 이 API를 주기적으로 불러요. 고정 주기도 되지만, 지터로 사람마다 조금씩 다르게, 대기가 길 땐 5~10초로 길게, 가까워지면 짧게 하는 게 좋다고 해요.</p>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=2615s" target="_blank" rel="noopener">43:35</a>
+  <h2>대기열에 Kafka 대신 Redis를 쓰는 이유</h2>
+<p>댓글 중 하나를 골라 따로 만든 편이에요. 질문은 '대기열에 Sorted Set이 아니라 MQ를 쓰면 정렬 연산 없이도 선착순이 되는데, 왜 Sorted Set이냐'예요. 발표자는 기능만 보면 MQ가 맞다고 인정하고 시작해요. Redis든 MQ든 선입선출로 줄을 세울 수 있어요.</p>
+<h3>대기열의 핵심은 '보여 주기'예요</h3>
+<p>갈림길은 사용자에게 남은 순번을 계속 알려 주는 UX(User Experience)예요. 슬라이드는 '현재 대기 순서: 5,320 번째'라는 예시 아래에 '이 숫자를 0.1초 만에 알 수 있어야 합니다'라고 적어 둬요.</p>
+<figure>
+  <img src="assets/frame-4455.png" alt="'핵심은 보여주기(UX)입니다' 슬라이드. 현재 대기 순서 5,320 번째라는 진행 막대와 '이 숫자를 0.1초 만에 알 수 있어야 합니다'라는 문구가 있어요">
+  <figcaption>
+    선착순 처리만큼 '지금 몇 번째인지'를 계속 알려 주는 게 대기열의 필수 기능이라는 게 이 편의 전제예요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=2695s" target="_blank" rel="noopener">영상 44:55에서 보기</a>
+  </figcaption>
+</figure>
+<h3>문제 1: MQ에서는 내 순번을 알 수 없어요</h3>
+<p>MQ는 메시지를 파이프에 흘려 보내고 앞에서부터 꺼내 가는 구조라, 안을 임의로 조회하기 어려워요. 발표자는 어두운 터널에 비유해요. 차들은 분명 줄지어 들어갔지만, 터널 안에서 내가 몇 번째인지는 확인하기 어렵죠. Kafka도 로그를 남기지만 핵심은 '어디까지 읽었냐'는 <span class="term" data-term="오프셋" data-en="Offset (Kafka)" data-desc="Kafka에서 컨슈머가 로그를 어디까지 읽었는지 가리키는 위치 번호예요. 특정 사용자가 몇 번째인지 알려 주는 값은 아니에요." data-g="10">오프셋</span>이지, 특정 사용자의 위치를 바로 찾는 기능이 아니에요.</p>
+<p>반면 ZSet은 큐라기보다 랭킹 보드에 가까워요. 오른쪽 검은 칸에 User_A, User_B, 'ME'가 시각과 함께 순서대로 적혀 있고, 아래에 '<code>ZRANK</code> 명령어로 내 등수를 O(logN) 속도로 즉시 확인 가능'이라고 써 있어요.</p>
+<figure>
+  <img src="assets/frame-4615.png" alt="'Redis ZSET: 대기열의 본질' 슬라이드. 왼쪽 상태 관리(Stateful) 카드, 오른쪽 '비유: 랭킹 보드' 카드에 1. User_A 10:00:01, 2. User_B 10:00:02, 3. ME가 적힌 순위표가 있어요">
+  <figcaption>
+    줄 자체가 서버의 데이터로 남아 있어서, 새로 고침을 눌러도 뒤로 밀리지 않아요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=2775s" target="_blank" rel="noopener">영상 46:15에서 보기</a>
+  </figcaption>
+</figure>
+<p>다음 슬라이드는 ZSet이 대기열 운영에 주는 기능을 다섯 칸으로 정리해요. 칸마다 실제 명령어가 검은 띠로 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-4655.png" alt="'Redis Sorted Set이 해내는 것들' 슬라이드. 현재 내 순번 조회 ZRANK queue user, 전체 대기 인원 ZCARD queue, 재접속 복구, 취소/만료 처리 ZREM queue user, 트래픽 조절 ZPOPMIN queue 1000 다섯 칸이 있어요">
+  <figcaption>
+    맨 아래 <code>ZPOPMIN</code>이 앞에서 본 스케줄러의 '앞에서부터 N명 꺼내기'예요. 슬라이드는 이것을 유량 조절 밸브라고 불러요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=2815s" target="_blank" rel="noopener">영상 46:55에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>하고 싶은 일</th><th>슬라이드의 명령</th></tr></thead>
+    <tbody>
+      <tr><td>내 순번 조회</td><td><code>ZRANK queue user</code></td></tr>
+      <tr><td>전체 대기 인원</td><td><code>ZCARD queue</code></td></tr>
+      <tr><td>재접속 복구</td><td>멤버(userId)가 남아 있으면 순번 유지</td></tr>
+      <tr><td>취소·만료 처리</td><td><code>ZREM queue user</code></td></tr>
+      <tr><td>트래픽 조절 (작은 점수부터 1000명)</td><td><code>ZPOPMIN queue 1000</code></td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>문제 2: 중복 클릭(F5 연타)</h3>
+<p>대기열에서 아주 흔한 장애 원인이 '제발 좀 기다리세요' 하며 클릭을 연타하거나 새로 고침을 반복하는 거예요. 슬라이드 왼쪽의 요청 1·2·3이 MQ로 가면 빨간 배지처럼 메시지가 3개 쌓이고, Redis ZSet에는 1개만 남아요.</p>
+<figure>
+  <img src="assets/frame-4755.png" alt="'문제점 2: 중복 클릭(F5 연타)' 슬라이드. 요청 1, 2, 3이 화살표를 거쳐 MQ [1,2,3] 3개와 Redis ZSET (User: Score) 1개로 비교돼 있어요">
+  <figcaption>
+    MQ는 컨슈머 쪽에 중복 제거 로직을 따로 둬야 하고, ZSet은 같은 키면 덮어써져 저절로 하나가 돼요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=2875s" target="_blank" rel="noopener">영상 47:55에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 이 성질을 <span class="term" data-term="멱등성" data-en="Idempotency" data-desc="같은 요청을 여러 번 보내도 결과가 한 번 보낸 것과 같은 성질이에요. F5 연타가 몰려도 대기열에 한 사람이 한 번만 남게 해 줘요." data-g="9">멱등성</span>이라고 불러요. 같은 요청을 여러 번 해도 결과가 같으니, 대기열에서 멱등성이 보장되면 트래픽이 훨씬 안정된다고 해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상은 '같은 멤버에 같은 점수를 넣으면' 하나로 유지된다고 말해요. 그런데 새로 고침 때 API가 새 타임스탬프를 점수로 다시 넣으면, Redis는 이미 있는 멤버의 점수를 새 값으로 바꾸고 그 자리로 다시 정렬해요. 즉 사람은 한 명이지만 줄 맨 뒤로 밀려요. 처음 들어온 시각을 지키려면 <code>ZADD queue NX 점수 사용자</code>처럼 NX(if Not eXists) 옵션을 붙여 새 멤버만 추가하게 하면 돼요.</p>
+  <p class="cite">출처: <a href="https://redis.io/docs/latest/commands/zadd/" target="_blank" rel="noopener">Redis 공식 문서 — ZADD</a></p>
+</aside>
+<h3>문제 3: 중간 이탈(취소)</h3>
+<p>KTX에는 없던 기능이지만, 기다리다 지친 사용자가 취소할 수 있게 한다면 그 사람을 줄에서 빼야 해요. 왼쪽 MQ(터널)에는 '중간에 낀 차를 빼낼 수 없음'이, 오른쪽 Redis(명단)에는 '특정 유저만 콕 집어서 삭제 가능, <code>ZREM</code> waiting_queue user_b'가 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-4840.png" alt="'문제점 3: 중간 이탈(취소/삭제)' 슬라이드. 왼쪽 MQ(터널) 카드에 터널 속 차들과 '중간에 낀 차를 빼낼 수 없음', 오른쪽 Redis(명단) 카드에 사람 아이콘 셋과 ZREM waiting_queue user_b가 있어요">
+  <figcaption>
+    MQ로 하려면 취소 목록을 따로 만들고 컨슈머에서 걸러야 해서 저장소가 하나 더 붙어요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=2920s" target="_blank" rel="noopener">영상 48:40에서 보기</a>
+  </figcaption>
+</figure>
+<h3>그래서 앞은 Redis, 뒤는 MQ</h3>
+<p>실무 구조는 둘 중 하나를 고르는 게 아니라 둘을 나눠 써요. 슬라이드의 흐름은 User → Waiting(Redis) → Active(API) → Save(MQ)예요. 줄 서는 앞단은 조회와 관리가 중요하니 Redis, <code>ZPOPMIN</code>으로 통과시킨 뒤 저장하는 뒷단은 처리량과 비동기가 중요하니 MQ예요. MQ 뒤에는 DB 저장, 알림, 로그 같은 후처리가 붙어요.</p>
+<figure>
+  <img src="assets/frame-4915.png" alt="'그래서 아키텍처가 이렇습니다' 슬라이드. User → Waiting(Redis) → Active(API) → Save(MQ) 흐름과 '앞단(줄 서기)은 조회/관리가 중요하니까 Redis, 뒷단(저장)은 처리량이 중요하니까 MQ'라는 문구가 있어요">
+  <figcaption>
+    MQ를 버린 게 아니라 자리를 옮긴 거예요. 본편 아키텍처의 예매 처리 뒤 MQ와 같은 자리예요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=2955s" target="_blank" rel="noopener">영상 49:15에서 보기</a>
+  </figcaption>
+</figure>
+<p>결론 슬라이드는 네 줄로 비교해요. MQ(Kafka/RabbitMQ)는 비동기 처리와 버퍼링, Redis(Sorted Set)는 실시간 랭킹과 상태 관리가 주 목적이에요. 순번 조회, 중복 방지, 임의 취소 세 줄은 모두 Redis 쪽이 '가능'이에요.</p>
+<figure>
+  <img src="assets/frame-4958.png" alt="'결론(Summary)' 표. MQ(Kafka/RabbitMQ)와 Redis(Sorted Set)를 주 목적, 순번 조회, 중복 방지, 임의 취소로 비교해요. Redis는 가능(O(logN)), Key 기반 자동 해결, ZREM으로 즉시 가능이에요">
+  <figcaption>
+    단순히 순서대로 처리만 하면 된다면 MQ가 가장 좋은 선택이라는 말도 함께 해요. 대기 상태를 조회하고 관리해야 할 때 ZSet이 이겨요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=2998s" target="_blank" rel="noopener">영상 49:58에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3001s" target="_blank" rel="noopener">50:01</a>
+  <h2>SRT 대기열을 뜯어보면</h2>
+<p>이번엔 SRT 예매 날이에요. 발표자도 참여했는데 KTX보다는 나았지만 대기는 거의 1만 번째였어요. 이 대기 화면에서 브라우저와 서버가 어떻게 주고받는지 개발자 도구로 들여다봐요.</p>
+<p>팝업 위쪽 띠에 '예약 요청 횟수 6회 / 전체 예약 시간 3분 제한'이 적혀 있어요. 가운데에는 '9998명이 접속대기 중이며, 대기 순서에 따라 자동 접속됩니다'가 보여요.</p>
+<figure>
+  <img src="assets/frame-5012.png" alt="SRT 2026년 설날 예매 페이지 위에 뜬 '예약접속 대기' 팝업. 예약 요청 횟수 6회 / 전체 예약 시간 3분 제한, 9998명이 접속대기 중이며 대기 순서에 따라 자동 접속된다는 문구가 있어요">
+  <figcaption>
+    '전체 예약 시간 3분 제한'은 본편에서 말한 Active User TTL 3분과 같은 장치예요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3012s" target="_blank" rel="noopener">영상 50:12에서 보기</a>
+  </figcaption>
+</figure>
+<h3>요청: 평범한 HTTP/1.1 GET 폴링</h3>
+<p>요청 헤더에는 특별한 게 없어요. 맨 위 HTTP/1.1이 눈에 띄는데, 발표자는 오래된 브라우저를 쓰는 이용자를 위한 호환성 때문으로 봐요. 더 중요한 건 아래 두 줄이에요. Host는 nf2.letskorail.com, Referer는 etk.srail.kr로 서로 달라요. 대기열과 예매 사이트가 다른 호스트에서 돈다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-5041.png" alt="요청 헤더 확대 화면. HTTP/1.1, Accept-Encoding, Accept-Language, Connection: keep-alive, Host: nf2.letskorail.com, Referer: https://etk.srail.kr/">
+  <figcaption>
+    Host와 Referer가 다르다는 점이 뒤에서 '왜 응답이 자바스크립트인가'의 단서가 돼요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3041s" target="_blank" rel="noopener">영상 50:41에서 보기</a>
+  </figcaption>
+</figure>
+<p>쿼리 파라미터는 보기 쉽게 다른 도구에 옮겨 펼쳐요. opcode 5002, 길게 인코딩된 key, nfid 0, prefix NetFunnel.gRtype=5002, ttl 2, sid service_1 등이 있어요.</p>
+<figure>
+  <img src="assets/frame-5141.png" alt="쿼리 파라미터 표. opcode 5002, key E78F5D60CC3D…, nfid 0, prefix NetFunnel.gRtype=5002;, ttl 2가 보여요">
+  <figcaption>
+    opcode는 어떤 함수를 실행할지 정하는 번호로, key는 클라이언트 식별값과 무결성을 위한 서명을 인코딩한 것으로 봐요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3101s" target="_blank" rel="noopener">영상 51:41에서 보기</a>
+  </figcaption>
+</figure>
+<p>sid는 JWT(JSON Web Token)에서 흔히 쓰는 세션 ID(Identifier)가 아니라 그냥 서비스 ID로 보인다고 짚어요.</p>
+<h3>응답: JSON이 아니라 자바스크립트</h3>
+<p>응답 첫 줄의 Content-type이 application/javascript예요. 본문은 NetFunnel.gControl.result에 값을 넣는 코드인데, 그 안에 &amp;nwait=9726, &amp;nnext=1387, &amp;tps=1.371216, &amp;ttl=2가 들어 있어요.</p>
+<figure>
+  <img src="assets/frame-5221.png" alt="응답 본문. Content-type: application/javascript, NetFunnel.gRtype = 4999;, NetFunnel.gControl.result = '5002:201:key=…&nwait=9726&nnext=1387&tps=1.371216&ttl=2&ip=nf2.letskorail.com…'">
+  <figcaption>
+    키는 응답마다 다시 내려와요. 발표자는 키를 재사용하지 못하게 하려는 장치로 봐요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3141s" target="_blank" rel="noopener">영상 52:21에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자의 해석을 표로 모으면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>값</th><th>예시</th><th>발표자의 해석</th></tr></thead>
+    <tbody>
+      <tr><td><code>nwait</code></td><td>9726</td><td>내 앞에 남은 대기자 수</td></tr>
+      <tr><td><code>nnext</code></td><td>1387</td><td>내 뒤의 대기자 수</td></tr>
+      <tr><td><code>tps</code></td><td>1.37</td><td>흔히 아는 초당 트랜잭션이 아니라, 솔루션 내부의 입장 처리율 같은 값</td></tr>
+      <tr><td><code>ttl</code></td><td>2</td><td>다음 폴링까지의 초. 실제로 1초와 2초를 오갔어요. 서버가 폴링 주기를 정해요</td></tr>
+      <tr><td><code>sticky</code></td><td>nf1</td><td>한 번 붙은 서버에 계속 붙게 하는 <span class="term" data-term="스티키 세션" data-en="Sticky session" data-desc="로드 밸런서가 한 클라이언트의 요청을 처음 붙은 서버로 계속 보내는 설정이에요. 서버마다 상태를 들고 있을 때 써요." data-g="13">스티키 세션</span></td></tr>
+    </tbody>
+  </table>
+</div>
+<p>발표자가 만든 정리 슬라이드도 같은 내용을 네 칸으로 보여 줘요. 각 칸에 nwait(9726), nnext(1387), tps(1.37), ttl(2)과 짧은 설명이 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-5521.png" alt="'3. 핵심 데이터(Payload)' 슬라이드. nwait 9726 현재 내 앞에 남은 사람 수, nnext 1387, tps 1.37 Transaction Per Second, ttl 2 Time To Live 2초 뒤에 다시 요청해라(Polling 주기) 네 칸">
+  <figcaption>
+    ttl 칸의 '2초 뒤에 다시 요청해라'가 핵심이에요. 폴링 주기를 클라이언트가 아니라 서버가 쥐고 있어요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3321s" target="_blank" rel="noopener">영상 55:21에서 보기</a>
+  </figcaption>
+</figure>
+<h3>왜 자바스크립트를 돌려줄까요</h3>
+<p>슬라이드는 '왜 JS를 줄까? (Legacy)' 아래에 두 가지 이유를 적어요. 과거 JSONP(크로스 도메인 회피) 방식의 유산이거나, 클라이언트 로직을 서버가 직접 제어(Execute)하기 위해서예요.</p>
+<figure>
+  <img src="assets/frame-5421.png" alt="'2. 응답(Response) 해부' 슬라이드. 'JSON이 아닙니다! JavaScript가 옵니다.' 문구와 Content-Type: application/javascript 코드 블록, 아래에 '왜 JS를 줄까? (Legacy)' 설명이 있어요">
+  <figcaption>
+    Host와 Referer가 달랐던 게 첫째 이유와 이어져요. 기차표는 오래된 브라우저를 쓰는 이용자도 많아 레거시 방식을 택했을 수 있다고 봐요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3261s" target="_blank" rel="noopener">영상 54:21에서 보기</a>
+  </figcaption>
+</figure>
+<p>둘째 이유는 이래요. 응답이 실행되는 코드이니, 어떤 함수를 어떤 값으로 부를지 서버가 정해요. 동작 원리 슬라이드는 브라우저(JS(JavaScript))가 NetFunnel 서버에 요청을 보내면 스크립트가 돌아오는 고리를 그려요. 그 아래에는 '서버가 준 JS가 실행되면, 화면 갱신 후 다시 요청(setTimeout)을 건다'고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-5541.png" alt="'동작 원리: Infinite Polling' 슬라이드. Browser(JS)에서 REQUEST가 NetFunnel Server로 가고 SCRIPT가 돌아오며, 아래 UI 업데이트 상자와 setTimeout 설명이 있어요">
+  <figcaption>
+    무한 폴링이에요. 다음 요청을 거는 시점도 서버가 내려 준 ttl이 정해요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3341s" target="_blank" rel="noopener">영상 55:41에서 보기</a>
+  </figcaption>
+</figure>
+<h3>다섯 줄 정리</h3>
+<p>발표자가 마지막에 적은 정리예요. 1번 'Net퍼널 사용'부터 5번 '응답은 JavaScript'까지 이어져요.</p>
+<figure>
+  <img src="assets/frame-5610.png" alt="'대규모 트래픽 대기열 확인 구조' 정리. 1. Net퍼널 사용 2. HTTP 폴링 방식(SSE(x), WebSocket(x)) 3. 서버가 TTL로 폴링 주기를 제어 4. Key: 대기열 토큰(클라이언트정보+서명) 5. 응답은 JavaScript: JSONP(크로스도메인), 클라이언트 로직을 서버가 직접 제어">
+  <figcaption>
+    본편에서 직접 Redis로 설계한 구조를, SRT는 돈을 내고 검증된 상용 솔루션으로 해결했어요. 발표자는 그것도 괜찮은 선택이라고 해요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3370s" target="_blank" rel="noopener">영상 56:10에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>NetFUNNEL은 국내 기업 STCLab의 가상 대기실 솔루션이에요. 제품 페이지는 '처리 가능한 사용자만 진입시키고 초과 사용자를 대기시켜 서비스 중단을 방지'한다고 소개해요. 영상에서 본 nwait, ttl 같은 값의 정확한 정의는 공개 문서로 확인하지 못했어요. 표의 해석은 발표자의 추정으로 읽는 게 좋아요.</p>
+  <p class="cite">출처: <a href="https://www.stclab.com/products/netfunnel" target="_blank" rel="noopener">STCLab — NetFUNNEL 제품 페이지</a></p>
+</aside>
+</section>
+
+<section id="s8">
+  <a class="stamp" href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3470s" target="_blank" rel="noopener">57:50</a>
+  <h2>웹소켓 대신 폴링을 쓰는 이유</h2>
+<p>마지막 편은 본편에 가장 많이 달린 질문을 다뤄요. '실시간이 중요한데 왜 소켓을 안 쓰나요', '짧은 주기의 대량 폴링이 서버에 더 부담 아닌가요'예요. 슬라이드 제목도 '대기열 구현, 소켓 말고 폴링이라고?'예요.</p>
+<figure>
+  <img src="assets/frame-5830.png" alt="'구독자 Q&A — 대기열 구현, 소켓 말고 폴링이라고?' 슬라이드. 구독자 질문 '소켓(WebSocket) 말고 폴링 방식으로 하면 서버 부하 오지 않나요…?'가 인용돼 있어요">
+  <figcaption>
+    질문의 바탕에는 '계속 묻는 건 낭비'라는 직관이 깔려 있어요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3510s" target="_blank" rel="noopener">영상 58:30에서 보기</a>
+  </figcaption>
+</figure>
+<h3>직관과 현실</h3>
+<p>왼쪽 카드는 우리의 직관이에요. '계속 물어보는(Polling) 건 비효율적이야, 연결해 놓고(Socket) 알림만 받는 게 낫지'. 오른쪽 카드는 50만 명일 때의 현실이에요. '50만 명과 전화 연결을 유지하고 있다고? 서버 메모리가 남아나질 않아'.</p>
+<figure>
+  <img src="assets/frame-5850.png" alt="'직관 vs 현실' 슬라이드. 왼쪽 우리의 직관 카드, 오른쪽 현실(at 50만 명) 카드, 아래에 Socket(유지 비용) 전화기 그림과 Polling(보고 끝) 편지 그림이 VS로 놓여 있어요">
+  <figcaption>
+    소켓은 전화를 끊지 않고 들고 있는 것, 폴링은 편지 한 통 보내고 끝내는 것이에요. 편지 50만 통을 1초에 나눠 처리하는 건 생각보다 쉬워요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3530s" target="_blank" rel="noopener">영상 58:50에서 보기</a>
+  </figcaption>
+</figure>
+<h3>소켓의 숨은 비용</h3>
+<p>웹소켓은 상태를 유지하는(Stateful) 기술이에요. 슬라이드 오른쪽 '연결 유지(Holding)' 목록에 세 가지가 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-010010.png" alt="'1. Socket의 숨겨진 비용(Stateful)' 슬라이드. 왼쪽 Connection Pool 그림, 오른쪽 연결 유지(Holding) 목록: 50만 명이 접속하면 50만 개의 소켓 객체가 메모리에 상주, 로드밸런서(L4/L7)의 Max Connection 한계 도달, 아무것도 안 해도 숨만 쉬는데 리소스가 계속 나감">
+  <figcaption>
+    로드 밸런서가 먼저 막히면 뒤의 API를 아무리 수평 확장해도 소용없어요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3610s" target="_blank" rel="noopener">영상 01:00:10에서 보기</a>
+  </figcaption>
+</figure>
+<h3>재접속 폭풍</h3>
+<p>더 무서운 건 네트워크가 1초만 깜빡해도 생기는 일이에요. 슬라이드 아래 상자에 '50만 명이 동시에 연결이 끊기면? 50만 명이 동시에 재접속(Re-connect)을 시도. DDoS 공격과 똑같은 효과로 서버 사망'이라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-010050.png" alt="'2. 재접속 폭풍(Thundering Herd)' 슬라이드. '네트워크가 1초만 끊겨도 재앙이 온다'는 문구, 번개가 흩어진 검은 그림, 50만 명 동시 재접속이 DDoS와 같은 효과라는 설명 상자">
+  <figcaption>
+    사용자들이 자기 서버에 DDoS를 거는 꼴이 되어, 시스템이 복구할 수 없는 상태로 빠질 수 있어요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3650s" target="_blank" rel="noopener">영상 01:00:50에서 보기</a>
+  </figcaption>
+</figure>
+<h3>폴링은 묻고 끊어요</h3>
+<p>폴링은 무상태(Stateless)예요. '제 순서 됐나요' 묻고 답을 듣자마자 연결을 끊어요. 왼쪽 카드는 확장성으로, 연결 정보가 없으니 어느 서버로 요청해도 상관없어 서버 증설이 쉽다고 적어요. 오른쪽 카드는 비용 효율로, 요청을 처리하는 0.01초만 자원을 쓰고 바로 반납한다고 적어요.</p>
+<figure>
+  <img src="assets/frame-010110.png" alt="'3. Polling: 치고 빠지기(Stateless)' 슬라이드. '용건만 간단히 하고 끊습니다' 문구 아래 확장성(Scalability) 카드와 비용 효율 카드가 있어요">
+  <figcaption>
+    트래픽이 늘면 API 서버만 한 대 더 놓으면 돼요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3670s" target="_blank" rel="noopener">영상 01:01:10에서 보기</a>
+  </figcaption>
+</figure>
+<h3>요청 수가 많아도 버티는 이유</h3>
+<p>'그래도 요청 수가 너무 많지 않냐'는 반론에는 요청 한 건의 무게로 답해요. 시소 그림 왼쪽의 무거운 DB Query와 오른쪽의 가벼운 Redis Get이 대비돼요. 아래 문구는 '대기열 폴링은 DB를 거치지 않는 초경량 요청(Redis 조회)'이라 요청 수가 많아도 건당 비용이 낮다는 거예요.</p>
+<figure>
+  <img src="assets/frame-010150.png" alt="'왜 폴링은 서버가 안 터질까?' 슬라이드. 왼쪽 DB Query 아이콘과 오른쪽 Redis Get 아이콘을 시소에 올린 그림, 대기열 폴링은 DB를 거치지 않는 초경량 요청이라는 설명 상자">
+  <figcaption>
+    연결을 유지하는 비용보다 자주 물어보는 비용이 훨씬 싼 구간이라는 게 발표자의 결론이에요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3710s" target="_blank" rel="noopener">영상 01:01:50에서 보기</a>
+  </figcaption>
+</figure>
+<h3>무식한 폴링은 아니에요</h3>
+<p>그렇다고 1초마다 무작정 묻지는 않아요. 막대그래프는 대기 순번이 줄어들수록 요청 주기를 10초, 10초, 3초, 1초로 줄이는 어댑티브 폴링을 보여 줘요. 오른쪽 위 초록 배지에는 'Real World: SRT/코레일'이라고 적혀 있어요. 아래 두 줄은 서버가 응답의 TTL로 다음 요청 시간을 지정하는 가변 주기와, 3초 ± 0.5초처럼 랜덤 시간을 섞어 요청을 흩는 지터예요.</p>
+<figure>
+  <img src="assets/frame-010215.png" alt="'무식한 폴링? NO! (Optimization)' 슬라이드. Adaptive Polling 막대그래프가 10s, 10s, 3s, 1s로 줄어들고, 아래에 가변 주기(서버가 TTL로 다음 요청 시간 지정)와 지터(3초 ± 0.5초 랜덤 시간) 항목이 있어요">
+  <figcaption>
+    앞 편에서 본 SRT의 ttl=2가 바로 이 가변 주기예요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3735s" target="_blank" rel="noopener">영상 01:02:15에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>지터는 재시도 설계에서 널리 쓰는 기법이에요. AWS(Amazon Web Services) 아키텍처 블로그는 재시도 간격을 늘리기만 하면 요청이 여전히 한 시점에 뭉치고, 무작위성을 섞어야 요청이 거의 일정한 속도로 퍼진다는 실험 결과를 보여 줘요. 대기열 폴링에서 주기를 흩는 것도 같은 원리예요.</p>
+  <p class="cite">출처: <a href="https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/" target="_blank" rel="noopener">AWS Architecture Blog — Exponential Backoff And Jitter</a></p>
+</aside>
+<h3>웹소켓이 나쁜 게 아니에요</h3>
+<p>마지막 비교표는 연결 방식, 서버 부하, 장애 시, 추천 상황 네 줄이에요. 장애 시 웹소켓은 <span class="term" data-term="재접속 폭풍" data-en="Thundering herd" data-desc="연결이 한꺼번에 끊긴 수많은 클라이언트가 동시에 다시 접속하면서 서버를 덮치는 현상이에요." data-g="15">재접속 폭풍</span> 위험, 폴링은 자연스러운 재시도예요. 추천 상황은 웹소켓이 채팅·게임(양방향), 폴링이 대기열(단방향 확인)이에요.</p>
+<figure>
+  <img src="assets/frame-010255.png" alt="'한 눈에 비교(Summary)' 표. WebSocket은 Stateful(유지), 메모리/커넥션 높음, 재접속 폭풍 위험, 채팅·게임(양방향). Polling은 Stateless(단발성), 요청 빈도에 비례, 자연스러운 재시도, 대기열(단방향 확인)">
+  <figcaption>
+    표 아래 메모처럼, 양방향 실시간에는 웹소켓이 필수예요. 대기열은 단방향 상태 확인이라 폴링이 더 효율적일 뿐이에요.
+    <a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4&amp;t=3775s" target="_blank" rel="noopener">영상 01:02:55에서 보기</a>
+  </figcaption>
+</figure>
+<blockquote>
+  <p>이 초대용량이 환경에서는 연결을 유지하는 비용이 자주 묻는 비용보다 비쌉니다.</p>
+  <cite>— 영상 01:02:54</cite>
+</blockquote>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 명령어와 이름이 소리 나는 대로 적힌 곳이 많아요. 화면과 문맥으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>레디스 / 레지스 / 레기스</td><td>Redis</td><td></td></tr>
+      <tr><td>지셋 / 소티드 셋 / 솔트 셋 / 소프트 셋</td><td>ZSet (Sorted Set)</td><td></td></tr>
+      <tr><td>G랭크 / 지행 금융령어</td><td>ZRANK</td><td>내 순번 조회</td></tr>
+      <tr><td>G드로</td><td>ZCARD</td><td>전체 대기 인원 (추정)</td></tr>
+      <tr><td>G램</td><td>ZREM</td><td>멤버 삭제</td></tr>
+      <tr><td>지팝민</td><td>ZPOPMIN</td><td>앞에서부터 N명 꺼내기</td></tr>
+      <tr><td>루아 스크립트 / 루아스크 그립</td><td>Lua script</td><td></td></tr>
+      <tr><td>디크리즈 / 디크리즈파이</td><td>DECR / DECRBY</td><td></td></tr>
+      <tr><td>셋 NX</td><td>SET NX</td><td></td></tr>
+      <tr><td>액티브 유즈 / 액티브 위조 / 액티브 유전</td><td>Active User</td><td></td></tr>
+      <tr><td>대결</td><td>대기열</td><td></td></tr>
+      <tr><td>디테일 / DTL / TTA / TT</td><td>TTL</td><td></td></tr>
+      <tr><td>몇등성</td><td>멱등성</td><td></td></tr>
+      <tr><td>허트비트 / 카르트</td><td>하트비트 (Heartbeat)</td><td></td></tr>
+      <tr><td>웹플렉스 / 웹플럭스</td><td>WebFlux</td><td></td></tr>
+      <tr><td>네티</td><td>Netty</td><td></td></tr>
+      <tr><td>랭카드</td><td>랜카드 (NIC)</td><td></td></tr>
+      <tr><td>청커 리스폰스</td><td>Chunked response</td><td></td></tr>
+      <tr><td>네퍼널 / Net퍼널 / 내폰</td><td>NetFUNNEL</td><td></td></tr>
+      <tr><td>제이슨 P / 쓸피</td><td>JSONP</td><td></td></tr>
+      <tr><td>디로스</td><td>DDoS</td><td></td></tr>
+      <tr><td>스킬 아웃</td><td>스케일 아웃</td><td></td></tr>
+      <tr><td>스케줄로</td><td>스케줄러</td><td></td></tr>
+      <tr><td>티캔 / M매</td><td>승차권 / 예매</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-12"><dt>논블로킹<span class="en">Non-blocking I/O</span></dt><dd>I/O 결과를 기다리는 동안 스레드를 붙잡지 않고 다른 요청을 처리하는 방식이에요. 적은 스레드로 많은 동시 요청을 받을 수 있어요.</dd></div>
+    <div class="g" id="g-9"><dt>멱등성<span class="en">Idempotency</span></dt><dd>같은 요청을 여러 번 보내도 결과가 한 번 보낸 것과 같은 성질이에요. F5 연타가 몰려도 대기열에 한 사람이 한 번만 남게 해 줘요.</dd></div>
+    <div class="g" id="g-2"><dt>스케일 아웃<span class="en">Scale-out</span></dt><dd>서버를 여러 대로 늘려 부하를 나누는 방식이에요. 상태가 없는 API는 쉽지만, 데이터를 한곳에 모아야 하는 RDB는 어려워요.</dd></div>
+    <div class="g" id="g-7"><dt>스케줄러<span class="en">Scheduler</span></dt><dd>정해진 주기마다 작업을 실행하는 프로그램이에요. 여기서는 1초마다 대기열 앞에서 정해진 인원을 꺼내 입장시켜요.</dd></div>
+    <div class="g" id="g-13"><dt>스티키 세션<span class="en">Sticky session</span></dt><dd>로드 밸런서가 한 클라이언트의 요청을 처음 붙은 서버로 계속 보내는 설정이에요. 서버마다 상태를 들고 있을 때 써요.</dd></div>
+    <div class="g" id="g-10"><dt>오프셋<span class="en">Offset (Kafka)</span></dt><dd>Kafka에서 컨슈머가 로그를 어디까지 읽었는지 가리키는 위치 번호예요. 특정 사용자가 몇 번째인지 알려 주는 값은 아니에요.</dd></div>
+    <div class="g" id="g-5"><dt>원자적<span class="en">Atomic</span></dt><dd>여러 단계로 된 작업이 중간에 끊기거나 다른 작업이 끼어들지 않고 한 덩어리로 실행되는 성질이에요. 다 되거나 아예 안 되거나 둘 중 하나예요.</dd></div>
+    <div class="g" id="g-4"><dt>웹소켓<span class="en">WebSocket</span></dt><dd>브라우저와 서버가 연결 하나를 계속 열어 두고 양쪽에서 메시지를 주고받는 프로토콜이에요. 채팅·게임처럼 양방향 실시간에 맞아요.</dd></div>
+    <div class="g" id="g-15"><dt>재접속 폭풍<span class="en">Thundering herd</span></dt><dd>연결이 한꺼번에 끊긴 수많은 클라이언트가 동시에 다시 접속하면서 서버를 덮치는 현상이에요.</dd></div>
+    <div class="g" id="g-11"><dt>지터<span class="en">Jitter</span></dt><dd>요청 간격에 무작위 시간을 조금씩 섞어 여러 클라이언트의 요청이 한 순간에 몰리지 않게 흩는 기법이에요.</dd></div>
+    <div class="g" id="g-14"><dt>청크 응답<span class="en">Chunked transfer encoding</span></dt><dd>HTTP 응답 본문을 다 만들기 전에 조각으로 나눠 차례로 보내는 방식이에요. 서버가 큰 응답을 한꺼번에 메모리에 들고 있지 않아도 돼요.</dd></div>
+    <div class="g" id="g-3"><dt>폴링<span class="en">Polling</span></dt><dd>클라이언트가 일정 간격으로 서버에 &#x27;바뀐 거 있어요?&#x27; 하고 묻는 방식이에요. 매번 연결을 맺고 끊어서 서버가 상태를 들고 있을 필요가 없어요.</dd></div>
+    <div class="g" id="g-8"><dt>하트비트<span class="en">Heartbeat</span></dt><dd>클라이언트가 살아 있다는 신호를 주기적으로 보내고, 신호가 끊기면 죽은 것으로 보고 정리하는 기법이에요.</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>AWS</dt><dd>Amazon Web Services</dd></div>
+    <div class="g"><dt>CPU</dt><dd>Central Processing Unit</dd></div>
+    <div class="g"><dt>DB</dt><dd>Database</dd></div>
+    <div class="g"><dt>HTML</dt><dd>HyperText Markup Language</dd></div>
+    <div class="g"><dt>HTTP</dt><dd>HyperText Transfer Protocol</dd></div>
+    <div class="g"><dt>ID</dt><dd>Identifier</dd></div>
+    <div class="g"><dt>JS</dt><dd>JavaScript</dd></div>
+    <div class="g"><dt>JSONP</dt><dd>JSON with Padding</dd></div>
+    <div class="g"><dt>JWT</dt><dd>JSON Web Token</dd></div>
+    <div class="g"><dt>KTX</dt><dd>Korea Train eXpress</dd></div>
+    <div class="g" id="g-6"><dt>Lua 스크립트<span class="en">Redis Lua scripting</span></dt><dd>Redis 서버 안에서 Lua로 쓴 로직을 실행하는 기능이에요. 스크립트 전체가 원자적으로 돌아서 &#x27;조회 후 조건부 차감&#x27; 같은 작업을 안전하게 묶을 수 있어요.</dd></div>
+    <div class="g"><dt>MQ</dt><dd>Message Queue</dd></div>
+    <div class="g"><dt>NX</dt><dd>if Not eXists</dd></div>
+    <div class="g"><dt>OS</dt><dd>Operating System</dd></div>
+    <div class="g"><dt>RDB</dt><dd>Relational Database</dd></div>
+    <div class="g" id="g-1"><dt>Sorted Set<span class="en">Redis Sorted Set (ZSet)</span></dt><dd>멤버마다 점수를 붙여 점수 순으로 늘 정렬해 두는 Redis 자료구조예요. 점수에 들어온 시각을 넣으면 그대로 선착순 줄이 돼요.</dd></div>
+    <div class="g"><dt>SRT</dt><dd>Super Rapid Train</dd></div>
+    <div class="g"><dt>SSE</dt><dd>Server-Sent Events</dd></div>
+    <div class="g"><dt>TPS</dt><dd>Transactions Per Second</dd></div>
+    <div class="g"><dt>TTL</dt><dd>Time To Live</dd></div>
+    <div class="g"><dt>UI</dt><dd>User Interface</dd></div>
+    <div class="g"><dt>UUID</dt><dd>Universally Unique Identifier</dd></div>
+    <div class="g"><dt>UX</dt><dd>User Experience</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=EC2Xqyq6vg4" target="_blank" rel="noopener">원본 영상 — 코딩하는기술사</a></li>
+    <li id="src-2"><a href="https://redis.io/docs/latest/commands/zadd/" target="_blank" rel="noopener">Redis 공식 문서 — ZADD</a></li>
+    <li id="src-3"><a href="https://redis.io/docs/latest/develop/programmability/eval-intro/" target="_blank" rel="noopener">Redis 공식 문서 — Scripting with Lua</a></li>
+    <li id="src-4"><a href="https://www.stclab.com/products/netfunnel" target="_blank" rel="noopener">STCLab — NetFUNNEL 제품 페이지</a></li>
+    <li id="src-5"><a href="https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/" target="_blank" rel="noopener">AWS Architecture Blog — Exponential Backoff And Jitter</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 15일에 이 영상을 보고 정리했어요. 원본은 코딩하는기술사 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+function box(g, x, y, w, h, cls, name, sub) {
+  g.append(el('rect', { x, y, width: w, height: h, rx: 10, class: cls }));
+  g.append(el('text', { x: x + w / 2, y: y + h / 2 - 3, 'text-anchor': 'middle' }, name));
+  if (sub) g.append(el('text', { x: x + w / 2, y: y + h / 2 + 16, 'text-anchor': 'middle', class: 'sub' }, sub));
+}
+function arrow(g, d, marker) {
+  g.append(el('path', { d, class: 'line', 'marker-end': `url(#${marker})` }));
+}
+
+(() => {
+  const g = document.getElementById('fig-arch');
+  if (!g) return;
+  const top = 50, bot = 220, h = 64;
+  g.append(el('text', { x: 270, y: 34, 'text-anchor': 'middle', class: 'sub' }, '① 대기열 등록'));
+  g.append(el('text', { x: 670, y: 34, 'text-anchor': 'middle', class: 'sub' }, '② 예매 입장'));
+  g.append(el('text', { x: 435, y: 312, 'text-anchor': 'middle', class: 'sub' }, '③ 예매 처리'));
+  box(g, 10, top, 80, h, 'box', '사용자', '예약 접수');
+  box(g, 120, top, 120, h, 'box', 'API', '대기열 서버');
+  box(g, 270, top, 150, h, 'c1 cell', 'Redis 대기열', 'ZSet: UUID·시각');
+  box(g, 450, top, 110, h, 'c2 cell', '스케줄러', '1초마다 N명');
+  box(g, 590, top, 160, h, 'c2 cell', 'Active User', 'TTL 3분');
+  box(g, 120, bot, 120, h, 'box', 'API', '예매 서버');
+  box(g, 270, bot, 150, h, 'c3 cell', 'Redis 잔여 좌석', 'Lua로 확인·차감');
+  box(g, 450, bot, 110, h, 'c4 cell', 'MQ', '버퍼');
+  box(g, 590, bot, 160, h, 'c4 cell', '워커 → RDB', '최종 저장');
+  const ty = top + h / 2, by = bot + h / 2;
+  arrow(g, `M92 ${ty} H118`, 'arrow-arch');
+  arrow(g, `M242 ${ty} H268`, 'arrow-arch');
+  arrow(g, `M422 ${ty} H448`, 'arrow-arch');
+  arrow(g, `M562 ${ty} H588`, 'arrow-arch');
+  arrow(g, `M670 ${top + h + 2} V168 H180 V${bot - 2}`, 'arrow-arch');
+  g.append(el('text', { x: 425, y: 160, 'text-anchor': 'middle', class: 'sub' }, '폴링하다 Active User에 있으면 예매로'));
+  arrow(g, `M242 ${by} H268`, 'arrow-arch');
+  arrow(g, `M422 ${by} H448`, 'arrow-arch');
+  arrow(g, `M562 ${by} H588`, 'arrow-arch');
+  g.append(el('text', { x: 435, y: bot - 8, 'text-anchor': 'middle', class: 'sub' }, '성공만'));
+})();
+
+(() => {
+  const g = document.getElementById('fig-leave');
+  if (!g) return;
+  const steps = [
+    ['c1 cell', '대기 중 이탈', '서버는 모름'],
+    ['c2 cell', 'Active로 올라감', '스케줄러가 꺼냄'],
+    ['ok', '아무 행동 없음', '예매 서버 부하 0'],
+    ['c2 cell', 'TTL 지나 삭제', '자리에서 사라짐'],
+  ];
+  steps.forEach(([cls, name, sub], i) => {
+    const x = 10 + i * 178;
+    box(g, x, 40, 150, 70, cls, name, sub);
+    if (i < steps.length - 1) arrow(g, `M${x + 152} 75 H${x + 176}`, 'arrow-leave');
+  });
+})();
+</script>
+<script>
+// widgets/seat.js
+(() => {
+  const root = document.getElementById('seat');
+  if (!root) return;
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs, text) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  };
+  const [remainIn, reqIn] = root.querySelectorAll('input');
+  const svg = root.querySelector('svg');
+  const out = {
+    decr: root.querySelector('[data-k="decr"]'),
+    lua: root.querySelector('[data-k="lua"]'),
+  };
+
+  // 영상의 규칙: DECRBY는 조건 없이 빼고, Lua는 잔여 >= 요청일 때만 뺀다
+  function model(remain, req) {
+    const decr = remain - req;
+    const luaOk = remain >= req;
+    return { decr, luaOk, lua: luaOk ? remain - req : remain };
+  }
+
+  function row(y, label, value, ok) {
+    svg.append(el('text', { x: 20, y }, label));
+    const cy = y + 12;
+    for (let i = 0; i < 10; i++) {
+      const filled = i < Math.max(value, 0);
+      svg.append(el('rect', { x: 20 + i * 34, y: cy, width: 28, height: 28, rx: 5,
+        class: filled ? 'accent' : 'box' }));
+    }
+    if (value < 0) {
+      for (let i = 0; i < -value; i++) {
+        svg.append(el('rect', { x: 20 + i * 34, y: cy, width: 28, height: 28, rx: 5, class: 'bad' }));
+      }
+    }
+    svg.append(el('text', { x: 20, y: cy + 52, class: ok ? '' : 'sub' },
+      ok ? `남은 좌석 ${value}석` : `값이 ${value}이 됐어요 (빨간 칸만큼 초과 판매)`));
+  }
+
+  function draw() {
+    const remain = +remainIn.value, req = +reqIn.value;
+    const m = model(remain, req);
+    svg.replaceChildren();
+    row(18, `DECRBY seats ${req}`, m.decr, m.decr >= 0);
+    row(118, 'Lua 스크립트', m.lua, true);
+    out.decr.textContent = m.decr >= 0
+      ? `${m.decr}석이 남아요. 성공이에요.`
+      : `${m.decr}이 돼요. 좌석이 없는데 팔린 셈이라 되돌리는 처리가 필요해요.`;
+    out.lua.textContent = m.luaOk
+      ? `잔여 ${remain}석 ≥ 요청 ${req}석이라 차감하고 성공을 돌려줘요.`
+      : `잔여 ${remain}석 < 요청 ${req}석이라 숫자는 그대로 두고 실패를 돌려줘요.`;
+  }
+
+  root.addEventListener('input', (e) => {
+    if (e.target.matches('input')) e.target.nextElementSibling.textContent = e.target.value;
+    draw();
+  });
+  draw();
+})();
+</script>
+</body>
+</html>
