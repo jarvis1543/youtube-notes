@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>클로드 x 옵시디언으로 우리 회사 LLM Wiki 만들기</title>
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --radius:16px; --maxw:760px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:6px 0; font-size:15px}
+  nav.toc a{color:var(--text-sub)}
+  nav.toc a.active{color:var(--brand); font-weight:600}
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  td code{font-size:13.5px}
+
+  /* ── 용어 툴팁 ─────────────────────────────────────── */
+  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
+    font-weight:600; background:none}
+  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
+  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
+    background:var(--text); color:var(--bg); border-radius:12px;
+    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
+    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease; pointer-events:none}
+  #tip.on{opacity:1; visibility:visible}
+  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>클로드 x 옵시디언으로 우리 회사 LLM Wiki 만들기</h1>
+  <p class="lede">위키를 만드는 법부터, 사람 없이 검증하며 키우는 하네스까지 짚어요</p>
+  <div class="meta">
+    <span>메타코드M</span><span class="dot">·</span>
+    <span>59:17</span><span class="dot">·</span>
+    <span>유튜브 영상 정리</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=yZKXJMMPrxc" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>RAG의 빈틈은 검색이 아니라 '매번 새로 조립하고 버리는 것'이에요. LLM Wiki는 자료가 들어올 때 조립해서 남겨 둬요.</li>
+    <li>LLM Wiki는 raw · wiki · 스키마(CLAUDE.md) 세 층과 Ingest · Query · Lint 세 동작으로 이뤄져요.</li>
+    <li>RAG와 위키는 경쟁이 아니라 역할 분담이에요. 토큰 비용, 규모, 잘못된 내용의 축적은 감수해야 할 한계예요.</li>
+    <li>사람이 채팅으로 ingest를 시키는 위키는 팀에서 금방 낡아요. 자동화하려면 사람 대신 검증하는 하네스가 필요해요.</li>
+    <li>하네스의 두 규칙은 '판단은 에이전트, 검사는 코드'와 '쓰는 자와 검사하는 자의 도구 분리'예요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">RAG는 어디서 삐걱댈까요</a></li>
+    <li><a href="#s2">LLM Wiki의 세 층과 세 동작</a></li>
+    <li><a href="#s3">RAG와 위키, 무엇이 다를까요</a></li>
+    <li><a href="#s4">실습 ①: 옵시디언 볼트에 팀 위키 세우기</a></li>
+    <li><a href="#s5">사람을 기다리는 위키는 왜 늦어질까요</a></li>
+    <li><a href="#s6">하네스와 두 가지 규칙</a></li>
+    <li><a href="#s7">위키 빌더 파이프라인</a></li>
+    <li><a href="#s8">문서 신뢰 라이프사이클</a></li>
+    <li><a href="#s9">실습 ②: /build로 자동 빌더 돌리기</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=122s" target="_blank" rel="noopener">02:02</a>
+  <h2>RAG는 어디서 삐걱댈까요</h2>
+<figure>
+  <img src="assets/frame-0005.png" alt="강의 첫 화면. 'LLM Wiki: 개인 노트를 넘어, 스스로 자라는 팀 위키까지' 제목과 9월 30일, 발표자 박혜진 표기">
+  <figcaption>강의 제목이 곧 목표예요. 개인 노트 수준의 LLM Wiki를 팀이 쓰는 자동 위키로 키워요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=5s" target="_blank" rel="noopener">영상 00:05에서 보기</a></figcaption>
+</figure>
+<p><span class="term" data-term="RAG" data-desc="질문이 들어오면 문서 더미에서 관련 조각을 검색해 프롬프트에 함께 넣고 답하게 하는 방식이에요. 모델이 학습하지 않은 사내 문서를 다룰 때 많이 써요.">RAG</span>는 문서 더미에서 질문과 비슷한 <span class="term" data-term="청크" data-desc="긴 문서를 검색하기 좋게 잘게 나눈 조각이에요. RAG는 질문과 비슷한 청크 몇 개만 골라 모델에게 건네요.">청크</span>를 찾아 LLM에게 건네고, LLM이 그 자리에서 답을 만들어요. 벡터 검색이든 키워드 검색이든 grep이든 본질은 같아요. 찾고, 그 자리에서 한 번 조립하고, 끝나요.</p>
+<figure>
+  <img src="assets/frame-0244.png" alt="RAG 동작 슬라이드. 문서 더미, 조각(청크) 검색, 그 자리에서 조립의 세 단계 흐름">
+  <figcaption>강사가 가장 강조한 건 맨 아래 한 줄이에요. 검색 방식과 상관없이 '찾기 → 그 자리에서 일회성 조립'이라는 본질은 같아요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=164s" target="_blank" rel="noopener">영상 02:44에서 보기</a></figcaption>
+</figure>
+<p>실제 업무에서는 이 구조가 세 군데에서 삐걱대요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>빈틈</th><th>무슨 일이 생기나요</th><th>예시</th></tr></thead>
+    <tbody>
+      <tr><td>답이 여러 문서에 흩어져 있어요</td><td>검색은 질문과 표현이 비슷한 조각부터 가져와요. 이어 봐야 할 조각을 다 가져온다는 보장이 없어요</td><td>'담당자가 누구야?'에 이미 퇴사한 옛 담당자 문서가 걸려요</td></tr>
+      <tr><td>매번 처음부터 조립해요</td><td>힘들게 만든 결론이 어디에도 남지 않아요. 문서가 늘수록 부담이 커져요</td><td>열 명이 같은 질문을 하면 같은 조립을 열 번 해요</td></tr>
+      <tr><td>옛 내용과 새 내용이 함께 검색돼요</td><td>어느 쪽이 최신인지 매번 모델이 판단해요. 두 문서가 어긋난다는 사실도 기록되지 않아요</td><td>결정이 바뀐 뒤에도 지난 회의록은 그대로 남아 있어요</td></tr>
+    </tbody>
+  </table>
+</div>
+<figure>
+  <img src="assets/frame-0325.png" alt="'빈틈 1. 답이 여러 문서에 흩어져 있을 때' 슬라이드. 회의록·슬랙·통화 메모에 흩어진 지식과 '연결해야 할 조각을 모두 가져오지 못함' 설명">
+  <figcaption>회의록, 슬랙 스레드, 통화 메모를 이어 봐야 현재 상황이 보이는데, 검색은 표현이 비슷한 조각부터 가져와요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=205s" target="_blank" rel="noopener">영상 03:25에서 보기</a></figcaption>
+</figure>
+<p>강사는 RAG를 버리자는 게 아니라고 분명히 해요. 문제는 검색 다음의 조립이에요. 그걸 매번 새로 하고 매번 버린다는 점이요. 한마디로 지식이 쌓이지 않는다는 게 문제예요.</p>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=492s" target="_blank" rel="noopener">08:12</a>
+  <h2>LLM Wiki의 세 층과 세 동작</h2>
+<p>그렇다면 조립한 결과를 미리 정리해 남겨 두면 어떨까요. 이게 LLM Wiki의 출발점이에요. Andrej Karpathy가 GitHub Gist와 X 글로 공개한 짧은 마크다운 문서에서 시작돼 개발자들 사이에 빠르게 퍼졌어요.</p>
+<figure>
+  <img src="assets/frame-0820.png" alt="'LLM Wiki의 탄생과 3개의 층' 슬라이드. karpathy/llm-wiki.md Gist 화면과 '사람이 하기 싫은 관리를 기계에게' 핵심 아이디어">
+  <figcaption>핵심은 역할 분담이에요. 사람은 원본을 넣고 질문만 하고, 요약·상호 참조·모순 갱신 같은 유지보수는 LLM이 맡아요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=500s" target="_blank" rel="noopener">영상 08:20에서 보기</a></figcaption>
+</figure>
+<p>문서 관리가 어려운 건 처음 쓰는 게 아니라 그 뒤 계속 고치는 일 때문이에요. LLM Wiki는 바로 그 일을 기계에게 넘겨요. 구조는 세 층이에요.</p>
+<figure>
+  <img src="assets/frame-1020.png" alt="세 층 슬라이드. LAYER 01 raw/ 사람이 넣는 원본, LAYER 02 wiki/ LLM이 직접 쓰는 마크다운, LAYER 03 CLAUDE.md 위키의 헌법이자 스키마">
+  <figcaption>raw는 LLM이 읽기만 하고, wiki는 LLM이 쓰고, 스키마는 사람과 LLM이 함께 고쳐요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=620s" target="_blank" rel="noopener">영상 10:20에서 보기</a></figcaption>
+</figure>
+<ul>
+  <li><strong>raw</strong>: 슬랙 대화, 회의록, 통화 메모처럼 사람이 넣는 원본이에요. LLM은 절대 고치지 않아요. 나중에 '원래 뭐라고 적혀 있었지?'를 확인하는 기준이 돼요.</li>
+  <li><strong>wiki</strong>: LLM이 직접 쓰는 마크다운이에요. 고객사·사람·결정·아키텍처처럼 주제별로 나누는데, 구성은 마음대로 바꿀 수 있어요.</li>
+  <li><strong><span class="term" data-term="스키마" data-desc="위키를 어떻게 구성하고 쓸지 정한 규칙 문서예요. Claude Code에서는 보통 CLAUDE.md로 두고, 사람과 LLM이 함께 고쳐 가요.">스키마</span></strong>: Claude Code라면 보통 CLAUDE.md, Codex라면 AGENTS.md예요. 폴더 구조, 링크 거는 법, 내용이 어긋날 때 표시하는 법 같은 규칙을 적어요. 강사는 위키 품질이 대부분 이 층에서 결정된다고 봐요.</li>
+</ul>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>AGENTS.md는 Codex만의 파일이 아니에요. 공식 사이트는 이 형식을 '에이전트를 위한 README'라고 소개하고, Codex 외에도 Cursor, GitHub Copilot 코딩 에이전트, Zed 같은 여러 도구가 읽는다고 밝혀요. 스키마를 AGENTS.md로 두면 여러 에이전트에서 같은 규칙을 쓸 수 있어요.</p>
+  <p class="cite">출처: <a href="https://agents.md" target="_blank" rel="noopener">AGENTS.md 공식 사이트</a></p>
+</aside>
+<p>이 세 층 위에서 LLM이 하는 동작은 세 가지예요.</p>
+<figure>
+  <img src="assets/frame-1300.png" alt="'3가지 핵심 동작과 지식의 복리' 슬라이드. 01 Ingest 쓰기 시점 종합, 02 Query 경량화된 질문 응답, 03 Lint 정기 무결성 감사">
+  <figcaption>세 동작이 돌수록 위키는 두꺼워지고 질문할 때 모델의 부담은 가벼워져요. 슬라이드는 이를 '지식의 복리'라고 불러요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=780s" target="_blank" rel="noopener">영상 13:00에서 보기</a></figcaption>
+</figure>
+<ul>
+  <li><strong><span class="term" data-term="Ingest" data-desc="새 원본을 읽고 위키 구조에 맞게 반영하는 동작이에요. 원본 하나가 관련 위키 페이지 여러 장을 한꺼번에 고쳐요.">Ingest</span></strong>: 새 원본을 읽고 위키 구조에 맞게 다시 가공해요. 원본 하나를 넣었다고 페이지가 하나 생기는 게 아니에요. 관련 페이지가 다섯 장이면 다섯 장이 다 바뀌어요.</li>
+  <li><strong>Query</strong>: 이미 정리된 위키를 보고 답해요. 좋은 답은 다시 새 위키 페이지로 저장할 수 있어요.</li>
+  <li><strong><span class="term" data-term="Lint" data-desc="원래는 코드의 형식 오류를 기계적으로 잡는 검사예요. 여기서는 위키의 모순, 낡은 내용, 깨진 링크를 찾아 고치는 점검을 뜻해요.">Lint</span></strong>: 쓰다 보면 생기는 페이지 사이의 모순, 오래된 내용, 깨진 링크를 찾아 고쳐요.</li>
+</ul>
+<p>좋은 답이 다음 질문의 재료가 되니, RAG에서는 버려지던 조립 결과가 위키에서는 쌓여요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Karpathy의 원문 Gist는 2026년 4월 4일에 올라왔어요. 원문은 원본 하나가 위키 페이지 10~15장을 건드릴 수 있다고 써요. 슬라이드의 '5~15장'보다 조금 커요. 원문은 팀 위키도 활용 예로 들면서 '사람이 업데이트를 검토하는 단계를 둘 수도 있다'고 덧붙여요. 이 강의 후반의 검증 하네스가 바로 그 부분을 파고들어요.</p>
+  <p class="cite">출처: <a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">Andrej Karpathy — llm-wiki.md (GitHub Gist)</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=870s" target="_blank" rel="noopener">14:30</a>
+  <h2>RAG와 위키, 무엇이 다를까요</h2>
+<p>강사는 두 방식을 한 표로 정리해요. 가장 큰 차이는 RAG가 지식의 '발견'이고, 위키가 지식의 '축적'이라는 점이에요.</p>
+<figure>
+  <img src="assets/frame-1450.png" alt="'한 줄 비교: RAG vs LLM Wiki' 표 슬라이드. 지식의 성격, 조립 시점, 결과 잔존 여부, 문서 간 연결, 정보 충돌 처리 다섯 기준">
+  <figcaption>조립 시점이 읽을 때(Read-time)냐 쓸 때(Write-time)냐가 나머지 차이를 모두 만들어요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=890s" target="_blank" rel="noopener">영상 14:50에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>기준</th><th>RAG</th><th>LLM Wiki</th></tr></thead>
+    <tbody>
+      <tr><td>지식의 성격</td><td>탐색과 발견</td><td>정제와 축적</td></tr>
+      <tr><td>조립 시점</td><td>질문이 들어올 때마다</td><td>자료가 입력될 때</td></tr>
+      <tr><td>결과</td><td>답변 후 사라져요</td><td>위키 문서로 남아요</td></tr>
+      <tr><td>문서 간 연결</td><td>질문마다 새로 추측해요</td><td>마크다운 링크로 미리 연결해요</td></tr>
+      <tr><td>정보 충돌</td><td>매번 모델 판단에 맡겨요</td><td>문서 안에 '상충'으로 표시해요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>그렇다고 위키가 무조건 낫다는 건 아니에요. 둘은 경쟁이 아니라 보완 관계예요. RAG는 거대한 원문 더미에서 증거를 찾고, 위키는 찾은 증거를 조립해 쌓아 둬요. 위키 문장마다 출처 링크를 붙이면 원문이 궁금할 때 언제든 돌아갈 수 있어요.</p>
+<figure>
+  <img src="assets/frame-1610.png" alt="'대체가 아닌 역할 분담, 그리고 정직한 한계' 슬라이드. 왼쪽은 RAG와 Wiki의 몫, 오른쪽은 토큰 비용·대규모 확장 시 검색 결합·환각 누적의 위험">
+  <figcaption>오른쪽 아래 노란 줄이 이 강의 후반부의 주제예요. 검증 없는 자동화는 오염된 지식을 대량으로 만들 수 있어요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=970s" target="_blank" rel="noopener">영상 16:10에서 보기</a></figcaption>
+</figure>
+<p>한계는 세 가지예요.</p>
+<ul>
+  <li><strong>토큰 비용</strong>: 문서 하나를 넣을 때마다 위키 여러 장을 고치니 LLM 호출이 많아요. 실습에서도 문서 일곱 개에 8~9분이 걸렸어요.</li>
+  <li><strong>규모</strong>: 위키가 수천 장이 되면 어떤 페이지를 볼지 고르기 어려워요. 결국 다시 검색이 필요해요.</li>
+  <li><strong>잘못된 내용의 축적</strong>: <span class="term" data-term="할루시네이션" data-desc="모델이 근거 없는 내용을 사실처럼 지어내는 현상이에요. 위키에서는 한 번 섞이면 계속 쌓여서 더 위험해요.">할루시네이션</span>이 섞이면 그것도 함께 쌓여요. 잘 정리된 문서일수록 사람들이 더 쉽게 믿어요. 그래서 검증 단계가 필요해요.</li>
+</ul>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Karpathy의 원문은 규모 문제를 이렇게 다뤄요. 질문할 때 index.md를 먼저 읽고 관련 페이지로 들어가는 방식은 원본 100개, 페이지 수백 장 정도까지는 꽤 잘 통한대요. 그보다 커지면 위키 페이지를 위한 검색 도구를 따로 붙이라고 권하고, 로컬 마크다운 검색 엔진 qmd를 예로 들어요.</p>
+  <p class="cite">출처: <a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">Andrej Karpathy — llm-wiki.md (GitHub Gist)</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=1101s" target="_blank" rel="noopener">18:21</a>
+  <h2>실습 ①: 옵시디언 볼트에 팀 위키 세우기</h2>
+<p>옵시디언이 설치돼 있다는 가정에서 새 볼트를 만들고, 터미널 플러그인을 깔아 Claude Code를 띄워요. 상황은 이렇게 가정해요. 우리 팀이 가상의 고객사 '한빛물산'과 사내 규정 문서 검색 AI PoC를 진행하고 있고, 회의록·슬랙·통화 메모가 쌓여 있어요.</p>
+<h3>스키마부터 만들어요</h3>
+<p>Karpathy의 LLM Wiki 문서를 프롬프트에 그대로 붙여 넣고, raw에는 통화·문서·회의록·슬랙 폴더만 만들어 달라고 해요. Claude Code는 핵심 스키마를 직접 쓰고, 템플릿 같은 초기 파일은 <span class="term" data-term="서브에이전트" data-desc="메인 에이전트가 일을 나눠 맡기는 별도 에이전트예요. 자기만의 컨텍스트와 도구 목록을 가져서 역할을 분리하기 좋아요.">서브에이전트</span>를 써서 만들어요.</p>
+<figure>
+  <img src="assets/frame-2141.png" alt="Claude Code가 만든 CLAUDE.md의 '1. 계층 구조' 부분. raw/(calls, docs, meetings, slack, assets), wiki/(index.md, log.md, overview.md, sources, clients, projects, people, topics, decisions, analyses), templates/ 트리">
+  <figcaption>세 층이 그대로 폴더가 됐어요. wiki 아래에는 index.md(전체 목록), log.md(작업 이력), 주제별 폴더가 생겼어요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=1301s" target="_blank" rel="noopener">영상 21:41에서 보기</a></figcaption>
+</figure>
+<p>생성된 스키마에는 파일 이름 규칙, 모든 주장에 출처와 시점 달기, 상충되는 내용 표시하기, 민감 정보 처리, 스키마를 고칠 때의 절차까지 들어가 있어요. 강사는 이 초안을 그대로 쓰지 말고, Claude와 대화하며 팀에 맞게 계속 다듬으라고 해요.</p>
+<h3>원본 7개를 ingest해요</h3>
+<p>raw에 미리 넣어 둔 원본 7개를 ingest하라고 시키면 돼요. 실제로는 10분 가까이 걸려서 미리 돌려 둔 결과를 보여 줘요. 원본은 7개인데 위키 페이지는 그보다 훨씬 많이 생겼어요. 고객사, 의사 결정, 사람, 프로젝트, 출처(sources) 페이지가 각각 생겼고, 출처 페이지도 원본을 그대로 옮긴 게 아니라 요약·핵심 내용·미결 사항으로 다시 가공돼 있어요.</p>
+<figure>
+  <img src="assets/frame-2441.png" alt="옵시디언에서 연 wiki/decisions/2026-08-05_1차-범위-검색-대시보드 페이지. 속성(type, updated, source_count, project, date, status)과 결정 내용, 배경·이유, 그리고 주황색 '상충' 박스">
+  <figcaption>8월 5일 결정 페이지예요. 맨 아래 '상충' 박스에 9월 24일 통화에서 대시보드 제외를 제안했지만, 회의록 결정을 따른다고 적혀 있어요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=1481s" target="_blank" rel="noopener">영상 24:41에서 보기</a></figcaption>
+</figure>
+<h3>상충을 어떻게 다루나요</h3>
+<p>프로젝트 페이지에서 눈에 띄는 건 상충 섹션이에요. 8월 회의록에서는 이용 현황 대시보드를 만들기로 했어요. 그런데 9월 24일 통화에서는 대시보드를 빼자는 제안이 나왔어요. 시연 일정도 회의록은 10월 말, 통화는 11월 중순으로 어긋나요.</p>
+<figure>
+  <img src="assets/frame-2820.png" alt="wiki/projects/한빛물산-문서검색-AI-PoC 페이지. 범위·현재 상태·일정 목록과 두 개의 '상충' 박스(대시보드 제외 제안, 11월 중순 시연 제안)">
+  <figcaption>상충 박스가 두 개예요. 둘 다 '회의록 결정을 따르고, 10/1 주간회의에서 확정 예정'이라고 정리돼 있어요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=1700s" target="_blank" rel="noopener">영상 28:20에서 보기</a></figcaption>
+</figure>
+<p>위키가 이렇게 판단한 건 스키마에 출처 신뢰도 규칙을 적어 뒀기 때문이에요. 계약서나 공식 문서를 가장 높은 우선순위로 믿으라고 했거든요. RAG였다면 두 문서가 함께 검색되고, 모델이나 사용자 취향에 따라 최신인 통화를 믿을 수도, 회의록을 믿을 수도 있어요. 위키는 규칙대로 한쪽을 따르면서 충돌 사실을 함께 남겨요.</p>
+<h3>사람 정보도 쌓여요</h3>
+<p>슬랙 원본에는 일부러 시나리오를 넣어 뒀어요. 담당 과장에게 보낸 메일이 '수신자 없음'으로 반송되고, 알고 보니 퇴사했다는 내용이에요. 위키는 이서준 과장의 퇴사와 정민아 차장의 인수를 사람 페이지에 기록했어요.</p>
+<figure>
+  <img src="assets/frame-2940.png" alt="wiki/people/정민아 페이지. 소속·역할(한빛물산 IT기획팀 차장, 이서준 과장 업무를 9월부터 인수), 담당 영역, 관여 프로젝트, 관심사·선호, 관련 출처">
+  <figcaption>'보고 받을 때 표로 정리된 걸 선호'라는 항목 옆에 '간접 정보 (본인 확인 아님)'이라고 붙어 있어요. 들은 얘기와 본인이 한 말을 구분해 둔 거예요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=1780s" target="_blank" rel="noopener">영상 29:40에서 보기</a></figcaption>
+</figure>
+<h3>질문하고, 좋은 답은 저장해요</h3>
+<p>옵시디언의 <span class="term" data-term="그래프 뷰" data-desc="옵시디언에서 노트를 점으로, 노트 사이의 링크를 선으로 그려 주는 화면이에요. 문서들이 어떻게 이어져 있는지 한눈에 보여요.">그래프 뷰</span>로 보면 문서들이 사람·회의 단위로 묶여 있는 게 보여요.</p>
+<figure>
+  <img src="assets/frame-3020.png" alt="옵시디언 그래프 뷰. 위키 페이지들이 점으로, 링크가 선으로 이어진 네트워크">
+  <figcaption>링크를 미리 걸어 두었기 때문에 문서 사이의 관계가 그림으로 바로 보여요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=1820s" target="_blank" rel="noopener">영상 30:20에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>옵시디언 공식 도움말에 따르면 그래프 뷰의 원은 노트이고, 선은 두 노트 사이의 내부 링크예요. 그래서 위키가 출처와 관련 페이지를 [[링크]]로 걸어 둘수록 그래프가 촘촘해져요. 혼자 떨어진 점은 Lint로 찾아야 할 고아 페이지일 수 있어요.</p>
+  <p class="cite">출처: <a href="https://obsidian.md/help/plugins/graph" target="_blank" rel="noopener">Obsidian Help — Graph view</a></p>
+</aside>
+<p>이제 위키에 질문해요. 한빛물산 건을 브리핑해 달라고 하자 Claude Code가 먼저 index.md를 읽고, 어느 페이지를 봐야 할지 골라 들어가요. 답에는 담당자가 바뀌면서 우선순위도 바뀌었다는 점, 대시보드 제외, PoC 일정 연기가 함께 정리돼 나와요. 문서 하나만 봐서는 쓸 수 없는, 여러 문서를 엮어야 나오는 답이에요.</p>
+<p>답 끝에 '이 브리핑을 위키에 저장할까요?'라고 물어요. 저장하라고 하면 analyses 폴더에 새 페이지가 생기고 인덱스에도 올라가요. 좋은 답이 다시 위키가 되는 과정이에요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=2036s" target="_blank" rel="noopener">33:56</a>
+  <h2>사람을 기다리는 위키는 왜 늦어질까요</h2>
+<p>실습에서는 채팅으로 위키를 만들었어요. 문서 7개에 8~9분이 걸렸고, 그동안 사람이 화면을 지켜봤어요. 팀에서 쓰면 사정이 달라져요.</p>
+<figure>
+  <img src="assets/frame-3417.png" alt="'사람을 기다리는 위키는 RAG보다 늦어진다' 슬라이드. 왼쪽 '실습의 전제는 관리자 1명', 오른쪽 '추가보다 어려운 수정과 삭제'">
+  <figcaption>슬라이드의 결론은 '정리된 옛날 정보는 흩어진 최신 정보보다 훨씬 위험하다'예요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=2057s" target="_blank" rel="noopener">영상 34:17에서 보기</a></figcaption>
+</figure>
+<ul>
+  <li>팀원이 많으면 문서가 훨씬 많이 들어와요. 그때마다 누군가 'raw에 이 문서가 들어갔으니 ingest 해 줘'라고 채팅해야 해요.</li>
+  <li>그 말을 하지 않으면 위키는 갱신되지 않아요. 넣은 문서와 위키 내용이 점점 어긋나요.</li>
+  <li>슬라이드는 더 어려운 문제로 수정과 삭제를 꼽아요. 문서가 새 버전으로 바뀌거나 삭제돼도 아무도 위키에 알려 주지 않아요.</li>
+</ul>
+<p>그래서 강사 팀은 문서를 넣으면 곧바로 위키가 갱신되는 자동화를 생각했어요. 그런데 사람을 빼면 품질 보증도 같이 빠져요. 실습에서도 원래는 생성된 위키를 사람이 눈으로 다시 확인해야 해요. 위키가 퇴사한 사람을 '퇴사하지 않았다'고 잘못 쓸 수도 있으니까요. 자동화로 다 통과시키면 그런 잘못이 그대로 위키에 남아요.</p>
+<figure>
+  <img src="assets/frame-3705.png" alt="'새로운 문제: 이제 아무도 위키를 안 읽는다' 슬라이드. 왼쪽 '사람의 눈이 사라진 자동화', 오른쪽 '위키 시스템이 스스로 검증해야 한다'">
+  <figcaption>'꼼꼼히 확인해'라는 지시문만으로는 환각을 막을 수 없어요. 에이전트의 산출물을 단계마다 코드가 검사해야 해요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=2225s" target="_blank" rel="noopener">영상 37:05에서 보기</a></figcaption>
+</figure>
+<p>프롬프트에 '꼼꼼히 확인해'라고 쓰면 되지 않을까요? 강사는 부족하다고 해요. 프롬프트는 강제가 아니라 지시라서요. 그래서 에이전트가 낸 결과를 코드로 검사하고, 통과한 것만 사람들에게 내보내는 구조를 만들었어요. 여기서부터 <span class="term" data-term="하네스" data-desc="모델을 감싸는 실행 환경 전체예요. 컨텍스트, 메모리, 도구 권한, 검증 루프를 포함하고, 같은 모델이라도 하네스에 따라 결과가 크게 달라져요.">하네스</span> 얘기가 시작돼요.</p>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=2283s" target="_blank" rel="noopener">38:03</a>
+  <h2>하네스와 두 가지 규칙</h2>
+<p>하네스는 AI를 가두는 족쇄가 아니라, 에이전트가 제 힘을 발휘하도록 감싸는 실행 환경이에요. 모델을 뺀 나머지 전부, 즉 컨텍스트, 메모리, 검증 루프를 합친 것을 하네스라고 불러요.</p>
+<figure>
+  <img src="assets/frame-3810.png" alt="'자동화를 지탱하는 틀: 하네스(Harness)란 무엇인가?' 슬라이드. Agent = Model + Harness, 그리고 주방·운영체제·자동차 배선 세 가지 비유">
+  <figcaption>슬라이드는 Agent = Model + Harness로 정리해요. 강사는 이 중 주방 비유로 설명해요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=2290s" target="_blank" rel="noopener">영상 38:10에서 보기</a></figcaption>
+</figure>
+<p>강사의 비유는 요리사와 주방이에요. 아무리 뛰어난 셰프라도 처음 온 주방에서는 실수해요. 그래서 동선을 맞추고 위생 수칙을 적어 두고, 그 안에서 일하게 해요. 요즘은 같은 모델이라도 하네스를 얼마나 잘 갖추느냐에 따라 성능 차이가 크게 나요.</p>
+<p>환경을 만들기 전에 강사가 세운 규칙은 두 가지예요.</p>
+<figure>
+  <img src="assets/frame-3948.png" alt="'흐름도를 보기 전 알아둘 2가지 절대 규칙' 슬라이드. PRINCIPLE 01 판단은 에이전트, 검사는 코드 / PRINCIPLE 02 쓰는 자와 검사하는 자의 도구 분리">
+  <figcaption>두 규칙 모두 '프롬프트로 부탁'하지 않고 구조로 강제한다는 공통점이 있어요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=2388s" target="_blank" rel="noopener">영상 39:48에서 보기</a></figcaption>
+</figure>
+<ol>
+  <li><strong>판단은 에이전트, 검사는 코드.</strong> 링크가 깨졌는지, JSON 형식이 맞는지처럼 매번 같은 답이 나와야 하는 <span class="term" data-term="결정론적" data-desc="같은 입력에 언제나 같은 결과가 나오는 성질이에요. 링크 검사나 JSON 형식 검사처럼 이런 일은 LLM보다 코드에 맡기는 게 안전해요.">결정론적</span> 검사는 코드가 해요. LLM도 JSON을 잘 내지만 가끔 깨지니까요. 반대로 문장이 원문에 실제로 있는지처럼 읽고 판단해야 하는 일은 코드가 못 하니 에이전트가 해요.</li>
+  <li><strong>쓰는 자와 검사하는 자의 도구 분리.</strong> 파일 쓰기 도구는 writer 에이전트에게만 줘요. reviewer에게는 읽기 도구만 줘요. 검사하다 직접 고칠 수 있으면 자기가 고치고 자기가 통과시켜서, 검사의 의미가 없어지거든요.</li>
+</ol>
+<p>첫 번째 규칙에는 한 가지가 더 붙어요. 에이전트의 답을 그냥 읽지 않고, 정해진 JSON으로 받아 코드가 한 번 더 검사해요. 통과한 것만 다음 단계로 넘어가요. 두 번째 규칙도 프롬프트에 '고치지 마'라고 쓰는 게 아니라, 도구 자체를 주지 않아서 시스템적으로 막아요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Claude Code에서는 서브에이전트 정의 파일의 <code>tools</code> 필드로 이걸 구현할 수 있어요. 공식 문서에 따르면 <code>tools</code>는 허용 목록이고, 비워 두면 쓸 수 있는 도구를 모두 물려받아요. 예를 들어 <code>tools: Read, Grep, Glob</code>로 두면 그 서브에이전트는 파일을 수정하거나 새로 쓸 수 없어요. 반대로 <code>disallowedTools</code>로 Write와 Edit만 빼는 방법도 있어요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code 공식 문서 — Subagents</a></p>
+</aside>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=2525s" target="_blank" rel="noopener">42:05</a>
+  <h2>위키 빌더 파이프라인</h2>
+<p>두 규칙을 바탕으로 만든 위키 빌더의 전체 흐름이에요. 회색 박스는 코드로 구현한 규칙이고, 주황색 박스는 에이전트가 판단하는 부분이에요.</p>
+<figure>
+  <img src="assets/frame-4210.png" alt="'위키 빌더 하네스 흐름: 정방향 파이프라인과 역방향 피드백 루프' 슬라이드. PHASE 01 collect+stage, planner, save_plan / PHASE 02 writer, lint / PHASE 03 reviewer, save_review, gate+publish">
+  <figcaption>세 단계 모두 '에이전트가 만들고 코드가 검사'하는 짝으로 되어 있어요. 실패하면 빨간 화살표를 따라 앞 단계로 돌아가요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=2530s" target="_blank" rel="noopener">영상 42:10에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>단계</th><th>에이전트가 하는 일</th><th>코드가 검사하는 것</th><th>실패하면</th></tr></thead>
+    <tbody>
+      <tr><td>1. 수집·기획</td><td>planner가 어느 위키를 어떻게 고칠지 계획을 세워 JSON으로 내요</td><td>새 원본이 있는지 찾고, 계획의 형식·경로·출처를 검사해요. 계획에 적힌 파일이 실제로 있는지도 봐요</td><td>planner가 다시 계획해요 (최대 2회)</td></tr>
+      <tr><td>2. 작성·정적 검증</td><td>writer가 계획대로 위키 초안을 써요. 파일을 쓸 수 있는 유일한 에이전트예요</td><td>lint가 <span class="term" data-term="프론트매터" data-desc="마크다운 파일 맨 위 --- 사이에 적는 YAML 속성이에요. 옵시디언은 이를 속성으로 보여 주고, 여기서는 type, status, page_status 같은 값을 담아요.">프론트매터</span>, 깨진 링크, 출처 누락을 검사해요</td><td>writer에게 다시 작성을 요청해요</td></tr>
+      <tr><td>3. 원문 대조·배포</td><td>reviewer가 초안과 원문을 한 줄씩 대조해요</td><td>reviewer의 답 형식을 검사하고, 전부 PASS일 때만 게시해요</td><td>reviewer가 직접 고치지 않고 writer에게 반려해요</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>작업 공간 격리와 기본 닫힘 게이트</h3>
+<p>writer가 편집하는 임시 공간(_build)과 팀원에게 보여 주는 공간(wiki)은 따로 둬요. 같은 곳에 두면 편집 중인 문서를 누군가 읽을 수 있으니까요.</p>
+<figure>
+  <img src="assets/frame-4511.png" alt="'작업 공간 격리와 기본 닫힘(Closed) 배포 게이트' 슬라이드. PRINCIPLE 03 서빙 공간과 작업 공간의 격리(_build, wiki, _releases) / PRINCIPLE 04 게이트 기본 닫힘, 경로 탈출 방지, 재시도 상한">
+  <figcaption>강사가 말로 설명한 건 격리와 기본 닫힘이에요. 슬라이드에는 _releases를 통한 롤백, 상위 디렉터리 접근 차단, 재시도 최대 2회 같은 규칙도 함께 적혀 있어요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=2711s" target="_blank" rel="noopener">영상 45:11에서 보기</a></figcaption>
+</figure>
+<p>게이트는 <span class="term" data-term="Fail-Closed" data-desc="검사 결과가 없거나 애매하면 통과가 아니라 차단하는 방식이에요. 버그로 검사가 빠져도 잘못된 문서가 나가지 않게 막아 줘요.">Fail-Closed</span>로 동작해요. 검사 기록이 없으면 통과가 아니라 차단이에요. 기록이 빠진 채 통과되는 버그를 막으려고, 검사 기록이 있어야만 게시할 수 있게 했어요.</p>
+<h3>조용히 멈춘 reviewer</h3>
+<p>강사가 실제로 겪은 사고도 있어요. 어느 날 빌드를 돌렸는데 페이지가 발행되지 않았어요. 에러도 없고 로그도 멀쩡했어요. 디버깅해 보니 reviewer에서 멈춘 거였어요. 위키 문장의 근거를 원문에서 찾지 못하자 계속 다시 읽다가 상한에 걸려 끝났고, 판정 자체를 내리지 못했어요. 게이트는 검사 기록이 없으니 조용히 막았고요.</p>
+<figure>
+  <img src="assets/frame-4613.png" alt="'실전 교훈: 판정을 못 내리는 Reviewer도 실패로 처리해야 한다' 슬라이드. 왼쪽 '조용히 사라진 위키 페이지들', 오른쪽 '입증 책임 전환 & 판정 누락의 형식 위반화'">
+  <figcaption>해결책은 두 가지예요. 확인하지 못하면 FAIL로 처리하고, 판정이 빠진 페이지가 있으면 코드가 잡아 다시 요청해요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=2773s" target="_blank" rel="noopener">영상 46:13에서 보기</a></figcaption>
+</figure>
+<p>그래서 '확인하지 못함'도 FAIL로 내도록 바꿨어요. 근거를 대야 할 책임은 작성자인 writer에게 넘어가요. 판정이 아예 빠진 경우에는 reviewer를 다시 불러 판정하게 했어요. 강사가 여기서 배운 건, writer만이 아니라 검사하는 에이전트도 실패할 수 있다는 점이에요. 파이프라인은 검사자의 실패 경로까지 정해 둬야 멈추지 않아요.</p>
+</section>
+
+<section id="s8">
+  <a class="stamp" href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=2897s" target="_blank" rel="noopener">48:17</a>
+  <h2>문서 신뢰 라이프사이클</h2>
+<p>자동으로 만든 문서라는 걸 독자가 알 수 있게, 프론트매터에 <code>page_status</code> 필드를 넣었어요. 사람이 모든 문서를 실시간으로 검수할 수 없다는 현실을 인정하고, 대신 검증 상태를 드러내는 거예요.</p>
+<figure>
+  <img src="assets/frame-4825.png" alt="'문서 신뢰 라이프사이클: page_status' 슬라이드. draft 초안 단계, stable 안정 단계, deprecated 과거 이력 보존, 그리고 page_status: draft가 들어간 프론트매터 예시">
+  <figcaption>기계가 만든 상태(draft)와 사람이 확인한 상태(stable)를 시스템 차원에서 나눠 둬요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=2905s" target="_blank" rel="noopener">영상 48:25에서 보기</a></figcaption>
+</figure>
+<ul>
+  <li><code>draft</code>: 자동 빌더가 막 만든 상태예요. 사람이 검토하기 전이라, 실무에 쓸 때는 교차 확인이 필요하다는 안내를 함께 붙여요.</li>
+  <li><code>stable</code>: 담당자가 눈으로 확인하고 '이제 믿어도 돼'라고 올린 상태예요.</li>
+  <li><code>deprecated</code>: 결정이나 규정이 바뀌어 더 이상 현재 정보가 아니지만, 이전 맥락을 보려고 보존하는 문서예요.</li>
+</ul>
+</section>
+
+<section id="s9">
+  <a class="stamp" href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=2986s" target="_blank" rel="noopener">49:46</a>
+  <h2>실습 ②: /build로 자동 빌더 돌리기</h2>
+<p>이번 실습은 실제로 회의를 한 번 더 했다고 가정하고, 9월 30일 회의록을 raw에 새로 넣는 데서 시작해요.</p>
+<figure>
+  <img src="assets/frame-5011.png" alt="새로 넣은 원본 raw/meetings/2026-09-30_한빛물산-회의록. '한빛물산 PoC 범위 확정 회의록' 제목과 진행 현황, 논의, 결정사항">
+  <figcaption>새 원본은 대시보드 제외를 확정하는 회의록이에요. 앞 실습에서 '상충'으로 남겨 둔 문제에 답이 들어온 셈이에요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=3011s" target="_blank" rel="noopener">영상 50:11에서 보기</a></figcaption>
+</figure>
+<h3>에이전트 셋과 build 스킬</h3>
+<p>Claude Code에 build라는 스킬을 미리 만들어 두었어요. /build를 입력하면 자동 빌더가 돌아요. .claude/agents 아래에는 앞에서 본 세 역할이 각각 정의돼 있어요.</p>
+<ul>
+  <li><strong>wiki-planner</strong>: 어떤 원본이 새로 들어왔는지 보고, 어떤 위키 페이지를 만들거나 고칠지 계획을 짜요.</li>
+  <li><strong>wiki-writer</strong>: 그 계획을 바탕으로 위키 페이지 초안을 써요.</li>
+  <li><strong>wiki-reviewer</strong>: writer가 만든 초안을 받아 원문과 대조하고, 결과를 정해진 형식으로 내요.</li>
+</ul>
+<figure>
+  <img src="assets/frame-5216.png" alt=".claude/agents/wiki-reviewer 정의 파일의 출력 형식 부분. ReviewResult JSON 예시에 projects 페이지는 PASS, decisions/2026-09-30_범위-확정 페이지는 FAIL과 findings(sentence, reason, source)">
+  <figcaption>FAIL 예시가 구체적이에요. 초안은 '11월 중순 시연 확정'이라고 썼지만, 원본에는 '11월 중순 목표, 날짜는 다음 회의에서 정함'이라고 되어 있어요. 아래 규칙에는 '원본에서 확인하지 못하면 통과가 아니라 지적'이라는 줄도 보여요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=3136s" target="_blank" rel="noopener">영상 52:16에서 보기</a></figcaption>
+</figure>
+<p>build 스킬의 SKILL.md에는 앞의 흐름이 그대로 절차로 적혀 있어요. 새 문서가 있는지는 파이썬 스크립트가 판단하고, planner의 답은 받은 그대로 검증 스크립트에 넘겨요. writer가 쓴 뒤에는 lint 스크립트가, reviewer가 대조한 뒤에는 또 다른 스크립트가 검사하고, 마지막 발행도 코드가 해요.</p>
+<figure>
+  <img src="assets/frame-5331.png" alt=".claude/skills/build/SKILL 문서의 '3. plan — planner 답을 코드로 강제', '4. write', '5. lint (코드 검사)' 절. save_plan.py와 lint.py 실행 명령과 종료 코드별 처리">
+  <figcaption>'planner 답을 코드로 강제'라는 소제목이 첫 번째 규칙을 그대로 보여 줘요. 계획 검증에 실패하면 최대 2번까지 다시 요청하고, 그래도 안 되면 멈추고 report.md에 남겨요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=3211s" target="_blank" rel="noopener">영상 53:31에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Claude Code의 스킬은 <code>SKILL.md</code> 파일 하나로 만들 수 있어요. 공식 문서에 따르면 <code>.claude/skills/build/SKILL.md</code>를 두면 <code>/build</code>로 직접 부를 수 있고, 관련 있을 때 Claude가 알아서 불러 쓰기도 해요. 스킬은 Agent Skills라는 공개 표준을 따르고, 예전의 커스텀 슬래시 명령(.claude/commands)도 지금은 스킬로 합쳐졌어요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code 공식 문서 — Skills</a></p>
+</aside>
+<h3>빌드 결과</h3>
+<p>빌드가 도는 동안 _build 아래에 collect.json(새로 들어온 원본 목록)과 report(단계별 진행 기록)가 생겨요. 리포트 파일은 추적 가시성을 위해 일부러 쓰게 한 거예요. 작업이 끝나면 _build에서 고친 문서가 wiki로 옮겨지고, 이전 wiki는 _releases로 옮겨져요.</p>
+<figure>
+  <img src="assets/frame-5651.png" alt="Claude Code 빌드 완료 메시지. 새 원본 1건, 생성 4건, 수정 14건, 검사 결과, 확인이 필요한 것, report.md 경로, 'Cooked for 11m 1s'">
+  <figcaption>빌드는 약 11분 걸렸어요. 새 원본 1건으로 4건이 생기고 14건이 고쳐졌어요. reviewer가 첫 회에 1건을 지적했고, 고친 뒤 다시 돌린 lint와 review를 통과했어요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=3411s" target="_blank" rel="noopener">영상 56:51에서 보기</a></figcaption>
+</figure>
+<p>요약을 보면 이래요.</p>
+<ul>
+  <li>새로 생긴 건 출처 페이지 1개와 9월 30일 결정 3개예요. 대시보드 제외, 검색 API 우선 개발, 검색 결과 내보내기 제외예요.</li>
+  <li>예전 결정 3개는 <span class="term" data-term="superseded" data-desc="더 새로운 결정으로 대체됐다는 표시예요. 옛 결정을 지우지 않고 남겨 두되, 지금 유효한 결정으로 링크를 걸어 줘요.">superseded</span>로 바꾸고 새 결정과 연결했어요. 그 밖에 시연 일정, 프로젝트, 고객사, 담당자 페이지와 overview, index, log도 고쳤어요.</li>
+  <li>reviewer는 프로젝트 페이지가 원본의 '10/6 전달 예정'을 '수급 일정 확정'으로 실제보다 강하게 쓴 문장을 지적했어요.</li>
+  <li>'확인이 필요한 것'도 따로 알려 줘요. 시연 일정은 아직 결정이 아니라 논의 단계라 바꾸지 않고 '확인 필요' 표시만 달았대요.</li>
+</ul>
+<figure>
+  <img src="assets/frame-5741.png" alt="wiki/decisions/2026-09-24_대시보드-제외-API-우선-제안 페이지. 속성에 page_status: draft, status: superseded, superseded_by 링크, 본문 위 '대체됨' 안내 박스">
+  <figcaption>9월 24일 '제안' 페이지가 superseded로 바뀌고, 9월 30일 확정 결정으로 이어지는 링크가 달렸어요. page_status는 아직 draft예요. <a href="https://www.youtube.com/watch?v=yZKXJMMPrxc&amp;t=3461s" target="_blank" rel="noopener">영상 57:41에서 보기</a></figcaption>
+</figure>
+<p>마지막으로 강사는 plan.json도 열어 보여 줘요. planner가 어떤 페이지는 새로 만들고 어떤 페이지는 고치겠다고 계획했고, 그 계획을 기준으로 lint가 깨진 링크나 없는 문서 참조가 없는지 확인해 통과시켰어요. 채팅으로 시키던 일을, 사람이 지켜보지 않아도 검증을 거쳐 발행되는 구조로 바꾼 거예요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 용어와 사람 이름이 잘못 받아적힌 곳이 많아요. 화면의 슬라이드와 옵시디언 문서를 기준으로 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>각즈</td><td>박혜진 (추정)</td><td>첫 슬라이드의 발표자 표기 기준</td></tr>
+      <tr><td>레그</td><td>RAG</td><td></td></tr>
+      <tr><td>L 위키, LM 위키, LN 위</td><td>LLM Wiki</td><td></td></tr>
+      <tr><td>안드레카파시, 안드 카파시, 카시</td><td>Andrej Karpathy</td><td></td></tr>
+      <tr><td>인스트, 인체스트, 인젝스트, 인제스트</td><td>Ingest</td><td></td></tr>
+      <tr><td>링트, 인트</td><td>Lint</td><td></td></tr>
+      <tr><td>한스, 하늘스, 한네스, 하느스</td><td>하네스 (Harness)</td><td></td></tr>
+      <tr><td>클로즈점엔, 클로드점 md, 크드</td><td>CLAUDE.md</td><td></td></tr>
+      <tr><td>에이션트.md</td><td>AGENTS.md</td><td></td></tr>
+      <tr><td>옥시어, 옵시디어</td><td>Obsidian (옵시디언)</td><td></td></tr>
+      <tr><td>로우, 루</td><td>raw</td><td>원본 폴더 이름</td></tr>
+      <tr><td>회로이, 회의로, 회일록, 이회록</td><td>회의록</td><td></td></tr>
+      <tr><td>슬렛</td><td>슬랙</td><td></td></tr>
+      <tr><td>이어준, 이서중, 써 준 과장</td><td>이서준 과장</td><td>퇴사한 고객 측 담당자</td></tr>
+      <tr><td>정민호 과장, 정민한, 정미나</td><td>정민아 차장</td><td>업무를 인수한 고객 측 담당자</td></tr>
+      <tr><td>피요시, 피어식</td><td>PoC</td><td></td></tr>
+      <tr><td>프론트 네터</td><td>프론트매터 (frontmatter)</td><td></td></tr>
+      <tr><td>와리터, 머레터, 와 라이터</td><td>writer</td><td></td></tr>
+      <tr><td>리뷰얼, 리뷰율, 리뷰학</td><td>reviewer</td><td></td></tr>
+      <tr><td>디플리케이드</td><td>deprecated</td><td></td></tr>
+      <tr><td>문서 실렛 라이프 사이클</td><td>문서 신뢰 라이프사이클</td><td></td></tr>
+      <tr><td>언더바 빌든</td><td>_build</td><td></td></tr>
+      <tr><td>릴리</td><td>_releases</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail">
+  <h2>이 글에 나온 용어</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
+      <tbody>
+        <tr><td>RAG</td><td>질문이 들어오면 문서 더미에서 관련 조각을 검색해 프롬프트에 함께 넣고 답하게 하는 방식이에요. 모델이 학습하지 않은 사내 문서를 다룰 때 많이 써요.</td></tr>
+        <tr><td>청크</td><td>긴 문서를 검색하기 좋게 잘게 나눈 조각이에요. RAG는 질문과 비슷한 청크 몇 개만 골라 모델에게 건네요.</td></tr>
+        <tr><td>할루시네이션</td><td>모델이 근거 없는 내용을 사실처럼 지어내는 현상이에요. 위키에서는 한 번 섞이면 계속 쌓여서 더 위험해요.</td></tr>
+        <tr><td>Ingest</td><td>새 원본을 읽고 위키 구조에 맞게 반영하는 동작이에요. 원본 하나가 관련 위키 페이지 여러 장을 한꺼번에 고쳐요.</td></tr>
+        <tr><td>Lint</td><td>원래는 코드의 형식 오류를 기계적으로 잡는 검사예요. 여기서는 위키의 모순, 낡은 내용, 깨진 링크를 찾아 고치는 점검을 뜻해요.</td></tr>
+        <tr><td>스키마</td><td>위키를 어떻게 구성하고 쓸지 정한 규칙 문서예요. Claude Code에서는 보통 CLAUDE.md로 두고, 사람과 LLM이 함께 고쳐 가요.</td></tr>
+        <tr><td>서브에이전트</td><td>메인 에이전트가 일을 나눠 맡기는 별도 에이전트예요. 자기만의 컨텍스트와 도구 목록을 가져서 역할을 분리하기 좋아요.</td></tr>
+        <tr><td>하네스</td><td>모델을 감싸는 실행 환경 전체예요. 컨텍스트, 메모리, 도구 권한, 검증 루프를 포함하고, 같은 모델이라도 하네스에 따라 결과가 크게 달라져요.</td></tr>
+        <tr><td>결정론적</td><td>같은 입력에 언제나 같은 결과가 나오는 성질이에요. 링크 검사나 JSON 형식 검사처럼 이런 일은 LLM보다 코드에 맡기는 게 안전해요.</td></tr>
+        <tr><td>프론트매터</td><td>마크다운 파일 맨 위 --- 사이에 적는 YAML 속성이에요. 옵시디언은 이를 속성으로 보여 주고, 여기서는 type, status, page_status 같은 값을 담아요.</td></tr>
+        <tr><td>Fail-Closed</td><td>검사 결과가 없거나 애매하면 통과가 아니라 차단하는 방식이에요. 버그로 검사가 빠져도 잘못된 문서가 나가지 않게 막아 줘요.</td></tr>
+        <tr><td>그래프 뷰</td><td>옵시디언에서 노트를 점으로, 노트 사이의 링크를 선으로 그려 주는 화면이에요. 문서들이 어떻게 이어져 있는지 한눈에 보여요.</td></tr>
+        <tr><td>superseded</td><td>더 새로운 결정으로 대체됐다는 표시예요. 옛 결정을 지우지 않고 남겨 두되, 지금 유효한 결정으로 링크를 걸어 줘요.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="tail">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li><a href="https://www.youtube.com/watch?v=yZKXJMMPrxc" target="_blank" rel="noopener">원본 영상 — 메타코드M</a></li>
+    <li><a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">Andrej Karpathy — llm-wiki.md (GitHub Gist)</a></li>
+    <li><a href="https://agents.md" target="_blank" rel="noopener">AGENTS.md 공식 사이트</a></li>
+    <li><a href="https://obsidian.md/help/plugins/graph" target="_blank" rel="noopener">Obsidian Help — Graph view</a></li>
+    <li><a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code 공식 문서 — Subagents</a></li>
+    <li><a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code 공식 문서 — Skills</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 6일에 이 영상을 보고 정리했어요. 원본은 메타코드M 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="tooltip"></div>
+
+<script>
+(function () {
+  // ── 용어 툴팁 ───────────────────────────────────────
+  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
+  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
+  var tip = document.getElementById('tip');
+  var open = null;
+
+  function show(el) {
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    var name = el.getAttribute('data-term') || el.textContent;
+    tip.innerHTML = '';
+    var b = document.createElement('b');
+    b.textContent = name;
+    tip.appendChild(b);
+    tip.appendChild(document.createTextNode(desc));
+    tip.classList.add('on');
+
+    var r = el.getBoundingClientRect();
+    var t = tip.getBoundingClientRect();
+    var pad = 12;
+    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
+    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
+    var top = r.top + window.scrollY - t.height - 10;
+    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+    open = el;
+  }
+
+  function hide() {
+    tip.classList.remove('on');
+    open = null;
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    el.addEventListener('mouseenter', function () { show(el); });
+    el.addEventListener('mouseleave', hide);
+    el.addEventListener('focus', function () { show(el); });
+    el.addEventListener('blur', hide);
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      open === el ? hide() : show(el);
+    });
+  });
+
+  document.addEventListener('click', function (e) {
+    if (open && !e.target.closest('.term')) hide();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') hide();
+  });
+  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
+  window.addEventListener('resize', hide);
+
+  // ── 목차 현재 위치 표시 ─────────────────────────────
+  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
+  var map = {};
+  links.forEach(function (a) {
+    var s = document.getElementById(a.getAttribute('href').slice(1));
+    if (s) map[s.id] = a;
+  });
+  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
+  if ('IntersectionObserver' in window && targets.length) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        links.forEach(function (a) { a.classList.remove('active'); });
+        map[en.target.id].classList.add('active');
+      });
+    }, { rootMargin: '-10% 0px -75% 0px' });
+    targets.forEach(function (t) { io.observe(t); });
+  }
+})();
+</script>
+</body>
+</html>

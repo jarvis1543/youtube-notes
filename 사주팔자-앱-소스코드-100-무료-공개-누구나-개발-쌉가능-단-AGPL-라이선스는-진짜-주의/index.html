@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>사주팔자 앱 소스코드 무료 공개: 받아서 고쳐 보기, 그리고 AGPL 주의점</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>사주팔자 앱 소스코드 무료 공개: 받아서 고쳐 보기, 그리고 AGPL 주의점</h1>
+  <p class="lede">혼천의를 내 컴퓨터에서 돌리고 말로 고치되, 배포 전에 AGPL 의무를 알아 둬요</p>
+  <div class="meta">
+    <span>Curator Danbi - Money Maven</span><span class="dot">·</span>
+    <span>영상 28:53</span><span class="dot">·</span>
+    <span>읽는 데 약 20분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=0KJLjaQZbM4" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>혼천의(Orrery)는 생년월일시와 태어난 곳만 넣으면 사주팔자, <span class="term" data-term="자미두수" data-en="Zi Wei Dou Shu" data-desc="중국에서 내려온 점법으로, 태어난 때를 바탕으로 별들을 열두 칸(궁) 명반에 배치해 풀어요. 사주팔자와 입력은 같지만 결과를 보여 주는 틀이 달라요." data-g="1">자미두수</span> 명반, <span class="term" data-term="출생 차트" data-en="Natal chart" data-desc="서양 점성술에서 태어난 순간 하늘의 행성 위치를 원 하나에 그린 그림이에요. 그래서 시각뿐 아니라 태어난 곳의 위도·경도가 필요해요." data-g="2">출생 차트</span>를 브라우저 안에서 바로 계산해요.</li>
+    <li>풀이는 앱이 하지 않아요. 'AI 해석용 복사'로 계산값을 복사해 ChatGPT·Claude·Gemini·Grok 같은 AI(Artificial Intelligence)에 붙여 넣는 구조예요.</li>
+    <li>GitHub에서 압축 파일로 받아 <code>npm install</code>, <code>npm run dev</code> 두 줄이면 내 컴퓨터에서 같은 화면이 떠요. 그다음엔 <span class="term" data-term="바이브 코딩" data-en="Vibe coding" data-desc="코드를 직접 쓰는 대신 AI 코딩 도구에 하고 싶은 걸 말로 지시해 프로그램을 만들거나 고치는 방식이에요. 빠르지만 AI가 의도하지 않은 곳까지 건드릴 수 있어요." data-g="8">바이브 코딩</span>으로 말만 해서 고칠 수 있어요.</li>
+    <li>내 컴퓨터에서 쓰고 공부하는 건 자유예요. 고쳐서 배포하거나 웹 서비스로 올리면 전체 소스 공개, 같은 라이선스 유지, 변경 사항 표시, 저작권 표시가 따라와요.</li>
+    <li>소스를 닫고 서비스하고 싶다면 AGPL(GNU Affero General Public License) 코드 대신 MIT(Massachusetts Institute of Technology) 라이선스 사주 라이브러리를 바탕으로 만드는 게 영상이 권하는 길이에요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">혼천의가 계산해 주는 것</a></li>
+    <li><a href="#s2">AI 해석용 복사: 계산은 앱이, 풀이는 AI가</a></li>
+    <li><a href="#s3">소스코드 받아서 내 컴퓨터에서 돌리기</a></li>
+    <li><a href="#s4">바이브 코딩: 말로 고치기</a></li>
+    <li><a href="#s5">코드로 공부하기, 그리고 왜 해 볼 만한가</a></li>
+    <li><a href="#s6">AGPL-3.0: 배포하는 순간 생기는 의무</a></li>
+    <li><a href="#s7">소스를 닫고 싶다면: MIT 라이브러리라는 다른 길</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>혼천의가 계산해 주는 것</h2>
+<p>이 영상이 소개하는 앱은 혼천의(渾天儀), 영문 이름 Orrery예요. 서버 없이 브라우저에서만 돌아가는 계산기로, 사주팔자·자미두수·서양 점성술 출생 차트를 한 번에 뽑아 줘요. 발표자는 사주를 돈 내고 본 적도 없을 만큼 관심이 없었는데, 이전 영상에 달린 "실력이 되면 사주 앱을 개발해 보고 싶다"는 댓글을 보고 소스코드가 통째로 공개된 이 프로젝트를 찾았다고 해요.</p>
+
+<h3>입력값: 생년월일시와 태어난 곳</h3>
+<p>첫 화면 제목 아래에 '서버 없이 브라우저에서 동작하는 사주팔자·자미두수·서양 점성술 계산기'라고 적혀 있어요. 입력 칸은 생년월일(양력), 시각과 분, 성별(남·여), 출생 위치예요. 시각을 모르면 '모름'을 켤 수 있고, 출생 위치는 '도시 선택'에서 서울을 고르면 위도·경도가 자동으로 채워져요.</p>
+<figure>
+  <img src="assets/frame-0212.png" alt="혼천의 입력 화면. 생년월일 양력 2000년 1월 1일, 시간 12시 00분, 남·여 선택, 출생 위치 도시 선택에 서울, 위도 37.5665 경도 126.9780이 보인다">
+  <figcaption>앱이 받는 건 네 가지뿐이에요. 나머지는 전부 이 값에서 계산돼요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=132s" target="_blank" rel="noopener">영상 02:12에서 보기</a></figcaption>
+</figure>
+<p>'좌표 입력'으로 바꾸면 위도와 경도를 직접 넣을 수 있고, 그 아래에 자동 추론한 시간대(Asia/Seoul, UTC(Coordinated Universal Time)+9)가 나와요. 발표자는 위치에 따라 분이 달라지기 때문에 이게 중요하다고 말해요. 분 하나 차이로 시주가 바뀌기도 하고, 월말·월초에 태어나면 월주까지 달라질 수 있어서예요.</p>
+<figure>
+  <img src="assets/frame-0737.png" alt="출생 위치를 좌표 입력으로 바꾼 화면. 위도 37.5665, 경도 126.978, 자동 추론 시간대 Asia/Seoul (UTC+9)">
+  <figcaption>도시 이름 대신 정확한 좌표를 넣을 수 있어요. 태어난 병원 위치까지 넣고 싶은 사람을 위한 칸이에요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=457s" target="_blank" rel="noopener">영상 07:37에서 보기</a></figcaption>
+</figure>
+<p>'고급 설정'을 펼치면 <span class="term" data-term="자시법" data-en="Rule for the Zi hour" data-desc="밤 11시~새벽 1시인 자시에 태어난 사람의 날짜를 언제 넘길지 정하는 규칙이에요. 고르는 방식에 따라 일주가 하루 달라질 수 있어요." data-g="3">자시법</span>을 고르는 버튼이 나와요. 통자시를 고르면 '23:30부터 子시, 일주를 다음날로 넘깁니다'라는 설명이 붙어요. 밤 11시대에 태어난 사람은 이 선택에 따라 일주가 달라져요.</p>
+<figure>
+  <img src="assets/frame-0749.png" alt="고급 설정의 자시법(子時法) 항목. 통자시와 야자시 버튼이 있고, 통자시 아래에 23:30부터 子시, 일주를 다음날로 넘깁니다 라는 안내가 있다">
+  <figcaption>같은 생시라도 자시법을 바꾸면 결과가 달라질 수 있어요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=469s" target="_blank" rel="noopener">영상 07:49에서 보기</a></figcaption>
+</figure>
+
+<h3>결과: 네 기둥, 명반, 출생 차트</h3>
+<p>사주팔자 결과는 시주·일주·월주·연주 네 기둥이에요. 기둥마다 위에 천간, 아래에 지지가 한자로 놓이고, 오행과 <span class="term" data-term="십신" data-en="Ten Gods" data-desc="일간(나)을 기준으로 다른 글자와의 관계를 비견, 정인, 편재처럼 열 가지로 나눈 이름이에요. 사주 풀이에서 성격과 관계를 읽는 기본 틀이에요." data-g="4">십신</span>이 함께 붙어요. 아래 화면은 발표자가 자기 사이트에 디자인을 입힌 버전인데, 한자 값은 혼천의와 똑같았다고 해요. 예시는 시주 戊午, 일주 戊午, 월주 丙子, 연주 己卯예요.</p>
+<figure>
+  <img src="assets/frame-0224.png" alt="사주 원국 네 기둥 카드. 시주 무오(戊午), 일주 무오(戊午), 월주 병자(丙子), 연주 기(己)가 보이고 칸마다 오행과 비견·일간·편인·겁재·정인·정재 같은 십신이 적혀 있다">
+  <figcaption>가운데 보라색 테두리가 일주예요. 사주에서 '나 자신'으로 보는 기둥이라 따로 강조돼 있어요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=144s" target="_blank" rel="noopener">영상 02:24에서 보기</a></figcaption>
+</figure>
+<p>자미두수 탭에는 열두 칸짜리 명반이, 출생 차트 탭에는 행성 배치를 그린 원형 차트가 나와요. 표에는 수성·금성·화성 같은 행성과 키론, 북교점·남교점, 행운점이 별자리와 도수로 정리돼요. 발표자도 출생 차트는 "이게 뭔지 잘 모르겠다"고 솔직하게 말해요. 요점은 셋 다 입력 한 번으로 바로 계산된다는 거예요.</p>
+<figure>
+  <img src="assets/frame-0012.png" alt="혼천의 출생차트 탭. 열두 칸으로 나뉜 원 안에 행성 기호와 각도를 잇는 선이 그려진 원형 차트">
+  <figcaption>서양 점성술 출생 차트까지 같은 입력값으로 계산돼요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=12s" target="_blank" rel="noopener">영상 00:12에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=166s" target="_blank" rel="noopener">02:46</a>
+  <h2>AI 해석용 복사: 계산은 앱이, 풀이는 AI가</h2>
+<p>혼천의는 풀이를 하지 않아요. 대신 결과 화면 오른쪽 위에 'AI 해석용 복사' 버튼이 있어요. 아래 출생 차트 표에서도 같은 버튼이 보여요. 표에는 행성마다 별자리, 도수, 하우스 번호가 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0322.png" alt="출생 차트 표. 하우스 시스템 Placidus, 행성별 별자리와 도수, 하우스 번호가 나열되어 있고 오른쪽 위에 AI 해석용 복사 버튼이 있다">
+  <figcaption>오른쪽 위 'AI 해석용 복사' 버튼이 이 앱의 핵심이에요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=202s" target="_blank" rel="noopener">영상 03:22에서 보기</a></figcaption>
+</figure>
+<p>버튼을 누르면 계산값이 텍스트로 복사돼요. 메모장에 붙여 보면 맨 위에 四柱八字(男), 그 아래로 시주·일주·월주·연주별 십신, 천간, 지지, 운성, 공망, <span class="term" data-term="지장간" data-en="Hidden stems" data-desc="지지(아래 글자) 하나 안에 숨어 있다고 보는 천간들이에요. 겉으로 보이는 여덟 글자 밖의 기운까지 보려고 계산해요." data-g="5">지장간</span>이 표처럼 줄 맞춰 나와요. 이어서 시-일, 시-월처럼 기둥끼리의 관계(형·충·파)도 적혀 있어요. 이 텍스트 전체가 3,258자예요.</p>
+<figure>
+  <img src="assets/frame-0358.png" alt="메모장에 붙여 넣은 AI 해석용 텍스트. 四柱八字(男) 아래 時柱 日柱 月柱 年柱 열, 십신 比肩 本元 偏印 劫財, 천간 戊 戊 丙 己, 지지 午 午 子 卯, 운성, 공망, 장간, 八字關係 午午刑 午子沖 등이 보인다">
+  <figcaption>AI가 읽기 좋게 계산값만 정리된 텍스트예요. 이걸 그대로 AI 채팅창에 붙여 넣어요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=238s" target="_blank" rel="noopener">영상 03:58에서 보기</a></figcaption>
+</figure>
+
+<h3>왜 풀이를 AI에게 넘길까요</h3>
+<p>발표자는 자기 사이트에 AI 풀이를 직접 붙여 뒀어요. 그러면 방문자가 사주를 볼 때마다 AI API(Application Programming Interface) 호출 비용이 운영자 돈으로 나가요. 혼천의는 계산과 코드만 공개하고 풀이는 사용자가 쓰는 AI에 맡겨요. 발표자는 이 구조 자체를 하나의 아이디어로 기억해 두라고 말해요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 680 240" role="img" aria-label="발표자 사이트는 사이트가 AI API를 불러 운영자가 비용을 내고, 혼천의는 계산값을 복사해 사용자의 AI에 붙여 넣어 운영자 비용이 없다">
+    <defs><marker id="arrow-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="20" y="24" class="sub" text-anchor="start">발표자 사이트</text>
+    <rect class="box" x="20" y="36" width="110" height="62" rx="10"/>
+    <text x="75" y="72" text-anchor="middle">방문자</text>
+    <path class="line" d="M132 67 h34" marker-end="url(#arrow-flow)"/>
+    <rect class="c1 cell" x="170" y="36" width="170" height="62" rx="10"/>
+    <text x="255" y="62" text-anchor="middle">사이트</text>
+    <text x="255" y="84" text-anchor="middle" class="sub">계산 + AI API 호출</text>
+    <path class="line" d="M342 67 h34" marker-end="url(#arrow-flow)"/>
+    <rect class="c2 cell" x="380" y="36" width="130" height="62" rx="10"/>
+    <text x="445" y="72" text-anchor="middle">풀이</text>
+    <rect class="bad" x="530" y="36" width="135" height="62" rx="10"/>
+    <text x="597" y="62" text-anchor="middle">API 비용</text>
+    <text x="597" y="84" text-anchor="middle" class="sub">운영자가 냄</text>
+
+    <text x="20" y="140" class="sub" text-anchor="start">혼천의</text>
+    <rect class="box" x="20" y="152" width="110" height="62" rx="10"/>
+    <text x="75" y="188" text-anchor="middle">사용자</text>
+    <path class="line" d="M132 183 h34" marker-end="url(#arrow-flow)"/>
+    <rect class="c1 cell" x="170" y="152" width="170" height="62" rx="10"/>
+    <text x="255" y="178" text-anchor="middle">혼천의</text>
+    <text x="255" y="200" text-anchor="middle" class="sub">계산 + 해석용 복사</text>
+    <path class="line" d="M342 183 h34" marker-end="url(#arrow-flow)"/>
+    <rect class="c2 cell" x="380" y="152" width="130" height="62" rx="10"/>
+    <text x="445" y="178" text-anchor="middle">내 AI</text>
+    <text x="445" y="200" text-anchor="middle" class="sub">붙여 넣고 풀이</text>
+    <rect class="ok" x="530" y="152" width="135" height="62" rx="10"/>
+    <text x="597" y="178" text-anchor="middle">운영자 비용</text>
+    <text x="597" y="200" text-anchor="middle" class="sub">없음</text>
+  </svg>
+  <figcaption>계산 칸은 두 방식이 같아요. 풀이를 누가 돌리느냐가 다르고, 그래서 비용을 누가 내는지도 달라져요.</figcaption>
+</figure>
+
+<h3>네 AI에 똑같이 넣어 본 결과</h3>
+<p>발표자는 같은 텍스트를 네 AI에 붙여 넣고 "운세 좀 봐줘"라고 했어요. 인상은 이렇게 갈렸어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>AI</th><th>발표자가 쓴 요금제</th><th>발표자 인상</th></tr></thead>
+    <tbody>
+      <tr><td>ChatGPT</td><td>월 30만 원짜리</td><td>전체 핵심 요약, 성격적 강점, 힘들 수 있는 부분 Top 3까지 길게 풀어 줌</td></tr>
+      <tr><td>Claude Opus 4.6</td><td>젠스파크에서 사용</td><td>전문가처럼 글을 가장 잘 씀</td></tr>
+      <tr><td>Gemini</td><td>29,000원짜리</td><td>너무 짧아서 신뢰가 덜 감</td></tr>
+      <tr><td>Grok</td><td>무료, 회원가입 없이</td><td>붙여 넣기만 해도 풀어 줌</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>ChatGPT 화면을 보면 '2) 성격적 강점' 아래 1, 2번 항목이 굵은 제목과 근거로 나뉘어 있어요. 발표자는 AI가 과거와 현재 데이터를 많이 학습했으니 그걸 바탕으로 해석하는 것이고, 지치지 않으니 몇백 명을 봐도 된다고 말해요.</p>
+<figure>
+  <img src="assets/frame-0434.png" alt="ChatGPT 답변 화면. 2) 성격적 강점 제목 아래 1. 버티는 힘, 책임감, 현실 감각이 강함 등 항목과 설명이 이어진다">
+  <figcaption>복사한 계산값만으로 성격, 강점, 어려운 점까지 항목별로 풀어 줘요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=274s" target="_blank" rel="noopener">영상 04:34에서 보기</a></figcaption>
+</figure>
+<p>젠스파크에서 Claude Opus 4.6에 넣은 답은 맨 끝이 '마무리'로 정리돼요. 사주 용어(帝旺, 紫微 같은 한자)를 섞어 가며 "30대 중반부터 본격적으로 꽃이 피는 만시발복 타입"처럼 결론을 내려요. 발표자가 글을 잘 쓴다고 평가한 쪽이 이 답이에요.</p>
+<figure>
+  <img src="assets/frame-0446.png" alt="젠스파크의 사주·자미두수·점성술 통합 명리 분석 대화. 조언 문단과 마무리 문단이 보이고 아래 입력창에 Claude Opus가 선택되어 있다">
+  <figcaption>같은 입력이라도 AI마다 문체와 길이가 꽤 달라요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=286s" target="_blank" rel="noopener">영상 04:46에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=313s" target="_blank" rel="noopener">05:13</a>
+  <h2>소스코드 받아서 내 컴퓨터에서 돌리기</h2>
+<p>영상이 보여 준 전체 흐름은 이래요. 발표자도 중간에 "GitHub에서 받고, 바이브 코딩 도구에서 폴더를 열고, 두 명령으로 로컬에서 실행하는 것까지 봤다"고 한 번 정리해요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["GitHub 저장소"] --> B["Download ZIP"]
+  B --> C["Cursor에서 폴더 열기"]
+  C --> D["npm install"]
+  D --> E["npm run dev"]
+  E --> F["내 컴퓨터에서 실행"]
+  F --> G["말로 지시해서 고치기"]
+</pre>
+  <figcaption>명령어는 두 줄뿐이에요. 나머지는 버튼을 누르거나 말로 시키는 단계예요.</figcaption>
+</figure>
+
+<h3>저장소 둘러보기</h3>
+<p>혼천의 소스는 GitHub의 rath/orrery 저장소에 있어요. 오른쪽 About 칸에 사이트 주소 sky.told.me와 AGPL-3.0 license가 적혀 있고, 위쪽에 Star 80, Fork 19가 보여요. 발표자는 별 80개면 꽤 높은 편이라고 말해요.</p>
+<figure>
+  <img src="assets/frame-0310.png" alt="GitHub orrery 저장소 화면. Watch 0, Fork 19, Star 80, 초록색 Code 버튼, About 칸에 서버 없이 브라우저에서 동작하는 사주팔자·자미두수·출생차트 계산기 설명과 sky.told.me 링크, AGPL-3.0 license 표시">
+  <figcaption>About 칸의 'AGPL-3.0 license'가 이 영상 후반부의 주제예요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=190s" target="_blank" rel="noopener">영상 03:10에서 보기</a></figcaption>
+</figure>
+<p>파일 목록에는 README가 언어별(en·ja·zh)로 있고, <code>AGENTS.md</code>와 <code>CLAUDE.md</code>도 보여요. <code>LICENSE</code> 파일 옆 커밋 메시지는 'chore: change license from MIT to AGPL-3.0'이에요. 처음엔 MIT였다가 AGPL-3.0으로 바꿨다는 기록이에요.</p>
+<figure>
+  <img src="assets/frame-0601.png" alt="저장소 파일 목록 확대. AGENTS.md, CLAUDE.md, LICENSE, README.en.md, README.ja.md, README.md, README.zh.md, bun.lock, eslint.config.js, index.html, package.json과 각 파일의 마지막 커밋 메시지">
+  <figcaption><code>LICENSE</code> 줄의 커밋 메시지에서 라이선스가 MIT에서 AGPL-3.0으로 바뀐 걸 확인할 수 있어요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=361s" target="_blank" rel="noopener">영상 06:01에서 보기</a></figcaption>
+</figure>
+<p>src 폴더를 열면 assets, components, i18n, types, utils 폴더와 index.css, main.tsx가 있어요. 발표자는 i18n이 번역 관련 파일이라고 설명해요. 이 앱이 한국어·영어·중국어 화면을 지원하는 이유예요.</p>
+<figure>
+  <img src="assets/frame-0613.png" alt="orrery/src 폴더 목록. assets, components, i18n, types, utils 폴더와 index.css, main.tsx 파일. i18n에 빨간 표시가 있다">
+  <figcaption>화면 쪽 코드는 src에, 계산 엔진은 따로 packages 폴더에 있어요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=373s" target="_blank" rel="noopener">영상 06:13에서 보기</a></figcaption>
+</figure>
+
+<h3>받아서 실행하기</h3>
+<ol class="steps">
+  <li><b>저장소에서 초록색 Code 버튼을 누르고 <code>Download ZIP</code>을 골라요</b> — 주소(<code>https://github.com/rath/orrery.git</code>)를 복사해 AI 코딩 도구에 "이거 받아 줘"라고 해도 돼요.
+    <span class="done">orrery-main.zip이 내려받아져요</span></li>
+  <li><b>압축을 풀고 Cursor에서 새 창을 열어 그 폴더를 지정해요</b>
+    <span class="done">왼쪽 탐색기에 packages, src, package.json 같은 파일이 보여요</span></li>
+  <li><b>터미널에서 <code>npm install</code>로 의존성을 받아요</b>
+    <span class="done">added 93 packages 같은 메시지가 나와요</span></li>
+  <li><b><code>npm run dev</code>로 개발 서버를 띄워요</b> — 발표자는 소문자로 써야 한다고 짚어요.
+    <span class="done">로컬 주소에서 혼천의 화면이 떠요</span></li>
+</ol>
+<p>Code 버튼을 누르면 Local 탭에 Clone 주소와 함께 'Open with GitHub Desktop', 'Open with Visual Studio', <code>Download ZIP</code>이 나와요. 맨 아래 <code>Download ZIP</code>이 영상에서 쓴 방법이에요.</p>
+<figure>
+  <img src="assets/frame-0649.png" alt="Code 버튼을 눌러 연 메뉴. Local과 Codespaces 탭, Clone 아래 HTTPS·SSH·GitHub CLI, https://github.com/rath/orrery.git 주소, Open with GitHub Desktop, Open with Visual Studio, Download ZIP">
+  <figcaption>Git을 몰라도 <code>Download ZIP</code> 한 번이면 전체 소스가 받아져요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=409s" target="_blank" rel="noopener">영상 06:49에서 보기</a></figcaption>
+</figure>
+<p>압축을 풀면 GitHub에서 보던 것과 같은 폴더와 파일이 그대로 나와요. 발표자는 "어떻게 개발하냐고 묻지 말고 이 소스를 보면서 AI에게 계산을 어떻게 했는지 물어보라"고 말해요.</p>
+<figure>
+  <img src="assets/frame-0713.png" alt="압축을 푼 폴더 목록. .github, packages, public, scripts, src 폴더와 .gitignore, AGENTS.md, bun.lock, CLAUDE.md, eslint.config.js, index.html, LICENSE, package.json, README 파일들, tsconfig 파일들">
+  <figcaption>받은 파일이 저장소 내용과 똑같아요. 숨긴 부분이 없어요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=433s" target="_blank" rel="noopener">영상 07:13에서 보기</a></figcaption>
+</figure>
+<p>Cursor 터미널에서 <code>npm install</code>을 돌린 결과예요. 'added 93 packages, and audited 348 packages in 1s', 'found 0 vulnerabilities'가 찍혀요. 발표자는 의존성이 다른 개발자들이 만들어 둔 플러그인 같은 부품이고, 이게 소스코드와 합쳐져야 웹이든 앱이든 만들어진다고 설명해요.</p>
+<figure>
+  <img src="assets/frame-0825.png" alt="Cursor 터미널. sajupalja-destiny-agpl 폴더로 이동한 뒤 npm install 실행, added 93 packages, and audited 348 packages in 1s, 97 packages are looking for funding, found 0 vulnerabilities">
+  <figcaption>이 단계를 빼먹으면 다음 명령이 실행되지 않아요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=505s" target="_blank" rel="noopener">영상 08:25에서 보기</a></figcaption>
+</figure>
+<p><code>npm run dev</code>를 실행하면 Cursor 안의 미리보기 창에 혼천의가 떠요. 처음 화면은 영어이고 기본값은 2006년 4월 16일 13시 53분이에요. Calculate를 누르면 바로 계산돼요. 발표자는 이게 웹사이트가 아니라 자기 컴퓨터에 설치한 것이라는 점을 강조해요.</p>
+<figure>
+  <img src="assets/frame-0903.png" alt="Cursor 화면 오른쪽 미리보기에 영어로 된 혼천의 입력 폼. Date of Birth 2006 4 16, Time 13 53, M F 선택, Birthplace 서울, Calculate 버튼. 아래 터미널에 로컬 주소가 표시된다">
+  <figcaption>배포된 sky.told.me와 똑같은 앱이 내 컴퓨터의 로컬 주소에서 돌아가요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=543s" target="_blank" rel="noopener">영상 09:03에서 보기</a></figcaption>
+</figure>
+<p>발표자는 한자를 잘 못 읽어서 자기 버전을 따로 고쳤어요. 아래 자미두수 화면을 보면 한자 옆에 작은 글씨로 한글 음이 붙어 있고, 2006年 4月 15日 3時 4分처럼 생년월일시가 가운데에 크게 들어가 있어요. 화면도 원래보다 넓어요.</p>
+<figure>
+  <img src="assets/frame-0937.png" alt="발표자가 고친 자미두수 화면. 가운데에 陽曆 2006年 4月 15日 3時 4分, 陰曆 2006年 3月 18日 등 기본 정보, 주변 칸에 궁 이름과 별 이름 한자 옆에 한글 음이 작게 붙어 있다">
+  <figcaption>원본에는 없는 한자-한글 병기예요. 발표자는 이렇게 고치면서 사주 용어도 같이 익힌다고 말해요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=577s" target="_blank" rel="noopener">영상 09:37에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>저장소 README는 실행 명령을 <code>bun install</code>, <code>bun dev</code>로 안내해요. 영상처럼 npm으로 해도 되는 건 package.json의 scripts에 <code>"dev": "vite"</code>가 있어서예요. 다만 아이콘 생성 같은 일부 스크립트는 bun으로 돌게 되어 있어요. 별 수는 2026년 10월 확인 기준 158개로 늘었어요.</p>
+  <p class="cite">출처: <a href="https://github.com/rath/orrery" target="_blank" rel="noopener">rath/orrery GitHub 저장소 README</a> · <a href="https://github.com/rath/orrery/blob/main/package.json" target="_blank" rel="noopener">package.json</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=588s" target="_blank" rel="noopener">09:48</a>
+  <h2>바이브 코딩: 말로 고치기</h2>
+<p>소스를 받아 실행까지 했으면 이제 고쳐 볼 차례예요. 발표자는 코드를 한 줄도 쓰지 않아요. Cursor 채팅창에 원하는 걸 우리말로 적고 엔터를 누를 뿐이에요. 이렇게 말로 시켜서 프로그램을 고치는 방식을 바이브 코딩이라고 불러요.</p>
+
+<h3>"글자가 너무 작다, 키워 줘"</h3>
+<p>첫 지시는 '사주 계산 후 값들이 글자가, 폰트가 너무 작다. 좀 더 크게 가독성 있게 해줘라'예요. 왼쪽 결과 화면에는 日柱, 月柱 아래 乙, 壬, 亥, 辰 같은 한자 칸이 작게 보여요.</p>
+<figure>
+  <img src="assets/frame-1024.png" alt="Cursor 채팅창에 사주 계산 후 값들이 글자가, 폰트가 너무 작다 좀더 크게 가독성 있게 해줘라 라고 입력한 모습. 왼쪽에 일주·월주 한자 칸이 작게 보인다">
+  <figcaption>지시는 이게 전부예요. 어느 파일을 고칠지는 말하지 않았어요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=624s" target="_blank" rel="noopener">영상 10:24에서 보기</a></figcaption>
+</figure>
+<p>AI는 먼저 '사주 계산 결과 화면의 폰트 크기를 키우기 위해 관련 코드를 찾습니다'라고 밝히고 로컬 파일을 검색해요. 그다음 SajuView.tsx와 PillarTable.tsx를 고쳐요. 아래 diff에서 빨간 줄의 <code>text-base</code>가 초록 줄에서 <code>text-lg</code>로 바뀐 게 보여요. Tailwind CSS(Cascading Style Sheets)의 글자 크기 클래스를 한 단계씩 올린 거예요.</p>
+<figure>
+  <img src="assets/frame-1048.png" alt="Cursor의 변경 diff. SajuView.tsx +2 -2, PillarTable.tsx +23 -23. table 태그의 className이 text-base에서 text-lg로 바뀐 줄이 빨강과 초록으로 표시된다">
+  <figcaption>말로 한 지시가 실제로는 이런 클래스 이름 교체로 바뀌어요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=648s" target="_blank" rel="noopener">영상 10:48에서 보기</a></figcaption>
+</figure>
+<p>작업이 끝나면 '변경 요약'이 남아요. 四柱八字 제목은 <code>text-xl</code>로, 명식표 본문은 <code>text-lg</code>로, 천간·지지 한자는 <code>text-3xl</code>로 키웠다고 항목별로 적혀 있어요. 마지막 줄에는 빌드는 실행하지 않았다는 말과, 더 키우고 싶은 구역이 있으면 알려 달라는 말이 붙어요.</p>
+<figure>
+  <img src="assets/frame-1112.png" alt="AI가 남긴 변경 요약. 四柱八字 제목 text-xl, PillarTable(명식표) 본문 text-lg와 천간·지지 한자 text-3xl, 八字關係/神殺, 坐法/引從法, 大運·歲運 카드, 運勢 항목별 변경 내용">
+  <figcaption>무엇을 바꿨는지 AI가 스스로 정리해 줘서, 코드를 몰라도 변경 범위를 확인할 수 있어요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=672s" target="_blank" rel="noopener">영상 11:12에서 보기</a></figcaption>
+</figure>
+<p>자미두수 탭은 여전히 작아서, 발표자는 화면을 캡처해 AI에게 주면서 "여기도 너무 작은데 폰트 좀 더 키워 줘"라고 다시 시켜요. 그다음엔 "야, 조금만 더 키워 줘"가 지시의 전부예요. 그러자 가운데 정보와 주변 칸이 확 커졌어요.</p>
+
+<h3>"명반 가운데 색상 튀게 해 줘"</h3>
+<p>다음 지시는 '자미두수 명반 쪽 가운데 색상 튀게 하고, 그 주변 360도 테이블들 가독성 있게 색상 구분 좀 해줘'예요. AI가 남긴 요약을 보면 가운데 패널은 보라·자홍·호박색 그라데이션 배경과 안쪽 그림자를 넣었고, 다크 모드도 맞췄어요. 주변 12궁은 지지마다 다른 파스텔 배경을 주고, 명궁이 있는 칸에는 골드색 링을 둘렀어요.</p>
+<figure>
+  <img src="assets/frame-1602.png" alt="Cursor 화면. 왼쪽 탐색기에 src/components/saju 아래 JwabeopChart.tsx 등 파일 목록, 오른쪽 채팅에 자미두수 명반 색상 요청과 MingPanGrid.tsx diff, 가운데(기본 정보) 패널과 주변 12궁 변경 요약">
+  <figcaption>요약의 '가운데 패널'과 '주변 12궁'이 지시의 두 부분에 하나씩 대응해요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=962s" target="_blank" rel="noopener">영상 16:02에서 보기</a></figcaption>
+</figure>
+<p>결과 화면이에요. 가운데 기본 정보 칸은 연보라 바탕으로 도드라지고, 둘레 칸들은 분홍·노랑·하늘색처럼 칸마다 색이 달라졌어요.</p>
+<figure>
+  <img src="assets/frame-1454.png" alt="색을 입힌 자미두수 명반. 가운데 연보라 패널에 2006년 4월 15일 생년월일 정보, 둘레 열두 칸이 서로 다른 파스텔색 배경">
+  <figcaption>원본 혼천의 명반은 흰 바탕이었어요. 문장 두 줄로 이만큼 바뀌었어요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=894s" target="_blank" rel="noopener">영상 14:54에서 보기</a></figcaption>
+</figure>
+<p>가운데를 확대하면 陽曆 2006年 4月 15日 3時 4分, 陰曆 2006年 3月 18日이 굵게 강조돼 있어요. 가독성을 올려 달라는 말에 AI가 양력·음력처럼 중요한 정보를 스스로 골라 진하게 만든 거예요. 그 아래 性別, 年柱, 命宮, 身宮, 五行局 옆에도 한글 음이 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-1459.png" alt="명반 가운데 패널 확대. 陽曆 2006年 4月 15日 3時 4分과 陰曆 2006年 3月 18日이 굵게 표시되어 빨간 동그라미로 강조되어 있고, 아래 性別 男, 年柱 丙戌, 命宮 庚寅, 身宮 官祿(午), 五行局 木三局">
+  <figcaption>원래 혼천의에는 이런 강조나 한글 병기가 없어요. 원본의 목적은 빠른 계산과 AI 해석용 복사예요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=899s" target="_blank" rel="noopener">영상 14:59에서 보기</a></figcaption>
+</figure>
+
+<h3>로컬에서 하는 게 안전한 이유</h3>
+<p>발표자는 이 작업을 굳이 내 컴퓨터 안에서만 하라고 강조해요. 사주 사이트를 인터넷에 올리고 결제를 받고 개인정보를 받으려면 시간과 공이 많이 들어요. 개인정보가 새면 형사처벌이나 민사소송까지 갈 수 있어요. 로컬에서 고쳐 보는 건 그런 부담이 없어요.</p>
+<p>한계도 짚어요. 전문 개발자는 고칠 코드를 직접 골라 채팅에 넣고(Cursor의 Ctrl+L) 그 부분만 고치게 해요. 발표자처럼 말로 넓게 시키면 AI가 다른 곳까지 건드릴 수 있어요. 실제로 앱 제목을 바꿔 달라고 하자 AI는 제목이 표시되는 곳을 전부 찾아 바꿨어요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=917s" target="_blank" rel="noopener">15:17</a>
+  <h2>코드로 공부하기, 그리고 왜 해 볼 만한가</h2>
+<p>발표자가 이 저장소를 권하는 진짜 이유는 공부 재료라서예요. 화면만 고치는 데서 그치지 말고, 계산 로직과 데이터가 어디 있고 왜 그렇게 짰는지 AI에게 물어 가며 읽어 보라고 해요.</p>
+
+<h3>계산 엔진은 packages/core/src에</h3>
+<p>Cursor 왼쪽 탐색기를 보면 <code>packages/core/src</code> 아래에 cities.ts, constants.ts, kdt.ts, natal.ts, pillars.ts, saju.ts, types.ts, ziwei.ts와 ephemeris 폴더가 있어요. 이름 그대로 도시 좌표, 상수, 출생 차트, 네 기둥, 사주, 자미두수를 맡는 파일이에요. 열려 있는 cities.ts에는 한국어 초성 검색용 코드가 보여요. 도시 이름을 초성만으로 찾게 해 주는 부분이에요.</p>
+<figure>
+  <img src="assets/frame-1647.png" alt="Cursor 탐색기의 packages/core/src 폴더. ephemeris 폴더와 cities.ts, constants.ts, index.ts, kdt.ts, natal.ts, pillars.ts, saju.ts, types.ts, ziwei.ts. 편집기에 cities.ts의 한국어 초성 검색 코드 JAMO_TO_INITIAL과 getInitialIndex 함수">
+  <figcaption>계산 엔진은 화면 코드와 분리된 별도 패키지예요. 공부하려면 여기부터 열어 보면 돼요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=1007s" target="_blank" rel="noopener">영상 16:47에서 보기</a></figcaption>
+</figure>
+<p>발표자 설명으로는 이 안에 <span class="term" data-term="대운" data-en="Major luck cycle" data-desc="보통 10년 단위로 바뀐다고 보는 인생의 큰 흐름이에요. 혼천의는 대운 10개를 계산하고, AI 풀이는 이걸 바탕으로 인생의 큰 그림을 말해 줘요." data-g="6">대운</span> 테이블 계산, 절기 상수, 사주 계산, 십신, 지장간, 운성 데이터가 다 들어 있어요. 서양 점성술용 데이터도 같이 있어요. "왜 여기서 이런 코드를 썼을까", "왜 이런 데이터가 필요할까"를 물어 가며 읽으면 그게 공부라는 거예요.</p>
+
+<h3>외주로 맡기면 얼마나 들까요</h3>
+<p>발표자는 크몽 같은 외주 시장에서 상용 사주 앱 개발이 단계에 따라 500만 원에서 3천만 원, 더 비싸면 몇천만 원이라고 말해요. 이 저장소는 그만한 코드와 운영 중인 사이트를 통째로 공개해 뒀어요. 그래서 바이브 코딩 도구에 한 달 20달러(약 3만 원)를 내고 직접 해 보는 게, 홈페이지 만들기 강의를 몇백만 원에 사는 것보다 낫다고 봐요. 목표가 꼭 돈벌이일 필요는 없고, 자영업자라면 랜딩 페이지 정도는 스스로 만들 수 있다는 거예요.</p>
+<p>전문 개발자들이 비전문가의 바이브 코딩을 깎아내리는 데 대해서도 한마디 해요. 바이브 코딩의 보안 위험은 이미 다 알려졌으니, 개발자 수요는 보안 쪽으로 옮겨 갈 거라고 봐요. 생업이 있는 사람이 책을 펴 놓고 한 줄씩 타이핑하며 배우기는 어렵지만, 이제는 아이디어를 말로 바로 반영할 수 있다는 거예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Cursor 요금표는 영상에서 말한 '월 20달러'와 지금 구성이 달라요. 2026년 10월 확인 기준으로 Free(0달러), Plus(월 8달러, Grok 모델만 사용), Premium(월 30달러), Super(월 100달러), Ultra(월 200달러) 순이에요. 영상처럼 Claude 같은 다른 회사 모델을 쓰려면 Premium부터예요. 가격은 자주 바뀌니 가입 전에 공식 요금표를 확인하는 게 좋아요.</p>
+  <p class="cite">출처: <a href="https://cursor.com/pricing" target="_blank" rel="noopener">Cursor 공식 요금표</a></p>
+</aside>
+
+<h3>계산값을 AI에 넣어 쓰는 법</h3>
+<p>발표자는 로컬에서 2006년 4월 15일 3시 4분, 서울로 계산한 뒤 AI 해석용 복사를 눌러요. 브라우저 탭 제목은 발표자가 고친 대로 '평생 100% 무료로 보는 사주팔자 프로그램'이에요. 복사한 텍스트 아래에 "사주 좀 봐줘, 해석해 줘" 정도의 짧은 프롬프트만 붙여도 대운과 인생의 큰 그림까지 풀어 줘요. 혼천의 화면 아래에도 클로드나 ChatGPT, 제미나이에 넣고 해석을 요청하라는 안내가 있어요.</p>
+<figure>
+  <img src="assets/frame-1947.png" alt="로컬에서 실행한 혼천의. 탭 제목 평생 100% 무료로 보는 사주팔자 프로그램, 입력값 2006년 4월 15일 03시 04분, 출생 위치 서울, 아래에 사주팔자·자미두수·출생차트 탭과 자미두수 명반">
+  <figcaption>입력하고, 복사하고, 붙여 넣는 세 동작이 사용법의 전부예요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=1187s" target="_blank" rel="noopener">영상 19:47에서 보기</a></figcaption>
+</figure>
+<p>발표자는 쓰는 사람에 따라 활용법도 달라진다고 말해요. 사주를 배우는 사람은 정확도를 높여 둔 이 계산 결과를 자기가 배운 지식과 맞춰 볼 수 있어요. 사주 앱을 운영하는 사람은 프롬프트를 다듬고, 자기 계산값이 맞는지 이 코드와 비교하며 서비스를 키울 수 있어요. 발표자 자신의 사이트는 비용 때문에 싼 AI를 쓰고, 표본도 자기와 아내 둘뿐이라 틀릴 수 있다고 인정해요.</p>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=1252s" target="_blank" rel="noopener">20:52</a>
+  <h2>AGPL-3.0: 배포하는 순간 생기는 의무</h2>
+<p>발표자가 "이거 못 보면 나중에 큰일 날 수 있다"며 가장 길게 다룬 부분이에요. 혼천의 README에는 원작자가 직접 쓴 AGPL-3.0 쉬운 설명이 붙어 있고, 발표자는 이걸 그대로 가져와 하나씩 읽어 줘요.</p>
+
+<h3>할 수 있는 것, 지켜야 하는 것, 할 수 없는 것</h3>
+<p>설명은 세 묶음이에요. '자유롭게 할 수 있는 것'에는 개인적으로 사용, 소스코드를 읽고 공부, 수정·개선 후 재배포가 있어요. '반드시 지켜야 하는 것'은 같은 라이선스(AGPL-3.0) 유지, 소스 코드 공개 의무, 변경 사항 명시, 저작권 표시 유지 네 가지예요. '할 수 없는 것'은 소스 비공개 상태로 서비스 운영, 다른 라이선스로 변경이에요. 발표자는 파란 상자로 첫 두 줄과 지켜야 할 의무 세 줄을 묶어 강조했어요.</p>
+<figure>
+  <img src="assets/frame-2130.png" alt="AGPL-3.0이 뭔가요? (쉬운 설명) 화면. 자유롭게 할 수 있는 것: 개인적으로 사용, 소스 코드를 읽고 공부, 수정·개선 후 재배포. 반드시 지켜야 하는 것: 같은 라이선스(AGPL-3.0) 유지, 소스 코드 공개 의무, 변경 사항 명시, 저작권 표시 유지. 할 수 없는 것: 소스 비공개 상태로 서비스 운영, 다른 라이선스로 변경">
+  <figcaption>'소스 코드 공개 의무' 줄의 '웹 서비스로 제공하는 경우에도'가 일반 GPL(GNU General Public License)과 갈리는 지점이에요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=1290s" target="_blank" rel="noopener">영상 21:30에서 보기</a></figcaption>
+</figure>
+<p>발표자가 내 컴퓨터에서 한글 병기를 넣고 색을 입힌 건 첫 묶음에 해당해서 자유예요. 문제는 배포예요. 고친 걸 홈페이지에 올리는 순간 디자인 파일, 계산 방식, 바꾼 부분까지 프로그램 전체 소스를 GitHub든 압축 파일이든 공개해야 하고, 같은 AGPL-3.0으로 내야 해요. 원작자 GitHub 링크와 저작권 표시도 남겨야 해요.</p>
+<p>발표자는 GPL과의 차이도 짚어요. 원래 GPL은 서버에서 돌리기만 하고 프로그램을 나눠 주지 않으면 공개 의무를 피할 수 있는 구멍이 있었어요. AGPL은 그 구멍까지 막아서 웹 서비스로 제공하는 것도 공개 대상으로 넓힌 라이선스라는 거예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>AGPL-3.0 원문 13조는 프로그램을 수정했고 사용자가 네트워크로 그 프로그램과 상호작용한다면, 그 사용자 모두에게 수정본의 대응 소스(Corresponding Source)를 무료로 받을 기회를 눈에 띄게 제공하라고 정해요. GNU(GNU&#x27;s Not Unix) 재단은 서버에서 주로 쓰이는 자유 소프트웨어가 GPL로는 보호받지 못하는 문제를 막으려고 AGPL을 만들었다고 설명해요. 수정하지 않은 원본을 그대로 돌리는 경우는 13조의 대상이 아니라는 점도 원문에서 확인할 수 있어요.</p>
+  <p class="cite">출처: <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU AGPL v3 원문 13조</a> · <a href="https://www.gnu.org/licenses/why-affero-gpl.html" target="_blank" rel="noopener">GNU 'Why the Affero GPL'</a></p>
+</aside>
+
+<h3>변경 사항은 처음부터 기록해 두기</h3>
+<p>지켜야 할 것 중 발표자가 특히 놀란 건 변경 사항 명시예요. 원본에서 무엇을 바꿨는지 알 수 있게 표시해야 해요. 그래서 발표자는 AI에게 "AGPL이므로 변경된 파일은 모두 기록하고, 무엇을 수정했는지 상세히 남겨라"라고 미리 지시해 뒀어요. 아래가 그렇게 쌓인 기록이에요. 파일 경로마다 한 줄씩 무엇을 바꿨는지 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-2352.png" alt="메모장에 열린 변경 기록. src/components/BirthForm.tsx 입력 폼 레이아웃 재배치, ThemeToggle.tsx, LanguageToggle.tsx, Guide.tsx, saju/SajuView.tsx 2열 카드 배치, PillarTable.tsx 천간/지지/십신/운성/신살/지장간/공망 한자·한글 병행표기, RelationList.tsx, SinsalList.tsx, JwabeopChart.tsx, InjongbeopChart.tsx, DaewoonTable.tsx 항목">
+  <figcaption>PillarTable.tsx 줄의 '한자/한글 병행표기 적용'이 3장에서 본 한글 음 추가예요. 나중에 배포할 때 이 목록이 그대로 변경 사항 표시가 돼요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=1432s" target="_blank" rel="noopener">영상 23:52에서 보기</a></figcaption>
+</figure>
+
+<h3>AGPL 전파: 섞이면 같이 공개 대상</h3>
+<p>발표자가 가장 위험하다고 본 건 이거예요. 이미 운영 중인 사이트에 고친 혼천의를 올리면, 그 사이트가 같이 쓰는 공통 컴포넌트(TSX(TypeScript XML) 파일 같은 것)나 계산 코드가 섞여 들어가요. 그러면 거기 연결된 다른 프로그램까지 소스를 공개해야 할 수 있어요. 발표자는 AI가 이걸 'AGPL 전파'라고 부른다고 전하고, 그래서 배포하려면 새 사이트에 따로 올려야 한다고 말해요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 680 250" role="img" aria-label="기존 사이트에 섞어 올리면 공통 컴포넌트와 다른 앱까지 공개 대상이 되고, 새 사이트에 따로 올리면 혼천의 수정본만 공개 대상이다">
+    <text x="20" y="22" class="sub" text-anchor="start">(가) 기존 사이트에 섞어 올리면</text>
+    <rect class="box" x="20" y="34" width="310" height="160" rx="12"/>
+    <text x="175" y="56" text-anchor="middle" class="sub">기존 사이트</text>
+    <rect class="bad" x="38" y="68" width="130" height="50" rx="8"/>
+    <text x="103" y="98" text-anchor="middle">혼천의 수정본</text>
+    <rect class="bad" x="182" y="68" width="130" height="50" rx="8"/>
+    <text x="247" y="98" text-anchor="middle">공통 컴포넌트</text>
+    <rect class="bad" x="38" y="130" width="130" height="50" rx="8"/>
+    <text x="103" y="160" text-anchor="middle">내 다른 앱</text>
+    <rect class="bad" x="182" y="130" width="130" height="50" rx="8"/>
+    <text x="247" y="160" text-anchor="middle">계산 코드</text>
+    <rect class="ring" x="28" y="62" width="294" height="126" rx="10"/>
+    <text x="175" y="218" text-anchor="middle">연결된 것까지 공개 대상</text>
+
+    <text x="360" y="22" class="sub" text-anchor="start">(나) 새 사이트에 따로 올리면</text>
+    <rect class="box" x="360" y="34" width="140" height="160" rx="12"/>
+    <text x="430" y="56" text-anchor="middle" class="sub">새 사이트</text>
+    <rect class="bad" x="372" y="96" width="116" height="50" rx="8"/>
+    <text x="430" y="126" text-anchor="middle">혼천의 수정본</text>
+    <rect class="ring" x="366" y="90" width="128" height="62" rx="10"/>
+    <rect class="box" x="520" y="34" width="140" height="160" rx="12"/>
+    <text x="590" y="56" text-anchor="middle" class="sub">기존 사이트</text>
+    <rect class="ok" x="532" y="68" width="116" height="50" rx="8"/>
+    <text x="590" y="98" text-anchor="middle">내 다른 앱</text>
+    <rect class="ok" x="532" y="130" width="116" height="50" rx="8"/>
+    <text x="590" y="160" text-anchor="middle">공통 컴포넌트</text>
+    <text x="510" y="218" text-anchor="middle">혼천의 쪽만 공개 대상</text>
+  </svg>
+  <figcaption>점선 테두리가 소스를 공개해야 하는 범위예요. 발표자가 배포한다면 (나)처럼 새 사이트에 따로 올리겠다고 한 이유가 이거예요.</figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>AGPL 원문 5조는 서로 독립된 별개 프로그램을 한곳에 모아 둔 '집합물(aggregate)'이라면, 그 안에 AGPL 코드가 있어도 나머지 부분에는 이 라이선스가 적용되지 않는다고 정해요. 반대로 AGPL 코드와 합쳐져 하나의 더 큰 프로그램이 되면 전체가 대상이 돼요. 어디까지가 '합쳐진 것'인지는 상황마다 판단이 갈리니, 상용 서비스라면 영상의 말처럼 따로 분리해 두고 법률 검토를 받는 쪽이 안전해요.</p>
+  <p class="cite">출처: <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU AGPL v3 원문 5조</a></p>
+</aside>
+
+<h3>강한 카피레프트, 원작자의 뜻</h3>
+<p>AGPL 코드는 MIT나 Apache 같은 다른 라이선스로 바꿀 수 없어요. 누가 언제 고치든 AGPL-3.0을 유지한 채 전체 소스를 공개해야 해요. 발표자는 이걸 무료를 끝까지 이어 가는 강한 <span class="term" data-term="카피레프트" data-en="Copyleft" data-desc="저작권을 이용해, 고친 프로그램도 같은 자유(공개·수정·재배포)를 유지하게 강제하는 라이선스 방식이에요. GPL과 AGPL이 대표적이고, MIT 같은 허용적 라이선스와 반대편에 있어요." data-g="9">카피레프트</span>라고 불러요. 상업적으로 써도 되지만, 대신 원작자처럼 공개하라는 조건이에요. 위반하면 저작권 위반이고 라이선스 위반이니, 라이선스 전문을 꼭 읽고 지키라고 당부해요.</p>
+<p>발표자는 원작자들이 들인 시간도 언급해요. README의 크레딧을 보면 사주 <span class="term" data-term="만세력" data-desc="날짜마다 간지(천간·지지)와 절기를 정리해 둔 달력이에요. 사주 계산은 결국 이 표를 정확하게 찾는 일이라, 사주 앱의 핵심 재료예요." data-g="7">만세력</span>, 자미두수 명반, 점성술 출생 차트가 각각 어디서 왔는지 적혀 있어요. 기술 스택에는 React 19, TypeScript 5, Vite 7, Tailwind CSS 4와 함께 음력 변환을 맡는 lunar-javascript가 있어요. 계산 엔진은 <code>@orrery/core</code>라는 npm 패키지로도 쓸 수 있다고 안내돼 있어요.</p>
+<figure>
+  <img src="assets/frame-2120.png" alt="혼천의 README의 기술 스택과 @orrery/core 맛보기. React 19 + TypeScript 5, Vite 7, Tailwind CSS 4, lunar-javascript (음력 변환), Vitest. 아래 calculateSaju, createChart, calculateNatal을 불러 쓰는 예시 코드">
+  <figcaption>계산 엔진만 패키지로 가져다 쓸 수도 있지만, 이 패키지도 AGPL-3.0이에요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=1280s" target="_blank" rel="noopener">영상 21:20에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>README 크레딧에 따르면 사주 만세력은 고영창님의 Perl '진짜만세력'을 김정균님이 PHP(PHP: Hypertext Preprocessor)로 옮긴 것을, 2018년 11월 황장호가 Java·Python으로 옮겨 쓰다가 2026년 2월 Claude Code(Opus 4.6)로 TypeScript로 포팅한 거예요. 자미두수 명반은 lunar-javascript 기반, 출생 차트는 Swiss Ephemeris의 Moshier 이론을 순수 TypeScript로 옮긴 거예요. npm의 @orrery/core도 라이선스가 AGPL-3.0-only로 표시돼 있어요.</p>
+  <p>발표자는 카피레프트를 '카피라이트의 100% 반대'라고 표현하는데, GNU 재단 설명은 조금 달라요. 카피레프트는 저작권을 버리는 게 아니라 저작권을 써서 사용자의 자유를 보장하는 방식이에요. 라이선스를 지키지 않으면 저작권 침해가 되는 것도 그래서예요.</p>
+  <p class="cite">출처: <a href="https://github.com/rath/orrery" target="_blank" rel="noopener">rath/orrery README 크레딧</a> · <a href="https://www.npmjs.com/package/@orrery/core" target="_blank" rel="noopener">npm @orrery/core</a> · <a href="https://www.gnu.org/licenses/copyleft.html" target="_blank" rel="noopener">GNU 'What is Copyleft?'</a></p>
+</aside>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=1538s" target="_blank" rel="noopener">25:38</a>
+  <h2>소스를 닫고 싶다면: MIT 라이브러리라는 다른 길</h2>
+<p>AGPL이 부담스럽다면 길이 하나 더 있어요. 발표자는 자기 사이트에 사주 기능을 올려 두고 싶다면 혼천의 대신 MIT 라이선스로 공개된 사주 라이브러리를 바탕으로 만들라고 권해요. 이전 영상에서 소개한 '포춘텔러'와 '만세력 라이브러리'가 그 예예요. 발표자 자신의 사주 사이트도 MIT 라이선스 기반으로 만들었다고 해요.</p>
+<p>왜 굳이 갈라서 쓰냐면, 상업 서비스에서 소스 공개는 그 자체로 위험이 되기 때문이에요. 잘 운영되는 서비스를 누군가 통째로 복사해 쓸 수 있어요. 영상에서 말한 두 길을 나란히 놓으면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>기준</th><th>혼천의 (AGPL-3.0)</th><th>MIT 라이선스 사주 라이브러리</th></tr></thead>
+    <tbody>
+      <tr><td>내 컴퓨터에서 쓰고 공부</td><td>자유</td><td>자유</td></tr>
+      <tr><td>고쳐서 상업적으로 쓰기</td><td>가능</td><td>가능</td></tr>
+      <tr><td>배포·웹 서비스 시 소스 공개</td><td>전체 공개해야 함</td><td>공개하지 않아도 됨</td></tr>
+      <tr><td>라이선스 바꾸기</td><td>안 됨 (AGPL-3.0 유지)</td><td>영상에서 다루지 않음</td></tr>
+      <tr><td>상업 서비스에서의 약점</td><td>남이 서비스를 통째로 복사할 수 있음</td><td>영상에서 다루지 않음</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>발표자의 결론은 단순해요. 혼천의는 상업용으로는 약점이 있지만 공부하기에는 충분하고, 사주 계산도 잘 돼요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>MIT 라이선스도 조건이 아예 없지는 않아요. 원문은 '위 저작권 표시와 이 허가 문구를 소프트웨어의 모든 복제본이나 상당 부분에 포함해야 한다'고 정해요. 소스를 닫아도 되지만, 가져다 쓴 라이브러리의 저작권 표시는 남겨야 해요. 영상이 말한 두 라이브러리는 이름만 나오고 정확한 저장소가 화면에 나오지 않아서, 쓰기 전에 각 저장소의 <code>LICENSE</code> 파일을 직접 확인하는 게 좋아요.</p>
+  <p class="cite">출처: <a href="https://opensource.org/license/mit" target="_blank" rel="noopener">Open Source Initiative — The MIT License</a></p>
+</aside>
+
+<h3>차별점은 데이터에서 나와요</h3>
+<p>마지막으로 발표자는 앱의 차별점을 어디서 만들지 이야기해요. 기존 서비스를 강화하거나, 정부와 공공기관이 푸는 데이터를 API로 받아 내 데이터베이스에 접목하는 데서 나온다는 거예요. 직방, 아실, 네이버 부동산 같은 부동산 서비스도 결국 지도와 공공기관 API 데이터를 엮어 만들었다고 예를 들어요.</p>
+<p>출발점으로 보여 준 게 GitHub의 public-apis-4Kr이에요. 제목 그대로 '한국 서비스에 이용 가능한 Public API 모음'이고, '정부 & 공공기관' 표에 공공데이터포털, 공정위 데이터포털, 국가기록원 검색 API, 국토교통부 실거래가, 기상청 단기예보 같은 API가 설명과 함께 정리돼 있어요. 발표자는 한국 서비스용 에이전트 스킬 모음인 K-Skill도 같이 언급해요.</p>
+<figure>
+  <img src="assets/frame-2814.png" alt="public-apis-4Kr 저장소 링크 카드와 목록. 카테고리 공공안전, 항공, 물류 인프라 & 통관, 농수산, 생활경제, 재정 & 예산, 네이버, 카카오, 그리고 정부 & 공공기관 표에 공공데이터포털, 공정위 데이터포털 FairData, 국가기록원 검색 API, 국가지표통합 공유서비스, 국토교통부 실거래가, 기상청 단기예보·생활기상지수·중기예보">
+  <figcaption>국토교통부 실거래가 같은 API가 발표자가 예로 든 부동산 서비스의 재료예요. <a href="https://www.youtube.com/watch?v=0KJLjaQZbM4&amp;t=1694s" target="_blank" rel="noopener">영상 28:14에서 보기</a></figcaption>
+</figure>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-6"><dt>대운<span class="en">Major luck cycle</span></dt><dd>보통 10년 단위로 바뀐다고 보는 인생의 큰 흐름이에요. 혼천의는 대운 10개를 계산하고, AI 풀이는 이걸 바탕으로 인생의 큰 그림을 말해 줘요.</dd></div>
+    <div class="g" id="g-7"><dt>만세력</dt><dd>날짜마다 간지(천간·지지)와 절기를 정리해 둔 달력이에요. 사주 계산은 결국 이 표를 정확하게 찾는 일이라, 사주 앱의 핵심 재료예요.</dd></div>
+    <div class="g" id="g-8"><dt>바이브 코딩<span class="en">Vibe coding</span></dt><dd>코드를 직접 쓰는 대신 AI 코딩 도구에 하고 싶은 걸 말로 지시해 프로그램을 만들거나 고치는 방식이에요. 빠르지만 AI가 의도하지 않은 곳까지 건드릴 수 있어요.</dd></div>
+    <div class="g" id="g-4"><dt>십신<span class="en">Ten Gods</span></dt><dd>일간(나)을 기준으로 다른 글자와의 관계를 비견, 정인, 편재처럼 열 가지로 나눈 이름이에요. 사주 풀이에서 성격과 관계를 읽는 기본 틀이에요.</dd></div>
+    <div class="g" id="g-1"><dt>자미두수<span class="en">Zi Wei Dou Shu</span></dt><dd>중국에서 내려온 점법으로, 태어난 때를 바탕으로 별들을 열두 칸(궁) 명반에 배치해 풀어요. 사주팔자와 입력은 같지만 결과를 보여 주는 틀이 달라요.</dd></div>
+    <div class="g" id="g-3"><dt>자시법<span class="en">Rule for the Zi hour</span></dt><dd>밤 11시~새벽 1시인 자시에 태어난 사람의 날짜를 언제 넘길지 정하는 규칙이에요. 고르는 방식에 따라 일주가 하루 달라질 수 있어요.</dd></div>
+    <div class="g" id="g-5"><dt>지장간<span class="en">Hidden stems</span></dt><dd>지지(아래 글자) 하나 안에 숨어 있다고 보는 천간들이에요. 겉으로 보이는 여덟 글자 밖의 기운까지 보려고 계산해요.</dd></div>
+    <div class="g" id="g-2"><dt>출생 차트<span class="en">Natal chart</span></dt><dd>서양 점성술에서 태어난 순간 하늘의 행성 위치를 원 하나에 그린 그림이에요. 그래서 시각뿐 아니라 태어난 곳의 위도·경도가 필요해요.</dd></div>
+    <div class="g" id="g-9"><dt>카피레프트<span class="en">Copyleft</span></dt><dd>저작권을 이용해, 고친 프로그램도 같은 자유(공개·수정·재배포)를 유지하게 강제하는 라이선스 방식이에요. GPL과 AGPL이 대표적이고, MIT 같은 허용적 라이선스와 반대편에 있어요.</dd></div>
+    <div class="g"><dt>AGPL</dt><dd>GNU Affero General Public License</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>CSS</dt><dd>Cascading Style Sheets</dd></div>
+    <div class="g"><dt>GNU</dt><dd>GNU&#x27;s Not Unix</dd></div>
+    <div class="g"><dt>GPL</dt><dd>GNU General Public License</dd></div>
+    <div class="g"><dt>MIT</dt><dd>Massachusetts Institute of Technology</dd></div>
+    <div class="g"><dt>PHP</dt><dd>PHP: Hypertext Preprocessor</dd></div>
+    <div class="g"><dt>TSX</dt><dd>TypeScript XML</dd></div>
+    <div class="g"><dt>UTC</dt><dd>Coordinated Universal Time</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=0KJLjaQZbM4" target="_blank" rel="noopener">원본 영상 — Curator Danbi - Money Maven</a></li>
+    <li id="src-2"><a href="https://github.com/rath/orrery" target="_blank" rel="noopener">rath/orrery — 혼천의 GitHub 저장소 (README, 크레딧, AGPL-3.0 설명)</a></li>
+    <li id="src-3"><a href="https://github.com/rath/orrery/blob/main/package.json" target="_blank" rel="noopener">rath/orrery package.json</a></li>
+    <li id="src-4"><a href="https://sky.told.me/" target="_blank" rel="noopener">혼천의 라이브 사이트</a></li>
+    <li id="src-5"><a href="https://www.npmjs.com/package/@orrery/core" target="_blank" rel="noopener">npm — @orrery/core</a></li>
+    <li id="src-6"><a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU Affero General Public License v3 원문</a></li>
+    <li id="src-7"><a href="https://www.gnu.org/licenses/why-affero-gpl.html" target="_blank" rel="noopener">GNU — Why the Affero GPL</a></li>
+    <li id="src-8"><a href="https://www.gnu.org/licenses/copyleft.html" target="_blank" rel="noopener">GNU — What is Copyleft?</a></li>
+    <li id="src-9"><a href="https://opensource.org/license/mit" target="_blank" rel="noopener">Open Source Initiative — The MIT License</a></li>
+    <li id="src-10"><a href="https://cursor.com/pricing" target="_blank" rel="noopener">Cursor 공식 요금표</a></li>
+    <li id="src-11"><a href="https://github.com/yybmion/public-apis-4Kr" target="_blank" rel="noopener">yybmion/public-apis-4Kr — 한국 서비스용 Public API 모음</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 14일에 이 영상을 보고 정리했어요. 원본은 Curator Danbi - Money Maven 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

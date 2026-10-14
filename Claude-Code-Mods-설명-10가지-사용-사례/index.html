@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Code Mods 설명, 10가지 사용 사례</title>
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --radius:16px; --maxw:760px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:6px 0; font-size:15px}
+  nav.toc a{color:var(--text-sub)}
+  nav.toc a.active{color:var(--brand); font-weight:600}
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  td code{font-size:13.5px}
+
+  /* ── 용어 툴팁 ─────────────────────────────────────── */
+  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
+    font-weight:600; background:none}
+  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
+  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
+    background:var(--text); color:var(--bg); border-radius:12px;
+    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
+    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease; pointer-events:none}
+  #tip.on{opacity:1; visibility:visible}
+  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Claude Code Mods 설명, 10가지 사용 사례</h1>
+  <p class="lede">Claude Code 화면에 내 UI를 붙이는 원리와 쓰임새를 짚어요</p>
+  <div class="meta">
+    <span>코드팩토리</span><span class="dot">·</span>
+    <span>08:36</span><span class="dot">·</span>
+    <span>유튜브 영상 정리</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=z-GwTV_qID8" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>모드는 <code>plugin.json</code>, <code>hooks.json</code>, 코드 파일 세 개로 이뤄진 플러그인이에요.</li>
+    <li>원하는 이벤트에 함수를 등록하면 Claude Code가 그 작업 직전에 함수를 불러요. 웹 미들웨어와 같은 구조예요.</li>
+    <li><code>next</code>에 무엇을 넘기느냐로 원래 동작 유지, 내용 변경, 완전 대체를 골라요.</li>
+    <li>모드는 화면에 보이는 것만 바꿔요. 모델이 읽고 쓰는 원본은 그대로예요.</li>
+    <li>어디에 무엇을 보여 줄지 말로 설명하면 Claude가 모드 코드를 대신 써 줘요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">모드는 어떻게 동작하나요</a></li>
+    <li><a href="#s2">이메일 가림 모드 뜯어보기</a></li>
+    <li><a href="#s3">사례 1~5: 작업 흐름을 Claude Code 안으로</a></li>
+    <li><a href="#s4">사례 6~10: 기다림·언어·보안·상태</a></li>
+    <li><a href="#s5">내 모드 직접 만들기</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>모드는 어떻게 동작하나요</h2>
+<p>Mods(모드)는 Claude Code 화면을 내가 직접 고칠 수 있게 해 주는 기능이에요. 입력창 위에 원하는 정보를 띄우고, 옆에 작업 패널을 붙이고, 답변 속 이메일을 클릭하기 전까지 가릴 수도 있어요. 공식 기능이라 Claude Code의 원래 화면에 그대로 붙는다는 점이 커요.</p>
+<figure>
+  <img src="assets/frame-0028.png" alt="Customize 화면의 Plugins 탭. Codefactory email mask, Ko ui, Cc arcade, Codefactory mermaid, Terminal browser 플러그인이 나열돼 있다">
+  <figcaption>모드는 플러그인 목록에 함께 올라와요. 영상에서 소개하는 사례들이 여기 보여요. <a href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=28s" target="_blank" rel="noopener">영상 00:28에서 보기</a></figcaption>
+</figure>
+<h3>플러그인 하나가 곧 모드예요</h3>
+<p>모드는 플러그인으로 만들어요. <code>.claude-plugin/plugin.json</code>에 이름과 버전을 적고, <code>hooks/hooks.json</code>에서 실행할 코드 파일 경로를 가리켜요. 실제 기능은 그 코드 파일(<code>hooks/register.js</code>)에 써요.</p>
+<figure>
+  <img src="assets/frame-0056.png" alt="codefactory-email-mask 폴더 구조와 plugin.json 내용. name, version 0.1.0, description, author 항목이 있다">
+  <figcaption>이메일 가림 모드의 폴더 구조예요. <code>plugin.json</code>에는 이름·버전·설명만 들어가요. <a href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=56s" target="_blank" rel="noopener">영상 00:56에서 보기</a></figcaption>
+</figure>
+<h3>이벤트 사이에 끼어드는 미들웨어</h3>
+<p>Claude Code는 프롬프트를 보낼 때, 도구를 부를 때, 응답을 화면에 그릴 때마다 이벤트를 내요. 모드는 원하는 이벤트에 함수를 등록해 두는 방식이에요. 그러면 Claude Code가 그 작업을 하기 직전에 내 함수를 먼저 불러요.</p>
+<p>발표자는 이걸 기존 <span class="term" data-term="훅" data-desc="프로그램이 특정 시점에 내 코드를 불러 주도록 걸어 두는 자리예요. 원래 코드를 고치지 않고 동작을 덧붙일 때 써요.">훅</span>과 비슷하고, 웹 개발의 <span class="term" data-term="미들웨어" data-desc="요청과 최종 처리 사이에 끼어들어 내용을 확인하거나 바꾸는 함수예요. 여러 개를 줄줄이 이어 붙이고, 각자 다음 단계로 넘길지 정해요.">미들웨어</span>와 같은 구조라고 설명해요. Claude Code가 원래 일을 하기 전에 중간에서 가로채 내용을 확인하거나 바꾸는 거예요.</p>
+<p>등록한 함수는 인자 세 개를 받아요.</p>
+<ul>
+  <li><code>$</code>: Claude Code 기능 묶음이에요. 패널을 띄우고, 파일을 읽고, 모델을 부를 수 있어요.</li>
+  <li><code>e</code>: 지금 일어난 이벤트예요. 그릴 응답이나 부를 도구 정보가 들어 있어요.</li>
+  <li><code>next</code>: 다음 단계로 넘기는 콜백이에요.</li>
+</ul>
+<p><code>next</code>를 어떻게 부르느냐에 따라 결과가 세 갈래로 나뉘어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>함수가 하는 일</th><th>결과</th></tr></thead>
+    <tbody>
+      <tr><td><code>next(e)</code> — 이벤트를 그대로 넘겨요</td><td>원래 동작이 그대로 유지돼요</td></tr>
+      <tr><td><code>next({ ...e, props })</code> — 고친 이벤트를 넘겨요</td><td>다음 단계가 고친 값을 써요</td></tr>
+      <tr><td><code>next</code> 없이 값을 바로 반환해요</td><td>반환한 값이 그대로 출력돼요</td></tr>
+    </tbody>
+  </table>
+</div>
+<figure>
+  <img src="assets/frame-0234.png" alt="register.js 코드 옆에 next(e)는 기본 처리, next({...e})는 바뀐 props, return은 그대로 출력이라고 적힌 도식">
+  <figcaption>세 가지 경우를 한 화면에 정리한 장면이에요. <code>command.run</code>처럼 값을 바로 반환하는 예도 함께 보여요. <a href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=154s" target="_blank" rel="noopener">영상 02:34에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 문서는 모드의 함수를 'hook'이라고 부르고, 설정 파일에 셸 명령으로 적는 기존 훅은 'settings hook'이라고 따로 불러요. 둘 다 이벤트에 반응하지만, 모드의 함수는 Claude Code 안에서 직접 돌아요.</p>
+  <p>모드는 기본으로 켜져 있어요. 터미널에서는 Claude Code v2.1.287 이상, Desktop 앱에서는 v2.1.286 이상이 필요해요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/plugins/mods/overview" target="_blank" rel="noopener">Claude Code 공식 문서 — Mods overview</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=171s" target="_blank" rel="noopener">02:51</a>
+  <h2>이메일 가림 모드 뜯어보기</h2>
+<p>원리를 실제 화면과 맞춰 보는 예제예요. 촬영하거나 화면을 공유할 때, 또는 보안 때문에 응답 속 이메일 주소를 가리고 싶을 수 있어요. 이 모드를 켜면 주소 자리에 <code>[이메일 가림]</code>이 보여요. 입력창 위 <code>표시하기</code> 버튼을 누르면 원래 주소가 나오고, 다시 누르면 가려져요. 이 동작은 클릭 대신 호버로 설계할 수도 있어요.</p>
+<figure>
+  <img src="assets/frame-0301.png" alt="받는 사람 칸의 이메일 주소가 [이메일 가림]으로 바뀐 메일 초안과, 입력창 위의 촬영 모드·이메일 가림 ON·표시하기 버튼">
+  <figcaption>모드를 켠 상태예요. 메일 초안의 주소만 가려지고 입력창 위에 상태와 버튼이 붙었어요. <a href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=181s" target="_blank" rel="noopener">영상 03:01에서 보기</a></figcaption>
+</figure>
+<h3>응답을 그릴 때 이메일을 바꿔치기해요</h3>
+<p>먼저 <code>ui.render</code> 이벤트에 함수를 등록하고, 컴포넌트를 <code>AssistantMessage</code>로 지정해요. 그러면 Claude의 응답을 화면에 그릴 때마다 이 함수가 불려요.</p>
+<p>함수는 이벤트의 <code>props</code>에서 그릴 내용을 꺼내요. <code>mask</code> 함수가 정규식으로 이메일을 찾아 <code>[이메일 가림]</code>으로 바꾸고, 바뀐 이벤트를 <code>next</code>에 넘겨요. 가릴지 말지는 <code>hidden</code> 값 하나로 정해요. 켜져 있으면 가리고, 꺼져 있으면 원래 내용을 그대로 넘겨요.</p>
+<h3>입력창 위에 버튼을 붙여요</h3>
+<p>사용자가 <code>hidden</code>을 직접 바꾸려면 버튼이 필요해요. 이때 쓰는 자리가 <code>AbovePrompt</code>예요. 이름 그대로 입력창 바로 위에 UI를 그리는 위치예요.</p>
+<p>여기에 텍스트와 버튼을 넣고, 버튼의 <code>onPress</code>에서 <code>hidden</code>을 뒤집어요. 그다음 <code>$.ui.invalidate('ui.render')</code>를 불러 화면을 다시 그리게 해요. 버튼 글자도 상태에 따라 <code>표시하기</code>와 <code>다시 가리기</code>로 바뀌어요.</p>
+<figure>
+  <img src="assets/frame-0351.png" alt="AbovePrompt 컴포넌트에 Box, Text, Button을 그리는 register.js 코드와, 왼쪽에 강조된 입력창 위 버튼 영역">
+  <figcaption><code>AbovePrompt</code> 코드와 실제로 그려진 버튼 영역을 나란히 보여 줘요. <a href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=231s" target="_blank" rel="noopener">영상 03:51에서 보기</a></figcaption>
+</figure>
+<h3>바뀌는 건 화면뿐이에요</h3>
+<p>여기서 짚고 갈 점이 있어요. 모드는 화면에 그려지는 내용만 바꿔요. 원본 파일에는 실제 주소가 그대로 있고, 모델도 진짜 주소로 메일 초안을 써요. 모드는 그 결과를 화면에 보여 줄 때만 끼어들어요.</p>
+<figure>
+  <img src="assets/frame-0431.png" alt="contacts.txt 원본 데이터의 실제 이메일, 모델이 쓴 원래 내용, ui.render를 거친 화면 표시가 화살표로 이어진 도식">
+  <figcaption>원본 데이터와 모델의 결과는 그대로이고, <code>ui.render</code> 단계에서만 주소가 가려져요. <a href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=271s" target="_blank" rel="noopener">영상 04:31에서 보기</a></figcaption>
+</figure>
+<p>그래서 모드를 설계하는 순서는 단순해요. 화면의 어디를 바꿀지 정하고, 그 이벤트에 코드를 붙이고, 클릭하면 상태가 바뀌게 만들면 돼요.</p>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=289s" target="_blank" rel="noopener">04:49</a>
+  <h2>사례 1~5: 작업 흐름을 Claude Code 안으로</h2>
+<p>여기서부터는 지금 인기 있는 사례 열 가지를 빠르게 훑어요. 앞의 다섯 개는 다른 도구에서 하던 일을 Claude Code 화면 안으로 끌어오는 사례예요.</p>
+<h3>1. PR 상태</h3>
+<p>입력창 위에 PR의 리뷰·검사 상태를 띄워요. 코드를 쓰면서 PR에 아직 남은 확인 항목을 같이 볼 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0505.png" alt="입력창 위에 claude-code#99540 PR이 blocked, review required 상태로 표시되고, 아래에 cc-pr-tracker의 AbovePrompt 코드가 보인다">
+  <figcaption>PR 번호와 차단 상태가 입력창 바로 위에 붙어요. 이것도 <code>AbovePrompt</code>에 그린 거예요. <a href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=305s" target="_blank" rel="noopener">영상 05:05에서 보기</a></figcaption>
+</figure>
+<h3>2. Linear 연결</h3>
+<p>Claude Code 안에서 Linear 이슈를 검색하고, 고른 이슈를 바로 작업 요청으로 넘겨요. 코드 수정과 테스트가 끝나면 결과를 댓글 초안으로 정리해 올릴 수도 있어요. Linear 말고 다른 이슈 도구도 같은 식으로 붙일 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0513.png" alt="터미널 안 LINEAR 작업할 이슈 선택 창. 검색창 아래 COD-229부터 COD-231까지 이슈 목록과 상태가 보인다">
+  <figcaption>터미널을 벗어나지 않고 이슈를 검색·선택하는 창이에요. <a href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=313s" target="_blank" rel="noopener">영상 05:13에서 보기</a></figcaption>
+</figure>
+<h3>3. 문단 직접 골라 고치기</h3>
+<p>옆 패널에 문서를 띄우고, 고칠 문단의 연필 버튼을 눌러 어떻게 바꿀지 코멘트를 적게 만들 수 있어요. Claude는 그 코멘트를 맥락 삼아 해당 문단만 고치고, 패널에도 고친 내용이 바로 반영돼요.</p>
+<figure>
+  <img src="assets/frame-0537.png" alt="옆 패널에 띄운 Claude Code Mods 소개 대본. 한 문단 아래 Claude is editing 표시가 있고 Pane 컴포넌트와 prompt.submit 코드가 겹쳐 보인다">
+  <figcaption>패널 속 문단 하나를 Claude가 고치는 중이에요. 코멘트는 <code>$.prompt.submit</code>으로 Claude에게 전달돼요. <a href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=337s" target="_blank" rel="noopener">영상 05:37에서 보기</a></figcaption>
+</figure>
+<h3>4. 브라우저</h3>
+<p>발표자가 많이 쓴다고 꼽은 기능이에요. 지원하는 터미널에서는 Claude Code 옆에 브라우저를 직접 붙일 수 있어요. 대화와 웹페이지를 한 화면에 두고 일하는 방식이에요.</p>
+<figure>
+  <img src="assets/frame-0553.png" alt="터미널 화면을 대화와 웹페이지 두 칸으로 나눈 도식과 browser.open 이벤트, Pane 컴포넌트 코드">
+  <figcaption>대화 옆에 웹페이지 칸을 두는 구조예요. <code>browser.open</code> 이벤트를 받아 패널로 띄워요. <a href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=353s" target="_blank" rel="noopener">영상 05:53에서 보기</a></figcaption>
+</figure>
+<h3>5. 다이어그램</h3>
+<p>Claude가 응답에 <span class="term" data-term="Mermaid" data-desc="글로 쓴 코드를 순서도·시퀀스 다이어그램 같은 그림으로 바꿔 주는 문법이에요. 마크다운 안에 넣어 쓰는 경우가 많아요.">Mermaid</span> 코드를 쓰면 원래는 글자로만 보여요. 모드를 쓰면 그 자리에 글자로 그린 도식을 바로 보여 줄 수 있어요. 로그인 분기나 결제 흐름을 볼 때 따로 뷰어를 띄울 필요가 없어져요.</p>
+<figure>
+  <img src="assets/frame-0609.png" alt="로그인에서 안전한 복귀 경로인지 묻고 예면 원래 페이지, 아니오면 대시보드로 가는 흐름을 박스와 선 문자로 그린 도식">
+  <figcaption>로그인 후 복귀 경로를 나누는 흐름이 응답 안에서 바로 도식으로 그려졌어요. <a href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=369s" target="_blank" rel="noopener">영상 06:09에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>모드가 그리는 패널·밴드는 모든 곳에서 보이지는 않아요. 공식 문서 기준으로 터미널의 <code>claude</code>와 Desktop 앱의 Code 탭에서만 보여요. VS Code 확장의 채팅 패널, <code>claude -p</code>, 클라우드 세션에서는 함수는 돌지만 화면에는 아무것도 그려지지 않아요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/plugins/mods/overview" target="_blank" rel="noopener">Claude Code 공식 문서 — Mods overview, Where mods run</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=375s" target="_blank" rel="noopener">06:15</a>
+  <h2>사례 6~10: 기다림·언어·보안·상태</h2>
+<p>나머지 다섯 개는 기다리는 시간, 언어, 보안, 상태 확인처럼 Claude Code를 쓰는 경험 자체를 바꾸는 사례예요.</p>
+<h3>6. 게임</h3>
+<p>이런 기능이 나오면 꼭 게임을 붙이는 사람이 있다고 해요. 응답을 기다리는 동안 게임을 하며 시간을 보내는 용도예요.</p>
+<figure>
+  <img src="assets/frame-0622.png" alt="Claude Code 대기 표시 아래에 games 메뉴와 테트리스 판, 점수 18, 최고 기록 44가 표시된 화면">
+  <figcaption>응답을 기다리는 자리에 테트리스가 붙었어요. <a href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=382s" target="_blank" rel="noopener">영상 06:22에서 보기</a></figcaption>
+</figure>
+<h3>7. 한국어 UI</h3>
+<p>터미널의 명령어 설명과 설정 항목을 한국어로 바꿔요. 다른 언어도 마찬가지예요. Claude Code가 원래 그리는 UI에도 이렇게 손을 댈 수 있다는 예시예요.</p>
+<figure>
+  <img src="assets/frame-0636.png" alt="Settings의 Config 탭. 자동 압축, 팁 표시, 생각 모드, 세션 요약, 코드 되돌리기 같은 설정 이름이 한국어로 바뀌어 있다">
+  <figcaption>설정 화면의 항목 이름이 한국어로 나와요. 값(true, false)은 그대로예요. <a href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=396s" target="_blank" rel="noopener">영상 06:36에서 보기</a></figcaption>
+</figure>
+<h3>8. 특정 문자 가리기</h3>
+<p>앞에서 본 이메일 가림을 넓힌 사례예요. 촬영 중이거나 화면을 공유할 때, 이메일 주소나 <span class="term" data-term="Base64" data-desc="바이너리 데이터를 영문자·숫자 64개로만 바꿔 적는 인코딩이에요. 암호화가 아니라서 누구나 바로 원래 값으로 되돌릴 수 있어요.">Base64</span>로 인코딩한 값, <span class="term" data-term="JWT" data-desc="로그인 정보 같은 클레임을 담아 서명한 토큰이에요. 이게 새면 남이 그 사용자로 행세할 수 있어서 화면에 노출하면 안 돼요.">JWT</span> 같은 값을 가려 둘 수 있어요. 필요할 때만 버튼을 눌러 확인해요.</p>
+<h3>9. 컨텍스트 사용량</h3>
+<p>입력창 위에 지금 <span class="term" data-term="컨텍스트" data-desc="모델이 한 번에 읽을 수 있는 대화·파일 내용의 총량이에요. 꽉 차면 앞부분을 요약하거나 잘라내야 해서 사용량을 지켜볼 만해요.">컨텍스트</span>를 얼마나 썼는지, 최근 턴에서 얼마나 늘었는지 보여 줘요. 파일을 읽거나 작업을 이어갈 때 사용량이 늘어나는 걸 한눈에 볼 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0704.png" alt="입력창 위에 9% of context, 88.3k/1M, +1.3k last turn이 표시되고 아래에 token-weather 모드의 AbovePrompt 코드와 $.session.usage() 호출이 보인다">
+  <figcaption>전체 사용률과 직전 턴에서 늘어난 양이 함께 나와요. 값은 <code>$.session.usage()</code>로 읽어요. <a href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=424s" target="_blank" rel="noopener">영상 07:04에서 보기</a></figcaption>
+</figure>
+<h3>10. 에이전트 관제</h3>
+<p>현재 세션에서 돌고 있는 에이전트들을 옆 패널에 모아 보여 줘요. 하나씩 눌러 대화와 도구 사용 내역, 어떤 작업을 마쳤는지 확인할 수 있어요. 발표자는 다이나믹 워크플로처럼 에이전트를 여럿 돌릴 때 특히 쓸모 있다고 봐요.</p>
+<figure>
+  <img src="assets/frame-0718.png" alt="Agents 패널에 Explore 에이전트 두 개가 Running 상태로 표시되고, 각각 실행 중인 Bash 명령과 토큰 수가 보인다">
+  <figcaption>두 에이전트가 동시에 돌고 있는 모습이에요. 끝나면 Done과 도구 사용 횟수로 바뀌어요. <a href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=438s" target="_blank" rel="noopener">영상 07:18에서 보기</a></figcaption>
+</figure>
+<h3>열 가지를 한 표로</h3>
+<p>영상 화면에 보인 위치와 코드를 기준으로 묶으면 이래요. 코드가 화면에 나오지 않은 사례는 비워 뒀어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>사례</th><th>어디에 그리나요</th><th>화면에 보인 코드</th></tr></thead>
+    <tbody>
+      <tr><td>PR 상태</td><td>입력창 위</td><td><code>ui.render</code> + <code>AbovePrompt</code></td></tr>
+      <tr><td>Linear 연결</td><td>터미널 안 선택 창</td><td>—</td></tr>
+      <tr><td>문단 수정</td><td>옆 패널</td><td><code>Pane</code>, <code>$.prompt.submit</code></td></tr>
+      <tr><td>브라우저</td><td>옆 패널</td><td><code>browser.open</code>, <code>Pane</code></td></tr>
+      <tr><td>다이어그램</td><td>응답 안</td><td><code>ui.render</code> + <code>AssistantMessage</code></td></tr>
+      <tr><td>게임</td><td>대기 표시 아래</td><td>—</td></tr>
+      <tr><td>한국어 UI</td><td>설정·명령어 화면</td><td>—</td></tr>
+      <tr><td>문자 가림</td><td>응답 안 + 입력창 위 버튼</td><td><code>AssistantMessage</code>, <code>AbovePrompt</code></td></tr>
+      <tr><td>컨텍스트 사용량</td><td>입력창 위</td><td><code>AbovePrompt</code>, <code>$.session.usage()</code></td></tr>
+      <tr><td>에이전트 관제</td><td>옆 패널</td><td><code>agent.spawn</code>, <code>Pane</code></td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=448s" target="_blank" rel="noopener">07:28</a>
+  <h2>내 모드 직접 만들기</h2>
+<p>이제 떠올려 둔 기능을 직접 모드로 만들어 볼 차례예요. 코드를 직접 쓸 필요는 없어요. 예를 들어 '입력창 위에 현재 Git 브랜치를 보여 주는 모드를 만들어 줘'라고 말하면 Claude가 알아서 만들어 줘요.</p>
+<figure>
+  <img src="assets/frame-0746.png" alt="입력창 위에 현재 Git 브랜치를 보여주는 모드를 만들어줘라는 요청 아래에 .claude-plugin/plugin.json, hooks/hooks.json, hooks/register.ts 세 파일 이름">
+  <figcaption>요청 한 줄로 모드를 이루는 파일 세 개가 만들어져요. <a href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=466s" target="_blank" rel="noopener">영상 07:46에서 보기</a></figcaption>
+</figure>
+<p>그러니 중요한 건 어디에 무엇을 보여 줄 수 있는지 아는 거예요. 화면의 자리 이름만 알아도 요청이 훨씬 정확해져요.</p>
+<figure>
+  <img src="assets/frame-0752.png" alt="화면 영역에 이름을 붙인 지도. 입력창 위는 AbovePrompt, 응답 영역은 AssistantMessage, 오른쪽 패널은 Pane">
+  <figcaption>입력창 위는 <code>AbovePrompt</code>, 응답은 <code>AssistantMessage</code>, 옆 패널은 <code>Pane</code>이에요. <a href="https://www.youtube.com/watch?v=z-GwTV_qID8&amp;t=472s" target="_blank" rel="noopener">영상 07:52에서 보기</a></figcaption>
+</figure>
+<p>모드는 플러그인처럼 설치되기 때문에 배포하거나 다른 사람과 나눌 수도 있어요. 발표자는 평소 따로 확인하던 정보나 반복해서 치던 요청부터 모드로 옮겨 보라고 권해요. 그 정보를 늘 띄워 두거나 자주 누르는 버튼을 Claude Code 바로 위에 두면 작업 효율이 올라가요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>말로 요청하면 Claude는 내장 스킬 <code>plugin-authoring</code>을 보고 모드를 써요. 직접 불러오려면 프롬프트에서 <code>/plugin-authoring</code>을 실행하면 돼요.</p>
+  <p>남이 만든 모드를 받을 때는 조심해야 해요. 모드는 샌드박스 없이 내 권한으로 돌아서 파일, 환경 변수, 네트워크에 모두 닿을 수 있어요. 설치 전에 <code>claude plugin validate ./some-mod</code>로 어떤 이벤트를 쓰고 무엇을 호출하는지 먼저 볼 수 있어요.</p>
+  <p>Anthropic이 공개한 예제 모드도 있어요. 컨텍스트 사용량을 입력창 위에 날씨처럼 보여 주는 <code>token-weather</code>가 그중 하나예요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/plugins/mods/create" target="_blank" rel="noopener">Claude Code 공식 문서 — Create a mod</a> · <a href="https://code.claude.com/docs/en/plugins/mods/overview" target="_blank" rel="noopener">Mods overview</a> · <a href="https://github.com/anthropics/claude-code-playground/tree/main/claude-code/mods/token-weather" target="_blank" rel="noopener">anthropics/claude-code-playground — token-weather</a></p>
+</aside>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 코드 이름과 영어 용어가 잘못 받아적힌 곳이 있어요. 화면의 코드와 자막 문구를 보고 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>미들 방식</td><td>미들웨어 방식</td><td></td></tr>
+      <tr><td>훅스.J제이슨</td><td>hooks/hooks.json</td><td></td></tr>
+      <tr><td>도굴 호출</td><td>도구 호출</td><td></td></tr>
+      <tr><td>후 기능</td><td>훅(hook) 기능</td><td></td></tr>
+      <tr><td>UI. 엔더</td><td>ui.render</td><td></td></tr>
+      <tr><td>어시스트 메시지</td><td>AssistantMessage</td><td>응답을 그리는 컴포넌트</td></tr>
+      <tr><td>프옵스</td><td>props</td><td></td></tr>
+      <tr><td>prompt트</td><td>AbovePrompt</td><td>입력창 위 영역</td></tr>
+      <tr><td>인ાલ val리데이트</td><td>invalidate</td><td>$.ui.invalidate(&#x27;ui.render&#x27;)</td></tr>
+      <tr><td>LM 모델</td><td>LLM</td><td></td></tr>
+      <tr><td>머메이드 / 멀리</td><td>Mermaid</td><td></td></tr>
+      <tr><td>유아</td><td>UI</td><td></td></tr>
+      <tr><td>베이시 인코딩</td><td>Base64 인코딩</td><td>화면 자막에 Base64로 표기</td></tr>
+      <tr><td>맞췄는지</td><td>마쳤는지</td><td></td></tr>
+      <tr><td>깃 브렌치</td><td>Git 브랜치</td><td></td></tr>
+      <tr><td>작업 표율</td><td>작업 효율</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail">
+  <h2>이 글에 나온 용어</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
+      <tbody>
+        <tr><td>미들웨어</td><td>요청과 최종 처리 사이에 끼어들어 내용을 확인하거나 바꾸는 함수예요. 여러 개를 줄줄이 이어 붙이고, 각자 다음 단계로 넘길지 정해요.</td></tr>
+        <tr><td>훅</td><td>프로그램이 특정 시점에 내 코드를 불러 주도록 걸어 두는 자리예요. 원래 코드를 고치지 않고 동작을 덧붙일 때 써요.</td></tr>
+        <tr><td>Mermaid</td><td>글로 쓴 코드를 순서도·시퀀스 다이어그램 같은 그림으로 바꿔 주는 문법이에요. 마크다운 안에 넣어 쓰는 경우가 많아요.</td></tr>
+        <tr><td>Base64</td><td>바이너리 데이터를 영문자·숫자 64개로만 바꿔 적는 인코딩이에요. 암호화가 아니라서 누구나 바로 원래 값으로 되돌릴 수 있어요.</td></tr>
+        <tr><td>JWT</td><td>로그인 정보 같은 클레임을 담아 서명한 토큰이에요. 이게 새면 남이 그 사용자로 행세할 수 있어서 화면에 노출하면 안 돼요.</td></tr>
+        <tr><td>컨텍스트</td><td>모델이 한 번에 읽을 수 있는 대화·파일 내용의 총량이에요. 꽉 차면 앞부분을 요약하거나 잘라내야 해서 사용량을 지켜볼 만해요.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="tail">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li><a href="https://www.youtube.com/watch?v=z-GwTV_qID8" target="_blank" rel="noopener">원본 영상 — 코드팩토리</a></li>
+    <li><a href="https://code.claude.com/docs/en/plugins/mods/overview" target="_blank" rel="noopener">Claude Code 공식 문서 — Mods overview</a></li>
+    <li><a href="https://code.claude.com/docs/en/plugins/mods/create" target="_blank" rel="noopener">Claude Code 공식 문서 — Create a mod</a></li>
+    <li><a href="https://github.com/anthropics/claude-code-playground/tree/main/claude-code/mods/token-weather" target="_blank" rel="noopener">anthropics/claude-code-playground — token-weather 예제 모드</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 6일에 이 영상을 보고 정리했어요. 원본은 코드팩토리 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="tooltip"></div>
+
+<script>
+(function () {
+  // ── 용어 툴팁 ───────────────────────────────────────
+  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
+  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
+  var tip = document.getElementById('tip');
+  var open = null;
+
+  function show(el) {
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    var name = el.getAttribute('data-term') || el.textContent;
+    tip.innerHTML = '';
+    var b = document.createElement('b');
+    b.textContent = name;
+    tip.appendChild(b);
+    tip.appendChild(document.createTextNode(desc));
+    tip.classList.add('on');
+
+    var r = el.getBoundingClientRect();
+    var t = tip.getBoundingClientRect();
+    var pad = 12;
+    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
+    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
+    var top = r.top + window.scrollY - t.height - 10;
+    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+    open = el;
+  }
+
+  function hide() {
+    tip.classList.remove('on');
+    open = null;
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    el.addEventListener('mouseenter', function () { show(el); });
+    el.addEventListener('mouseleave', hide);
+    el.addEventListener('focus', function () { show(el); });
+    el.addEventListener('blur', hide);
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      open === el ? hide() : show(el);
+    });
+  });
+
+  document.addEventListener('click', function (e) {
+    if (open && !e.target.closest('.term')) hide();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') hide();
+  });
+  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
+  window.addEventListener('resize', hide);
+
+  // ── 목차 현재 위치 표시 ─────────────────────────────
+  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
+  var map = {};
+  links.forEach(function (a) {
+    var s = document.getElementById(a.getAttribute('href').slice(1));
+    if (s) map[s.id] = a;
+  });
+  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
+  if ('IntersectionObserver' in window && targets.length) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        links.forEach(function (a) { a.classList.remove('active'); });
+        map[en.target.id].classList.add('active');
+      });
+    }, { rootMargin: '-10% 0px -75% 0px' });
+    targets.forEach(function (t) { io.observe(t); });
+  }
+})();
+</script>
+</body>
+</html>

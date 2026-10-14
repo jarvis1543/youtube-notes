@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anthropic CCA 시험으로 배우는 에이전틱 엔지니어링</title>
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --radius:16px; --maxw:760px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:6px 0; font-size:15px}
+  nav.toc a{color:var(--text-sub)}
+  nav.toc a.active{color:var(--brand); font-weight:600}
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  td code{font-size:13.5px}
+
+  /* ── 용어 툴팁 ─────────────────────────────────────── */
+  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
+    font-weight:600; background:none}
+  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
+  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
+    background:var(--text); color:var(--bg); border-radius:12px;
+    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
+    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease; pointer-events:none}
+  #tip.on{opacity:1; visibility:visible}
+  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Anthropic CCA 시험으로 배우는 에이전틱 엔지니어링</h1>
+  <p class="lede">시험이 묻는 안티패턴으로 에이전트 설계의 기본을 짚어요</p>
+  <div class="meta">
+    <span>AI Engineer</span><span class="dot">·</span>
+    <span>20:08</span><span class="dot">·</span>
+    <span>유튜브 영상 정리</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=Z-c11pV_uvU" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>CCA 시험은 다섯 영역과 여섯 운영 시나리오로 짜여 있고, 에이전트 아키텍처·오케스트레이션이 27%로 가장 커요.</li>
+    <li>에이전트 루프는 응답을 그냥 믿지 말고 <code>stop_reason</code>을 읽어 분기해요. 확신도가 낮으면 사람에게 넘겨요.</li>
+    <li>에이전트 하나에 도구를 몰아주지 말고, 역할을 좁힌 서브에이전트에게 필요한 조각만 넘겨요.</li>
+    <li>시끄러운 하위 작업은 별도 컨텍스트에서 돌려 요약만 받고, 메인 컨텍스트가 커지면 압축해요.</li>
+    <li>CI/CD에서는 헤드리스로 JSON을 받고, 아무도 기다리지 않는 일은 Batch API로 절반 가격에 돌려요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">왜 CCA 시험을 보라고 할까요</a></li>
+    <li><a href="#s2">CCA 시험은 어떻게 생겼나요</a></li>
+    <li><a href="#s3">루프와 stop_reason</a></li>
+    <li><a href="#s4">CLAUDE.md는 계층으로</a></li>
+    <li><a href="#s5">에이전트는 좁게, 컨텍스트는 조각만</a></li>
+    <li><a href="#s6">하위 작업은 격리하고, 긴 세션은 압축</a></li>
+    <li><a href="#s7">CI/CD는 헤드리스로, 급하지 않으면 배치로</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>왜 CCA 시험을 보라고 할까요</h2>
+<p>Frank Coyle 교수는 30년 넘게 컴퓨터 과학을 가르쳐 왔고, 지금은 UC 버클리에서 강의해요. 요즘 학생들의 고민은 AI예요. 컴퓨터 과학 전공이 더는 취업으로 가는 확실한 길이 아니거든요. 그래서 학생들이 에이전틱 AI 시대에 대비할 방법을 찾다가 Claude Certified Architect(CCA) 시험을 만났다고 해요.</p>
+<p>그가 이 시험을 권하는 이유는 단순해요. Anthropic은 사람들이 Claude를 실제로 어떻게 쓰는지, 어디서 문제가 생기는지 알고 있어요. 그러니 시험을 보지 않더라도 시험이 무엇을 묻는지만 훑어봐도 공부할 목록이 생긴다는 거예요.</p>
+<h3>실수는 없고, 만드는 것만 있어요</h3>
+<p>본론 전에 교육 철학을 먼저 꺼내요. 미술가이자 수녀였던 Sister Corita Kent의 규칙이에요.</p>
+<blockquote>
+  <p>Nothing is a mistake. There's no win and no fail. There's only make.</p>
+  <p>실수는 없어요. 이기는 것도 지는 것도 없어요. 만드는 것만 있어요.</p>
+  <cite>— 영상 01:40</cite>
+</blockquote>
+<p>읽기만 하지 말고 직접 만들어 보라는 말이에요. 만들다 보면 대부분은 안 돌아가요. 연사는 에디슨의 '실패한 게 아니라 안 되는 방법 1만 가지를 찾았을 뿐'이라는 말을 이어서 꺼내요.</p>
+<figure>
+  <img src="assets/frame-0152.png" alt="'Nothing is a mistake. There's no win and no fail. There's only make.' 문구와 Sister Corita Kent 출처가 적힌 슬라이드">
+  <figcaption>강연 전체를 관통하는 태도예요. 마지막 슬라이드에서도 같은 문장으로 끝나요. <a href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=112s" target="_blank" rel="noopener">영상 01:52에서 보기</a></figcaption>
+</figure>
+<h3>패턴만큼 안티패턴이 중요해요</h3>
+<p>1990년대 객체지향 프로그래밍과 함께 디자인 패턴 운동이 일어났어요. 지금은 에이전트에도 패턴이 있고, 그만큼 <span class="term" data-term="안티패턴" data-desc="흔히 끌리지만 결국 문제를 일으키는 설계 방식이에요. 무엇을 피해야 하는지 알면 올바른 선택지가 좁혀져요.">안티패턴</span>도 있어요. 연사는 하지 말아야 할 것을 알아야 해야 할 것이 보인다고 말해요. 이 생각이 강연의 틀이 돼요. 시나리오마다 '하면 안 되는 것'을 먼저 짚고, 그다음 올바른 패턴을 보여 줘요.</p>
+<figure>
+  <img src="assets/frame-0220.png" alt="에디슨 인용문 아래 'Anti-patterns are signal', 'Negation maps the terrain', 'Then constrain it' 세 칸이 있는 슬라이드">
+  <figcaption>LLM과 일할 때 막다른 길도 진전이라는 슬라이드예요. 틀린 길을 하나씩 지울수록 맞는 길이 좁혀진다는 뜻이에요. <a href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=140s" target="_blank" rel="noopener">영상 02:20에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=163s" target="_blank" rel="noopener">02:43</a>
+  <h2>CCA 시험은 어떻게 생겼나요</h2>
+<p>CCA는 2026년 3월에 나온 Anthropic의 첫 공식 기술 자격증이에요. 연사가 띄운 슬라이드에 시험 형식이 정리돼 있어요.</p>
+<ul>
+  <li>2026년 3월 12일 출시, Claude Partner Network에 속한 자격증이에요.</li>
+  <li>120분 동안 객관식 60문제를 풀어요. 100~1,000점 척도에서 720점이면 합격이에요.</li>
+  <li>감독관이 있는 시험이고, 문제마다 '고장 난 루프', '범위가 엉성한 도구', '부하가 걸린 시스템' 같은 운영 상황이 주어져요. 외워서는 못 푼다는 게 슬라이드의 설명이에요.</li>
+</ul>
+<p>연사는 Claude 생태계의 회사들이 볼 수 있고, 개인도 99달러를 내고 6개월에 한 번 응시할 수 있다고 말했어요.</p>
+<figure>
+  <img src="assets/frame-0300.png" alt="CCA 시험 소개 슬라이드. 출시일, 60문제·120분·720점 합격선, 현실적 제약 아래의 판단이라는 세 항목">
+  <figcaption>슬라이드 맨 아래 문장이 강연의 요지예요. 시험은 모양만 바꾼 커리큘럼이고, 시험이 묻는 것이 곧 운영 환경의 에이전트 시스템이 요구하는 것이라는 거예요. <a href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=180s" target="_blank" rel="noopener">영상 03:00에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>시험 대행사 Pearson VUE의 Anthropic 페이지는 이 자격증이 Claude Partner Network에 속한 조직에 열려 있다고 적고 있어요. 응시료는 이 페이지에 나와 있지 않아서, 연사가 말한 '개인 99달러, 6개월에 한 번'은 확인하지 못했어요. 대신 재응시 규정은 나와 있어요. 떨어지면 첫 응시 뒤 14일, 두 번째 뒤 30일, 세 번째 뒤 90일을 기다려야 하고, 12개월 동안 최대 4번 볼 수 있어요. 응시 전에 공식 안내를 꼭 확인하는 게 좋아요.</p>
+  <p class="cite">출처: <a href="https://www.pearsonvue.com/us/en/anthropic.html" target="_blank" rel="noopener">Pearson VUE — Claude Certification Program by Anthropic</a></p>
+</aside>
+<h3>다섯 영역</h3>
+<p>시험 범위는 다섯 영역으로 나뉘고 비중이 정해져 있어요. 연사는 시험을 볼 생각이 없어도 이 주제들은 알아 둬야 한다고 강조해요. 에이전틱 세계가 무엇을 던지든 대비가 된다는 거예요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>영역</th><th>비중</th><th>슬라이드에 적힌 내용</th></tr></thead>
+    <tbody>
+      <tr><td>에이전트 아키텍처·오케스트레이션</td><td>27%</td><td>루프와 제어 흐름, <code>stop_reason</code>, 훅으로 거는 가드레일</td></tr>
+      <tr><td>Claude Code 설정·워크플로</td><td>20%</td><td>CLAUDE.md 계층, 커스텀 명령과 스킬, CI/CD와 배치</td></tr>
+      <tr><td>프롬프트 엔지니어링·구조화 출력</td><td>20%</td><td>명확한 지시와 성공 조건, <code>tool_use</code>와 JSON 스키마로 받는 구조화 출력</td></tr>
+      <tr><td>도구 설계·MCP 연동</td><td>18%</td><td>좁고 고르기 쉬운 도구, 구조화된 오류, MCP 서버 설정</td></tr>
+      <tr><td>컨텍스트 관리·신뢰성</td><td>15%</td><td>무엇을 앞에 두고 뒤에 둘지, 긴 세션의 요약과 성능 저하</td></tr>
+    </tbody>
+  </table>
+</div>
+<figure>
+  <img src="assets/frame-0351.png" alt="다섯 시험 영역과 비중을 막대그래프로 보여 주는 슬라이드">
+  <figcaption>가장 큰 덩어리는 아키텍처·오케스트레이션이에요. 슬라이드는 에이전틱 AI가 무엇보다 시스템 설계 문제라는 뜻으로 읽으라고 해요. <a href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=231s" target="_blank" rel="noopener">영상 03:51에서 보기</a></figcaption>
+</figure>
+<h3>여섯 시나리오 중 네 개</h3>
+<p>운영 시나리오가 여섯 개 있고, 시험마다 무작위로 네 개를 골라 모든 문제를 그 위에 얹어요. 강연은 앞의 다섯 시나리오를 차례로 다루면서 시나리오마다 함정이 되는 안티패턴을 먼저 짚어요. 문제를 푸는 길은 여러 개지만, 무엇을 하지 말아야 하는지 알면 정답이 잘 보인다는 거예요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>시나리오</th><th>다루는 것</th><th>이 문서 위치</th></tr></thead>
+    <tbody>
+      <tr><td>1. 고객 지원 해결 에이전트</td><td>에이전트 루프 제어, <code>stop_reason</code>, 사람에게 넘기기</td><td>루프와 <span class="term" data-term="stop_reason" data-desc="Claude API 응답마다 붙는 필드로, 모델이 왜 생성을 멈췄는지 알려 줘요. 도구 호출인지, 답을 마쳤는지, 토큰이 바닥났는지 구분해요.">stop_reason</span></td></tr>
+      <tr><td>2. Claude Code로 코드 생성</td><td>CLAUDE.md 계층, <span class="term" data-term="플랜 모드" data-desc="Claude Code가 코드를 고치기 전에 먼저 계획만 세워 보여 주는 모드예요. 큰 변경을 사람이 검토한 뒤 실행하게 해요.">플랜 모드</span></td><td>CLAUDE.md는 계층으로</td></tr>
+      <tr><td>3. 멀티 에이전트 리서치 시스템</td><td><span class="term" data-term="허브 앤 스포크" data-desc="가운데 조정 에이전트 하나가 여러 하위 에이전트에게 일을 나눠 주고 결과를 모으는 구조예요. 하위 에이전트끼리는 직접 말하지 않아요.">허브 앤 스포크</span> 구조, 도구 개수, 컨텍스트 격리</td><td>에이전트는 좁게, 컨텍스트는 조각만</td></tr>
+      <tr><td>4. Claude로 개발 생산성</td><td>하위 작업 격리, 컨텍스트 압축</td><td>하위 작업은 격리하고, 긴 세션은 압축</td></tr>
+      <tr><td>5. CI/CD용 Claude Code</td><td><span class="term" data-term="헤드리스" data-desc="사람과 주고받는 화면 없이 명령 한 번으로 실행하고 끝나는 방식이에요. CI처럼 아무도 답해 줄 수 없는 환경에 맞아요.">헤드리스</span> 실행, JSON 출력, 배치</td><td>CI/CD는 헤드리스로</td></tr>
+      <tr><td>6. 구조화 데이터 추출</td><td>스키마 강제, 검증, 확신도 기준</td><td>강연에서는 따로 다루지 않았어요</td></tr>
+    </tbody>
+  </table>
+</div>
+<figure>
+  <img src="assets/frame-0442.png" alt="여섯 운영 시나리오를 2열 3행 카드로 보여 주는 슬라이드. 오른쪽 위에 '4 of 6 drawn per exam'">
+  <figcaption>각 카드 오른쪽 위의 D1·5 같은 표시는 그 시나리오가 걸치는 영역 번호예요. <a href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=282s" target="_blank" rel="noopener">영상 04:42에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=366s" target="_blank" rel="noopener">06:06</a>
+  <h2>루프와 stop_reason</h2>
+<h3>루프는 새로운 게 아니에요</h3>
+<p>요즘은 모두가 루프 이야기를 해요. Claude Code를 만든 Boris Cherny는 '내 일은 루프를 짜는 것'이라고 하고, OpenClaw를 만든 Peter Steinberger는 '에이전트에게 프롬프트를 던지는 루프를 설계한다'고 해요. 연사는 여기에 '아니요, 새로운 게 아니에요'라고 답해요.</p>
+<p>프로그래밍 언어가 쏟아지던 시절, Fortran과 COBOL 진영이 서로 자기 언어가 더 많은 걸 할 수 있다며 싸웠어요. 1966년 Böhm과 Jacopini가 이 논쟁을 정리했어요. 순차 실행, if-then 조건, 반복 세 가지만 있으면 언어가 <span class="term" data-term="튜링 완전" data-desc="이론상 컴퓨터가 계산할 수 있는 모든 것을 계산할 수 있는 성질이에요. 순차·조건·반복만 있으면 갖출 수 있어요.">튜링 완전</span>해진다는 걸 증명했죠. 그동안 LLM 활용은 프롬프트를 순서대로 잇거나 조건을 거는 정도였어요. 여기에 루프가 더해지면서 에이전트가 힘을 갖게 됐다는 게 연사의 해석이에요.</p>
+<figure>
+  <img src="assets/frame-0646.png" alt="'CS keeps rediscovering the loop' 슬라이드. 위에는 Böhm–Jacopini의 순차·조건·루프, 아래에는 Boris Cherny와 Peter Steinberger의 인용문">
+  <figcaption>60년 전의 구조적 프로그래밍 정리와 지금의 에이전트 루프를 나란히 놓은 슬라이드예요. <a href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=406s" target="_blank" rel="noopener">영상 06:46에서 보기</a></figcaption>
+</figure>
+<h3>시나리오 1: 고객 지원 해결 에이전트</h3>
+<p>안티패턴은 에이전트를 한 번 불러서 돌아온 응답을 그대로 쓰는 거예요. 슬라이드는 이걸 'fire-and-forget'이라 불러요. <code>stop_reason</code>을 확인하지 않으면 루프가 작업 도중에 멈추거나, 도구를 실행해야 할 때 헛돌아요. 다른 안티패턴은 모든 걸 혼자 해결하게 두는 거예요. 환불 분쟁이나 계정 변경처럼 에이전트가 혼자 정하면 안 되는 일까지 처리해 버려요.</p>
+<figure>
+  <img src="assets/frame-0806.png" alt="시나리오 1 슬라이드. 왼쪽 패턴은 'stop_reason으로 루프 돌리기'와 '명시적 에스컬레이션 경로', 오른쪽 안티패턴은 'fire-and-forget'과 '모두 자율 해결'">
+  <figcaption>맨 아래 'Exam tell'은 오답 보기가 자율성과 한 번 호출을 밀어붙인다고 알려 줘요. 정답은 거의 항상 제어 확인이나 사람의 관문을 하나 더 둬요. <a href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=486s" target="_blank" rel="noopener">영상 08:06에서 보기</a></figcaption>
+</figure>
+<h3>LLM은 도구를 실행하지 못해요</h3>
+<p>연사가 코드 앞에서 특히 강조한 점이 있어요. LLM은 확률적으로 다음 단어를 예측할 뿐이라서 도구를 직접 실행하지 못해요. 도구를 가리켜 주면 그 도구를 어떤 인자로 불러야 할지 정리해서 돌려줄 뿐이에요. 실행은 우리 코드가 해요. 그래서 루프는 매번 모델이 왜 멈췄는지 확인하고 분기해야 해요.</p>
+<pre><code>while True:
+    resp = client.messages.create(
+        model="claude-sonnet-4-6",
+        messages=messages, tools=tools)
+
+    if resp.stop_reason == "tool_use":
+        result = run_tool(resp)        # 도구 실행, 결과 받기
+        messages.append(result)        # 모델에게 돌려주기
+        continue                       # 다시 루프
+
+    elif resp.stop_reason == "end_turn":
+        answer = final_answer(resp)
+        if low_confidence(answer):
+            escalate_to_human(answer)  # 사람에게 넘기기
+        break</code></pre>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>stop_reason</th><th>뜻</th><th>루프에서 할 일</th></tr></thead>
+    <tbody>
+      <tr><td><code>tool_use</code></td><td>모델이 도구를 쓰고 싶어서 멈췄어요</td><td>도구를 실행하고 결과를 메시지에 붙여 다시 돌아요</td></tr>
+      <tr><td><code>end_turn</code></td><td>모델이 할 일을 마쳤어요</td><td>답을 받고 확신도를 확인해요. 낮으면 사람에게 넘겨요</td></tr>
+      <tr><td>토큰 소진</td><td>쓸 수 있는 토큰이 바닥나서 멈췄어요</td><td>답이 중간에 잘린 것이니 따로 조치해요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p><code>end_turn</code> 뒤의 확신도 확인이 <span class="term" data-term="휴먼 인 더 루프" data-desc="자동화된 흐름 중간에 사람이 확인하거나 결정하는 단계를 두는 방식이에요. 위험하거나 확신이 낮은 경우를 사람이 거르게 해요.">휴먼 인 더 루프</span>를 넣을 자리예요. 연사는 토큰이 바닥난 경우도 꼭 확인하라고 덧붙여요. 그때 돌아온 답은 모델이 멈춘 시점까지만 쓴 부분 답이거든요.</p>
+<figure>
+  <img src="assets/frame-0946.png" alt="stop_reason 값에 따라 분기하는 파이썬 while True 루프 코드 슬라이드">
+  <figcaption>슬라이드 아래 문장이 요약이에요. 'tool_use면 도구를 돌리고 다시 루프, end_turn이면 반환. 루프는 짐작하지 않고 읽어요.' <a href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=586s" target="_blank" rel="noopener">영상 09:46에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>연사가 '토큰이 바닥났다'고 한 경우는 공식 문서에서 <code>max_tokens</code>라는 값이에요. 응답이 <code>max_tokens</code> 한도에 닿았다는 뜻이고, 한도를 올리거나 응답을 이어 받으라고 안내해요. 이 밖에도 <code>stop_sequence</code>, 서버 도구 루프가 반복 한도에 닿았을 때의 <code>pause_turn</code>, 모델이 응답을 거절한 <code>refusal</code>이 있어요. 운영용 루프라면 이 값들도 분기에 넣어 두는 게 안전해요.</p>
+  <p class="cite">출처: <a href="https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons" target="_blank" rel="noopener">Claude 공식 문서 — Stop reasons and fallback</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=675s" target="_blank" rel="noopener">11:15</a>
+  <h2>CLAUDE.md는 계층으로</h2>
+<p>시나리오 2(Claude Code로 코드 생성)는 짧게 지나가요. Claude Code에는 CLAUDE.md라는 마크다운 파일이 있어서, Claude가 알아야 할 규칙을 여기에 적어요. 안티패턴은 모든 규칙을 파일 하나에 쏟아붓는 거예요. 디렉터리마다 다른 규칙이 서로 섞여서, 관계없는 작업에 끼어들고 조용히 충돌해요.</p>
+<p>슬라이드의 또 다른 안티패턴은 모든 걸 바로 실행하는 거예요. 여러 부분을 건드리는 큰 변경이라면 먼저 플랜 모드로 계획을 받아서 검토한 뒤 코드를 손대게 하라는 거예요.</p>
+<figure>
+  <img src="assets/frame-1130.png" alt="시나리오 2 슬라이드. 패턴은 'CLAUDE.md 계층 쓰기'와 '실행 전 계획', 안티패턴은 '평평한 지시 덩어리'와 '전부 바로 실행'">
+  <figcaption>오답 보기는 '일단 코딩 시작'이나 '규칙을 한곳에 모으기'라는 게 슬라이드의 'Exam tell'이에요. <a href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=690s" target="_blank" rel="noopener">영상 11:30에서 보기</a></figcaption>
+</figure>
+<h3>세 단계 계층</h3>
+<p>Anthropic이 권하는 방식은 범위에 따라 파일을 나누는 거예요. 연사는 프로젝트 최상위, 프로젝트 폴더, 그 안의 디렉터리 세 단계로 설명했고, 슬라이드 예시는 사용자 전체·프로젝트·디렉터리로 나눠요.</p>
+<pre><code>~/.claude/CLAUDE.md      # 사용자 (모든 프로젝트)
+  "Prefer type hints. Explain before editing."
+myrepo/CLAUDE.md         # 프로젝트
+  "Use pytest. Never touch /legacy."
+myrepo/api/CLAUDE.md     # 디렉터리
+  "All endpoints async. Validate with Pydantic v2 models."</code></pre>
+<p><code>/api</code> 안의 파일을 고칠 때는 세 파일이 모두 적용되고, 충돌하면 디렉터리 규칙이 이겨요. 규칙이 실제로 적용되는 자리에 놓이니, 어떤 규칙이 우선인지도 분명해져요.</p>
+<figure>
+  <img src="assets/frame-1155.png" alt="사용자·프로젝트·디렉터리 세 단계의 CLAUDE.md 경로와 각 규칙 예시를 보여 주는 슬라이드">
+  <figcaption>'Claude는 셋을 모두 읽어 합치고, 충돌하면 가장 구체적인 파일이 이겨요'라는 문장이 이 슬라이드의 결론이에요. <a href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=715s" target="_blank" rel="noopener">영상 11:55에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Claude Code 공식 문서를 보면 작업 디렉터리 위쪽에 있는 CLAUDE.md는 시작할 때 읽고, 하위 디렉터리의 CLAUDE.md는 Claude가 그 디렉터리의 파일을 읽을 때 필요에 따라 불러와요. 프로젝트 파일은 <code>./CLAUDE.md</code>나 <code>./.claude/CLAUDE.md</code> 어느 쪽에 둬도 돼요. 규칙이 많아지면 <code>.claude/rules/</code>로 주제별·경로별 규칙을 나눌 수도 있어요. 문서는 CLAUDE.md가 강제 설정이 아니라 맥락이라고도 짚어요. 어떤 동작을 반드시 막아야 한다면 훅을 쓰라고 해요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/memory" target="_blank" rel="noopener">Claude Code 공식 문서 — Memory (CLAUDE.md)</a></p>
+</aside>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=719s" target="_blank" rel="noopener">11:59</a>
+  <h2>에이전트는 좁게, 컨텍스트는 조각만</h2>
+<p>시나리오 3(멀티 에이전트 리서치 시스템)의 질문은 이거예요. 에이전트들을 내보내서 일을 시키고, 그 답을 어떻게 쓸 만한 형태로 다시 모을까요. 누가 오케스트레이터를 맡고, 각 에이전트는 얼마나 알아야 할까요.</p>
+<h3>도구를 몰아주지 마세요</h3>
+<p>첫 안티패턴은 에이전트 하나에 도구를 잔뜩 실어 주는 거예요. 연사의 비유가 와닿아요. 집에 목수를 불렀는데 배관 공구, 목공 공구, 전기 공구를 다 들고 와서 뭐든 할 수 있다고 해요. 이런 사람보다는 전문 목수가 낫겠죠.</p>
+<p>함수형 프로그래밍에서 함수는 한 가지 일만 해야 한다고 하잖아요. 에이전트도 도구 한두 개만 쥐고 한 가지 일을 하게 만들면 이기는 거예요. 슬라이드는 에이전트당 도구가 4~5개를 넘으면 추론 품질이 떨어진다고 적어 두고, 그럴 때는 도구 벨트를 키우지 말고 <span class="term" data-term="서브에이전트" data-desc="메인 에이전트가 일을 맡기는 하위 에이전트예요. 자기 컨텍스트 창에서 일하고 결과만 돌려줘서 메인 컨텍스트를 깨끗하게 지켜 줘요.">서브에이전트</span>로 나누라고 해요.</p>
+<h3>컨텍스트를 새게 두지 마세요</h3>
+<p>두 번째는 에이전트의 컨텍스트가 메인 컨텍스트로 넘쳐흐르게 두지 않는 거예요. 컨텍스트는 토큰이고, 토큰은 돈이에요. 게다가 컨텍스트가 클수록 모델이 답을 내면서 더 헷갈려요. 100만 토큰 <span class="term" data-term="컨텍스트 창" data-desc="모델이 한 번에 볼 수 있는 토큰의 최대량이에요. 크다고 다 채우면 비용이 늘고 중요한 내용을 놓치기 쉬워요.">컨텍스트 창</span>이 있다고 해서 다 넣으면 안 돼요. 넣을 것을 줄일수록 시스템이 더 정확해져요.</p>
+<figure>
+  <img src="assets/frame-1233.png" alt="시나리오 3 슬라이드. 패턴은 '전문화, 과적재 금지'와 '서브에이전트 컨텍스트 격리', 안티패턴은 '에이전트 하나에 모든 도구'와 '전체 컨텍스트 유출'">
+  <figcaption>허브 앤 스포크 구조에서 서브에이전트는 자기에게 필요한 조각만 받아요. 오답 보기는 큰 도구 벨트와 공유 컨텍스트를 강력해 보이게 내세워요. <a href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=753s" target="_blank" rel="noopener">영상 12:33에서 보기</a></figcaption>
+</figure>
+<h3>비평가에게는 주장과 근거만</h3>
+<p>예시는 비평가(critic) 서브에이전트예요. 어떤 작업을 돌린 뒤 결과를 다른 에이전트에게 검토시키는 상황이에요. 이때 비평가에게는 그 일에 필요한 것만 줘요. 주장과 근거만 넘기고, 그 주장을 만들어 낸 사고 과정은 넘기지 않아요.</p>
+<pre><code>def run_critic(claim, evidence):
+    # 메인 팀의 추론 과정은 넘기지 않고
+    # 검토할 주장과 근거만 넘겨요
+    return client.messages.create(
+        model="claude-sonnet-4-6",
+        system=CRITIC_ROLE,      # 역할은 하나
+        tools=[verify_tool],     # 도구도 하나
+        messages=[{"role": "user",
+                   "content": fmt(claim, evidence)}])</code></pre>
+<p>이유는 <span class="term" data-term="집단 사고" data-desc="여럿이 함께 결정할 때 반대 의견 없이 한 생각으로 쏠리는 현상이에요. 에이전트끼리 같은 추론을 공유해도 비슷하게 생겨요.">집단 사고</span>예요. 에이전트 여럿이 같이 일하며 서로 이야기하면 모두 한 생각으로 쏠리는 경향이 있어요. 연사는 파티 비유를 들어요. 다들 피자를 먹자는데 나만 싫다고 하기 어려워서 그냥 따라가죠. 에이전트도 비슷하게 움직인다는 거예요. 그래서 에이전트마다 자기 몫의 조각만 줘야 해요. 연사도 말하고 나서 '피자 조각' 비유가 맞아떨어진다며 웃어요.</p>
+<figure>
+  <img src="assets/frame-1415.png" alt="주장과 근거만 받는 run_critic 함수 코드 슬라이드. 시스템 프롬프트 하나, 도구 하나">
+  <figcaption>'비평가는 주장과 근거를 보지만, 그것을 만든 숙고 과정은 보지 않아요.' 모든 도구를 한 에이전트에 몰면 라우팅이 망가진다는 주석도 함께 있어요. <a href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=855s" target="_blank" rel="noopener">영상 14:15에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=915s" target="_blank" rel="noopener">15:15</a>
+  <h2>하위 작업은 격리하고, 긴 세션은 압축</h2>
+<p>시나리오 4(Claude로 개발 생산성)의 안티패턴은 앞 시나리오의 연장이에요. 하위 작업마다 출력을 통째로 메인 스레드에 쏟아 넣어서 정작 중요한 컨텍스트를 밀어내는 것, 그리고 컨텍스트가 끝없이 커지게 내버려 두는 것이에요. 이유는 방금 본 그대로예요. 토큰 비용이 늘고 모델이 헷갈려요.</p>
+<p>연사는 이걸 멀티스레드 프로그래밍에 빗대요. 스레드들이 메모리를 공유하면 동기화 문제가 생기고 잠금을 걸어야 해요. 그러니 스레드를 서로 독립적으로 두라고 배우죠. 에이전트도 마찬가지로 각자의 작은 세계에 머물게 하라는 거예요.</p>
+<figure>
+  <img src="assets/frame-1530.png" alt="시나리오 4 슬라이드. 패턴은 '하위 작업 출력 격리'와 '긴 세션 압축', 안티패턴은 '메인 세션 오염'과 '컨텍스트 무한 증가'">
+  <figcaption>슬라이드는 압축하지 않으면 토큰 비용이 오르고, 긴 세션 중간에 있던 내용을 점점 잘 기억하지 못한다고 설명해요. <a href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=930s" target="_blank" rel="noopener">영상 15:30에서 보기</a></figcaption>
+</figure>
+<h3>포크해서 돌리고, 요약만 받아요</h3>
+<p>예시는 로그를 훑어 오류가 어디서 났는지 요약하는 작업이에요. 이 일을 <code>context="fork"</code>로 별도 컨텍스트에서 돌려요. 서브에이전트가 무엇을 하고 무슨 생각을 하든 그 토큰은 메인 컨텍스트로 돌아오지 않아요. 끝나면 요약만 메인 메시지에 붙여요.</p>
+<pre><code># 시끄러운 하위 작업은 자기 컨텍스트에서
+summary = run_in_subagent(
+    task="scan all logs for the error",
+    context="fork")              # 새 컨텍스트, 작업 내용만 받음
+main_messages.append(summary)    # 정리된 결과만 돌아옴
+
+# 메인 스레드가 커지면 압축
+if token_count(main_messages) > 150_000:
+    main_messages = compact(main_messages)
+    # 오래된 대화는 요약하고 최근 것은 그대로</code></pre>
+<p>연사가 흥미롭다고 한 건 마지막 블록이에요. 토큰 수를 세다가 15만 토큰 같은 기준을 넘으면 압축을 돌려요. Anthropic과 Claude에는 큰 컨텍스트를 줄이는 압축 알고리즘이 있다고 하면서, 정확히 어떻게 구현됐는지는 자기도 잘 모른다고 솔직하게 말해요.</p>
+<figure>
+  <img src="assets/frame-1645.png" alt="서브에이전트를 fork 컨텍스트로 돌리고 15만 토큰을 넘으면 compact하는 파이썬 코드 슬라이드">
+  <figcaption>'서브에이전트의 장황한 출력은 자기 컨텍스트에 머물고 요약만 돌아와요.' <a href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=1005s" target="_blank" rel="noopener">영상 16:45에서 보기</a></figcaption>
+</figure>
+<p>곁가지로, 행사장에서 나눠 주던 책 한 권도 소개해요. 그 책을 쓴 사람의 회사는 컨텍스트 압축 로직을 직접 정의할 수 있게 해 둬서, 기본 클래스를 확장해 무엇이 중요한지 스스로 정할 수 있다고 해요. 압축 방식을 꼭 남이 정한 대로 쓸 필요는 없다는 이야기예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>슬라이드 코드의 <code>run_in_subagent</code>나 <code>compact</code>는 개념을 보여 주는 의사 코드예요. 실제 Claude Code에서는 서브에이전트가 자기 컨텍스트 창에서 일하고 결과만 돌려주는 방식으로 같은 일을 해요. 서브에이전트 설정은 공식 문서를 보면 돼요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code 공식 문서 — Subagents</a></p>
+</aside>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=1088s" target="_blank" rel="noopener">18:08</a>
+  <h2>CI/CD는 헤드리스로, 급하지 않으면 배치로</h2>
+<h3>시나리오 5: 파이프라인에 대화형 모드는 금물</h3>
+<p>CI/CD용 Claude Code의 안티패턴은 파이프라인 안에서 대화형 모드를 쓰는 거예요. 대화형이면 Claude가 '이거 할까요, 저거 할까요, 이 권한 줘도 될까요?'라고 묻고 멈춰요. 파이프라인에서는 아무도 답하지 않으니 그대로 멈춰 버려요. 끝까지 쭉 돌게 설정하는 방법이 있다는 게 연사의 설명이에요.</p>
+<figure>
+  <img src="assets/frame-1818.png" alt="시나리오 5 슬라이드. 패턴은 '헤드리스 실행, JSON 파싱'과 '작업에 맞는 지연 시간', 안티패턴은 '파이프라인 속 대화형 모드'와 '기다려도 되는 일을 막고 기다림'">
+  <figcaption>슬라이드의 'Exam tell'은 대화형이나 전부 동기식인 보기가 함정이라고 해요. 정답은 헤드리스, 구조화 출력, 그리고 작업에 맞춘 지연 시간이에요. <a href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=1098s" target="_blank" rel="noopener">영상 18:18에서 보기</a></figcaption>
+</figure>
+<h3>기다리는 사람이 없으면 배치로</h3>
+<p>또 하나의 팁은 <span class="term" data-term="Batch API" data-desc="여러 요청을 한꺼번에 비동기로 처리하는 Claude API예요. 즉시 답이 필요 없는 대신 비용이 절반이에요.">Batch API</span>예요. 프롬프트와 작업을 배치로 묶어 보내면 토큰 비용이 50% 줄어요. 연사는 결과가 '적어도 24시간'은 걸린다며, 낮잠을 자거나 휴가를 가거나 하루 쉴 때 배치로 돌려 두라고 해요.</p>
+<p>슬라이드는 두 방식을 이렇게 나눠요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>방식</th><th>언제</th><th>특징</th></tr></thead>
+    <tbody>
+      <tr><td>동기식 <code>claude -p</code></td><td>누군가 결과를 기다릴 때 (예: 머지 전 리뷰)</td><td>CLI로 한 번 실행하고 끝날 때까지 막아요. <code>--output-format json</code>으로 받아 다음 단계를 결정해요</td></tr>
+      <tr><td>Batch API</td><td>아무도 기다리지 않을 때 (예: 오늘 올라온 PR 전부 밤새 리뷰)</td><td>별도 HTTP 엔드포인트로 비동기 처리해요. 50% 저렴하고, 24시간 이내예요</td></tr>
+    </tbody>
+  </table>
+</div>
+<figure>
+  <img src="assets/frame-1858.png" alt="왼쪽은 claude -p와 --output-format json을 jq로 받는 동기 예시, 오른쪽은 client.messages.batches.create로 오늘의 PR을 묶는 배치 예시">
+  <figcaption>'누가 기다리면 헤드리스, 아무도 안 기다리면 배치'가 이 슬라이드의 제목이에요. <a href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=1138s" target="_blank" rel="noopener">영상 18:58에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>연사는 배치 결과가 '적어도 24시간' 걸린다고 했지만, 공식 문서는 반대로 24시간을 상한으로 둬요. 대부분의 배치는 1시간 안에 끝나고, 24시간 안에 처리가 끝나지 않으면 만료돼요. 결과는 만든 뒤 29일 동안 받을 수 있어요. 비용은 모든 사용량이 표준 API 가격의 50%로 계산돼요.</p>
+  <p class="cite">출처: <a href="https://platform.claude.com/docs/en/build-with-claude/batch-processing" target="_blank" rel="noopener">Claude 공식 문서 — Batch processing</a></p>
+</aside>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>슬라이드의 <code>claude -p</code>는 지금 공식 문서에서 'Claude Code를 프로그래밍 방식으로 실행하기'로 소개되고, Agent SDK의 CLI 형태라고 설명돼요. <code>--output-format</code>은 <code>text</code>(기본), <code>json</code>, <code>stream-json</code>을 받아요. <code>json</code>으로 받으면 결과와 세션 ID, 비용 같은 메타데이터가 함께 와요. 도구 자동 승인은 <code>--allowedTools</code>로 지정해요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">Claude Code 공식 문서 — Run Claude Code programmatically</a></p>
+</aside>
+<h3>다시, 만드는 것만 있어요</h3>
+<p>시간이 다 된 연사는 처음 문장으로 돌아가요. 실수도, 승패도, 시험도 없고 만드는 것만 있다는 거예요. 직접 해 보고 만들어 보면 성공한다는 말로 강연을 마쳐요.</p>
+<figure>
+  <img src="assets/frame-1938.png" alt="'Nothing is a mistake. There is no win, no fail. Only MAKE.' 문구와 Frank Coyle의 이메일, LinkedIn, Medium, X, codesupreme.ai 연락처가 적힌 마지막 슬라이드">
+  <figcaption>마지막 슬라이드예요. 연사의 웹사이트 이름은 John Coltrane의 'A Love Supreme'에서 따왔다고 해요. <a href="https://www.youtube.com/watch?v=Z-c11pV_uvU&amp;t=1178s" target="_blank" rel="noopener">영상 19:38에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 이름과 제품명이 잘못 받아적힌 곳이 있어요. 슬라이드를 기준으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>Cloud Code</td><td>Claude Code</td><td></td></tr>
+      <tr><td>Claude MD</td><td>CLAUDE.md</td><td></td></tr>
+      <tr><td>contact management</td><td>context management</td><td>다섯 번째 시험 영역 이름</td></tr>
+      <tr><td>Boris Cherney</td><td>Boris Cherny</td><td>Claude Code를 만든 사람</td></tr>
+      <tr><td>Open Claw</td><td>OpenClaw</td><td>Peter Steinberger의 프로젝트</td></tr>
+      <tr><td>Sam Bagwell</td><td>Sam Bhagwat (추정)</td><td>슬라이드 메모에 Mastra가 적혀 있어 Mastra 공동창업자로 추정했어요</td></tr>
+      <tr><td>coil at Berkeley</td><td>coyle@berkeley.edu</td><td>연사 이메일</td></tr>
+      <tr><td>co-supreme AI</td><td>codesupreme.ai</td><td>연사 웹사이트</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail">
+  <h2>이 글에 나온 용어</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
+      <tbody>
+        <tr><td>안티패턴</td><td>흔히 끌리지만 결국 문제를 일으키는 설계 방식이에요. 무엇을 피해야 하는지 알면 올바른 선택지가 좁혀져요.</td></tr>
+        <tr><td>튜링 완전</td><td>이론상 컴퓨터가 계산할 수 있는 모든 것을 계산할 수 있는 성질이에요. 순차·조건·반복만 있으면 갖출 수 있어요.</td></tr>
+        <tr><td>stop_reason</td><td>Claude API 응답마다 붙는 필드로, 모델이 왜 생성을 멈췄는지 알려 줘요. 도구 호출인지, 답을 마쳤는지, 토큰이 바닥났는지 구분해요.</td></tr>
+        <tr><td>휴먼 인 더 루프</td><td>자동화된 흐름 중간에 사람이 확인하거나 결정하는 단계를 두는 방식이에요. 위험하거나 확신이 낮은 경우를 사람이 거르게 해요.</td></tr>
+        <tr><td>플랜 모드</td><td>Claude Code가 코드를 고치기 전에 먼저 계획만 세워 보여 주는 모드예요. 큰 변경을 사람이 검토한 뒤 실행하게 해요.</td></tr>
+        <tr><td>허브 앤 스포크</td><td>가운데 조정 에이전트 하나가 여러 하위 에이전트에게 일을 나눠 주고 결과를 모으는 구조예요. 하위 에이전트끼리는 직접 말하지 않아요.</td></tr>
+        <tr><td>서브에이전트</td><td>메인 에이전트가 일을 맡기는 하위 에이전트예요. 자기 컨텍스트 창에서 일하고 결과만 돌려줘서 메인 컨텍스트를 깨끗하게 지켜 줘요.</td></tr>
+        <tr><td>집단 사고</td><td>여럿이 함께 결정할 때 반대 의견 없이 한 생각으로 쏠리는 현상이에요. 에이전트끼리 같은 추론을 공유해도 비슷하게 생겨요.</td></tr>
+        <tr><td>컨텍스트 창</td><td>모델이 한 번에 볼 수 있는 토큰의 최대량이에요. 크다고 다 채우면 비용이 늘고 중요한 내용을 놓치기 쉬워요.</td></tr>
+        <tr><td>헤드리스</td><td>사람과 주고받는 화면 없이 명령 한 번으로 실행하고 끝나는 방식이에요. CI처럼 아무도 답해 줄 수 없는 환경에 맞아요.</td></tr>
+        <tr><td>Batch API</td><td>여러 요청을 한꺼번에 비동기로 처리하는 Claude API예요. 즉시 답이 필요 없는 대신 비용이 절반이에요.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="tail">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li><a href="https://www.youtube.com/watch?v=Z-c11pV_uvU" target="_blank" rel="noopener">원본 영상 — AI Engineer, Frank Coyle</a></li>
+    <li><a href="https://www.pearsonvue.com/us/en/anthropic.html" target="_blank" rel="noopener">Pearson VUE — Claude Certification Program by Anthropic</a></li>
+    <li><a href="https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons" target="_blank" rel="noopener">Claude 공식 문서 — Stop reasons and fallback</a></li>
+    <li><a href="https://code.claude.com/docs/en/memory" target="_blank" rel="noopener">Claude Code 공식 문서 — Memory (CLAUDE.md)</a></li>
+    <li><a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code 공식 문서 — Subagents</a></li>
+    <li><a href="https://platform.claude.com/docs/en/build-with-claude/batch-processing" target="_blank" rel="noopener">Claude 공식 문서 — Batch processing</a></li>
+    <li><a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">Claude Code 공식 문서 — Run Claude Code programmatically</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 1일에 이 영상을 보고 정리했어요. 원본은 AI Engineer 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="tooltip"></div>
+
+<script>
+(function () {
+  // ── 용어 툴팁 ───────────────────────────────────────
+  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
+  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
+  var tip = document.getElementById('tip');
+  var open = null;
+
+  function show(el) {
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    var name = el.getAttribute('data-term') || el.textContent;
+    tip.innerHTML = '';
+    var b = document.createElement('b');
+    b.textContent = name;
+    tip.appendChild(b);
+    tip.appendChild(document.createTextNode(desc));
+    tip.classList.add('on');
+
+    var r = el.getBoundingClientRect();
+    var t = tip.getBoundingClientRect();
+    var pad = 12;
+    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
+    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
+    var top = r.top + window.scrollY - t.height - 10;
+    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+    open = el;
+  }
+
+  function hide() {
+    tip.classList.remove('on');
+    open = null;
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    el.addEventListener('mouseenter', function () { show(el); });
+    el.addEventListener('mouseleave', hide);
+    el.addEventListener('focus', function () { show(el); });
+    el.addEventListener('blur', hide);
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      open === el ? hide() : show(el);
+    });
+  });
+
+  document.addEventListener('click', function (e) {
+    if (open && !e.target.closest('.term')) hide();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') hide();
+  });
+  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
+  window.addEventListener('resize', hide);
+
+  // ── 목차 현재 위치 표시 ─────────────────────────────
+  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
+  var map = {};
+  links.forEach(function (a) {
+    var s = document.getElementById(a.getAttribute('href').slice(1));
+    if (s) map[s.id] = a;
+  });
+  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
+  if ('IntersectionObserver' in window && targets.length) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        links.forEach(function (a) { a.classList.remove('active'); });
+        map[en.target.id].classList.add('active');
+      });
+    }, { rootMargin: '-10% 0px -75% 0px' });
+    targets.forEach(function (t) { io.observe(t); });
+  }
+})();
+</script>
+</body>
+</html>

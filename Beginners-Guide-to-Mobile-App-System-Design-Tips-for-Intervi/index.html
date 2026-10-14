@@ -1,0 +1,1031 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>모바일 앱 시스템 설계 입문 — WhatsApp으로 연습하는 면접 답안</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>모바일 앱 시스템 설계 입문 — WhatsApp으로 연습하는 면접 답안</h1>
+  <p class="lede">사용자에서 출발해 아키텍처와 기술 결정까지 내려가는 순서를 익혀요</p>
+  <div class="meta">
+    <span>Philipp Lackner</span><span class="dot">·</span>
+    <span>영상 37:01</span><span class="dot">·</span>
+    <span>읽는 데 약 24분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=OP6JHa21We8" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>설계는 세 단계로 확대해 가요. 사용자·기능·<span class="term" data-term="비기능 요구사항" data-en="Non-functional requirements" data-desc="기능이 무엇을 하는지가 아니라 어떤 품질로 동작해야 하는지를 정한 요구사항이에요. 배터리, 네트워크, 메모리, 성능 같은 제약이 여기에 들어가요." data-g="1">비기능 요구사항</span> → 외부 서비스와 레이어 구조 → 프로토콜·API(Application Programming Interface)·DB(Database)·데이터 정책·보안·관측성 순서예요.</li>
+    <li>사용자층과 사용 환경이 설계를 바꿔요. 오래된 안드로이드 기기, 끊기는 네트워크를 전제로 하면 배터리·메모리·APK(Android Package Kit) 크기 결정이 달라져요.</li>
+    <li>채팅 앱은 앱이 떠 있을 때 WebSocket으로 양방향 연결을 유지하고, 백그라운드에서는 FCM(Firebase Cloud Messaging)·APNS(Apple Push Notification service) 푸시로 메시지를 받아요.</li>
+    <li><span class="term" data-term="오프라인 퍼스트" data-en="Offline-first" data-desc="네트워크가 없어도 앱이 최대한 동작하도록 로컬 저장소를 중심에 두는 설계예요. 복잡해지지만 화면이 빨라지고 끊기는 환경에서도 쓸 수 있어요." data-g="7">오프라인 퍼스트</span>에서는 로컬 캐시가 <span class="term" data-term="단일 진실 공급원" data-en="Single source of truth (SSOT)" data-desc="어떤 데이터의 &#x27;정답&#x27;을 한 곳에만 두는 원칙이에요. 오프라인 퍼스트에서는 로컬 캐시가 그 자리이고, 화면은 캐시만 보고 네트워크 결과는 캐시에 채워 넣어요." data-g="8">단일 진실 공급원</span>이에요. 전송을 누르면 먼저 저장하고, 백그라운드 워커가 <span class="term" data-term="백오프" data-en="Backoff" data-desc="실패한 작업을 다시 시도할 때 간격을 점점 늘려 가는 방식이에요. 서버나 네트워크가 회복할 시간을 주고 배터리 낭비도 줄여요." data-g="11">백오프</span>를 두고 될 때까지 재시도해요.</li>
+    <li>면접은 실제 구조를 외웠는지가 아니라, 근거 있는 결정을 내리고 트레이드오프를 말로 풀어내는지를 봐요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">시스템 설계를 세 단계로 확대해 보기</a></li>
+    <li><a href="#s2">누가 쓰고, 무엇을 하는 앱인가</a></li>
+    <li><a href="#s3">비기능 요구사항: 기능이 &#x27;어떻게&#x27; 동작해야 하나</a></li>
+    <li><a href="#s4">아키텍처, 서버 통신, API 설계</a></li>
+    <li><a href="#s5">데이터: DB 스키마, 오프라인 퍼스트, 미디어</a></li>
+    <li><a href="#s6">보안과 관측성</a></li>
+    <li><a href="#s7">면접에서 WhatsApp을 설계한다면: 요구사항과 서비스</a></li>
+    <li><a href="#s8">WhatsApp의 구조: 레이어, 실시간 연결, 로컬 DB, 오프라인 전송</a></li>
+    <li><a href="#s9">깊이 들어가는 질문: 충돌, 읽음 표시, 미디어, 보안, 관측성</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>시스템 설계를 세 단계로 확대해 보기</h2>
+<p>이 영상은 모바일 앱 시스템 설계에 무엇이 들어가는지, 그리고 면접에서 인기 앱의 설계를 설명하라는 질문을 받았을 때 어떻게 풀어 갈지를 다뤄요. 발표자가 먼저 꺼내는 틀은 '확대 단계'예요. 앱을 새가 내려다보듯 멀리서 본 다음, 점점 가까이 다가가며 더 구체적인 결정을 내려요.</p>
+<p>아래 슬라이드에는 세 단계가 번호와 함께 적혀 있어요. 01 High level은 누가 쓰는지, 무엇을 하는지, 비기능 요구사항과 규모예요. 02 Architecture는 외부 서비스, 앱 레이어, 아키텍처 패턴이에요. 03 Tech stack에는 프로토콜, API 설계, DB 스키마, 데이터 정책, 미디어, 보안, 관측성이 몰려 있어요.</p>
+<figure>
+  <img src="assets/frame-0130.png" alt="Three zoom levels 슬라이드. 01 High level, 02 Architecture, 03 Tech stack 세 줄과 각 단계에서 다룰 주제가 작은 글씨로 적혀 있어요">
+  <figcaption>세 번째 줄이 가장 길어요. 실제 기술 결정은 대부분 마지막 단계에서 내려요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=90s" target="_blank" rel="noopener">영상 01:30에서 보기</a></figcaption>
+</figure>
+<p>순서가 중요한 이유는 앞 단계의 답이 뒤 단계의 선택지를 줄여 주기 때문이에요. 실시간 통신이 필요한지, 오프라인 퍼스트로 갈지, 캐시를 어디에 둘지는 사용자와 사용 환경을 먼저 알아야 정할 수 있어요. 이 문서도 영상을 따라 이 순서로 내려가요. 앞의 여섯 섹션이 일반론이고, 뒤의 세 섹션이 WhatsApp 사례예요.</p>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=109s" target="_blank" rel="noopener">01:49</a>
+  <h2>누가 쓰고, 무엇을 하는 앱인가</h2>
+<p>앱을 계획할 때 가장 먼저 던질 질문은 "누구를 위한 앱인가"예요. 슬라이드는 이 질문을 네 갈래로 나눠요. Age range, Region and language, Profession, Context예요. 각 줄 아래 회색 글씨가 예시예요.</p>
+<figure>
+  <img src="assets/frame-0309.png" alt="Who will use it 슬라이드. 01 Age range, 02 Region and language, 03 Profession, 04 Context 네 항목과 예시 설명">
+  <figcaption>마지막 Context가 나머지를 묶어요. 사용자에 대해 무엇을 가정할 수 있고, 그들이 앱을 어떻게 쓰는지예요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=189s" target="_blank" rel="noopener">영상 03:09에서 보기</a></figcaption>
+</figure>
+<p>나이를 예로 들면 차이가 분명해요. 사용자층이 나이가 많다면 UX(User Experience) 원칙부터 달라져야 하고, 실수해도 망가지지 않게 훨씬 단순하게 만들어야 해요. 이 사용자들은 최신 플래그십보다 오래된 안드로이드 기기를 쓰는 경우가 많아서, 앱이 지원할 OS(Operating System) 버전도 낮춰 잡아야 해요. 스페인어권만 상대하는지, 전 세계를 상대하는지에 따라 지원 언어가 정해져요. 건축가처럼 특정 직업군을 위한 앱이라면 그 직업에 대해 미리 가정할 수 있는 것들이 생겨요.</p>
+<h3>무엇을 하는 앱인가</h3>
+<p>사용자를 알았다면 앱이 하는 일을 기능 단위로 쪼개요. 영상은 소셜 미디어를 예로 들어 프로필, 피드, 팔로우, 친구 목록을 꼽아요. 그리고 기능마다 어떻게 동작해야 하는지를 적어요. "사용자는 프로필 사진을 올리고 사용자 이름을 바꿀 수 있다", "이메일은 다른 사람에게 보이지 않는다" 같은 문장이 기능 요구사항이에요. 구현에 들어가기 전에 앱의 진짜 목표와 기능 목록을 먼저 앉아서 정리하라는 게 발표자의 조언이에요.</p>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=229s" target="_blank" rel="noopener">03:49</a>
+  <h2>비기능 요구사항: 기능이 &#x27;어떻게&#x27; 동작해야 하나</h2>
+<p>기능 요구사항이 '무엇을'이라면, 비기능 요구사항은 그 기능이 '어떻게' 동작해야 하는지예요. "앱을 10분 쓸 때 배터리를 몇 퍼센트 이상 쓰면 안 된다"처럼 수치로 정할 수도 있어요. 영상은 이 주제를 화면 가운데 NFR(Non-Functional Requirements) 상자에서 뻗어 나가는 마인드맵으로 보여 줘요. 화면이 옆으로 움직이며 가지를 하나씩 보여 주기 때문에, 한 장에 다 담긴 장면은 없어요. 아래 그림에 여섯 갈래를 모았어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 720 340" role="img" aria-label="비기능 요구사항 여섯 갈래: 배터리, 네트워크, 메모리, 성능, 현지화, 규모와 각각의 세부 항목">
+    <g id="fig-nfr"></g>
+  </svg>
+  <figcaption>슬라이드 마인드맵의 가지를 한데 모았어요. 현지화의 RTL(Right-To-Left) 레이아웃은 슬라이드에서 얼굴에 가려져 있어서, 발표자가 말로 든 예를 옮겼어요.</figcaption>
+</figure>
+<p>각 갈래가 설계를 어떻게 바꾸는지 영상의 예를 따라가 볼게요.</p>
+<ul>
+  <li><b>배터리</b>: 실시간 연결은 유지하는 데만 전력이 많이 들어요. 그래서 동시에 다섯 개씩 열어 두지 않도록 최적화해야 해요. 백그라운드 작업, 무거운 처리, 미디어도 배터리를 많이 먹어요.</li>
+  <li><b>네트워크</b>: 사용자가 주로 안정적인 와이파이에서 쓰는지, 기차를 타고 터널을 지나며 인터넷이 끊겼다 붙는 환경에서 쓰는지에 따라 앱 구조가 처음부터 달라져요.</li>
+  <li><b>메모리</b>: 모바일 기기의 RAM(Random Access Memory)은 넉넉하지 않아요. 큰 파일을 통째로 메모리에 올릴 수 없을 수 있으니, 미디어 업로드를 작은 조각으로 나눠야 할지 따져 봐요.</li>
+  <li><b>성능</b>: <span class="term" data-term="콜드 스타트" data-en="Cold start" data-desc="앱 프로세스가 메모리에 전혀 없는 상태에서 처음 실행하는 경우예요. 가장 오래 걸리는 시작이라 성능 목표로 자주 재요." data-g="2">콜드 스타트</span> 시간, APK 크기, 네트워크 지연에 목표치를 둘 수 있어요. 발표자는 APK 크기도 성능에 넣어요.</li>
+  <li><b>현지화</b>: 언어만이 아니에요. 아랍어권처럼 오른쪽에서 왼쪽으로 읽는 RTL 레이아웃을 지원해야 할 수도 있어요.</li>
+  <li><b>규모</b>: 사용자가 몇 명이고 한 사람이 데이터를 얼마나 쓰는지예요. 데이터를 저장하는 쪽은 백엔드라 대부분은 백엔드의 고민이지만, 모바일 설계에도 영향을 줘요.</li>
+</ul>
+<p>실제 슬라이드는 아래처럼 생겼어요. 가운데 NFR에서 Memory, Performance, Localization, Scale 가지가 뻗어 있고, Performance 아래에 Cold startup time, APK size, Network latency가 달려 있어요.</p>
+<figure>
+  <img src="assets/frame-0634.png" alt="NFR 마인드맵 슬라이드의 오른쪽 부분. Memory, Performance, Localization, Scale 상자와 세부 항목이 보이고 왼쪽의 Battery, Network는 잘려 있어요">
+  <figcaption>화면이 오른쪽으로 옮겨 간 뒤의 장면이라 왼쪽 가지는 잘려 있어요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=394s" target="_blank" rel="noopener">영상 06:34에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=398s" target="_blank" rel="noopener">06:38</a>
+  <h2>아키텍처, 서버 통신, API 설계</h2>
+<p>두 번째 확대 단계는 아키텍처예요. 먼저 앱이 어떤 외부 서비스와 이야기해야 하는지 정해요. 슬라이드에는 가운데 External services 상자 주위로 Authentication, Messaging, Analytics, Profile 네 개가 달려 있어요.</p>
+<figure>
+  <img src="assets/frame-0652.png" alt="Architecture 슬라이드. 가운데 External services 상자와 Authentication, Messaging, Analytics, Profile 네 상자">
+  <figcaption>채팅 앱이면 Messaging이, 로그인이 있으면 Authentication이 붙어요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=412s" target="_blank" rel="noopener">영상 06:52에서 보기</a></figcaption>
+</figure>
+<p>인증은 리프레시 토큰을 쓰는지, 일회용 비밀번호를 쓰는지, 2단계 인증을 하는지까지 구현 전에 정해 둬요. 사용자 행동을 기록할 분석이 필요한지, 프로필 데이터를 따로 가져오는 서버가 있는지도 이 단계에서 따져요.</p>
+<h3>코드를 어떻게 나눌까</h3>
+<p>다음은 소스 코드 구조예요. 화면이 오른쪽으로 옮겨 가면 Architecture 상자가 나오고, 그 주위에 MVVM(Model-View-ViewModel) / MVI(Model-View-Intent), Clean architecture, Use cases, Repository pattern이 달려 있어요.</p>
+<figure>
+  <img src="assets/frame-0748.png" alt="Architecture 상자 주위에 MVVM / MVI, Clean architecture, Use cases, Repository pattern 네 상자가 있는 슬라이드. 왼쪽에 External services와 Messaging이 일부 보여요">
+  <figcaption>네 가지는 앱이 크게 자랄 때 꺼내는 선택지예요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=468s" target="_blank" rel="noopener">영상 07:48에서 보기</a></figcaption>
+</figure>
+<p>발표자의 기준은 앱이 얼마나 커질지예요. 규모가 작고 코드가 끝없이 늘어날 일이 없는 앱이라면 UI(User Interface) 레이어와 데이터 레이어만으로 단순하게 가도 돼요. 반대로 앱의 미래를 모르고, 크게 성공했을 때를 대비해 탄탄한 기반이 필요하다면 프레젠테이션 레이어에 MVVM이나 MVI를 쓸지, <span class="term" data-term="클린 아키텍처" data-en="Clean architecture" data-desc="비즈니스 규칙을 UI나 데이터베이스 같은 바깥 세부 사항과 떼어 놓는 구조 원칙이에요. 앱이 커져도 바꾸기 쉬운 코드를 만드는 게 목적이에요." data-g="3">클린 아키텍처</span>와 유스케이스, <span class="term" data-term="리포지토리 패턴" data-en="Repository pattern" data-desc="데이터를 서버에서 가져오든 로컬 DB에서 가져오든 한 창구로 감싸는 패턴이에요. 화면 쪽 코드는 데이터가 어디서 오는지 몰라도 돼요." data-g="4">리포지토리 패턴</span>을 쓸지 정해야 해요.</p>
+<h3>서버와 어떻게 이야기할까</h3>
+<p>서버와 통신한다고 해서 꼭 REST(Representational State Transfer) 요청을 뜻하는 건 아니에요. 슬라이드의 Server communication 상자에는 REST, WebSockets, SSE(Server-Sent Events)가 차례로 붙고, 조금 뒤 GraphQL이 더해져요.</p>
+<figure>
+  <img src="assets/frame-0844.png" alt="Server communication 상자와 REST, WebSockets, SSE 세 상자가 연결된 슬라이드">
+  <figcaption>GraphQL은 이 장면 몇 초 뒤에 오른쪽 아래에 추가돼요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=524s" target="_blank" rel="noopener">영상 08:44에서 보기</a></figcaption>
+</figure>
+<p>영상이 말한 쓰임새를 표로 정리하면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>방식</th><th>누가 먼저 말하나</th><th>영상이 말한 쓰임새</th></tr></thead>
+    <tbody>
+      <tr><td>REST</td><td>앱이 요청하면 서버가 응답</td><td>가장 흔한 방식이지만 늘 맞지는 않아요</td></tr>
+      <tr><td>WebSocket</td><td>앱과 서버 둘 다</td><td>실시간 연결이 필요할 때. <span class="term" data-term="폴링" data-en="Polling" data-desc="새 데이터가 있는지 클라이언트가 일정 간격으로 계속 물어보는 방식이에요. 바뀐 게 없어도 요청을 보내서 배터리와 네트워크를 낭비해요." data-g="5">폴링</span> 대신 써요</td></tr>
+      <tr><td>SSE</td><td>서버만</td><td>서버가 이벤트를 알려 주면 앱이 데이터를 새로 고쳐요</td></tr>
+      <tr><td>GraphQL</td><td>앱이 필요한 필드만 요청</td><td>응답이 큰데 앱이 일부만 필요할 때</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>발표자가 특히 피하라는 건 폴링이에요. 데이터를 새로 고치려고 while true 루프 안에서 REST 요청을 계속 보내는 방식이죠. 실시간 갱신이 필요하면 서버가 직접 알려 주는 WebSocket이나 SSE를 먼저 생각해요.</p>
+<h3>API 설계</h3>
+<p>시스템 설계에는 API 모양도 들어가요. 슬라이드의 예시는 엔드포인트 세 줄이에요. 프로필을 가져오는 GET, 피드를 가져오는 GET, 팔로우하는 POST예요.</p>
+<figure>
+  <img src="assets/frame-0912.png" alt="API design 슬라이드. GET /users/{id}/profile, GET /users/{id}/feed?cursor={c}&amp;limit=20, POST /users/{id}/follow 세 줄의 예시 코드">
+  <figcaption>두 번째 줄의 cursor와 limit=20이 페이지네이션이에요. 피드를 20개씩 끊어서 가져와요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=552s" target="_blank" rel="noopener">영상 09:12에서 보기</a></figcaption>
+</figure>
+<p><span class="term" data-term="페이지네이션" data-en="Pagination" data-desc="긴 목록을 한 번에 다 받지 않고 일정 개수씩 끊어서 받는 방식이에요. 영상의 예처럼 cursor로 어디까지 받았는지 표시하고 limit로 개수를 정해요." data-g="6">페이지네이션</span>을 쓸지도 설계 단계에서 정해요. 앱이 보여 주는 목록이 아주 길어질 수 있다면 한 번에 다 가져오지 말고 조각으로 나눠 가져오는 편이 좋아요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=564s" target="_blank" rel="noopener">09:24</a>
+  <h2>데이터: DB 스키마, 오프라인 퍼스트, 미디어</h2>
+<p>DB 스키마는 테이블과 그 관계를 정하는 일이에요. 영상은 소셜 앱을 예로 users, posts, comments, follows 네 테이블을 그려요. 아래 장면에서 users와 posts 사이 선에 1:N, users와 follows 사이 선에 N:N이 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-1002.png" alt="Database schema 슬라이드. users 테이블(id, username, display_name, avatar_url)이 posts(id, author_id, content, created_at)와 1:N, follows(follower_id, followee_id, created_at)와 N:N으로 연결되고, 오른쪽에 comments 테이블이 일부 보여요">
+  <figcaption>posts의 author_id, follows의 follower_id와 followee_id가 관계를 잇는 열이에요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=602s" target="_blank" rel="noopener">영상 10:02에서 보기</a></figcaption>
+</figure>
+<p>관계를 말로 풀면 이래요. 한 사용자는 글을 몇 개든 쓸 수 있지만, 글 하나는 정확히 한 사용자에게 속해요. 글 하나에는 댓글이 여러 개 달리지만, 댓글 하나는 글 하나에만 속해요(posts와 comments 사이도 1:N이에요). 팔로우는 한 사용자에게 팔로워가 여럿이고, 한 팔로워도 여러 사람을 팔로우해요. 발표자는 이런 규칙을 정하는 것도 시스템 설계라고 해요.</p>
+<h3>데이터 정책: 오프라인 퍼스트로 갈까</h3>
+<p>데이터 정책 슬라이드에는 Offline-first, Single source of truth, Synchronization이 붙어 있고, 마지막으로 Conflict resolution이 더해져요.</p>
+<figure>
+  <img src="assets/frame-1112.png" alt="Data policies 상자에 Offline-first, Single source of truth, Synchronization 세 상자가 연결된 슬라이드">
+  <figcaption>이 장면 뒤로 오른쪽 아래에 Conflict resolution이 붙어 네 갈래가 돼요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=672s" target="_blank" rel="noopener">영상 11:12에서 보기</a></figcaption>
+</figure>
+<p>오프라인 퍼스트는 인터넷 없이도 앱을 최대한 자유롭게 둘러볼 수 있게 하는 접근이에요. 복잡도가 많이 늘어요. 대신 로컬 캐시에서 데이터를 바로 보여 주니 네트워크를 기다리지 않아 앱이 전체적으로 빨라지고 사용자 경험도 좋아져요. 그래서 먼저 "이 앱과 사용자층이 그 비용을 감당할 만한가"를 물어요.</p>
+<p>구현은 보통 단일 진실 공급원 원칙을 따라요. 화면은 오프라인 캐시만 보고 데이터를 꺼내요. API 호출이나 동기화 작업은 뒤에서 캐시를 채워요. 남는 문제는 두 가지예요. 하나는 동기화예요. 오프라인 메모 앱에서 새 메모를 쓰면, 다시 온라인이 됐을 때 서버로 제대로 올라가야 해요. 다른 하나는 <span class="term" data-term="충돌 해결" data-en="Conflict resolution" data-desc="여러 기기가 오프라인에서 같은 데이터를 다르게 고쳤을 때 어느 쪽을 남길지 정하는 규칙이에요. 가장 단순한 것이 마지막 쓰기 승리예요." data-g="9">충돌 해결</span>이에요. 두 기기가 오프라인에서 같은 메모를 고친 뒤 함께 온라인이 되면 어느 버전을 남길지 정해야 해요. WhatsApp 편에서 구체적인 해법이 나와요.</p>
+<h3>미디어</h3>
+<p>모바일 앱은 대부분 미디어를 다뤄요. 슬라이드의 Media 상자에는 Types, Upload / download, Chunking, Image caching 네 가지가 달려 있어요.</p>
+<figure>
+  <img src="assets/frame-1158.png" alt="Media 상자에 Types, Upload / download, Chunking, Image caching 네 상자가 연결된 슬라이드">
+  <figcaption>왼쪽 위에서 시작해 시계 방향으로 읽으면 결정하는 순서와 같아요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=718s" target="_blank" rel="noopener">영상 11:58에서 보기</a></figcaption>
+</figure>
+<p>먼저 문서, 영상, 사진 중 어떤 종류를 다루는지 정해요. 그다음 업로드와 다운로드가 있는지, 큰 파일을 조각으로 나눠야 하는지를 봐요. 이미지가 많은 앱이라면 매번 네트워크에서 받지 말고 기기에 캐시해 두는 게 좋아요. 그러면 오프라인에서도 이미지를 보여 줄 수 있어요.</p>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=725s" target="_blank" rel="noopener">12:05</a>
+  <h2>보안과 관측성</h2>
+<p>보안 슬라이드에는 Security 상자 주위에 Authentication, Networking, Data 세 가지가 있어요.</p>
+<figure>
+  <img src="assets/frame-1249.png" alt="Security 상자에 Authentication, Networking, Data 세 상자가 연결된 슬라이드">
+  <figcaption>인증, 통신, 기기에 저장하는 데이터를 각각 따로 봐야 해요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=769s" target="_blank" rel="noopener">영상 12:49에서 보기</a></figcaption>
+</figure>
+<p>인증 보안은 대부분 백엔드가 책임져요. 그래도 앱 쪽에 남는 몫이 있어요. 토큰을 쓴다면 어디에 저장하고 암호화할지, 다른 민감한 사용자 데이터도 저장해야 하는지예요. 통신은 HTTPS(Hypertext Transfer Protocol Secure)만 써도 기본으로 암호화돼요. 하지만 이때 서버는 오간 내용을 다 볼 수 있어요. 서버가 사용자 비밀번호도, 사용자가 올린 파일 내용도 절대 모르게 하는 <span class="term" data-term="제로 놀리지" data-en="Zero-knowledge" data-desc="서버가 사용자의 비밀번호나 저장된 내용을 전혀 알지 못하도록 만든 구조예요. 서버가 털려도 내용이 새지 않지만, 인증과 복구 설계가 훨씬 어려워져요." data-g="13">제로 놀리지</span> 구조가 요구된다면 인증과 보안 접근이 완전히 달라져요.</p>
+<h3>배포한 뒤에 무엇을 볼까</h3>
+<p>Google Play에 앱을 올린 뒤에는 앱이 실제로 어떻게 돌아가는지 관찰해야 해요. 관측성 슬라이드에는 Crash reporting, Analytics, Performance monitoring, Remote config가 있고, 곧 A/B testing이 더해져요.</p>
+<figure>
+  <img src="assets/frame-1344.png" alt="Observability 상자에 Crash reporting, Analytics, Performance monitoring, Remote config 네 상자가 연결된 슬라이드">
+  <figcaption>앞의 셋은 앱을 '보는' 도구이고, Remote config와 A/B 테스트는 배포된 앱을 '바꾸는' 도구예요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=824s" target="_blank" rel="noopener">영상 13:44에서 보기</a></figcaption>
+</figure>
+<p>크래시 리포트로는 어떤 기기, 어떤 사용자에게서 앱이 죽는지 알아내요. 분석으로는 사용자가 어느 화면을 자주 찾는지 봐요. 성능 모니터링으로는 평균 콜드 스타트 시간과 서버 요청에 걸리는 평균 시간을 재요. 이를 국가별로 묶으면 특정 국가에서 요청이 유난히 느리다는 것도 알 수 있어요. <span class="term" data-term="리모트 컨피그" data-en="Remote config" data-desc="앱을 다시 배포하지 않고 서버에서 설정값을 바꿔 이미 설치된 앱의 동작을 바꾸는 기능이에요. 기능을 켜고 끄거나 A/B 테스트를 할 때 써요." data-g="14">리모트 컨피그</span>는 이미 사용자 기기에 깔린 앱의 동작을 원격으로 바꾸는 설정이에요. A/B 테스트는 화면 A와 B를 서로 다른 그룹에 보여 주고 어느 쪽이 더 잘 작동하는지 비교해요.</p>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=849s" target="_blank" rel="noopener">14:09</a>
+  <h2>면접에서 WhatsApp을 설계한다면: 요구사항과 서비스</h2>
+<p>시스템 설계 면접에서는 인기 앱 하나를 골라 설계를 설명해 보라는 질문이 자주 나와요. 발표자는 여기서 오해를 하나 풀어요. 실제 WhatsApp 구조를 외워서 그대로 재현하라는 게 아니에요. 현실의 설계도 시간이 지나며 계속 바뀌니까요.</p>
+<blockquote>
+  <p>the goal of these interviews is that an interviewer just understands that you are able to make solid and well-reasoned decisions</p>
+  <p>이런 면접의 목표는 지원자가 탄탄하고 근거 있는 결정을 내릴 수 있다는 걸 면접관이 확인하는 거예요.</p>
+  <cite>— 영상 14:53</cite>
+</blockquote>
+<p>그래서 면접에서는 떠오르는 생각을 최대한 말로 꺼내고, 면접관을 생각 과정에 끌어들이라고 해요. "이 기능에 캐시를 붙이면 빨라질 수 있다"는 선택지를 떠올리고, 그 앱의 맥락에서 진지하게 따져 보는 모습이 중요해요. 영상은 아래 일곱 주제 순서로 WhatsApp을 함께 설계해 봐요.</p>
+<figure>
+  <img src="assets/frame-1429.png" alt="Designing WhatsApp 표지 슬라이드. 오른쪽에 What it does and who uses it부터 Security and observability까지 일곱 주제 목록">
+  <figcaption>앞에서 본 일반론의 주제와 거의 겹쳐요. 다만 실시간 연결과 읽음 표시가 WhatsApp에 맞게 따로 나와 있어요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=869s" target="_blank" rel="noopener">영상 14:29에서 보기</a></figcaption>
+</figure>
+<p>읽음 표시가 따로 있는 이유도 설명해요. 면접에서는 "읽음 표시가 어떻게 동작하는지 말해 보라"처럼 특정 기능을 깊이 파는 질문이 자주 나와요. 겉으로는 사소해 보여도 파고들수록 복잡해지는 기능이기 때문이에요.</p>
+<h3>무엇을 하고, 누가 쓰나</h3>
+<p>기능 슬라이드의 첫 줄은 Core: real-time chat이에요. 그 아래 미디어·연락처·위치 공유, 음성 메모, 그룹 채팅이 오고, 마지막 줄에 프로필·스토리·VoIP 영상통화가 '그 밖'으로 묶여 있어요.</p>
+<figure>
+  <img src="assets/frame-1705.png" alt="What WhatsApp does 슬라이드. 01 Core: real-time chat, 02 Media, contact and location sharing, 03 Voice memos, 04 Group chat, 05 Other: profile, stories, VoIP and video calling">
+  <figcaption>발표자는 범위를 실시간 채팅으로 좁혀요. 다 다루면 다음 날까지 녹화해야 한다면서요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=1025s" target="_blank" rel="noopener">영상 17:05에서 보기</a></figcaption>
+</figure>
+<p>사용자 슬라이드는 두 줄이에요. Anyone with a smartphone(어리든 나이 들었든, 어느 나라든)과 All kinds of phones(아주 오래된 기기부터 플래그십까지)예요.</p>
+<figure>
+  <img src="assets/frame-1749.png" alt="Who will use WhatsApp 슬라이드. 01 Anyone with a smartphone, 02 All kinds of phones 두 항목">
+  <figcaption>"모두가 쓴다"는 말은 곧 "아주 오래된 폰도 지원해야 한다"는 뜻이에요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=1069s" target="_blank" rel="noopener">영상 17:49에서 보기</a></figcaption>
+</figure>
+<p>발표자는 중국처럼 인프라가 전혀 다른 예외를 빼면 거의 모든 나라에서 모든 연령대가 WhatsApp을 쓴다고 봐요. 이 가정 하나가 뒤에 나오는 비기능 요구사항을 거의 다 결정해요.</p>
+<h3>WhatsApp이 견뎌야 할 것</h3>
+<p>비기능 요구사항 슬라이드는 네 줄이에요. 빠른 메시지 교환, 최소 배터리 사용, 메모리, APK 크기예요. 메모리 줄 아래에는 "1만 개가 넘는 메시지가 쌓인 채팅 목록, 미디어 썸네일, 진행 중인 음성 통화"가 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-1932.png" alt="What WhatsApp must handle 슬라이드. 01 Fast message exchange, 02 Minimal battery use, 03 Memory, 04 APK size와 각각의 짧은 설명">
+  <figcaption>네 줄 모두 앞 섹션의 '오래된 기기까지 지원'에서 나와요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=1172s" target="_blank" rel="noopener">영상 19:32에서 보기</a></figcaption>
+</figure>
+<ul>
+  <li><b>빠른 메시지 교환</b>: WhatsApp의 핵심이에요. 사용자가 늘 안정적인 와이파이에 있는 게 아니라 기차나 터널 안에 있을 수 있어요. 아주 느린 연결에서도 메시지가 전달되길 기대해요.</li>
+  <li><b>최소 배터리 사용</b>: 오래 쓴 폰은 배터리 용량이 줄어 있어요. 하루에도 여러 번 여는 앱이 배터리 사용량 맨 위에 뜨면, 발표자가 기억하는 20억 대 규모까지 퍼지기 어렵다고 해요.</li>
+  <li><b>메모리</b>: 몇 년 동안 대화한 친구와의 채팅은 메시지가 수만 개예요. 전체를 한 번에 불러오지 말고 페이지네이션을 써요. 이미지는 원본을 받지 않고도 대충 무엇인지 보이는 썸네일을 둬요. 데이터 요금제가 제한된 사용자를 위해서예요.</li>
+  <li><b>APK 크기</b>: 오래된 기기는 저장 공간이 넉넉하지 않아요. 앱이 필요 이상으로 커지지 않게 해요. 전 세계에서 쓰니 거의 모든 언어와 문자도 지원해야 해요.</li>
+</ul>
+<h3>필요한 서비스</h3>
+<p>이 정도 규모의 앱은 백엔드 하나에 다 붙이지 않고 마이크로서비스처럼 나눠요. 슬라이드에는 일곱 개 서비스가 한 줄 설명과 함께 정리돼 있어요.</p>
+<figure>
+  <img src="assets/frame-2149.png" alt="Services WhatsApp needs 슬라이드. Messaging server, Push notifications(FCM, APNS), Media service, Contact service, Auth service, Security service, Stories service 일곱 항목과 설명">
+  <figcaption>02 Push notifications 아래 FCM과 APNS가 따로 적혀 있어요. 안드로이드와 iOS가 서로 다른 푸시 서비스를 써요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=1309s" target="_blank" rel="noopener">영상 21:49에서 보기</a></figcaption>
+</figure>
+<p>몇 가지는 설명이 더 붙어요. 연락처 서비스는 앱이 기기의 전화번호 목록을 가져와 서버와 비교하고, 그중 WhatsApp에 가입한 번호만 골라 보여 줘요. 이 비교는 백엔드 어딘가에서 해야 해요. 인증은 비밀번호 없이 전화번호 하나로 해요. 일회용 비밀번호로 번호를 확인하고 나면, 다시 인증할 수 있는 한 어느 기기에서든 그 번호를 쓸 수 있어요. 보안 서비스는 <span class="term" data-term="종단 간 암호화" data-en="End-to-end encryption (E2EE)" data-desc="보내는 기기에서 암호화하고 받는 기기에서만 풀 수 있게 하는 방식이에요. 중간의 서버는 키가 없어서 내용을 볼 수 없어요." data-g="12">종단 간 암호화</span>를 위한 키 교환을 맡아요. 메시지는 서버가 모르는 키로 기기에서 미리 암호화한 뒤 서버로 가요. 서버는 복호화할 키가 없으니 무엇이 오갔는지 알 수 없어요.</p>
+</section>
+
+<section id="s8">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=1316s" target="_blank" rel="noopener">21:56</a>
+  <h2>WhatsApp의 구조: 레이어, 실시간 연결, 로컬 DB, 오프라인 전송</h2>
+<p>발표자는 실제 WhatsApp 소스 코드를 본 적이 없다고 먼저 밝혀요. 그래서 여기서부터는 "이런 앱이라면 이렇게 짜겠다"는 추론이에요. 많은 사용자에게 닿고 수십 년 유지될 큰 코드베이스라는 점이 출발점이에요. 슬라이드는 세 가지 결정을 적어 둬요.</p>
+<figure>
+  <img src="assets/frame-2256.png" alt="How the app is structured 슬라이드. 01 MVI or MVVM, 02 UI, domain, data layers, 03 Keep the domain layer와 각각의 설명">
+  <figcaption>세 번째 줄이 핵심이에요. 비즈니스 로직이 많아서 도메인 레이어를 뺄 수 없다고 적혀 있어요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=1376s" target="_blank" rel="noopener">영상 22:56에서 보기</a></figcaption>
+</figure>
+<p>01은 프레젠테이션 쪽에 단방향 데이터 흐름을 쓰는 MVI나 MVVM이에요. 발표자는 MVVM이 안드로이드의 사실상 표준이라고 말해요. 02는 레이어 분리예요. 화면(UI), 채팅 메시지·프로필·사용자 같은 개념과 비즈니스 로직(도메인), 외부 서비스·백엔드와의 통신(데이터)을 나눠요. 안드로이드 OS에 특화된 코드를 위해 인프라 레이어를 네 번째로 두기도 해요.</p>
+<p>03은 판단이 들어간 부분이에요. 안드로이드에서 도메인 레이어는 선택 사항이에요. 비즈니스 로직이 대부분 백엔드에 있는 앱이라면 도메인 레이어를 빼서 구조를 단순하게 하는 것도 합리적이에요. 레이어가 적을수록 다루기 쉬우니까요. 다만 WhatsApp처럼 계속 커지는 앱은 앱 안에도 비즈니스 로직이 많아서 도메인 레이어를 두는 게 맞다고 해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>안드로이드 공식 아키텍처 가이드도 같은 입장이에요. 모든 앱에 UI 레이어와 데이터 레이어를 두라고 하고, 도메인 레이어는 그 사이에 넣는 선택 레이어라고 설명해요. 복잡도를 다루거나 재사용이 필요할 때만 쓰라고 해요. 상태는 한 방향으로만 흐르고 이벤트는 반대 방향으로 흐르는 단방향 데이터 흐름도 이 가이드가 권하는 방식이에요.</p>
+  <p class="cite">출처: <a href="https://developer.android.com/topic/architecture" target="_blank" rel="noopener">Android Developers — Guide to app architecture</a></p>
+</aside>
+<h3>채팅을 살려 두는 두 가지 길</h3>
+<p>채팅은 둘 이상이 실시간으로 이어져 있어야 해요. 지금 보고 있는 채팅방만이 아니에요. 채팅 A를 보는 동안 채팅 B에 온 메시지도 받아 두었다가 목록 화면으로 돌아오면 보여 줘야 해요. 아래 슬라이드는 위아래 두 줄로 이 문제를 나눠요.</p>
+<figure>
+  <img src="assets/frame-2502.png" alt="Keeping chat alive 슬라이드. 위 줄은 Phone · foreground와 Messaging server가 WebSocket 양방향 화살표로 연결, 아래 줄은 Phone · background와 Messaging server가 FCM / APNS 점선 화살표로 연결">
+  <figcaption>위 줄 화살표는 양쪽을 다 가리키고, 아래 줄 점선은 서버에서 폰 쪽으로만 가요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=1502s" target="_blank" rel="noopener">영상 25:02에서 보기</a></figcaption>
+</figure>
+<p>위 줄은 앱이 화면에 떠 있을 때예요. 폰은 서버가 모르는 일(내가 보낸 메시지)을 알려야 하고, 서버는 폰이 모르는 일(남이 보낸 메시지)을 알려야 해요. 양쪽 모두 실시간으로 말해야 하니 WebSocket이 맞아요. 발표자는 WhatsApp이 WebSocket을 바탕으로 한 자체 프로토콜을 쓰는 것으로 안다고 해요. SSE는 서버만 보낼 수 있어서 여기에는 맞지 않아요. 상자 안의 "Single shared connection"은 연결을 하나만 열어 공유한다는 뜻이고, 서버 쪽 "Fan-out to recipients"는 받은 메시지를 받는 사람들에게 퍼뜨린다는 뜻이에요.</p>
+<p>아래 줄은 앱이 백그라운드로 갔을 때예요. WebSocket은 앱이 앞에 떠 있거나 적어도 프로세스가 살아 있을 때만 유지돼요. 앱이 종료돼도 사용자는 새 메시지를 알림으로 받길 기대해요. 그래서 메시징 서버가 FCM이나 APNS에 넘기고, 이들이 폰에 푸시를 전달해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>FCM은 우선순위가 두 가지예요. 높은 우선순위 메시지는 즉시 전달을 시도하고, 필요하면 잠든 기기를 깨워 짧은 처리를 할 수 있게 해 줘요. 보통 우선순위 메시지는 기기가 Doze 모드일 때 배터리를 아끼려고 늦게 전달될 수 있어요. 채팅 알림처럼 바로 보여야 하는 메시지가 높은 우선순위에 해당해요.</p>
+  <p class="cite">출처: <a href="https://firebase.google.com/docs/cloud-messaging/android-message-priority" target="_blank" rel="noopener">Firebase 공식 문서 — Set and manage Android message priority</a></p>
+</aside>
+<h3>로컬 DB에 무엇을 둘까</h3>
+<p>발표자는 실제 스키마가 훨씬 복잡할 거라고 전제해요. 면접에서는 어떤 테이블이 있고 서로 어떻게 이어지는지 떠올릴 수 있으면 충분해요. 슬라이드에는 messages, contacts, shared_media, call_history 네 테이블이 위에 있고, 아래에 stories_cache가 따로 있어요.</p>
+<figure>
+  <img src="assets/frame-2616.png" alt="Simplified local schema 슬라이드. messages(id, chat_id, sender_id, body), contacts(id, phone_number, display_name, avatar_url), shared_media(id, message_id, type, uri), call_history(id, peer_id, started_at, duration_s), stories_cache(id, author_id, preview_uri, expires_at) 다섯 테이블">
+  <figcaption>shared_media의 message_id가 메시지와 미디어를 이어요. stories_cache에는 expires_at이 있어 캐시가 언제 낡는지 알 수 있어요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=1576s" target="_blank" rel="noopener">영상 26:16에서 보기</a></figcaption>
+</figure>
+<p>contacts에는 아바타 URL(Uniform Resource Locator), 표시 이름, 전화번호가 들어가요. 공유 미디어는 사진·영상의 참조만 따로 모아 둬요. 통화 기록은 다른 기능의 예로 넣었어요. 흥미로운 건 stories_cache예요. 발표자는 스토리를 온라인 전용 기능으로 봐요. 그래도 오프라인일 때 누가 스토리를 올렸는지는 보여 주는 게 좋아요. 화면이 훨씬 풍성해 보이고, 눌렀을 때 메타데이터가 이미 캐시에 있으니 스토리 사진만 받으면 돼요.</p>
+<h3>메시지가 사라지지 않게 보내기</h3>
+<p>WhatsApp은 오프라인에서도 메시지를 볼 수 있어야 하니 오프라인 퍼스트가 맞아요. 슬라이드는 메시지 하나가 거치는 길을 네 칸으로 그려요. Compose → Local cache → Background worker → Delivery예요.</p>
+<figure>
+  <img src="assets/frame-2835.png" alt="How messages stay reliable 슬라이드. Compose(User taps send), Local cache(Saved immediately, always), Background worker(Retries with backoff until delivered), Delivery(Server and recipient acknowledge) 네 상자가 화살표로 이어진 흐름">
+  <figcaption>두 번째 칸 아래 'Saved immediately, always'가 핵심이에요. 네트워크가 되든 안 되든 먼저 로컬에 저장해요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=1715s" target="_blank" rel="noopener">영상 28:35에서 보기</a></figcaption>
+</figure>
+<p>사용자가 전송을 누르는 순간 로컬 캐시부터 고쳐요. 서버가 받았다는 확인이 아직 없어도 메시지는 이미 저장돼 있어요. 발표자는 로컬 캐시를 단일 진실 공급원으로 삼는 이 방식이 오프라인 퍼스트에서 거의 항상 정답이라고 해요. 그다음 안드로이드의 워크 매니저 같은 백그라운드 워커가 전송을 맡아요. 첫 시도에 성공하면 좋지만, 인터넷이 없거나 서버가 내려가 있으면 백오프를 두고 계속 재시도해요. 서버가 받았다고 확인해 주면 체크 표시 하나로 바꾸고, 상대 기기가 받았는지까지 확인하도록 넓힐 수 있어요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>WorkManager에서는 작업이 <code>Result.retry()</code>를 돌려주면 백오프 정책에 따라 다시 예약돼요. 정책은 <code>LINEAR</code>와 <code>EXPONENTIAL</code> 두 가지이고, 기본값은 <code>EXPONENTIAL</code>에 지연 30초예요. 지연은 10초보다 짧게 잡을 수 없어요. 네트워크 연결 같은 제약 조건을 걸면 조건이 맞을 때만 작업이 돌아요.</p>
+  <p class="cite">출처: <a href="https://developer.android.com/develop/background-work/background-tasks/persistent/getting-started/define-work" target="_blank" rel="noopener">Android Developers — Define work requests</a></p>
+</aside>
+</section>
+
+<section id="s9">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=1715s" target="_blank" rel="noopener">28:35</a>
+  <h2>깊이 들어가는 질문: 충돌, 읽음 표시, 미디어, 보안, 관측성</h2>
+<p>오프라인 전송 흐름 아래에 주황색 테두리 상자가 하나 더 붙어요. "Conflict resolution, last write wins"라는 제목 아래 두 줄 설명이 있어요. 오프라인인 두 기기가 같은 메시지를 고치면 가장 최근 시각의 수정을 남기고, 병합 로직도 서버 왕복도 필요 없는 가장 단순한 전략이라는 내용이에요.</p>
+<figure>
+  <img src="assets/frame-2935.png" alt="How messages stay reliable 흐름도 아래에 Conflict resolution, last write wins 상자가 추가된 슬라이드">
+  <figcaption>앞 섹션의 네 칸 흐름은 그대로이고, 아래 상자만 새로 붙었어요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=1775s" target="_blank" rel="noopener">영상 29:35에서 보기</a></figcaption>
+</figure>
+<p>이 전략을 <span class="term" data-term="마지막 쓰기 승리" data-en="Last write wins" data-desc="충돌이 나면 시각이 가장 늦은 수정을 남기는 전략이에요. 병합 로직이 필요 없어 단순하지만, 먼저 한 수정은 말없이 사라져요." data-g="10">마지막 쓰기 승리</span>라고 불러요. 발표자가 든 예는 이래요. 두 기기 모두 오프라인에서 'hello'라는 메시지를 고쳐요. 기기 A는 오후 4시에 'hello world'로, 기기 B는 오후 5시에 'bye-bye world'로 바꿔요. 두 기기가 온라인이 되어 수정을 서버로 보내면, 서버는 시각을 비교해 더 늦은 5시 쪽을 남겨요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 710 230" role="img" aria-label="기기 A의 16시 수정과 기기 B의 17시 수정이 서버로 가고, 서버가 시각을 비교해 17시의 bye-bye world를 남기는 그림">
+    <defs><marker id="arrow-lww" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-lww"></g>
+  </svg>
+  <figcaption>내용은 보지 않고 시각만 봐요. 그래서 단순하지만, 먼저 고친 쪽의 수정은 말없이 사라져요.</figcaption>
+</figure>
+<p>더 복잡한 전략은 사용자에게 어느 버전을 남길지 고르게 하는 대화상자를 띄우는 거예요. 발표자가 아는 한 WhatsApp은 그렇게 동작하지 않는다고 해요.</p>
+<h3>메시지는 언제 '읽음'일까</h3>
+<p>읽음 표시는 면접에서 특정 기능을 깊이 파고들 때 자주 나오는 예시 질문이에요. 이런 질문을 받으면 높은 수준의 개요보다 더 자세히 들어가야 해요. 테이블에 어떤 필드가 있고 어디와 이어지는지, 어떻게 보장하는지까지 말하길 기대한다고 해요. 슬라이드는 체크 표시 세 상태를 위에, 그리고 "언제 읽음으로 칠까"를 정하는 질문 세 개를 아래에 놓아요.</p>
+<figure>
+  <img src="assets/frame-3055.png" alt="When is a message read 슬라이드. 위에 Sent(체크 하나), Delivered(체크 둘), Read(체크 둘) 세 상자, 아래에 Is it rendered on the UI?, Did the user scroll to it? Visible does not equal seen, Seen for at least X seconds? 세 질문">
+  <figcaption>아래 줄은 왼쪽에서 오른쪽으로 갈수록 '읽음'의 기준이 엄격해져요. 가운데 'Visible does not equal seen'이 요점이에요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=1855s" target="_blank" rel="noopener">영상 30:55에서 보기</a></figcaption>
+</figure>
+<p>보냄은 서버가 메시지를 받았을 때, 전달됨(체크 둘)은 상대 앱이 받았을 때예요. 남은 건 '읽음'의 기준이에요. 보냈을 때는 당연히 아니에요. 상대 앱이 받았거나 화면에 그렸을 때도 아닐 가능성이 커요. 화면에 그려졌다고 사람이 읽었다는 뜻은 아니니까요. 발표자의 답은 메시지가 목록(안드로이드의 LazyColumn이나 RecyclerView)에서 실제로 보이는 상태로 몇 초 이상 머물렀을 때예요. 사용자가 멈춰서 읽고 있다는 신호라서요. 그래도 상대의 눈을 직접 확인할 수는 없으니 진짜 읽음에 '가장 가까운' 기준일 뿐이에요. 면접관은 이런 차이를 알아차리고 설계 문제로 꺼낼 수 있는지를 본다고 해요.</p>
+<h3>미디어 옮기기</h3>
+<p>WhatsApp에서는 어느 채팅에나 사진, 영상, 파일, 문서를 보낼 수 있어요. 미디어 슬라이드는 File cap, Chunking, Resumable uploads를 차례로 붙이고, 마지막에 Thumbnails in payload를 더해요.</p>
+<figure>
+  <img src="assets/frame-3242.png" alt="How WhatsApp moves media 슬라이드. Media 상자에 File cap, Chunking, Resumable uploads 세 상자가 연결돼 있어요">
+  <figcaption>세 상자가 붙은 장면이에요. 몇 초 뒤 오른쪽 아래에 Thumbnails in payload가 더해져요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=1962s" target="_blank" rel="noopener">영상 32:42에서 보기</a></figcaption>
+</figure>
+<p>먼저 파일 크기 상한이에요. 상한이 없으면 사람들이 WhatsApp을 공짜 개인 클라우드로 쓸 테니, 발표자는 30~50MB쯤으로 막겠다고 추측해요. 다음은 조각 나누기예요. 50MB 파일을 불안한 연결로 올린다면 조각으로 나눠야 업로드를 멈췄다가 다시 이어 갈 수 있어요. 발표자는 WhatsApp이 실패했을 때 처음부터 다시 올리게 하지 않고 중간부터 이어 주는 데 아주 능하다고 해요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 700 175" role="img" aria-label="(a) 파일을 통째로 올리다 끊기면 처음부터 다시, (b) 조각으로 나눠 올리다 끊기면 끊긴 조각부터 이어서 올리는 비교">
+    <g id="fig-chunk"></g>
+  </svg>
+  <figcaption>(b)에서 점선으로 두른 칸이 끊긴 지점이에요. 이미 올라간 조각은 다시 보내지 않아요. 조각 수는 설명을 위해 다섯 칸으로 그렸어요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=1940s" target="_blank" rel="noopener">영상 32:20에서 보기</a></figcaption>
+</figure>
+<p>마지막으로 이미지를 보낼 때 아주 작고 흐린 버전을 메시지 페이로드에 함께 실어요. 받는 쪽은 원본을 받기 전에도 대충 어떤 사진인지 보여 줄 수 있고, 원본은 사용자가 보려 할 때 늦게 받아요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>30~50MB는 발표자가 설계 연습으로 잡은 추측이에요. WhatsApp 공식 안내에 따르면 문서는 최대 2GB까지 보낼 수 있어요. 실제 서비스는 훨씬 큰 파일을 받는 쪽을 택한 셈이에요. 조각 업로드와 이어 올리기가 더 중요해지는 이유이기도 해요.</p>
+  <p class="cite">출처: <a href="https://www.whatsapp.com/messaging" target="_blank" rel="noopener">WhatsApp 공식 사이트 — Messaging</a></p>
+</aside>
+<h3>사용자를 지키는 방법</h3>
+<p>보안 슬라이드는 네 줄이에요. Auth(전화번호와 SMS(Short Message Service) 일회용 비밀번호, 별도 비밀번호 없음), End-to-end encryption(서버는 평문을 절대 못 봄), Key storage(Android Keystore), Local DB encrypted예요.</p>
+<figure>
+  <img src="assets/frame-3338.png" alt="How WhatsApp protects users 슬라이드. 01 Auth, 02 End-to-end encryption, 03 Key storage, 04 Local DB encrypted와 설명">
+  <figcaption>2번과 4번이 짝이에요. 전송 중에 암호화해도 기기 DB에 평문으로 남으면 소용이 없어요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=2018s" target="_blank" rel="noopener">영상 33:38에서 보기</a></figcaption>
+</figure>
+<p>암호화 키를 기기 어디에 둘지에 대해 발표자는 "거의 항상 안드로이드 키스토어"라고 답해요. 안드로이드 기기에서 제대로 보호되는 유일한 곳이라는 이유예요. 로컬 DB 암호화도 WhatsApp이 할 법한 일이라고 봐요. 종단 간 암호화를 하면서 로컬 DB에는 메시지가 평문으로 남아 있다면, 적어도 루팅된 기기에서는 다른 앱이 그 테이블을 쉽게 읽을 수 있으니까요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>안드로이드 키스토어에 넣은 키는 밖으로 꺼낼 수 없어요. 암호화 연산은 앱 프로세스가 아니라 시스템 프로세스에서 돌아요. 앱이 털려도 공격자는 키를 쓸 수는 있지만 키 자체를 기기 밖으로 빼낼 수는 없어요. 기기가 지원하면 키를 TEE(Trusted Execution Environment)나 보안 칩 같은 보안 하드웨어에 묶어 둘 수도 있어요.</p>
+  <p class="cite">출처: <a href="https://developer.android.com/privacy-and-security/keystore" target="_blank" rel="noopener">Android Developers — Android Keystore system</a></p>
+</aside>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>WhatsApp의 종단 간 암호화는 Open Whisper Systems가 설계한 Signal Protocol을 바탕으로 해요. WhatsApp 보안 백서는 이 프로토콜이 제3자와 WhatsApp 모두 메시지와 통화의 평문에 접근하지 못하게 설계됐다고 밝혀요.</p>
+  <p class="cite">출처: <a href="https://www.whatsapp.com/security/WhatsApp-Security-Whitepaper.pdf" target="_blank" rel="noopener">WhatsApp Encryption Overview (보안 백서, PDF)</a></p>
+</aside>
+<h3>무엇을 지켜볼까</h3>
+<p>관측성 슬라이드도 네 줄이에요. 첫 줄 Crash reporting 아래에 "무엇을 써도 되지만 리포트는 정제해야 한다, 메시지 내용은 안 된다"는 단서가 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-3538.png" alt="What WhatsApp watches 슬라이드. 01 Crash reporting, 02 Behavioural analytics, 03 Performance, 04 A/B testing과 설명">
+  <figcaption>04 A/B testing 아래에는 'WhatsApp에서는 흔하지 않다'는 메모가 있어요. <a href="https://www.youtube.com/watch?v=OP6JHa21We8&amp;t=2138s" target="_blank" rel="noopener">영상 35:38에서 보기</a></figcaption>
+</figure>
+<p>크래시 리포트는 배포한 앱이면 거의 늘 필요해요. WhatsApp만의 추가 조건은 리포트에 메시지 내용이 절대 들어가면 안 된다는 거예요. 오류 메시지에 대화 내용이 섞여 나가면 종단 간 암호화와 제로 놀리지의 취지가 깨져요. 행동 분석은 무슨 메시지를 주고받는지가 아니라 언제, 얼마나 오래 앱을 쓰는지를 봐요. 발표자는 Meta가 이런 분석을 할 가능성이 크다고 봐요. 성능 쪽에서는 앱 시작 시간, 메시지 전송 지연의 중앙값과 튀는 값, 긴 채팅 목록의 프레임 드롭을 재요. A/B 테스트는 WhatsApp보다는 여러 UI 배치를 시험하길 좋아하는 Instagram에서 더 흔하다고 해요.</p>
+<h3>일반론과 WhatsApp 답안 나란히 보기</h3>
+<p>앞의 여섯 섹션에서 본 질문 목록에 WhatsApp 사례가 어떻게 답했는지 영상 내용만으로 모으면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>설계 질문</th><th>WhatsApp에서 내린 답</th></tr></thead>
+    <tbody>
+      <tr><td>누가 쓰나</td><td>스마트폰을 가진 거의 모두. 아주 오래된 기기까지</td></tr>
+      <tr><td>비기능 요구사항</td><td>느린 연결에서도 빠른 전달, 최소 배터리, 페이지네이션과 썸네일, APK 크기 제한</td></tr>
+      <tr><td>코드 구조</td><td>MVI·MVVM, UI·도메인·데이터 세 레이어, 도메인 레이어 유지</td></tr>
+      <tr><td>서버 통신</td><td>앞에 떠 있을 때 WebSocket, 백그라운드에서는 FCM·APNS 푸시</td></tr>
+      <tr><td>데이터 정책</td><td>오프라인 퍼스트, 로컬 캐시가 단일 진실 공급원, 백오프 재시도</td></tr>
+      <tr><td>충돌 해결</td><td>마지막 쓰기 승리</td></tr>
+      <tr><td>미디어</td><td>크기 상한, 조각 업로드와 이어 올리기, 페이로드 속 흐린 썸네일</td></tr>
+      <tr><td>보안</td><td>전화번호 인증, 종단 간 암호화, 키스토어, 로컬 DB 암호화</td></tr>
+      <tr><td>관측성</td><td>메시지 내용을 지운 크래시 리포트, 행동 분석, 성능 지표</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>발표자는 이 모든 것을 하나의 예시 답안으로 받아들이라고 해요. 이런 기술적 판단은 결국 앱을 직접 만들어 보는 경험에서 나온다는 말로 사례를 마무리해요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 영어 자막이라 받아적기가 틀린 곳이 있어요. 문맥과 화면으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>lazy color recycler view</td><td>LazyColumn / RecyclerView</td><td>안드로이드에서 긴 목록을 그리는 두 방식(Compose와 View)</td></tr>
+      <tr><td>does not yet requests. Client</td><td>does not yet mean REST requests (추정)</td><td>서버와 통신한다고 꼭 REST라는 뜻은 아니라는 문장</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-8"><dt>단일 진실 공급원<span class="en">Single source of truth (SSOT)</span></dt><dd>어떤 데이터의 &#x27;정답&#x27;을 한 곳에만 두는 원칙이에요. 오프라인 퍼스트에서는 로컬 캐시가 그 자리이고, 화면은 캐시만 보고 네트워크 결과는 캐시에 채워 넣어요.</dd></div>
+    <div class="g" id="g-14"><dt>리모트 컨피그<span class="en">Remote config</span></dt><dd>앱을 다시 배포하지 않고 서버에서 설정값을 바꿔 이미 설치된 앱의 동작을 바꾸는 기능이에요. 기능을 켜고 끄거나 A/B 테스트를 할 때 써요.</dd></div>
+    <div class="g" id="g-4"><dt>리포지토리 패턴<span class="en">Repository pattern</span></dt><dd>데이터를 서버에서 가져오든 로컬 DB에서 가져오든 한 창구로 감싸는 패턴이에요. 화면 쪽 코드는 데이터가 어디서 오는지 몰라도 돼요.</dd></div>
+    <div class="g" id="g-10"><dt>마지막 쓰기 승리<span class="en">Last write wins</span></dt><dd>충돌이 나면 시각이 가장 늦은 수정을 남기는 전략이에요. 병합 로직이 필요 없어 단순하지만, 먼저 한 수정은 말없이 사라져요.</dd></div>
+    <div class="g" id="g-11"><dt>백오프<span class="en">Backoff</span></dt><dd>실패한 작업을 다시 시도할 때 간격을 점점 늘려 가는 방식이에요. 서버나 네트워크가 회복할 시간을 주고 배터리 낭비도 줄여요.</dd></div>
+    <div class="g" id="g-1"><dt>비기능 요구사항<span class="en">Non-functional requirements</span></dt><dd>기능이 무엇을 하는지가 아니라 어떤 품질로 동작해야 하는지를 정한 요구사항이에요. 배터리, 네트워크, 메모리, 성능 같은 제약이 여기에 들어가요.</dd></div>
+    <div class="g" id="g-7"><dt>오프라인 퍼스트<span class="en">Offline-first</span></dt><dd>네트워크가 없어도 앱이 최대한 동작하도록 로컬 저장소를 중심에 두는 설계예요. 복잡해지지만 화면이 빨라지고 끊기는 환경에서도 쓸 수 있어요.</dd></div>
+    <div class="g" id="g-13"><dt>제로 놀리지<span class="en">Zero-knowledge</span></dt><dd>서버가 사용자의 비밀번호나 저장된 내용을 전혀 알지 못하도록 만든 구조예요. 서버가 털려도 내용이 새지 않지만, 인증과 복구 설계가 훨씬 어려워져요.</dd></div>
+    <div class="g" id="g-12"><dt>종단 간 암호화<span class="en">End-to-end encryption (E2EE)</span></dt><dd>보내는 기기에서 암호화하고 받는 기기에서만 풀 수 있게 하는 방식이에요. 중간의 서버는 키가 없어서 내용을 볼 수 없어요.</dd></div>
+    <div class="g" id="g-9"><dt>충돌 해결<span class="en">Conflict resolution</span></dt><dd>여러 기기가 오프라인에서 같은 데이터를 다르게 고쳤을 때 어느 쪽을 남길지 정하는 규칙이에요. 가장 단순한 것이 마지막 쓰기 승리예요.</dd></div>
+    <div class="g" id="g-2"><dt>콜드 스타트<span class="en">Cold start</span></dt><dd>앱 프로세스가 메모리에 전혀 없는 상태에서 처음 실행하는 경우예요. 가장 오래 걸리는 시작이라 성능 목표로 자주 재요.</dd></div>
+    <div class="g" id="g-3"><dt>클린 아키텍처<span class="en">Clean architecture</span></dt><dd>비즈니스 규칙을 UI나 데이터베이스 같은 바깥 세부 사항과 떼어 놓는 구조 원칙이에요. 앱이 커져도 바꾸기 쉬운 코드를 만드는 게 목적이에요.</dd></div>
+    <div class="g" id="g-6"><dt>페이지네이션<span class="en">Pagination</span></dt><dd>긴 목록을 한 번에 다 받지 않고 일정 개수씩 끊어서 받는 방식이에요. 영상의 예처럼 cursor로 어디까지 받았는지 표시하고 limit로 개수를 정해요.</dd></div>
+    <div class="g" id="g-5"><dt>폴링<span class="en">Polling</span></dt><dd>새 데이터가 있는지 클라이언트가 일정 간격으로 계속 물어보는 방식이에요. 바뀐 게 없어도 요청을 보내서 배터리와 네트워크를 낭비해요.</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>APK</dt><dd>Android Package Kit</dd></div>
+    <div class="g"><dt>APNS</dt><dd>Apple Push Notification service</dd></div>
+    <div class="g"><dt>DB</dt><dd>Database</dd></div>
+    <div class="g"><dt>FCM</dt><dd>Firebase Cloud Messaging</dd></div>
+    <div class="g"><dt>HTTPS</dt><dd>Hypertext Transfer Protocol Secure</dd></div>
+    <div class="g"><dt>MVI</dt><dd>Model-View-Intent</dd></div>
+    <div class="g"><dt>MVVM</dt><dd>Model-View-ViewModel</dd></div>
+    <div class="g"><dt>NFR</dt><dd>Non-Functional Requirements</dd></div>
+    <div class="g"><dt>OS</dt><dd>Operating System</dd></div>
+    <div class="g"><dt>RAM</dt><dd>Random Access Memory</dd></div>
+    <div class="g"><dt>REST</dt><dd>Representational State Transfer</dd></div>
+    <div class="g"><dt>RTL</dt><dd>Right-To-Left</dd></div>
+    <div class="g"><dt>SMS</dt><dd>Short Message Service</dd></div>
+    <div class="g"><dt>SSE</dt><dd>Server-Sent Events</dd></div>
+    <div class="g"><dt>TEE</dt><dd>Trusted Execution Environment</dd></div>
+    <div class="g"><dt>UI</dt><dd>User Interface</dd></div>
+    <div class="g"><dt>URL</dt><dd>Uniform Resource Locator</dd></div>
+    <div class="g"><dt>UX</dt><dd>User Experience</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=OP6JHa21We8" target="_blank" rel="noopener">원본 영상 — Philipp Lackner, Beginner&#x27;s Guide to Mobile App System Design</a></li>
+    <li id="src-2"><a href="https://developer.android.com/topic/architecture" target="_blank" rel="noopener">Android Developers — Guide to app architecture</a></li>
+    <li id="src-3"><a href="https://firebase.google.com/docs/cloud-messaging/android-message-priority" target="_blank" rel="noopener">Firebase 공식 문서 — Set and manage Android message priority</a></li>
+    <li id="src-4"><a href="https://developer.android.com/develop/background-work/background-tasks/persistent/getting-started/define-work" target="_blank" rel="noopener">Android Developers — Define work requests (WorkManager)</a></li>
+    <li id="src-5"><a href="https://developer.android.com/privacy-and-security/keystore" target="_blank" rel="noopener">Android Developers — Android Keystore system</a></li>
+    <li id="src-6"><a href="https://www.whatsapp.com/messaging" target="_blank" rel="noopener">WhatsApp 공식 사이트 — Messaging</a></li>
+    <li id="src-7"><a href="https://www.whatsapp.com/security/WhatsApp-Security-Whitepaper.pdf" target="_blank" rel="noopener">WhatsApp Encryption Overview (보안 백서, PDF)</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 13일에 이 영상을 보고 정리했어요. 원본은 Philipp Lackner 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+// 직접 그린 그림 세 개: 비기능 요구사항 지도, 마지막 쓰기 승리, 조각 업로드
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+
+// 1) 비기능 요구사항 여섯 갈래 — 영상 슬라이드의 마인드맵을 한 화면에 모았어요
+(() => {
+  const g = document.getElementById('fig-nfr');
+  if (!g) return;
+  const cats = [
+    ['배터리', ['실시간 연결', '백그라운드 작업', '무거운 처리', '미디어']],
+    ['네트워크', ['안정적인 속도', '가용성']],
+    ['메모리', ['미디어 업로드', '다운로드']],
+    ['성능', ['콜드 스타트 시간', 'APK 크기', '네트워크 지연']],
+    ['현지화', ['언어', 'RTL 레이아웃']],
+    ['규모', ['사용자 수', '사용자당 데이터 양']],
+  ];
+  const W = 220, H = 150, GX = 20, GY = 20;
+  cats.forEach(([name, items], i) => {
+    const col = i % 3, row = Math.floor(i / 3);
+    const x = 10 + col * (W + GX), y = 10 + row * (H + GY);
+    g.append(el('rect', { x, y, width: W, height: H, rx: 10, class: `c${i + 1} cell` }));
+    g.append(el('text', { x: x + 16, y: y + 30, 'font-size': 15, 'font-weight': 700 }, name));
+    items.forEach((it, j) => {
+      g.append(el('text', { x: x + 16, y: y + 58 + j * 22 }, '· ' + it));
+    });
+  });
+})();
+
+// 2) 마지막 쓰기 승리 — 영상 28:35~29:33의 예시 그대로
+(() => {
+  const g = document.getElementById('fig-lww');
+  if (!g) return;
+  const dev = [
+    { y: 20, cls: 'c1 cell', name: '기기 A · 오프라인', time: '16:00에 수정', edit: 'hello → hello world' },
+    { y: 130, cls: 'c2 cell', name: '기기 B · 오프라인', time: '17:00에 수정', edit: 'hello → bye-bye world' },
+  ];
+  dev.forEach((d) => {
+    g.append(el('rect', { x: 10, y: d.y, width: 200, height: 80, rx: 10, class: d.cls }));
+    g.append(el('text', { x: 24, y: d.y + 26, 'font-weight': 700 }, d.name));
+    g.append(el('text', { x: 24, y: d.y + 48, class: 'sub' }, d.time));
+    g.append(el('text', { x: 24, y: d.y + 68, class: 'mono' }, d.edit));
+    g.append(el('path', { d: `M212 ${d.y + 40} L288 ${d.y < 100 ? 105 : 125}`, class: 'line', 'marker-end': 'url(#arrow-lww)' }));
+  });
+  g.append(el('rect', { x: 292, y: 75, width: 170, height: 80, rx: 10, class: 'accent' }));
+  g.append(el('text', { x: 377, y: 105, 'text-anchor': 'middle', 'font-weight': 700 }, '서버'));
+  g.append(el('text', { x: 377, y: 128, 'text-anchor': 'middle', class: 'sub' }, '두 수정의 시각을 비교'));
+  g.append(el('path', { d: 'M464 115 h52', class: 'hot', 'marker-end': 'url(#arrow-lww)' }));
+  g.append(el('rect', { x: 520, y: 75, width: 180, height: 80, rx: 10, class: 'ok' }));
+  g.append(el('text', { x: 610, y: 103, 'text-anchor': 'middle', 'font-weight': 700 }, '17:00 쪽이 이겨요'));
+  g.append(el('text', { x: 610, y: 128, 'text-anchor': 'middle', class: 'mono' }, 'bye-bye world'));
+})();
+
+// 3) 통째로 올리기 vs 조각으로 올리기 — 영상 32:20 부근 설명
+(() => {
+  const g = document.getElementById('fig-chunk');
+  if (!g) return;
+  // (a) 통째로
+  g.append(el('text', { x: 10, y: 22, 'font-weight': 700 }, '(a) 파일을 통째로 올릴 때'));
+  g.append(el('rect', { x: 10, y: 36, width: 500, height: 36, rx: 6, class: 'box' }));
+  g.append(el('rect', { x: 10, y: 36, width: 340, height: 36, rx: 6, class: 'bad' }));
+  g.append(el('text', { x: 180, y: 59, 'text-anchor': 'middle' }, '올리던 중 연결이 끊김'));
+  g.append(el('text', { x: 530, y: 59, class: 'sub' }, '→ 처음부터 다시'));
+  // (b) 조각으로
+  g.append(el('text', { x: 10, y: 112, 'font-weight': 700 }, '(b) 조각으로 나눠 올릴 때'));
+  const n = 5, cw = 92, gap = 10;
+  for (let i = 0; i < n; i++) {
+    const x = 10 + i * (cw + gap);
+    const cls = i < 3 ? 'ok' : 'box';
+    g.append(el('rect', { x, y: 126, width: cw, height: 36, rx: 6, class: cls }));
+    g.append(el('text', { x: x + cw / 2, y: 149, 'text-anchor': 'middle', class: i < 3 ? '' : 'sub' }, i < 3 ? '올라감' : '남은 조각'));
+  }
+  g.append(el('rect', { x: 10 + 3 * (cw + gap) - 4, y: 122, width: cw + 8, height: 44, rx: 8, class: 'ring' }));
+  g.append(el('text', { x: 530, y: 149, class: 'sub' }, '→ 끊긴 조각부터 이어서'));
+})();
+</script>
+</body>
+</html>

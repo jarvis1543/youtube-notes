@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude로 공짜 영상 만들기 — JavaScript 모션 그래픽 4단계</title>
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --radius:16px; --maxw:760px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:6px 0; font-size:15px}
+  nav.toc a{color:var(--text-sub)}
+  nav.toc a.active{color:var(--brand); font-weight:600}
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  td code{font-size:13.5px}
+
+  /* ── 용어 툴팁 ─────────────────────────────────────── */
+  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
+    font-weight:600; background:none}
+  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
+  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
+    background:var(--text); color:var(--bg); border-radius:12px;
+    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
+    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease; pointer-events:none}
+  #tip.on{opacity:1; visibility:visible}
+  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Claude로 공짜 영상 만들기 — JavaScript 모션 그래픽 4단계</h1>
+  <p class="lede">코드로 프레임을 그려 영상을 만드는 원리와 프롬프트·레퍼런스·스킬 활용법을 짚어요</p>
+  <div class="meta">
+    <span>Chase AI</span><span class="dot">·</span>
+    <span>14:10</span><span class="dot">·</span>
+    <span>유튜브 영상 정리</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=rscb1DgJtNg" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>영상은 '시간 t를 넣으면 그림 한 장을 돌려주는 함수'예요. 1초에 60장을 그려 이어 붙이면 영상이 돼요.</li>
+    <li>에포트 레벨을 올리기보다 프롬프트를 다듬는 게 먼저예요. 코딩 전에 스토리보드를 받으면 시간이 크게 줄어요.</li>
+    <li>프롬프트에는 길이·화면비, JavaScript, 사운드트랙, Playwright·FFmpeg 렌더링, 그리고 스스로 확인하고 고치는 루프를 넣어요.</li>
+    <li>이미지나 영상을 레퍼런스로 주면 구도와 미감은 빌리고 내용만 바꾼 영상을 만들 수 있어요.</li>
+    <li>이 과정 전체를 스킬로 묶으면 질문에 답하고 몇 번 승인하는 것만으로 같은 품질을 반복해서 낼 수 있어요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">Claude가 영상을 만드는 원리</a></li>
+    <li><a href="#s2">레벨 1 — 노력보다 프롬프트, 그리고 스토리보드</a></li>
+    <li><a href="#s3">레벨 2 — 프롬프트에 넣을 것과 확인 루프</a></li>
+    <li><a href="#s4">레벨 3 — 레퍼런스로 구도 빌려 오기</a></li>
+    <li><a href="#s5">레벨 4 — 전 과정을 스킬로 묶기</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=rscb1DgJtNg&amp;t=35s" target="_blank" rel="noopener">00:35</a>
+  <h2>Claude가 영상을 만드는 원리</h2>
+<p>Claude Code는 영상 생성 AI가 아니에요. 그런데도 설명 영상이나 모션 그래픽을 만들 수 있는 건, 영상을 '찍는' 대신 영상이 무엇인지를 코드로 적기 때문이에요.</p>
+<p>핵심은 JavaScript 함수 하나예요. 시간 t를 넣으면 그 순간의 그림 한 장을 돌려줘요. 이걸 1초에 60번 부르면 60장의 정지 이미지가 생기고, 차례로 재생하면 1초짜리 영상이 돼요. 같은 t를 넣으면 늘 같은 그림이 나오니까, 프레임 하나만 다시 그리거나 따로 검사할 수도 있어요.</p>
+<figure>
+  <img src="assets/frame-0130.png" alt="frame(t) 함수 코드가 헤드리스 브라우저에서 프레임으로 그려지고, 여러 프레임이 FFmpeg를 거쳐 영상 파일이 되는 흐름도">
+  <figcaption>함수 → 헤드리스 브라우저 → 프레임 묶음 → FFmpeg → MP4. 영상 전체가 이 한 줄 흐름이에요. <a href="https://www.youtube.com/watch?v=rscb1DgJtNg&amp;t=90s" target="_blank" rel="noopener">영상 01:30에서 보기</a></figcaption>
+</figure>
+<h3>그리는 건 브라우저, 꿰매는 건 FFmpeg</h3>
+<p>그림을 실제로 그리는 건 <span class="term" data-term="헤드리스 브라우저" data-desc="화면 창 없이 백그라운드에서 돌아가는 브라우저예요. 사람이 보지 않아도 페이지를 그리고 캡처할 수 있어서 자동화에 써요.">헤드리스 브라우저</span>예요. <span class="term" data-term="Playwright" data-desc="Microsoft가 만든 브라우저 자동화 도구예요. 원래 웹 테스트용인데, 여기서는 Chrome을 띄워 프레임을 한 장씩 그리고 캡처하는 데 써요.">Playwright</span>로 화면 없는 Chrome을 띄워 프레임을 하나씩 렌더링해요. 그다음 오픈소스 도구 <span class="term" data-term="FFmpeg" data-desc="영상·음성을 변환하고 합치는 오픈소스 명령줄 도구예요. 여기서는 프레임 이미지들을 MP4로 꿰매고, 확인용 콘택트 시트를 뽑아요.">FFmpeg</span>가 프레임들을 이어 붙여 MP4로 만들어요. 소리도 시간의 함수로 코드에서 만들 수 있어요.</p>
+<blockquote>
+  <p>Claude can't watch the video, but it can look at the frames, spot what's wrong, and fix the function.</p>
+  <p>Claude는 영상을 볼 수 없지만, 프레임을 보고 틀린 곳을 찾아 함수를 고칠 수 있어요.</p>
+  <cite>— 영상 01:09</cite>
+</blockquote>
+<p>이게 이 방식의 가장 큰 장점이에요. Claude가 자기 작업을 직접 검사하고 고칠 수 있거든요. 발표자는 이 원리를 설명하는 영상도 3Blue1Brown 스타일로 한 번에 만들게 했어요. 내레이션은 ElevenLabs로 만들었고, 대본을 먼저 쓴 뒤 그래픽을 거기에 맞췄어요.</p>
+<figure>
+  <img src="assets/frame-0315.png" alt="Claude Code 대화 화면. 렌더링 중 찾은 버그와 고친 내용, 완성된 45.7초 영상의 검사 결과가 적혀 있다">
+  <figcaption>렌더링 뒤 Claude가 스스로 찾은 문제 목록이에요. 남은 프레임 버그, 내레이션에 묻힌 효과음, 너무 오래 멈춰 있던 장면을 고쳤다고 적혀 있어요. <a href="https://www.youtube.com/watch?v=rscb1DgJtNg&amp;t=195s" target="_blank" rel="noopener">영상 03:15에서 보기</a></figcaption>
+</figure>
+<p>외부 유료 도구 없이 코드만으로 만들기 때문에 사실상 공짜예요. Claude 사용량만 들어요. 발표자는 이 과정을 네 단계로 나눠 설명해요. 프롬프트, 확인 루프, <span class="term" data-term="레퍼런스" data-desc="원하는 느낌을 보여 주려고 함께 건네는 참고 이미지나 영상이에요. 말로 설명하기 어려운 구도와 색감을 전달할 수 있어요.">레퍼런스</span>, 그리고 <span class="term" data-term="스킬" data-desc="Claude Code가 특정 작업 때 불러 쓰는 지침과 스크립트 묶음이에요. 한 번 만들어 두면 같은 절차를 매번 똑같이 되풀이해요.">스킬</span>로 묶기예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Playwright는 원래 웹 테스트 자동화 도구예요. Chromium을 화면 없이 띄우는 헤드리스 모드가 있고, <code>page.screenshot()</code>으로 페이지를 이미지로 저장할 수 있어요. 프레임을 캔버스에 그린 뒤 이 스크린샷 기능으로 한 장씩 뽑는 구조라고 보면 돼요.</p>
+  <p class="cite">출처: <a href="https://playwright.dev/docs/screenshots" target="_blank" rel="noopener">Playwright 공식 문서 — Screenshots</a>, <a href="https://playwright.dev/docs/browsers" target="_blank" rel="noopener">Browsers</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=rscb1DgJtNg&amp;t=240s" target="_blank" rel="noopener">04:00</a>
+  <h2>레벨 1 — 노력보다 프롬프트, 그리고 스토리보드</h2>
+<p>발표자는 Opus 5.5에 짧은 프롬프트 하나를 줬어요. '모션 디자이너로서의 실력을 보여 주는 15초짜리 모션 그래픽을 이력서용 쇼릴처럼 만들어 달라, 스킬은 쓰지 말라'는 내용이에요. 그리고 <span class="term" data-term="에포트 레벨" data-desc="모델이 답하기 전에 얼마나 오래, 깊게 생각할지 정하는 설정이에요. 높을수록 결과가 좋아질 수 있지만 시간과 사용량이 늘어요.">에포트 레벨</span>만 바꿔 세 번 돌렸어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>에포트 레벨</th><th>걸린 시간</th><th>결과</th></tr></thead>
+    <tbody>
+      <tr><td>low</td><td>약 20분</td><td>충분히 쓸 만해요</td></tr>
+      <tr><td>high</td><td>약 30분</td><td>충분히 쓸 만해요</td></tr>
+      <tr><td>ultracode</td><td>8시간</td><td>가장 좋아요</td></tr>
+    </tbody>
+  </table>
+</div>
+<figure>
+  <img src="assets/frame-0500.png" alt="생성된 쇼릴 중 한 장면. 어두운 배경에 무지개색 곡선과 정이십면체 선화, DIMENSION이라는 글자가 있다">
+  <figcaption>짧은 프롬프트만으로 나온 쇼릴의 한 장면이에요. 낮은 레벨도 기본기가 탄탄했어요. <a href="https://www.youtube.com/watch?v=rscb1DgJtNg&amp;t=300s" target="_blank" rel="noopener">영상 05:00에서 보기</a></figcaption>
+</figure>
+<p>발표자의 결론은 이래요. 결과물이 아쉽다면 에포트 문제가 아니라 프롬프트 문제일 가능성이 커요. JavaScript를 쓰는 Claude의 기본 실력이 이미 꽤 높아서, 프롬프트를 거창하게 쓰지 않아도 괜찮은 결과가 나와요.</p>
+<h3>코딩 전에 스토리보드부터</h3>
+<p>결과를 가장 크게 바꾸는 한 가지는 <span class="term" data-term="스토리보드" data-desc="영상을 장면별 대표 그림으로 미리 펼쳐 본 계획표예요. 비싼 제작에 들어가기 전에 흐름과 구도를 싸게 확인하려고 써요.">스토리보드</span>를 먼저 요청하는 거예요. 영상 전체를 바로 코딩하게 하지 말고, 장면(beat)마다 대표 프레임을 먼저 그려 달라고 해요. 그러면 코드가 한 줄도 나오기 전에 방향을 고칠 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0715.png" alt="'A video is a function: storyboard' 화면. 7개 장면의 썸네일마다 시각, 제목, 소리와 전환 설명이 붙어 있다">
+  <figcaption>7개 장면으로 나눈 스토리보드예요. 장면마다 시각, 소리, 다음 장면으로의 전환이 적혀 있고, 번호로 좋다·싫다를 답하면 돼요. <a href="https://www.youtube.com/watch?v=rscb1DgJtNg&amp;t=435s" target="_blank" rel="noopener">영상 07:15에서 보기</a></figcaption>
+</figure>
+<p>JavaScript 영상은 만드는 데 시간이 오래 걸려요. 20분 걸려 받은 영상이 마음에 안 들어 다시 돌리고, 또 다시 돌리다 보면 몇 시간이 사라져요. 스토리보드 한 번이 그 시간을 아껴 줘요.</p>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=rscb1DgJtNg&amp;t=439s" target="_blank" rel="noopener">07:19</a>
+  <h2>레벨 2 — 프롬프트에 넣을 것과 확인 루프</h2>
+<p>레벨 2는 프롬프트에 무엇을 넣을지, 그리고 어떤 도구가 필요한지를 다뤄요. 발표자는 화면에 프롬프트 예시를 띄우고 다섯 군데에 번호를 붙여 설명했어요.</p>
+<figure>
+  <img src="assets/frame-0801.png" alt="'Level 2: the tools and a loop' 슬라이드. 30초 설명 영상을 만드는 프롬프트에 1~5번 표시가 있고 오른쪽에 각 번호의 설명이 있다">
+  <figcaption>'네 줄만 쓰면 나머지는 Claude가 알아서 해요'라는 제목의 프롬프트 예시예요. 아래에는 설치할 것(Node 18+, Playwright·Chromium, FFmpeg, Whisper)이 적혀 있어요. <a href="https://www.youtube.com/watch?v=rscb1DgJtNg&amp;t=481s" target="_blank" rel="noopener">영상 08:01에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>번호</th><th>프롬프트에 넣을 것</th><th>왜 넣나요</th></tr></thead>
+    <tbody>
+      <tr><td>—</td><td>길이·형식·화면비 (예: 30초 설명 영상, 16:9)</td><td>가로 전체 화면인지, 세로형 숏폼인지 정해요</td></tr>
+      <tr><td>1</td><td>JavaScript로, <span class="term" data-term="canvas" data-desc="웹 페이지에 JavaScript로 픽셀을 직접 그릴 수 있는 HTML 요소예요. 이 방식에서는 프레임 하나하나를 여기에 그려요.">canvas</span>에 그릴 것</td><td>Claude는 그림을 못 그려도 모든 픽셀의 지시문은 쓸 수 있어요</td></tr>
+      <tr><td>2</td><td>코드로 만든 사운드트랙</td><td>소리도 코드예요. 직접 만든 음악을 줄 수도 있어요</td></tr>
+      <tr><td>3</td><td>Playwright와 FFmpeg로 MP4 렌더링</td><td>Playwright가 프레임을 그리고, FFmpeg가 꿰매요</td></tr>
+      <tr><td>4 (선택)</td><td>내레이션 voice.mp3를 주고 Whisper로 단어별 시각을 뽑아 화면 전환을 맞출 것</td><td>Claude는 들을 수 없어서, 단어 시각이 귀 역할을 해요</td></tr>
+      <tr><td>5</td><td>끝내기 전에 FFmpeg로 <span class="term" data-term="콘택트 시트" data-desc="여러 프레임을 작게 줄여 한 장에 격자로 모은 이미지예요. 영상을 볼 수 없는 Claude가 전체 흐름을 한눈에 확인하는 데 써요.">콘택트 시트</span>를 뽑아 보고, 고치고, 다시 렌더링하기를 반복할 것</td><td>영상을 볼 수 없으니 정지 화면으로 바꿔 확인해요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>문구를 똑같이 쓸 필요는 없어요. 다만 '끝내기 전에 Playwright와 FFmpeg로 결과를 확인하고 맞춰라'는 뜻은 꼭 들어가야 해요. 발표자는 Opus 5.5나 Fable 5.1은 이걸 말하지 않아도 대개 알아서 한다고 해요. 그래도 원리를 알아야 결과가 어긋났을 때 무엇을 요구할지 정확히 말할 수 있어요.</p>
+<h3>그림이 먼저일까, 소리가 먼저일까</h3>
+<p>만드는 순서도 정해야 해요. 그림을 먼저 만들고 소리를 나중에 입힐 수도 있고, 거꾸로 할 수도 있어요. 1단계에서 본 설명 영상은 내레이션 음성을 먼저 주고, Claude가 거기에 그래픽을 맞추게 했어요. 내레이션은 ElevenLabs로 만들었는데, 오픈소스 음성 합성 도구도 많다고 덧붙였어요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>콘택트 시트는 FFmpeg의 <code>tile</code> 필터로 만들 수 있어요. 공식 문서는 이 필터를 '연속된 여러 프레임을 한 장으로 타일처럼 붙인다'고 설명해요. 프레임 수십 장을 이미지 한 장으로 줄여 주니, Claude가 한 번에 훑어보기 좋아요.</p>
+  <p class="cite">출처: <a href="https://ffmpeg.org/ffmpeg-filters.html#tile" target="_blank" rel="noopener">FFmpeg 공식 문서 — Filters: tile</a></p>
+</aside>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>슬라이드의 Whisper는 OpenAI의 음성 인식 모델이에요. 4단계 스킬이 준비물로 챙기는 faster-whisper는 같은 정확도로 최대 4배 빠르게 돌도록 다시 구현한 버전이에요. <code>word_timestamps=True</code> 옵션을 주면 단어마다 시작·끝 시각을 돌려줘요.</p>
+  <p class="cite">출처: <a href="https://github.com/SYSTRAN/faster-whisper" target="_blank" rel="noopener">faster-whisper 공식 GitHub 저장소</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=rscb1DgJtNg&amp;t=596s" target="_blank" rel="noopener">09:56</a>
+  <h2>레벨 3 — 레퍼런스로 구도 빌려 오기</h2>
+<p>레벨 3부터는 프롬프트만으로 끝내지 않고 레퍼런스를 함께 줘요. 방법은 두 가지예요.</p>
+<ul>
+  <li><strong>이미지</strong>: 그 이미지를 영상에 그대로 넣게 하거나, 미감만 따라 하게 해요.</li>
+  <li><strong>영상</strong>: '이 영상의 구도를 영감 삼아, 내용은 우리 것으로 채워 달라'고 해요.</li>
+</ul>
+<p>발표자는 Opus 5.5와 Remotion으로 만든 '화폐의 역사' 영상을 레퍼런스로 줬어요. 그리고 같은 구도로 '전기의 역사'를 설명하는 JavaScript 영상을 만들게 했어요.</p>
+<figure>
+  <img src="assets/frame-1059.png" alt="세로형 영상 두 개가 나란히 있다. 왼쪽은 별자리가 그려진 원과 STABLE, 오른쪽은 TODAY와 빛의 속도에 관한 문구가 있는 같은 톤의 화면">
+  <figcaption>왼쪽이 레퍼런스(화폐), 오른쪽이 JavaScript로 다시 만든 영상(전기)이에요. 연대 표기, 중앙의 선화, 아래 캡션까지 구도가 그대로 이어져요. <a href="https://www.youtube.com/watch?v=rscb1DgJtNg&amp;t=659s" target="_blank" rel="noopener">영상 10:59에서 보기</a></figcaption>
+</figure>
+<p>내용은 완전히 다른데 같은 디자인 계열로 보일 만큼 비슷해요. Claude가 레퍼런스의 구도를 꽤 잘 옮긴다는 걸 보여 줘요.</p>
+<h3>영감은 어디서 찾나요</h3>
+<p>발표자는 두 곳을 꼽았어요. 하나는 Skillry(skillry.dev)예요. AI 영상 카테고리에서 Opus 5.5로 만든 영상들을 둘러볼 수 있어요. 유료 사이트지만 무료로도 꽤 많이 볼 수 있어요. 다른 하나는 X(트위터)예요. 특히 Kevin Ngo의 계정을 이런 영상의 최고 수준을 보여 주는 곳으로 추천했어요.</p>
+<figure>
+  <img src="assets/frame-1005.png" alt="skillry.dev의 'Browse 475 Opus 5.5 videos' 페이지. Motion graphics, Explainers, 3D scenes, Games 필터와 영상 썸네일 격자">
+  <figcaption>Skillry의 Opus 5.5 영상 모음이에요. 모션 그래픽, 설명 영상, 3D 장면, 게임으로 나눠 볼 수 있어요. <a href="https://www.youtube.com/watch?v=rscb1DgJtNg&amp;t=605s" target="_blank" rel="noopener">영상 10:05에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=rscb1DgJtNg&amp;t=703s" target="_blank" rel="noopener">11:43</a>
+  <h2>레벨 4 — 전 과정을 스킬로 묶기</h2>
+<p>마지막 단계는 지금까지의 과정을 Claude가 매번 똑같이 되풀이할 수 있는 절차로 굳히는 거예요. 가장 좋은 방법은 스킬로 만드는 거예요. 발표자는 직접 만든 Claude Code 스킬 'Animate'를 공개했어요.</p>
+<figure>
+  <img src="assets/frame-1213.png" alt="GitHub의 animate 저장소 README. cut-paper, crosshatch, riso, sketchbook, math, pixel, isometric 스타일 예시와 물음표가 그려진 custom 칸">
+  <figcaption>기본 스타일 일곱 가지와, 레퍼런스로 채우는 여덟 번째 '나만의 스타일' 칸이에요. <a href="https://www.youtube.com/watch?v=rscb1DgJtNg&amp;t=733s" target="_blank" rel="noopener">영상 12:13에서 보기</a></figcaption>
+</figure>
+<p>기본 스타일이 일곱 개 들어 있어요. 영상에서는 컷 페이퍼, 크로스해치, 리소, 스케치북, 아이소메트릭을 예로 들었어요. 레벨 3처럼 레퍼런스 이미지나 영상을 주면 나만의 스타일도 만들 수 있어요.</p>
+<h3>스킬이 안내하는 단계</h3>
+<p>이 스킬의 좋은 점은 사용자를 단계마다 이끌어 준다는 거예요. 비싼 애니메이션 작업에 들어가기 전에, 싸게 확인할 수 있는 것 세 가지를 먼저 승인받아요.</p>
+<figure>
+  <img src="assets/frame-1223.png" alt="README의 How it works 표. 0 Intake부터 5 Delivery까지 단계, 보게 되는 것, 결정할 것이 정리되어 있다">
+  <figcaption>단계마다 '내가 보게 되는 것'과 '내가 정할 것'이 나뉘어 있어요. 스토리, 룩, 스토리보드를 승인한 뒤에야 빌드해요. <a href="https://www.youtube.com/watch?v=rscb1DgJtNg&amp;t=743s" target="_blank" rel="noopener">영상 12:23에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>단계</th><th>하는 일</th><th>내가 정할 것</th></tr></thead>
+    <tbody>
+      <tr><td>0. 인테이크</td><td>주제, 형식, 목소리, 룩, 주인공 캐릭터, 음악 등을 묻고 스타일 갤러리를 보여 줘요</td><td>답변, 스타일, 레퍼런스</td></tr>
+      <tr><td>1. 스토리 확인</td><td>고른 형식과 번호 붙은 장면표를 보여 줘요. 사실관계는 웹에서 확인해요</td><td>장면 승인·수정</td></tr>
+      <tr><td>2. 룩 확인</td><td>스타일 프레임 2~4장을 보여 줘요</td><td>프레임마다 좋다·싫다</td></tr>
+      <tr><td>3. 스토리보드</td><td>장면마다 키 프레임과 소리, 전환을 보여 줘요</td><td>패널 번호로 좋다·싫다</td></tr>
+      <tr><td>4. 빌드</td><td>승인된 패널을 애니메이션으로 만들고, 렌더링하고, 검토해요</td><td>—</td></tr>
+      <tr><td>5. 전달</td><td>영상과 함께 측정한 검사 결과를 줘요</td><td>메모를 주면 수정 작업을 돌려요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>앞에서 말한 Playwright·FFmpeg 확인 루프는 이 과정 내내 자동으로 돌아요. 사용자는 질문에 답하고 레퍼런스만 주면 돼요.</p>
+<h3>설치</h3>
+<p>플러그인으로 설치하거나, 저장소 URL을 Claude Code에 주면 알아서 설치해요. 이때 Playwright, FFmpeg, faster-whisper 같은 준비물도 챙기고, ElevenLabs 커넥터를 쓸지도 물어봐요. 발표자는 아직 계속 다듬는 중이라며, 개선한 점이 있으면 PR을 보내 달라고 했어요.</p>
+<figure>
+  <img src="assets/frame-1313.png" alt="README의 설치 안내. 요구사항, npm으로 Playwright 설치, /plugin marketplace add cth9191/animate와 /plugin install animate@animate, /animate 사용 예시">
+  <figcaption>준비물과 플러그인 설치 명령, 그리고 <code>/animate</code> 사용 예시예요. <a href="https://www.youtube.com/watch?v=rscb1DgJtNg&amp;t=793s" target="_blank" rel="noopener">영상 13:13에서 보기</a></figcaption>
+</figure>
+<pre><code>/plugin marketplace add cth9191/animate
+/plugin install animate@animate</code></pre>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>저장소 README에 따르면 기본 스타일 일곱 개는 컷 페이퍼, 크로스해치, 리소, 스케치북, math(manim 스타일 수학 설명), pixel, 아이소메트릭이에요. 플러그인 대신 스킬 폴더를 <code>~/.claude/skills/animate/</code>로 직접 복사해도 돼요. Claude Code는 이 위치의 <code>SKILL.md</code>를 개인 스킬로 읽어요.</p>
+  <p class="cite">출처: <a href="https://github.com/cth9191/animate" target="_blank" rel="noopener">cth9191/animate README</a>, <a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code 공식 문서 — Skills</a></p>
+</aside>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 이름이 잘못 받아적힌 곳이 있어요. 화면과 문맥으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>clawed (code)</td><td>Claude (Code)</td><td></td></tr>
+      <tr><td>playright</td><td>Playwright</td><td></td></tr>
+      <tr><td>Codeex</td><td>Codex</td><td></td></tr>
+      <tr><td>three blue, one brown</td><td>3Blue1Brown</td><td>수학 설명 애니메이션으로 유명한 유튜브 채널</td></tr>
+      <tr><td>11 Labs / 11laps</td><td>ElevenLabs</td><td></td></tr>
+      <tr><td>MCB</td><td>MCP (추정)</td><td>ElevenLabs가 새로 낸 것을 말하는 대목</td></tr>
+      <tr><td>ultraode / Ultra Code</td><td>ultracode (추정)</td><td>세 번째 에포트 레벨</td></tr>
+      <tr><td>skillery.dev / sk i l r y.dev</td><td>skillry.dev</td><td>화면의 주소창 기준</td></tr>
+      <tr><td>Kevin</td><td>Kevin Ngo</td><td>화면의 X 계정 기준</td></tr>
+      <tr><td>rizizo</td><td>riso</td><td>리소그래프 인쇄 느낌의 스타일</td></tr>
+      <tr><td>the sound is a function of a T2</td><td>the sound is a function of t too (추정)</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail">
+  <h2>이 글에 나온 용어</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
+      <tbody>
+        <tr><td>헤드리스 브라우저</td><td>화면 창 없이 백그라운드에서 돌아가는 브라우저예요. 사람이 보지 않아도 페이지를 그리고 캡처할 수 있어서 자동화에 써요.</td></tr>
+        <tr><td>Playwright</td><td>Microsoft가 만든 브라우저 자동화 도구예요. 원래 웹 테스트용인데, 여기서는 Chrome을 띄워 프레임을 한 장씩 그리고 캡처하는 데 써요.</td></tr>
+        <tr><td>FFmpeg</td><td>영상·음성을 변환하고 합치는 오픈소스 명령줄 도구예요. 여기서는 프레임 이미지들을 MP4로 꿰매고, 확인용 콘택트 시트를 뽑아요.</td></tr>
+        <tr><td>에포트 레벨</td><td>모델이 답하기 전에 얼마나 오래, 깊게 생각할지 정하는 설정이에요. 높을수록 결과가 좋아질 수 있지만 시간과 사용량이 늘어요.</td></tr>
+        <tr><td>스토리보드</td><td>영상을 장면별 대표 그림으로 미리 펼쳐 본 계획표예요. 비싼 제작에 들어가기 전에 흐름과 구도를 싸게 확인하려고 써요.</td></tr>
+        <tr><td>canvas</td><td>웹 페이지에 JavaScript로 픽셀을 직접 그릴 수 있는 HTML 요소예요. 이 방식에서는 프레임 하나하나를 여기에 그려요.</td></tr>
+        <tr><td>콘택트 시트</td><td>여러 프레임을 작게 줄여 한 장에 격자로 모은 이미지예요. 영상을 볼 수 없는 Claude가 전체 흐름을 한눈에 확인하는 데 써요.</td></tr>
+        <tr><td>레퍼런스</td><td>원하는 느낌을 보여 주려고 함께 건네는 참고 이미지나 영상이에요. 말로 설명하기 어려운 구도와 색감을 전달할 수 있어요.</td></tr>
+        <tr><td>스킬</td><td>Claude Code가 특정 작업 때 불러 쓰는 지침과 스크립트 묶음이에요. 한 번 만들어 두면 같은 절차를 매번 똑같이 되풀이해요.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="tail">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li><a href="https://www.youtube.com/watch?v=rscb1DgJtNg" target="_blank" rel="noopener">원본 영상 — Chase AI, Claude Now Does Video (FOR FREE) Thanks To JavaScript</a></li>
+    <li><a href="https://github.com/cth9191/animate" target="_blank" rel="noopener">cth9191/animate — Animate 스킬 저장소</a></li>
+    <li><a href="https://playwright.dev/docs/screenshots" target="_blank" rel="noopener">Playwright 공식 문서 — Screenshots</a></li>
+    <li><a href="https://playwright.dev/docs/browsers" target="_blank" rel="noopener">Playwright 공식 문서 — Browsers</a></li>
+    <li><a href="https://ffmpeg.org/ffmpeg-filters.html#tile" target="_blank" rel="noopener">FFmpeg 공식 문서 — Filters (tile)</a></li>
+    <li><a href="https://github.com/SYSTRAN/faster-whisper" target="_blank" rel="noopener">faster-whisper 공식 GitHub 저장소</a></li>
+    <li><a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code 공식 문서 — Skills</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 7일에 이 영상을 보고 정리했어요. 원본은 Chase AI 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="tooltip"></div>
+
+<script>
+(function () {
+  // ── 용어 툴팁 ───────────────────────────────────────
+  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
+  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
+  var tip = document.getElementById('tip');
+  var open = null;
+
+  function show(el) {
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    var name = el.getAttribute('data-term') || el.textContent;
+    tip.innerHTML = '';
+    var b = document.createElement('b');
+    b.textContent = name;
+    tip.appendChild(b);
+    tip.appendChild(document.createTextNode(desc));
+    tip.classList.add('on');
+
+    var r = el.getBoundingClientRect();
+    var t = tip.getBoundingClientRect();
+    var pad = 12;
+    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
+    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
+    var top = r.top + window.scrollY - t.height - 10;
+    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+    open = el;
+  }
+
+  function hide() {
+    tip.classList.remove('on');
+    open = null;
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    el.addEventListener('mouseenter', function () { show(el); });
+    el.addEventListener('mouseleave', hide);
+    el.addEventListener('focus', function () { show(el); });
+    el.addEventListener('blur', hide);
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      open === el ? hide() : show(el);
+    });
+  });
+
+  document.addEventListener('click', function (e) {
+    if (open && !e.target.closest('.term')) hide();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') hide();
+  });
+  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
+  window.addEventListener('resize', hide);
+
+  // ── 목차 현재 위치 표시 ─────────────────────────────
+  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
+  var map = {};
+  links.forEach(function (a) {
+    var s = document.getElementById(a.getAttribute('href').slice(1));
+    if (s) map[s.id] = a;
+  });
+  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
+  if ('IntersectionObserver' in window && targets.length) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        links.forEach(function (a) { a.classList.remove('active'); });
+        map[en.target.id].classList.add('active');
+      });
+    }, { rootMargin: '-10% 0px -75% 0px' });
+    targets.forEach(function (t) { io.observe(t); });
+  }
+})();
+</script>
+</body>
+</html>

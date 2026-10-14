@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI로 HTML 키네틱 영상 싸게 뽑는 법</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>AI로 HTML 키네틱 영상 싸게 뽑는 법</h1>
+  <p class="lede">프롬프트 한 줄로 받은 코드를 영상 파일로 바꾸는 과정과 AI 일곱 개 비교</p>
+  <div class="meta">
+    <span>Curator Danbi - Money Maven</span><span class="dot">·</span>
+    <span>영상 17:00</span><span class="dot">·</span>
+    <span>읽는 데 약 17분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=4A3Mofy8Sm8" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>요즘 SNS(Social Networking Service)에 도는 AI(Artificial Intelligence) <span class="term" data-term="모션 그래픽" data-en="Motion graphics" data-desc="글자, 도형, 아이콘 같은 그래픽 요소를 움직여 만드는 영상이에요. 실사 촬영 없이 화면 디자인만으로 영상을 만들 수 있어요." data-g="1">모션 그래픽</span>은 영상 생성 AI가 아니라 <b>코드로 만든 HTML(HyperText Markup Language) 파일</b>이에요. 핵심 키워드는 'HTML 키네틱 영상'이에요.</li>
+    <li>받은 코드를 메모장에 붙여 넣고 <span class="term" data-term="확장자" data-en="File name extension" data-desc="파일 이름 끝의 .txt, .html 같은 부분이에요. 운영체제는 이걸 보고 어떤 프로그램으로 열지 정해서, .html로 바꾸면 브라우저가 열어요." data-g="5">확장자</span>를 .txt에서 .html로 바꾸면 브라우저에서 바로 재생돼요. 녹화 버튼으로 .webm 영상 파일까지 받아요.</li>
+    <li>결과 코드가 1만~3만 자라 <span class="term" data-term="토큰" data-en="Token" data-desc="AI 모델이 글을 읽고 쓰는 단위예요. 글자 수와 딱 맞지는 않지만, 출력이 길수록 토큰을 많이 쓰고 요금도 늘어나요." data-g="4">토큰</span>이 적게 들어요. 그래서 되게 싸게 뽑힌다는 게 발표자의 주장이에요.</li>
+    <li>같은 프롬프트로 AI 일곱 개를 비교했더니 클로드 Opus 5.5가 가장 좋았고, 딥시크는 가장 싸고, GLM(General Language Model) 5.3은 10~15분으로 가장 느렸어요.</li>
+    <li>간단한 프롬프트로 시작해서 스타일, 소리, 버튼, 주제를 하나씩 더해 가며 키우면 돼요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">HTML 키네틱 영상이 뭔가요</a></li>
+    <li><a href="#s2">일곱 개 AI에 같은 프롬프트, 편집도 AI에게</a></li>
+    <li><a href="#s3">코드를 HTML 파일로 바꿔 재생하기</a></li>
+    <li><a href="#s4">왜 싸게 뽑히나요, 그리고 딥시크·제미나이·키미</a></li>
+    <li><a href="#s5">클로드·ChatGPT·GLM 결과</a></li>
+    <li><a href="#s6">프롬프트를 키우는 법</a></li>
+    <li><a href="#s7">정리: 오늘 해 볼 것</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>HTML 키네틱 영상이 뭔가요</h2>
+<p>영상은 결과물부터 보여 주고 시작해요. 왼쪽 위 빨간 딱지에 '클로드 Opus 5.5 결과물'이라고 적혀 있고, 검은 화면에 '쓰지 않은 시간은 자정에'라는 문구가 흩어지는 입자와 함께 지나가요. 아래 노란 글씨는 발표자가 붙인 한 줄 평이에요.</p>
+<figure>
+  <img src="assets/frame-0000.png" alt="검은 화면에 '쓰지 않은 시간은 자정에'라는 문구가 입자와 함께 흩어지고, 아래에 '클로드가 잘해'라는 노란 자막이 있는 장면">
+  <figcaption>이 장면 전체가 AI가 짠 HTML 코드 하나로 돌아가요. 동영상 파일이 아니에요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=0s" target="_blank" rel="noopener">영상 00:00에서 보기</a></figcaption>
+</figure>
+<p>이런 영상을 발표자는 'HTML 키네틱 영상'이라고 불러요. 글자와 도형이 움직이는 모션 그래픽을 웹 페이지 코드로 만든 거예요. 표지 슬라이드는 이 방식이 무엇을 대신하는지 보여 줘요. 캡컷, 브루, 프리미어 프로에 줄을 긋고 그 옆에 'HTML 파일 하나로'라고 적었어요.</p>
+<figure>
+  <img src="assets/frame-0014.png" alt="'HTML 키네틱 영상 뽑는 법' 제목 아래에 캡컷, 브루, 프리미어 프로를 줄로 지우고 'HTML 파일 하나로'라고 쓴 표지 슬라이드">
+  <figcaption>편집 프로그램 세 개를 지우고 파일 하나를 남긴 게 영상 전체의 주장이에요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=14s" target="_blank" rel="noopener">영상 00:14에서 보기</a></figcaption>
+</figure>
+<p>사람이 할 일은 두 칸뿐이에요. 슬라이드 왼쪽 칸이 '주제·소재 전달', 오른쪽 칸이 'AI가 조사·준비'예요. 어떤 주제로 만들지만 정해 주고, 자료 조사와 구성은 AI에게 넘겨요.</p>
+<figure>
+  <img src="assets/frame-0035.png" alt="'HTML 키네틱 영상 = AI에게 지시' 제목 아래 1번 주제·소재 전달, 2번 AI가 조사·준비 두 칸이 화살표로 이어진 슬라이드">
+  <figcaption>이미지·영상 생성 AI와 달리, 여기서 AI는 그림이 아니라 코드를 만들어요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=35s" target="_blank" rel="noopener">영상 00:35에서 보기</a></figcaption>
+</figure>
+<h3>프롬프트는 이것 하나</h3>
+<p>발표자가 일곱 개 AI에 똑같이 넣은 프롬프트예요. 메모장에 적어 둔 다섯 줄을 그대로 복사해서 써요. 파란색으로 선택된 부분이 실제로 붙여 넣은 내용이고, 맨 아래 '챗지피티 / 클로드 / 딥시크 / GLM / KIMI'는 돌려 볼 AI 목록이에요.</p>
+<figure>
+  <img src="assets/frame-0116.png" alt="메모장에 '너는 900년 경력의 모션그래픽 전문가다'로 시작하는 다섯 줄 프롬프트가 선택되어 있고, 아래에 AI 이름 목록이 적힌 화면">
+  <figcaption>'재생되게, 녹화버튼 만들고' 한 줄 덕분에 결과물에 재생·녹화 버튼이 붙어 나와요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=76s" target="_blank" rel="noopener">영상 01:16에서 보기</a></figcaption>
+</figure>
+<p>줄마다 하는 일이 달라요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>프롬프트 한 줄</th><th>하는 일</th></tr></thead>
+    <tbody>
+      <tr><td>너는 900년 경력의 모션그래픽 전문가다</td><td>역할 부여. 발표자도 말이 안 된다고 웃지만, 최고 수준을 요구하는 신호예요</td></tr>
+      <tr><td>니가 할 수 있는 최고의 퍼포먼스로</td><td>대충 만들지 말라는 주문</td></tr>
+      <tr><td>30초 짜리 html 키네틱 영상 뽑아봐</td><td>핵심 키워드. 길이와 형식을 정해요</td></tr>
+      <tr><td>재생되게, 녹화버튼 만들고</td><td>브라우저에서 바로 틀고, 영상 파일로 저장할 수 있게</td></tr>
+      <tr><td>주제도, 니가 선정해, 사람들 반응 괜찮은 걸로</td><td>주제·문구까지 AI에게 맡겨요</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=84s" target="_blank" rel="noopener">01:24</a>
+  <h2>일곱 개 AI에 같은 프롬프트, 편집도 AI에게</h2>
+<p>오늘 할 일은 세 단계예요. 슬라이드의 ① 프롬프트 넣기, ② HTML 코드 받기, ③ 실행하기 순서로, 코드를 받은 다음 어떻게 틀어 보는지까지 보여 줘요.</p>
+<figure>
+  <img src="assets/frame-0122.png" alt="'오늘 할 것' 제목 아래 1 프롬프트 넣기, 2 HTML 코드 받기, 3 실행하기 세 칸이 화살표로 이어진 슬라이드">
+  <figcaption>세 번째 칸 '실행하기'가 이 영상에서 가장 길게 다루는 부분이에요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=82s" target="_blank" rel="noopener">영상 01:22에서 보기</a></figcaption>
+</figure>
+<p>프롬프트를 넣은 곳은 두 종류예요. 슬라이드 왼쪽 파란 칸이 '웹 채팅(젠스파크 등)', 오른쪽 노란 칸이 '컴퓨터에 프로그램 설치'예요. 왼쪽 칸에는 '이 방식에서도 활용할 수 있다', '클로드 Opus는 굉장히 느림(수요 많음)'이라고 적혀 있어요. 오른쪽 칸은 비어 있지만, 발표자는 기본은 프로그램을 설치하는 쪽이 편하다고 말해요.</p>
+<figure>
+  <img src="assets/frame-0150.png" alt="웹 채팅(젠스파크 등)과 컴퓨터에 프로그램 설치를 VS로 비교한 슬라이드. 왼쪽에 '이 방식에서도 활용할 수 있다', '클로드 Opus는 굉장히 느림(수요 많음)'이 적혀 있음">
+  <figcaption>웹 채팅으로도 되는 걸 보여 주려고 일부러 젠스파크를 썼어요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=110s" target="_blank" rel="noopener">영상 01:50에서 보기</a></figcaption>
+</figure>
+<p>모델마다 걸리는 시간이 꽤 달라요. GLM 5.3은 반응은 먼저 왔지만 결과까지 10~15분이 걸렸어요. 발표자는 영상 길이(초)가 길수록 더 오래 걸린다고 해요.</p>
+<figure>
+  <img src="assets/frame-0216.png" alt="'기다리는 시간' 제목 아래 1 GLM 5.3 반응은 먼저 왔지만, 2 한 10~15분 꽤 오래 걸립니다 두 칸이 있는 슬라이드">
+  <figcaption>30초짜리도 이 정도라, 더 긴 영상을 시키면 기다리는 시간도 늘어나요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=136s" target="_blank" rel="noopener">영상 02:16에서 보기</a></figcaption>
+</figure>
+<h3>편집 프로그램 대신 AI에게</h3>
+<p>결과를 기다리는 사이에 발표자는 자기 편집 방식을 말해요. 슬라이드의 캡컷, 브루, 프리미어 프로에 모두 빨간 X가 쳐 있어요. 모바일 편집 앱 블로(Vllo)도 안 쓴대요. 대신 AI에게 영상을 보내고 "이 영상 좀 편집해줘"라고 한다고 해요.</p>
+<figure>
+  <img src="assets/frame-0242.png" alt="'안 쓰는 편집 툴' 제목 아래 캡컷, 브루, 프리미어 프로 세 버튼에 각각 빨간 X 표시가 된 슬라이드">
+  <figcaption>발표자는 지금 보는 이 영상도 AI에게 편집을 맡길 거라고 말해요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=162s" target="_blank" rel="noopener">영상 02:42에서 보기</a></figcaption>
+</figure>
+<p>가장 쉽고 빠르게 영상 파일을 받는 법을 세 칸으로 정리해요. 키워드 'HTML 키네틱 영상', 요청 '이렇게 만들어서 코드를 나한테 줘', 결과 '그 코드만 받으면 돼요'예요.</p>
+<figure>
+  <img src="assets/frame-0308.png" alt="'가장 쉽고 빠르게 영상 파일 받는 법' 제목 아래 키워드 HTML 키네틱 영상, 요청 이렇게 만들어서 코드를 나한테 줘, 결과 그 코드만 받으면 돼요 세 칸이 더하기 기호로 이어진 슬라이드">
+  <figcaption>세 칸 모두 글자뿐이에요. 사람이 다루는 건 키워드와 코드 두 가지예요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=188s" target="_blank" rel="noopener">영상 03:08에서 보기</a></figcaption>
+</figure>
+<p>마지막으로 컴퓨터에 설치한 <span class="term" data-term="바이브 코딩" data-en="Vibe coding" data-desc="코드를 직접 짜는 대신 AI에게 말로 원하는 걸 설명하고, 결과를 보며 계속 고쳐 달라고 하는 개발 방식이에요. 영상에서는 이런 작업을 하는 설치형 AI 프로그램을 바이브 코딩 툴이라고 불러요." data-g="3">바이브 코딩</span> 툴에도 같은 프롬프트를 넣어요. 가운데 입력창에 다섯 줄 프롬프트가 있고, 모델은 'Gemini 3.8 Flash High', 아래에는 'Local'이 선택돼 있어요. 오른쪽 '프로그램을 까는 게 좋은 이유' 카드 네 장이 발표자가 설치형을 권하는 이유예요.</p>
+<figure>
+  <img src="assets/frame-0334.png" alt="데스크톱 AI 프로그램 입력창에 다섯 줄 프롬프트가 들어가 있고 모델이 Gemini 3.8 Flash High로 선택된 화면. 오른쪽에 '프로그램을 까는 게 좋은 이유' 네 항목이 있음">
+  <figcaption>① 내 컴퓨터 파일을 AI가 직접 보면서 한다 ② 음악·영상·직촬 영상을 주면 ③ AI가 다 살펴보고 편집해 준다 ④ 지금 AI를 가장 잘 활용하는 방법. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=214s" target="_blank" rel="noopener">영상 03:34에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상은 이 프로그램의 이름을 말하지 않아요. 창 왼쪽 위 메뉴 이름이 'gravity'로 끝나게 잘려 보여서 구글의 Antigravity로 보여요. 구글은 Antigravity를 '차세대 에이전트 플랫폼'이라고 소개해요. 화면만으로 추정한 거라 참고로만 보세요.</p>
+  <p class="cite">출처: <a href="https://antigravity.google/" target="_blank" rel="noopener">Google Antigravity 공식 사이트</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=229s" target="_blank" rel="noopener">03:49</a>
+  <h2>코드를 HTML 파일로 바꿔 재생하기</h2>
+<p>프롬프트를 넣고 결과를 받아 영상 파일로 만들기까지는 여섯 단계예요. 영상 여기저기에 흩어져 있는 단계를 한 장에 모았어요. 위 줄은 AI 쪽에서, 아래 줄은 내 컴퓨터에서 일어나요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 250" role="img" aria-label="프롬프트 넣기부터 녹화 버튼으로 webm 파일을 받기까지 여섯 단계 흐름">
+    <defs><marker id="arrow-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-flow"></g>
+  </svg>
+  <figcaption>사람이 손대는 건 복사·붙여넣기와 이름 바꾸기뿐이에요. 편집 프로그램은 어디에도 없어요.</figcaption>
+</figure>
+<h3>그록: 가장 먼저 나온 결과</h3>
+<p>그록 결과에는 'Be Water, My Friend'라는 문구 아래 Play와 Record 버튼이 붙어 있어요. 그 위 '사용법'에는 파일을 받거나 코드를 복사해 be_water.html로 저장하고, 브라우저에서 열고, Play로 재생하고 Record로 녹화하라고 적혀 있어요. 맨 위 줄에는 'Record 버튼 → 30fps WebM 녹화 후 자동 다운로드'라는 설명도 보여요.</p>
+<figure>
+  <img src="assets/frame-0417.png" alt="그록 채팅 화면. 사용법 네 줄 아래 be_water_kinetic.html 미리보기에 'Be Water, My Friend' 문구와 Play, Record 버튼이 있음">
+  <figcaption>그록은 채팅 안에서 바로 미리보기를 띄워 줘요. 발표자 평은 '촌스럽고 간단하지만 바로바로'예요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=257s" target="_blank" rel="noopener">영상 04:17에서 보기</a></figcaption>
+</figure>
+<p>발표자는 그록이 지시를 꼼꼼히 받지 않으면 제멋대로 대충 빨리 만들어 버린다고 해요. 그래서 성의가 없다, 정확도가 떨어진다는 평을 듣는다고 덧붙여요.</p>
+<h3>제미나이 웹: 코드 받기</h3>
+<p>제미나이 웹 채팅은 설명 몇 줄과 함께 HTML 코드 블록을 줘요. 설명에는 '외부 라이브러리나 이미지 파일 의존 없이 단일 HTML 파일로 작동'한다고 적혀 있어요. 1080p 그림, 소리, 60fps 녹화 기능이 모두 이 파일 하나에 들어 있다는 뜻이에요. 코드 블록 오른쪽 위의 두 아이콘이 다운로드와 복사 버튼이에요.</p>
+<figure>
+  <img src="assets/frame-0633.png" alt="제미나이 웹 채팅에서 단일 HTML 파일, Canvas 1080p 렌더링, Web Audio API 사운드, MediaRecorder 60fps 녹화를 설명하는 문단과 그 아래 HTML 코드 블록">
+  <figcaption>제목 태그가 '30s Kinetic Typography Masterpiece'예요. 프롬프트의 키워드가 그대로 반영됐어요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=393s" target="_blank" rel="noopener">영상 06:33에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>제미나이 설명에 나온 세 가지는 모두 브라우저에 들어 있는 기능이에요. Canvas는 자바스크립트로 그림을 그리는 판이고, Web Audio API(Application Programming Interface)는 소리를 만들고 효과를 입히는 기능이에요. MediaRecorder는 화면이나 소리를 녹화하는 기능이고, 캔버스의 captureStream()과 함께 쓰면 캔버스에 그려지는 장면을 실시간으로 녹화할 수 있어요. 그래서 별도 프로그램 없이 파일 하나로 재생과 녹화가 다 돼요.</p>
+  <p class="cite">출처: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API" target="_blank" rel="noopener">MDN — Canvas API</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API" target="_blank" rel="noopener">MDN — Web Audio API</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder" target="_blank" rel="noopener">MDN — MediaRecorder</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/captureStream" target="_blank" rel="noopener">MDN — captureStream()</a></p>
+</aside>
+<h3>메모장에 붙여 넣기</h3>
+<p>복사한 코드를 붙여 넣는 화면이에요. 폴더에 '제미나이 3.8 플래시.txt'라는 빈 텍스트 파일을 만들고, 우클릭 메뉴의 '메모장으로 편집'으로 열었어요. 메모장 아래 상태 표시줄에 25,645자가 찍혀 있어요. 오른쪽 카드는 ① 코드 복사(클립보드) ② 폴더에 파일 만들기 ③ 우클릭 → 메모장으로 편집 ④ 코드 붙여넣기 순서예요.</p>
+<figure>
+  <img src="assets/frame-0527.png" alt="윈도우 탐색기의 텍스트 파일 위로 메모장 창이 열려 HTML 코드가 붙어 있고, 상태 표시줄에 25,645자가 표시된 화면. 오른쪽에 '코드를 파일로 만드는 법' 네 단계 카드">
+  <figcaption>발표자 화면은 윈도우예요. 맥에도 비슷한 기능이 있을 거라고만 말해요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=327s" target="_blank" rel="noopener">영상 05:27에서 보기</a></figcaption>
+</figure>
+<p>이 숫자를 보고 발표자는 "지금 AI 영상 편집은 다 코딩"이라고 정리해요. 슬라이드 세 칸이 ① 25,645자, 엄청나게 빨리 돼요 ② 다 코딩, AI 영상 편집 = 코딩 ③ 코딩 잘하는 모델, 클로드가 잘하죠예요.</p>
+<figure>
+  <img src="assets/frame-0541.png" alt="'지금 AI 영상 편집은 다 코딩' 제목 아래 25,645자, 다 코딩, 코딩 잘하는 모델 세 칸이 화살표로 이어진 슬라이드">
+  <figcaption>그래서 모델을 고르는 기준이 '코딩을 잘하느냐'가 돼요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=341s" target="_blank" rel="noopener">영상 05:41에서 보기</a></figcaption>
+</figure>
+<h3>.html로 바꾸고 재생하기</h3>
+<p>저장한 파일의 이름을 '제미나이 웹 3.8 플래시.html'로 바꾸는 순간이에요. 바로 위 두 파일은 아직 .txt라 '텍스트 문서'로 보이지만, 이 파일만 유형이 'Whale HTML Doc...'로 바뀌고 크기도 27KB로 찍혀요. 브라우저가 열 수 있는 웹 페이지가 된 거예요.</p>
+<figure>
+  <img src="assets/frame-0555.png" alt="윈도우 탐색기에서 '제미나이 웹 3.8 플래시.html' 파일 이름을 바꾸는 중이며, 유형이 Whale HTML Document로 표시된 화면. 오른쪽에 저장하기, .html로 이름 바꾸기, 더블클릭 재생·녹화 버튼 세 단계 카드">
+  <figcaption>확장자 하나만 바꿨는데 파일 아이콘과 유형이 달라졌어요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=355s" target="_blank" rel="noopener">영상 05:55에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>윈도우 탐색기는 확장자를 숨기도록 설정돼 있는 경우가 있어요. 그 상태에서 이름만 바꾸면 '파일.html.txt'가 되어 메모장으로 열려요. 탐색기에서 보기 → 표시 → 파일 확장명을 켜고 바꾸면 안전해요. 맥의 텍스트 편집기는 기본이 서식 있는 문서라서, 새 문서에서 포맷 → 일반 텍스트로 만들기를 고른 뒤 코드를 붙여 넣어야 해요.</p>
+  <p class="cite">출처: <a href="https://support.microsoft.com/en-us/windows/common-file-name-extensions-in-windows-da4a4430-8e76-89c5-59f7-1cdbbc75cb01" target="_blank" rel="noopener">Microsoft 지원 — Common file name extensions in Windows</a> · <a href="https://support.apple.com/guide/textedit/work-with-html-documents-txted0b6cd61/mac" target="_blank" rel="noopener">Apple 지원 — 텍스트 편집기에서 HTML 문서 작업하기</a></p>
+</aside>
+<p>더블클릭하면 브라우저에서 바로 재생돼요. 발표자가 빨간 펜으로 동그라미 친 세 버튼이 '재생 / 재시작', '정지', '30초 고화질 녹화 (.webm)'예요. 프롬프트의 '재생되게, 녹화버튼 만들고' 한 줄이 이렇게 나왔어요.</p>
+<figure>
+  <img src="assets/frame-0609.png" alt="제미나이 결과 화면 아래쪽의 재생/재시작, 정지, 30초 고화질 녹화(.webm) 버튼 세 개에 빨간 동그라미가 쳐진 장면">
+  <figcaption>녹화 버튼을 누르면 30초짜리 .webm 영상 파일이 생겨요. 편집 프로그램 없이 영상 파일을 얻는 지점이에요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=369s" target="_blank" rel="noopener">영상 06:09에서 보기</a></figcaption>
+</figure>
+<p>재생 중인 제미나이 결과예요. 위쪽에 'READY 1080P / 60FPS', 'CORE MOTION ENGINE // KINETIC-30S'가 찍혀 있고, 가운데 연두색 'EXECUTION'이 커졌다 작아져요. 아래 진행 막대는 13.29 / 30.00s를 가리켜요. 제미나이 설명대로라면 주제는 'EXECUTION OVER NOISE(소음을 압도하는 실행)'예요.</p>
+<figure>
+  <img src="assets/frame-0623.png" alt="검은 화면 가운데 연두색 'EXECUTION' 글자가 있고, 아래에 일시정지, 정지, 30초 고화질 녹화 버튼과 13.29 / 30.00s 진행 표시가 있는 재생 화면">
+  <figcaption>주제, 문구, 효과음까지 AI가 알아서 정했어요. 발표자가 준 건 프롬프트 다섯 줄뿐이에요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=383s" target="_blank" rel="noopener">영상 06:23에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=394s" target="_blank" rel="noopener">06:34</a>
+  <h2>왜 싸게 뽑히나요, 그리고 딥시크·제미나이·키미</h2>
+<p>그록 4.7 헤비가 웹에서 만든 결과를 내 컴퓨터에서 틀어 본 장면이에요. 'Be formless, shapeless'라는 문구가 별 사이로 흐르고, 아래에 Play와 Record 버튼이 있어요. 앞에서 본 'Be Water, My Friend'와 같은 결의 문구예요.</p>
+<figure>
+  <img src="assets/frame-0649.png" alt="어두운 배경에 'Be formless, shapeless' 문구가 있고 아래에 Play, Record 버튼이 있는 그록 4.7 헤비 결과 화면">
+  <figcaption>발표자는 SNS에 도는 모션 그래픽 영상이 다 이런 방식이라고 말해요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=409s" target="_blank" rel="noopener">영상 06:49에서 보기</a></figcaption>
+</figure>
+<h3>토큰이 적게 드는 이유</h3>
+<p>발표자가 꼽는 이유는 코드 길이예요. 슬라이드 왼쪽 노란 칸 'HTML 키네틱'에 '토큰이 얼마 안 든다', '만 자밖에 안 된다', '되게 싸게 뽑힌다'가 적혀 있어요. 오른쪽 초록 칸 '응용하면'에는 '강의 영상·직촬 영상'이 들어가요. 같은 방식으로 내가 찍은 영상도 적은 토큰으로 AI 편집을 맡길 수 있다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0712.png" alt="'왜 다 HTML 키네틱일까?' 제목 아래 HTML 키네틱 칸에 토큰이 얼마 안 든다, 만 자밖에 안 된다, 되게 싸게 뽑힌다, 응용하면 칸에 강의 영상·직촬 영상이 적힌 비교 슬라이드">
+  <figcaption>그록 결과가 1만 자 정도였어요. 결과물이 글자로 된 코드뿐이라 토큰이 적게 들어요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=432s" target="_blank" rel="noopener">영상 07:12에서 보기</a></figcaption>
+</figure>
+<h3>젠스파크에서 돌린 딥시크</h3>
+<p>딥시크는 젠스파크에서 돌렸어요. 입력창 아래 모델 선택에 'DeepSeek V4.1 Flash'가 골라져 있어요. 젠스파크는 유명한 AI 모델 대부분을 한곳에서 골라 쓸 수 있는 서비스라, 클로드·ChatGPT·키미도 여기서 돌렸어요.</p>
+<figure>
+  <img src="assets/frame-0719.png" alt="젠스파크 AI 채팅 입력창 아래 모델 선택 메뉴에 DeepSeek V4.1 Flash가 선택된 화면">
+  <figcaption>모델 이름만 바꿔 가며 같은 프롬프트를 넣으면 돼서 비교하기 편해요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=439s" target="_blank" rel="noopener">영상 07:19에서 보기</a></figcaption>
+</figure>
+<p>딥시크는 '새벽 3시 · 세상이 가장 조용한 시간'이라는 <span class="term" data-term="키네틱 타이포그래피" data-en="Kinetic typography" data-desc="글자 자체를 움직여 메시지를 전하는 모션 그래픽 기법이에요. 발표자가 말하는 &#x27;HTML 키네틱 영상&#x27;이 이걸 웹 코드로 만든 거예요." data-g="2">키네틱 타이포그래피</span>를 만들었어요. 아래 버튼은 '재생', '정지', '처음', '사운드 ON', '녹화(30초)'예요. 발표자는 소리가 안 들어갔다고 했지만, 버튼 아래에는 '무음 자동재생 중 · 재생을 누르면 사운드와 함께 처음부터 재생됩니다'라고 적혀 있어요. 재생 버튼을 눌러야 소리가 나도록 만든 것으로 보여요.</p>
+<figure>
+  <img src="assets/frame-0749.png" alt="세로 화면에 '새벽 3시' 문구와 '세상이 가장 조용한 시간' 부제가 있고, 아래에 재생, 정지, 처음, 사운드 ON, 녹화(30초) 버튼과 '무음 자동재생 중' 안내가 있는 딥시크 결과">
+  <figcaption>발표자 평은 '딥시크가 굉장히 싸요'예요. 짧지만 버튼은 가장 많이 달아 줬어요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=469s" target="_blank" rel="noopener">영상 07:49에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>브라우저는 소리가 있는 미디어의 자동 재생을 막아요. 소리를 끄거나, 사용자가 페이지를 클릭·탭·키 입력으로 한 번 건드린 뒤에야 소리가 나요. 그래서 이런 HTML 영상은 무음으로 먼저 돌거나 'Click to play' 버튼을 띄워요. 소리가 안 들리면 재생 버튼을 직접 한 번 눌러 보세요.</p>
+  <p class="cite">출처: <a href="https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay" target="_blank" rel="noopener">MDN — Autoplay guide for media and Web Audio APIs</a></p>
+</aside>
+<h3>컴퓨터에 설치한 제미나이와 키미</h3>
+<p>컴퓨터에 설치한 프로그램에서 돌린 제미나이 3.8 결과예요. 왼쪽 위 빨간 딱지에 '제미나이(<span class="term" data-term="로컬" data-en="Local" data-desc="인터넷 서버가 아니라 내 컴퓨터 안을 뜻해요. 로컬에서 도는 AI 프로그램은 내 폴더의 파일을 직접 읽고 만들 수 있어요." data-g="7">로컬</span>) 결과물'이라고 적혀 있어요. 가로 화면이던 다른 결과와 달리 1080×1920 세로 영상이고, 맨 위에 'KINETIC OVERDRIVE // 30.00S', 'AUDIO: 130 BPM'이 찍혀 있어요. 세로 화면 위쪽의 'TALEDRIVE // 0001-KINETIC'은 발표자 작업 폴더 이름(100_TaleDrive, 0001-테스트)과 겹쳐요.</p>
+<figure>
+  <img src="assets/frame-0819.png" alt="'제미나이(로컬) 결과물' 딱지가 붙은 화면. 세로 영상 안에 빛줄기가 날아가고 가운데 'INITIALIZING MOTION CORE' 글자가 있으며, 위에 KINETIC OVERDRIVE 30.00S, RESOLUTION 1080×1920, AUDIO 130 BPM이 표시됨">
+  <figcaption>발표자는 특별한 평 없이 넘어가요. 설치형은 이렇게 내 폴더를 보면서 만든다는 점이 앞에서 말한 장점이에요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=499s" target="_blank" rel="noopener">영상 08:19에서 보기</a></figcaption>
+</figure>
+<p>지금까지 받은 결과를 모은 폴더예요. 크기 열을 보면 '그록 웹 4.7 헤비.html' 10KB, '제미나이 웹 3.8 플래시.html' 27KB, '젠스파크 딥시크 4.1 플래시.html' 29KB이고, '제미나이 컴퓨터 3.8.html'이 65KB로 가장 커요. 아래 두 .txt 파일은 아직 0KB예요. ChatGPT와 클로드 결과를 붙여 넣으려고 미리 만들어 둔 빈 파일이에요.</p>
+<figure>
+  <img src="assets/frame-0849.png" alt="윈도우 탐색기에 그록, 제미나이 웹, 제미나이 컴퓨터, 젠스파크 딥시크 HTML 파일과 0KB짜리 젠스파크 챗지피티, 클로드 텍스트 파일이 나열된 화면">
+  <figcaption>설치형 제미나이 결과가 웹 결과보다 두 배 넘게 커요. 그만큼 코드를 길게 짰다는 뜻이에요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=529s" target="_blank" rel="noopener">영상 08:49에서 보기</a></figcaption>
+</figure>
+<p>키미 K3는 'READY?'로 시작하는 영상을 만들었어요. 맨 위 '3초의 시작 · 30S KINETIC TYPE'이 주제고, 아래에 '재생', '녹화(30초 · .webm)', '사운드 ON' 버튼이 있어요. 오른쪽 카드에는 'PPT도 잘 만든다 · 시작이 괜찮음'이라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0904.png" alt="'키미 K3 결과물' 딱지가 붙은 화면 가운데 'READY?' 글자와 아래 재생, 녹화(30초·.webm), 사운드 ON 버튼. 오른쪽에 젠스파크, 딥시크, 제미나이, 키미 K3 메모 카드">
+  <figcaption>발표자는 키미가 발표 자료도 잘 만든다고 하고, 이 결과는 '시작이 괜찮다'고 평해요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=544s" target="_blank" rel="noopener">영상 09:04에서 보기</a></figcaption>
+</figure>
+<p>여기서 발표자는 미루지 말고 일단 해 보라고 해요. 슬라이드 세 칸이 ① 아무 AI 붙잡고 "키네틱 만들어줘" ② 결과물 보기, 재밌으니까 ③ 계속 지시, 중독이 될 겁니다예요.</p>
+<figure>
+  <img src="assets/frame-0929.png" alt="'일단 시작해 보기' 제목 아래 아무 AI 붙잡고, 결과물 보기, 계속 지시 세 칸이 화살표로 이어진 슬라이드">
+  <figcaption>어떤 AI로 시작하든 상관없다는 게 요점이에요. 결과를 보고 고쳐 달라는 지시를 반복하며 맞춰 가요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=569s" target="_blank" rel="noopener">영상 09:29에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=569s" target="_blank" rel="noopener">09:29</a>
+  <h2>클로드·ChatGPT·GLM 결과</h2>
+<p>발표자가 가장 기대한 클로드 Opus 5.5 결과예요. 코드는 2만 6천 자고, 파일을 열면 'KINETIC TYPOGRAPHY · 30s' 아래 커다란 '86,400'과 빨간 재생 버튼, 'CLICK TO PLAY'가 떠요. 오른쪽 카드에 '클로드 Opus · 비싼 모델 · 2만 6천 자'가 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0959.png" alt="검은 화면에 '86,400' 숫자와 빨간 원형 재생 버튼, CLICK TO PLAY 안내가 있는 클로드 Opus 결과의 시작 화면">
+  <figcaption>클로드 결과는 이 버튼을 눌러야 시작해요. 누르자마자 음악이 나와요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=599s" target="_blank" rel="noopener">영상 09:59에서 보기</a></figcaption>
+</figure>
+<p>86,400은 하루를 초로 센 숫자예요. 영상 끝에는 같은 숫자가 빨갛게 바뀌고 '오늘의 잔액, 어디에 쓰시겠어요?'라는 질문이 나와요. 중간에는 '미루고' 같은 단어가 지나가요. 하루 시간을 잔액에 빗댄 메시지예요. 오른쪽 '결과' 카드는 '클로드가 잘해'예요.</p>
+<figure>
+  <img src="assets/frame-1029.png" alt="빨간 '86,400' 숫자 아래 '오늘의 잔액, 어디에 쓰시겠어요?'와 YOUR DAILY 86,400 – USE IT WELL 문구가 있는 클로드 결과 마지막 장면">
+  <figcaption>주제를 고르라고만 했는데 하루 86,400초라는 소재와 마무리 질문까지 스스로 짰어요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=629s" target="_blank" rel="noopener">영상 10:29에서 보기</a></figcaption>
+</figure>
+<p>발표자는 프롬프트가 아주 간단했다는 점을 다시 짚어요. 따로 요청한 게 없는데 AI가 다 창작했다는 거예요. 오른쪽 '더 좋은 영상을 뽑으려면' 카드 세 장이 다음 단계예요. ① 키네틱 영상 많이 보기 ② "요런 스타일로 해줘" ③ 지시를 잘할 수 있어야.</p>
+<figure>
+  <img src="assets/frame-1044.png" alt="메모장에 다섯 줄 프롬프트가 선택되어 있고, 오른쪽에 '더 좋은 영상을 뽑으려면' 세 항목 카드가 있는 화면">
+  <figcaption>좋은 결과를 많이 봐 둬야 원하는 스타일을 말로 지시할 수 있어요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=644s" target="_blank" rel="noopener">영상 10:44에서 보기</a></figcaption>
+</figure>
+<h3>ChatGPT 6.1</h3>
+<p>ChatGPT는 코드를 3만 자 정도 냈어요. 'NEXT IS YOU.'라는 머리말 아래 '다음은 너야.'가 연두색으로 크게 뜨고, 그 밑에 '남의 하이라이트 말고, 너의 첫 장면을 만들어.'라는 부제가 있어요. 오른쪽 카드는 'ChatGPT 6.1 · 코드 3만 자 · 소리는 없음'이에요.</p>
+<figure>
+  <img src="assets/frame-1129.png" alt="검은 배경에 '다음은 너야.' 큰 글씨와 연두색 화살표, 보라색 별 장식이 있는 ChatGPT 6.1 결과 화면">
+  <figcaption>발표자는 디자인 색감이 괜찮다고 해요. 스페이스바로는 재생이 안 됐고 소리도 없었어요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=689s" target="_blank" rel="noopener">영상 11:29에서 보기</a></figcaption>
+</figure>
+<p>뒤쪽 장면은 주황색 배경으로 바뀌고 '실패는 업데이트.'라는 문구가 나와요. 앞 장면과 색과 분위기가 확 달라서 발표자가 '요 부분 괜찮네'라고 한 곳이에요.</p>
+<figure>
+  <img src="assets/frame-1159.png" alt="주황색 배경에 검은 글씨로 '실패는 업데이트.'라고 쓰고 오른쪽 위에 화살표 원이 있는 ChatGPT 결과 장면">
+  <figcaption>발표자는 ChatGPT도 조금 따라왔다고 보지만, 전문적으로 하는 사람들 결과를 보면 클로드가 훨씬 잘한다고 정리해요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=719s" target="_blank" rel="noopener">영상 11:59에서 보기</a></figcaption>
+</figure>
+<h3>GLM 5.3</h3>
+<p>가장 오래 걸린 GLM 5.3 결과예요. 'A 30-SECOND KINETIC FILM' 아래 '4:37'이 크게 뜨고, '우리가 매일 흘리는 시간에 관한 필름'이라는 부제가 붙었어요. 아래 버튼은 재생, 녹화(영상+사운드), 일시정지, 처음이에요. 발표자 말로는 화면이 꿈틀꿈틀하면서 TV(Television)에 나오는 효과 같대요.</p>
+<figure>
+  <img src="assets/frame-1243.png" alt="검은 화면에 '4:37' 숫자와 '우리가 매일 흘리는 시간에 관한 필름' 부제, 아래에 재생, 녹화(영상+사운드) 버튼이 있는 GLM 5.3 결과">
+  <figcaption>발표자는 GLM이 많이 올라왔다고 평해요. 소리도 넣어 줬어요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=763s" target="_blank" rel="noopener">영상 12:43에서 보기</a></figcaption>
+</figure>
+<p>오른쪽 카드에는 '처음 결제한다면 · 그냥 클로드 (단비 생각)'이라고 적혀 있어요. 발표자는 AI를 처음 결제한다면 클로드가 낫다고 말하면서도, 자기 생각이라고 분명히 해요.</p>
+<h3>코드 길이와 결과 한눈에 보기</h3>
+<p>발표자가 말한 코드 길이를 같은 눈금에 놓았어요. 1만 자에서 3만 자 사이예요. 클로드와 ChatGPT가 길게 짰고, 그록이 가장 짧아요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="AI별 결과 코드 길이 막대 그래프. 그록 약 1만 자, 제미나이 웹 25,645자, 클로드 약 2만 6천 자, ChatGPT 약 3만 자">
+    <line class="axis" x1="170" y1="20" x2="170" y2="190"/>
+    <line class="axis" x1="170" y1="190" x2="530" y2="190"/>
+    <line class="axis" x1="290" y1="186" x2="290" y2="194"/>
+    <line class="axis" x1="410" y1="186" x2="410" y2="194"/>
+    <line class="axis" x1="530" y1="186" x2="530" y2="194"/>
+    <text x="170" y="210" text-anchor="middle" class="sub">0</text>
+    <text x="290" y="210" text-anchor="middle" class="sub">1만 자</text>
+    <text x="410" y="210" text-anchor="middle" class="sub">2만 자</text>
+    <text x="530" y="210" text-anchor="middle" class="sub">3만 자</text>
+    <text x="160" y="47" text-anchor="end">그록 4.7 헤비</text>
+    <rect class="bar" x="170" y="30" width="120" height="24"/>
+    <text x="298" y="47">약 1만 자</text>
+    <text x="160" y="87" text-anchor="end">제미나이 3.8 플래시</text>
+    <rect class="bar" x="170" y="70" width="308" height="24"/>
+    <text x="486" y="87">25,645자</text>
+    <text x="160" y="127" text-anchor="end">클로드 Opus 5.5</text>
+    <rect class="bar" x="170" y="110" width="312" height="24"/>
+    <text x="490" y="127">약 2만 6천 자</text>
+    <text x="160" y="167" text-anchor="end">ChatGPT 6.1</text>
+    <rect class="bar" x="170" y="150" width="360" height="24"/>
+    <text x="538" y="167">약 3만 자</text>
+  </svg>
+  <figcaption>제미나이는 메모장에 찍힌 정확한 숫자고, 나머지는 발표자가 말로 한 어림값이에요(06:39, 09:41, 10:50). 가장 긴 것도 3만 자 정도라 토큰이 적게 든다는 게 발표자의 주장이에요.</figcaption>
+</figure>
+<p>영상에서 본 결과를 모델별로 모았어요. 평가는 모두 발표자의 말이에요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>모델</th><th>어디서 돌렸나</th><th>만든 영상</th><th>발표자 평</th></tr></thead>
+    <tbody>
+      <tr><td>그록 4.7 헤비</td><td>그록 웹</td><td>'Be Water, My Friend'</td><td>가장 빨리 나옴. 촌스럽고 간단, 지시를 꼼꼼히 안 하면 대충 만듦</td></tr>
+      <tr><td>제미나이 3.8 플래시</td><td>제미나이 웹</td><td>'EXECUTION'</td><td>소리까지 만들어 줌</td></tr>
+      <tr><td>딥시크 V4.1 플래시</td><td>젠스파크</td><td>'새벽 3시'</td><td>굉장히 쌈. 소리는 못 들음</td></tr>
+      <tr><td>제미나이 3.8</td><td>컴퓨터에 설치한 프로그램</td><td>'KINETIC OVERDRIVE'</td><td>따로 평 없음</td></tr>
+      <tr><td>키미 K3</td><td>젠스파크</td><td>'READY?'</td><td>시작이 괜찮음, 발표 자료도 잘 만듦</td></tr>
+      <tr><td>클로드 Opus 5.5</td><td>젠스파크</td><td>'86,400'</td><td>비싼 모델. 음악·때깔 모두 가장 좋음</td></tr>
+      <tr><td>ChatGPT 6.1</td><td>젠스파크</td><td>'다음은 너야'</td><td>색감 좋음, 소리 없음</td></tr>
+      <tr><td>GLM 5.3</td><td>영상에 안 나와요</td><td>'4:37'</td><td>10~15분으로 가장 느림. TV 같은 효과, 소리 있음</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>결과가 다 나온 뒤 발표자는 편집 이야기로 돌아가요. 캡컷이나 프리미어를 AI와 연결하는 방식은 납품용으로 전문적으로 하는 사람에게나 필요하다고 봐요. 일반적으로는 그냥 AI에게 영상 편집을 맡기면 된다는 거예요.</p>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=786s" target="_blank" rel="noopener">13:06</a>
+  <h2>프롬프트를 키우는 법</h2>
+<p>정리하면서 발표자는 프롬프트를 키우는 순서를 보여 줘요. 슬라이드 네 줄이 ① 키워드: "30초짜리 HTML 키네틱 영상 뽑아봐"(1번) ② 원하는 스타일 ③ 사운드·버튼 넣어주기 ④ 고퀄리티·"900년 경력의 모션그래픽"이에요.</p>
+<figure>
+  <img src="assets/frame-1333.png" alt="'프롬프트 업그레이드' 제목 아래 키워드, 원하는 스타일, 사운드·버튼 넣어주기, 고퀄리티 네 줄이 번호와 함께 나열된 슬라이드">
+  <figcaption>1번 키워드만은 꼭 기억하라고 해요. 이 말이 있어야 AI가 HTML로 영상을 뽑아요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=813s" target="_blank" rel="noopener">영상 13:33에서 보기</a></figcaption>
+</figure>
+<p>네 번째 줄이 재밌어요. 원하는 게 떠오르지 않을 때 '고퀄리티'나 '900년 경력' 같은 말로 기준만 높여 두라는 거예요. 소리는 "1.5초에서 2초 사이에 효과가 들어가게 재밌게 해줘라"처럼 시점까지 정해 줘도 된대요.</p>
+<p>주제를 직접 정하면 쓸모가 넓어져요. 슬라이드에 나온 예는 대한민국 소개, 내 앱 소개, 내 웹사이트 소개 세 가지예요. 웹사이트 칸 아래에 '링크와 같이'라고 적혀 있어요. 링크를 같이 주면 그 사이트 소개 영상도 만들어 준대요.</p>
+<figure>
+  <img src="assets/frame-1353.png" alt="'이렇게 응용' 제목 아래 대한민국 소개, 내 앱 소개, 내 웹사이트 소개(링크와 같이) 세 개의 버튼 모양 칸이 있는 슬라이드">
+  <figcaption>세 예 모두 소개 영상이에요. 짧은 홍보 영상에 잘 맞는 형식이라는 뜻이에요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=833s" target="_blank" rel="noopener">영상 13:53에서 보기</a></figcaption>
+</figure>
+<p>컴퓨터에 설치한 프로그램에서 하면 한 단계 더 나가요. 슬라이드 두 칸이 ① 내 파일을 본다(제 컴퓨터 파일을) ② <span class="term" data-term="에셋" data-en="Asset" data-desc="영상이나 앱에 들어가는 이미지, 아이콘, 소리 같은 재료 파일이에요. 설치형 AI는 이걸 직접 만들어 HTML에 넣을 수 있어요." data-g="6">에셋</span> 생성(이미지·이모티콘)이에요. AI가 로컬에서 이미지나 이모티콘을 직접 만들고, 그걸 HTML에 넣어 줘요.</p>
+<figure>
+  <img src="assets/frame-1413.png" alt="'로컬(내 컴퓨터)에서 하면' 제목 아래 1 내 파일을 본다, 2 에셋 생성 이미지·이모티콘 두 칸이 화살표로 이어진 슬라이드">
+  <figcaption>웹 채팅은 코드만 주지만, 설치형은 영상에 들어갈 재료까지 만들어 붙여요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=853s" target="_blank" rel="noopener">영상 14:13에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=864s" target="_blank" rel="noopener">14:24</a>
+  <h2>정리: 오늘 해 볼 것</h2>
+<p>마지막으로 받는 법을 다시 정리해요. 그록처럼 아예 파일을 다운로드하게 주는 곳도 있고, 제미나이처럼 코드 블록에 다운로드 버튼이 달린 곳도 있어요. 버튼이 없으면 코드를 복사해요. 슬라이드 네 칸이 그다음 순서예요. ① 코드 받기(복사·다운로드 버튼) ② 메모장에 붙여넣기 ③ Ctrl+S 저장 ④ .html로 이름 바꾸기, 재생!</p>
+<figure>
+  <img src="assets/frame-1510.png" alt="'정리: 코드 → 영상' 제목 아래 코드 받기, 메모장에 붙여넣기, Ctrl+S 저장, .html로 이름 바꾸기 재생 네 칸이 화살표로 이어진 슬라이드">
+  <figcaption>파일을 미리 만들어 두고 붙여 넣어도 되고, 메모장에서 바로 저장해도 돼요. 마지막에 확장자만 .txt에서 .html로 바꾸면 돼요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=910s" target="_blank" rel="noopener">영상 15:10에서 보기</a></figcaption>
+</figure>
+<p>지금 결과물이 단순한 건 따로 요청한 게 없어서라고 해요. 어떤 효과를 넣을 수 있는지 AI에게 물어보면서 업그레이드하라고 권해요. 색상과 폰트도 지정할 수 있어요. 이런 영상을 AI 음악 채널의 배경으로 써도 된대요.</p>
+<h3>편집 프로그램을 안 쓰게 된 이유</h3>
+<p>발표자가 편집 프로그램을 끊은 이유는 기술이 아니라 결과였어요. 슬라이드에 캡컷, 브루, 프리미어 프로 모두 X가 쳐 있고, 아래 노란 띠에 '암만 올려도 조회수가 높지 않아서'라고 적혀 있어요. 직접 편집해 올려도 조회수가 별로였다는 거예요.</p>
+<figure>
+  <img src="assets/frame-1630.png" alt="'편집 프로그램을 안 쓰게 된 이유' 제목 아래 캡컷, 브루, 프리미어 프로에 X 표시가 있고 노란 띠에 '암만 올려도 조회수가 높지 않아서'라고 적힌 슬라이드">
+  <figcaption>앞에서 본 '안 쓰는 편집 툴' 슬라이드에 이유 한 줄이 더해진 모습이에요. 브루는 돈만 나가고 있다고 덧붙여요. <a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8&amp;t=990s" target="_blank" rel="noopener">영상 16:30에서 보기</a></figcaption>
+</figure>
+<p>요즘은 직접 찍은 영상도 AI에게 편집을 맡기고, 이 영상도 "편집해줘" 하고 맡긴 뒤 자기는 다른 일을 한다고 해요. 결론은 간단한 프롬프트로 오늘 한 번 해 보라는 거예요. 한번 해 보면 편집을 AI에게 맡기게 된다는 게 발표자의 말이에요.</p>
+<blockquote>
+  <p>해봐야 알아 이 맛을 보면 AI한테 편집을 맡겨버리게 된다고요</p>
+  <cite>— 영상 15:49</cite>
+</blockquote>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-7"><dt>로컬<span class="en">Local</span></dt><dd>인터넷 서버가 아니라 내 컴퓨터 안을 뜻해요. 로컬에서 도는 AI 프로그램은 내 폴더의 파일을 직접 읽고 만들 수 있어요.</dd></div>
+    <div class="g" id="g-1"><dt>모션 그래픽<span class="en">Motion graphics</span></dt><dd>글자, 도형, 아이콘 같은 그래픽 요소를 움직여 만드는 영상이에요. 실사 촬영 없이 화면 디자인만으로 영상을 만들 수 있어요.</dd></div>
+    <div class="g" id="g-3"><dt>바이브 코딩<span class="en">Vibe coding</span></dt><dd>코드를 직접 짜는 대신 AI에게 말로 원하는 걸 설명하고, 결과를 보며 계속 고쳐 달라고 하는 개발 방식이에요. 영상에서는 이런 작업을 하는 설치형 AI 프로그램을 바이브 코딩 툴이라고 불러요.</dd></div>
+    <div class="g" id="g-6"><dt>에셋<span class="en">Asset</span></dt><dd>영상이나 앱에 들어가는 이미지, 아이콘, 소리 같은 재료 파일이에요. 설치형 AI는 이걸 직접 만들어 HTML에 넣을 수 있어요.</dd></div>
+    <div class="g" id="g-2"><dt>키네틱 타이포그래피<span class="en">Kinetic typography</span></dt><dd>글자 자체를 움직여 메시지를 전하는 모션 그래픽 기법이에요. 발표자가 말하는 &#x27;HTML 키네틱 영상&#x27;이 이걸 웹 코드로 만든 거예요.</dd></div>
+    <div class="g" id="g-4"><dt>토큰<span class="en">Token</span></dt><dd>AI 모델이 글을 읽고 쓰는 단위예요. 글자 수와 딱 맞지는 않지만, 출력이 길수록 토큰을 많이 쓰고 요금도 늘어나요.</dd></div>
+    <div class="g" id="g-5"><dt>확장자<span class="en">File name extension</span></dt><dd>파일 이름 끝의 .txt, .html 같은 부분이에요. 운영체제는 이걸 보고 어떤 프로그램으로 열지 정해서, .html로 바꾸면 브라우저가 열어요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>GLM</dt><dd>General Language Model</dd></div>
+    <div class="g"><dt>HTML</dt><dd>HyperText Markup Language</dd></div>
+    <div class="g"><dt>SNS</dt><dd>Social Networking Service</dd></div>
+    <div class="g"><dt>TV</dt><dd>Television</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=4A3Mofy8Sm8" target="_blank" rel="noopener">원본 영상 — Curator Danbi - Money Maven</a></li>
+    <li id="src-2"><a href="https://antigravity.google/" target="_blank" rel="noopener">Google Antigravity 공식 사이트</a></li>
+    <li id="src-3"><a href="https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API" target="_blank" rel="noopener">MDN — Canvas API</a></li>
+    <li id="src-4"><a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API" target="_blank" rel="noopener">MDN — Web Audio API</a></li>
+    <li id="src-5"><a href="https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder" target="_blank" rel="noopener">MDN — MediaRecorder</a></li>
+    <li id="src-6"><a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/captureStream" target="_blank" rel="noopener">MDN — HTMLCanvasElement.captureStream()</a></li>
+    <li id="src-7"><a href="https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay" target="_blank" rel="noopener">MDN — Autoplay guide for media and Web Audio APIs</a></li>
+    <li id="src-8"><a href="https://support.microsoft.com/en-us/windows/common-file-name-extensions-in-windows-da4a4430-8e76-89c5-59f7-1cdbbc75cb01" target="_blank" rel="noopener">Microsoft 지원 — Common file name extensions in Windows</a></li>
+    <li id="src-9"><a href="https://support.apple.com/guide/textedit/work-with-html-documents-txted0b6cd61/mac" target="_blank" rel="noopener">Apple 지원 — 텍스트 편집기에서 HTML 문서 작업하기</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 13일에 이 영상을 보고 정리했어요. 원본은 Curator Danbi - Money Maven 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+(() => {
+  const g = document.getElementById('fig-flow');
+  if (!g) return;
+  const rows = [
+    { label: '채팅 창', cls: 'c1', y: 30, steps: [
+      ['① 프롬프트 넣기', '다섯 줄 그대로'],
+      ['② AI가 코드 작성', '1만~3만 자'],
+      ['③ 복사·다운로드', '코드 블록 버튼'] ] },
+    { label: '내 컴퓨터', cls: 'c2', y: 150, steps: [
+      ['④ 메모장에 붙여넣기', 'Ctrl+S 저장'],
+      ['⑤ .txt → .html', '이름 바꾸기'],
+      ['⑥ 더블클릭 재생', '녹화 → .webm'] ] }
+  ];
+  const W = 150, H = 70, X0 = 96, GAP = 28;
+  rows.forEach((row) => {
+    g.append(el('text', { x: 10, y: row.y + 40, class: 'sub' }, row.label));
+    row.steps.forEach(([title, sub], i) => {
+      const x = X0 + i * (W + GAP);
+      g.append(el('rect', { x, y: row.y, width: W, height: H, rx: 10, class: `${row.cls} cell` }));
+      g.append(el('text', { x: x + W / 2, y: row.y + 31, 'text-anchor': 'middle' }, title));
+      g.append(el('text', { x: x + W / 2, y: row.y + 52, 'text-anchor': 'middle', class: 'sub' }, sub));
+      if (i < row.steps.length - 1)
+        g.append(el('path', { d: `M${x + W + 2} ${row.y + H / 2} h${GAP - 6}`, class: 'line', 'marker-end': 'url(#arrow-flow)' }));
+    });
+  });
+  const x3 = X0 + 2 * (W + GAP) + W / 2, x4 = X0 + W / 2;
+  g.append(el('path', { d: `M${x3} ${30 + H + 2} V125 H${x4} V${150 - 4}`, class: 'line', 'marker-end': 'url(#arrow-flow)' }));
+})();
+</script>
+</body>
+</html>
