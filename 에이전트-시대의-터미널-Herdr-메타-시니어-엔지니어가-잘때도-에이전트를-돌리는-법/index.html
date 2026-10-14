@@ -25,6 +25,8 @@
 <!-- yn-lock:end -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>에이전트 시대의 터미널 herdr — 잘 때도 에이전트를 돌리는 법</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 <style>
   :root{
     --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
@@ -32,7 +34,10 @@
     --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
     --warn:#ff8a00; --warn-soft:#fff4e6;
     --info:#00b8a9; --info-soft:#e4f8f6;
-    --radius:16px; --maxw:760px;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
   }
   @media (prefers-color-scheme:dark){
     :root{
@@ -41,6 +46,8 @@
       --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
       --warn:#ffab4a; --warn-soft:#3a2a13;
       --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
     }
   }
   *{box-sizing:border-box}
@@ -78,13 +85,29 @@
   .keypoints li strong{color:var(--text)}
 
   /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
   nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
     border-radius:var(--radius)}
   nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
   nav.toc ol{margin:0; padding-left:20px}
-  nav.toc li{margin:6px 0; font-size:15px}
-  nav.toc a{color:var(--text-sub)}
-  nav.toc a.active{color:var(--brand); font-weight:600}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
 
   /* ── 본문 ──────────────────────────────────────────── */
   section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
@@ -99,6 +122,16 @@
     background:var(--surface-2); color:var(--text-mute);
     font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
   a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
 
   /* ── 그림 ──────────────────────────────────────────── */
   figure{margin:28px 0}
@@ -115,23 +148,33 @@
   thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
     font-weight:700; white-space:nowrap}
   tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
   td code{font-size:13.5px}
 
-  /* ── 용어 툴팁 ─────────────────────────────────────── */
-  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
-    font-weight:600; background:none}
-  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
-  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
-    background:var(--text); color:var(--bg); border-radius:12px;
-    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
-    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
-    transition:opacity .12s ease; pointer-events:none}
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
   #tip.on{opacity:1; visibility:visible}
-  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
 
   /* ── 박스 두 종류 ───────────────────────────────────
      .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
-     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
   aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
   aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
   aside p{margin:8px 0}
@@ -144,6 +187,92 @@
   aside .table-scroll{margin:12px 0 0}
   aside table{min-width:320px; font-size:14.5px}
   aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
 
   /* ── 인용 ──────────────────────────────────────────── */
   blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
@@ -159,13 +288,14 @@
   pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
     border:1px solid var(--line); overflow-x:auto; line-height:1.6}
   pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
 
   /* ── 꼬리말 ────────────────────────────────────────── */
   .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
   .tail h2{font-size:20px; margin:0 0 14px}
   .tail + .tail{margin-top:40px}
   .tail ol{padding-left:20px}
-  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
   footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
     font-size:13.5px; color:var(--text-mute)}
 
@@ -182,11 +312,11 @@
 
 <header>
   <h1>에이전트 시대의 터미널 herdr — 잘 때도 에이전트를 돌리는 법</h1>
-  <p class="lede">누가 나를 기다리는지 알려 주는 멀티플렉서와 그걸로 일하는 법이에요</p>
+  <p class="lede">누가 나를 기다리는지 알려 주는 멀티플렉서를 설치부터 실전까지 봐요</p>
   <div class="meta">
     <span>실밸개발자</span><span class="dot">·</span>
-    <span>36:41</span><span class="dot">·</span>
-    <span>유튜브 영상 정리</span>
+    <span>영상 36:41</span><span class="dot">·</span>
+    <span>읽는 데 약 21분</span>
   </div>
   <a class="src-btn" href="https://www.youtube.com/watch?v=U9AConAimzM" target="_blank" rel="noopener">
     원본 영상 보러 가기 →
@@ -196,469 +326,762 @@
 <div class="keypoints">
   <h2>핵심만 먼저</h2>
   <ol>
-    <li>에이전트를 여럿 돌리면 병목은 사람이에요. 누가 승인을 기다리는지 몰라서 탭을 돌며 확인하게 돼요.</li>
-    <li>터미널 멀티플렉서의 핵심은 터미널을 닫아도 프로세스가 살아 있다는 점이에요. 그래서 에이전트 시대에 tmux가 다시 주목받았어요.</li>
-    <li>herdr는 tmux의 지속성은 그대로 두고, 사이드바에 에이전트별 상태(작업 중·승인 대기·끝남)를 보여 줘요.</li>
-    <li>herdr 스킬을 깐 Claude Code는 스스로 pane을 나누고 에이전트를 띄워 일을 나눠 줘요. 사람은 오케스트레이터만 보다가 필요할 때 끼어들어요.</li>
-    <li>발표자는 자기 전과 출근 전에 일을 걸어 두고 만들어진 PR을 리뷰해요. 사람의 역할은 검증으로 옮겨 가고 있어요.</li>
+    <li><span class="term" data-term="터미널 멀티플렉서" data-en="Terminal multiplexer" data-desc="터미널 하나 안에 여러 셸을 띄우고, 창을 닫아도 그 셸들이 뒤에서 계속 돌게 해 주는 프로그램이에요. tmux가 대표적이에요." data-g="1">터미널 멀티플렉서</span>의 핵심은 터미널을 닫아도 프로세스가 사는 지속성이에요. 프로세스를 쥔 주체가 앱이 아니라 뒤에서 도는 서버라서 그래요.</li>
+    <li>tmux는 프로세스를 살려 두지만 에이전트가 일하는지 승인을 기다리는지 몰라요. 그래서 사람이 <span class="term" data-term="페인" data-en="Pane" data-desc="화면을 나눈 칸 하나예요. 칸마다 진짜 터미널이 하나씩 돌아요. herdr에서는 칸마다 w6:p5 같은 ID가 붙어요." data-g="2">페인</span>을 하나씩 읽는 병목이 남아요.</li>
+    <li>herdr는 tmux의 구조와 <span class="term" data-term="프리픽스 키" data-en="Prefix key" data-desc="단축키 앞에 먼저 누르는 키예요. tmux와 herdr 모두 기본값이 ctrl+b라서, 누른 뒤 다음 키를 명령으로 받아요." data-g="4">프리픽스 키</span>를 그대로 쓰면서, 사이드바에 에이전트 상태를 색으로 보여 주고 승인 대기를 알려 줘요.</li>
+    <li>herdr <span class="term" data-term="에이전트 스킬" data-en="Agent skill" data-desc="에이전트가 특정 도구를 다루는 법을 적어 둔 지침 파일이에요. herdr 스킬을 깔면 에이전트가 herdr CLI로 페인을 만들고 다른 에이전트를 부려요." data-g="5">에이전트 스킬</span>을 깐 Claude Code는 직접 페인을 나누고 브리프 파일로 일을 넘기는 <span class="term" data-term="오케스트레이터" data-en="Orchestrator" data-desc="직접 일하기보다 다른 에이전트에게 일을 나눠 주고 결과를 모으는 총괄 에이전트예요. 사람은 이 하나와만 대화하면 돼요." data-g="6">오케스트레이터</span>가 돼요.</li>
+    <li>사람의 역할은 검증과 결정으로 옮겨 가요. 자기 전과 출근 전에 일을 걸어 두면 돌아왔을 때 PR(Pull Request)이 와 있어요.</li>
   </ol>
 </div>
 
 <nav class="toc">
   <h2>목차</h2>
   <ol>
-    <li><a href="#s1">탭 여섯 개, 병목은 나였어요</a></li>
-    <li><a href="#s2">에이전트 시대에 tmux가 다시 뜬 이유</a></li>
-    <li><a href="#s3">herdr는 tmux와 무엇이 다를까요</a></li>
-    <li><a href="#s4">설치와 화면 구조</a></li>
-    <li><a href="#s5">사이드바 상태와 꺼지지 않는 세션</a></li>
-    <li><a href="#s6">오케스트레이터가 pane을 직접 만들어요</a></li>
-    <li><a href="#s7">사람의 역할은 검증이에요</a></li>
-    <li><a href="#s8">결과를 모아 PR로, 그리고 에이전트를 위한 도구들</a></li>
+    <li><a href="#s1">에이전트 11개, 병목은 나였어요</a></li>
+    <li><a href="#s2">터미널 멀티플렉서는 무엇을 하나요</a></li>
+    <li><a href="#s3">에이전트 시대에 tmux가 다시 뜬 이유와 한계</a></li>
+    <li><a href="#s4">herdr: 에이전트 상태를 아는 tmux</a></li>
+    <li><a href="#s5">설치하고 첫 화면 보기</a></li>
+    <li><a href="#s6">사이드바 색으로 상태 읽기</a></li>
+    <li><a href="#s7">오케스트레이터에게 작업 세 개 맡기기</a></li>
+    <li><a href="#s8">사람은 검증하는 자리로</a></li>
+    <li><a href="#s9">결과 취합과 PR, 그리고 하루의 리듬</a></li>
     <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
   </ol>
 </nav>
 
 <main>
 <section id="s1">
   <a class="stamp" href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=0s" target="_blank" rel="noopener">00:00</a>
-  <h2>탭 여섯 개, 병목은 나였어요</h2>
-<p>발표자는 퇴근 전에 돌아가는 에이전트를 세어 보니 11개였다고 해요. 한 프로젝트에 다섯 개, 다른 프로젝트에 두 개, 나머지는 사이드 프로젝트예요. 문제는 어느 에이전트가 자기를 기다리는지 한눈에 알 수 없다는 점이었어요. 탭을 옮겨 다니는 사이 막힌 에이전트는 20~30분씩 그대로 서 있었죠. 에이전트를 많이 돌릴수록 병목은 사람이라는 게 더 분명해졌다고 해요.</p>
-<p>그래서 소개하는 도구가 herdr예요. 발표자 설명으로는 올여름 GitHub 트렌딩 1위를 찍었고, 스타는 3만 4천 개쯤이며, 8월에 YC 투자를 받았어요.</p>
-
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>정리하는 시점에 herdr.dev 첫 화면에는 GitHub 스타가 41,670개로 나와 있어요. 숫자는 계속 바뀌니 참고만 하세요. 공식 블로그에 따르면 herdr는 Y Combinator에 합류한 뒤 2026년 9월 8일에 Bessemer Venture Partners가 이끈 600만 달러 시드 투자를 발표했어요. Y Combinator도 이 라운드에 참여했어요.</p>
-  <p class="cite">출처: <a href="https://herdr.dev/" target="_blank" rel="noopener">herdr 공식 사이트</a> · <a href="https://herdr.dev/blog/herdr-raised-a-seed/" target="_blank" rel="noopener">herdr 블로그 — Herdr raised a $6M seed</a></p>
-</aside>
-
-<h3>터미널 멀티플렉서가 하는 세 가지 일</h3>
-<p><span class="term" data-term="터미널 멀티플렉서" data-desc="터미널 하나를 여러 창으로 나누고, 창을 닫아도 그 안의 프로세스를 서버에서 계속 돌려 주는 도구예요. tmux가 대표적이에요.">터미널 멀티플렉서</span>는 세 가지 일을 해요. 터미널 하나를 여러 창(<span class="term" data-term="pane" data-desc="멀티플렉서 화면을 나눈 한 칸이에요. 칸마다 진짜 터미널이 하나씩 돌아가요.">pane</span>)으로 쪼개고, 창을 탭으로, 탭을 <span class="term" data-term="세션" data-desc="멀티플렉서 서버 안에 묶여 있는 작업 단위예요. 창을 닫았다가 다시 붙으면 같은 세션이 그대로 나와요.">세션</span>으로 묶어요. 그리고 가장 중요한 세 번째, 터미널을 닫아도 세션이 계속 돌아가요. 앞의 두 가지는 요즘 터미널 앱도 다 해 주니, 멀티플렉서의 진짜 가치는 세 번째예요.</p>
-<p>일반 터미널에서 <code>claude</code>나 <code>npm run dev</code>를 돌리다 창을 닫으면 프로세스도 같이 죽어요. 멀티플렉서 안에서 돌렸다면 창은 닫혀도 프로세스는 뒤에서 계속 돌아요. 프로세스를 쥐고 있는 게 터미널 앱이 아니라 뒤에서 도는 서버이기 때문이에요.</p>
-
-<figure>
-  <img src="assets/frame-0315.png" alt="왼쪽 일반 터미널은 claude·npm run dev 프로세스가 종료됨으로, 오른쪽 tmux/herdr 쪽은 같은 프로세스가 계속 실행 중으로 표시된 비교 화면">
-  <figcaption>
-    창을 닫은 뒤의 비교예요. 일반 터미널에서는 프로세스가 앱과 함께 죽고, 멀티플렉서에서는 서버가 프로세스를 쥐고 있어서 살아 있어요.
-    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=195s" target="_blank" rel="noopener">영상 03:15에서 보기</a>
-  </figcaption>
+  <h2>에이전트 11개, 병목은 나였어요</h2>
+<p>발표자는 메타에서 일하면서 에이전트를 여러 개 동시에 돌려요. 어느 날 퇴근 전에 세어 보니 돌아가는 에이전트가 정확히 11개였어요. 아래 그림처럼 한 프로젝트에 5개, 다른 프로젝트에 2개, 나머지 4개는 하고 싶었던 사이드 프로젝트에 붙어 있었어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 170" role="img" aria-label="에이전트 11개를 프로젝트 A 5개, 프로젝트 B 2개, 사이드 프로젝트 4개로 나눈 그림">
+    <g id="fig-agents"></g>
+  </svg>
+  <figcaption>칸 하나가 에이전트 하나예요. 이 11개를 탭을 넘기며 하나씩 확인하는 게 문제의 시작이었어요. 앉아서 말하는 장면이라 화면 대신 말한 숫자를 그림으로 옮겼어요.</figcaption>
 </figure>
-
-<p>발표자는 이걸 모니터와 컴퓨터에 빗대요. 모니터를 꺼도 유튜브 영상은 컴퓨터에서 계속 재생되죠. 터미널 창이 모니터고, 멀티플렉서 서버가 컴퓨터예요. 가장 널리 쓰이는 멀티플렉서는 2007년에 나온 tmux예요. 원래는 서버 관리자가 SSH 연결이 끊겨도 작업을 이어 가려고 쓰던 도구였어요.</p>
+<p>문제는 <strong>어느 에이전트가 나를 기다리는지 한눈에 알 수 없다</strong>는 점이었어요. 탭을 옮겨 가며 하나씩 봐야 했고, 승인을 기다리며 막힌 에이전트는 20분, 30분씩 그대로 서 있었어요. 정작 본인은 그 사실을 몰랐고요.</p>
+<blockquote>
+  <p>에이전트를 많이 돌릴수록 병목은 결국 저라는게 더 뼈저하게 느껴지더라고요.</p>
+  <cite>— 영상 00:34</cite>
+</blockquote>
+<p>그래서 소개하는 도구가 herdr예요. 영상은 세 부분으로 가요. 먼저 herdr가 무엇이고 왜 필요한지 tmux를 모르는 사람도 따라올 수 있게 설명하고, 다음으로 설치와 핵심 기능을 훑어요. 마지막에는 발표자가 만드는 서비스 AutoKliq를 에이전트 여러 개로 실제 개발해요.</p>
 </section>
 
 <section id="s2">
-  <a class="stamp" href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=247s" target="_blank" rel="noopener">04:07</a>
-  <h2>에이전트 시대에 tmux가 다시 뜬 이유</h2>
-<p>예전에는 개발자 한 명이 돌리는 프로세스가 손으로 타이핑하는 시간과 거의 같았어요. 내가 일할 때만 뭔가 돌았으니 탭이 많이 필요 없었죠. 발표자 팀에도 tmux를 즐겨 쓰는 사람은 없었대요.</p>
-<p>지금은 지시 한 번이면 Claude가 10분, 20분, 30분씩 혼자 일해요. 그사이 두 번째 지시를 내리고, Codex에게 리뷰도 시켜요. 사람이 안 보는 동안 오래 도는 프로세스가 여러 개 생긴 거예요. 이 프로세스들은 터미널을 끄거나 노트북을 덮어도 죽으면 안 돼요.</p>
-
+  <a class="stamp" href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=102s" target="_blank" rel="noopener">01:42</a>
+  <h2>터미널 멀티플렉서는 무엇을 하나요</h2>
+<p>터미널 멀티플렉서가 하는 일은 세 가지예요. 아래 화면 위쪽 카드 세 장이 그 순서예요. <b>쪼갠다</b>(터미널 하나를 여러 페인으로), <b>묶는다</b>(페인을 탭으로, 탭을 세션으로), <b>살린다</b>(터미널을 닫아도 세션이 계속 돌아감). 앞의 둘은 요즘 터미널 앱도 다 해요. 그래서 세 번째 카드에만 '핵심 — 이것만 멀티플렉서가 함'이라는 표시가 붙어 있어요.</p>
+<p>아래쪽 비교 그림은 '터미널 창 닫기' 버튼을 누른 뒤의 모습이에요. 왼쪽 일반 터미널에서는 iTerm·Ghostty 같은 앱이 프로세스를 직접 쥐고 있어서, 창이 닫히자 <code>claude · npm run dev</code> 칸이 빨갛게 '종료됨'으로 바뀌었어요. 오른쪽은 앱과 프로세스 사이에 tmux/herdr 서버가 끼어 있어서, 창은 흐려졌지만 프로세스 칸은 '계속 실행 중'이에요.</p>
 <figure>
-  <img src="assets/frame-0722.png" alt="개발자 1명이 claude 두 개, codex 리뷰, dev 서버를 동시에 돌리는 타임라인과 그 아래 지속성·병렬 시야·원격 세 카드">
+  <img src="assets/frame-0313.png" alt="쪼갠다, 묶는다, 살린다 카드 세 장과, 터미널 창을 닫은 뒤 일반 터미널의 프로세스는 종료되고 멀티플렉서 쪽 프로세스는 계속 실행 중인 비교 화면">
   <figcaption>
-    내가 지시를 내린 뒤에도 에이전트들이 10분씩 혼자 도는 모습을 타임라인으로 보여 줘요. 그래서 아래 세 가지가 필요해졌어요.
-    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=442s" target="_blank" rel="noopener">영상 07:22에서 보기</a>
+    프로세스를 쥔 주체가 앱이냐 서버냐, 이 차이 하나가 '닫아도 산다'를 만들어요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=193s" target="_blank" rel="noopener">영상 03:13에서 보기</a>
   </figcaption>
 </figure>
-
-<div class="table-scroll">
-  <table>
-    <thead><tr><th>필요한 것</th><th>뜻</th></tr></thead>
-    <tbody>
-      <tr><td>지속성</td><td>터미널이 닫히거나 노트북을 덮거나 SSH가 끊겨도 작업이 계속 돌아요</td></tr>
-      <tr><td>병렬 시야</td><td>에이전트 여러 개를 한 화면에서 관리해요</td></tr>
-      <tr><td>원격</td><td>서버에 에이전트를 두고 24시간 돌려요</td></tr>
-    </tbody>
-  </table>
-</div>
-
-<p>발표자는 회사에서 로컬 대신 서버를 여러 대 빌려, 각 서버에서 에이전트를 네다섯 개씩 돌린다고 해요. 이 세 가지가 정확히 멀티플렉서가 하는 일이에요. 그래서 Claude Code나 Codex 사용자의 글을 찾아보면 tmux 얘기가 꼭 따라 나와요.</p>
-
-<h3>tmux의 한계</h3>
-<p>그런데 tmux로 에이전트를 여럿 돌려 보면 한계가 하나 보여요. "이 중 승인을 기다리는 pane은 어디일까요?"라고 물으면, 결국 pane의 글자를 전부 읽어서 알아내야 해요. tmux는 에이전트가 작업 중인지, 승인을 기다리는지, 에러로 멈췄는지 구분해 주지 않아요. 글자를 보여 줄 뿐이에요. 그래서 멀티플렉서를 써도 탭을 돌며 확인하는 병목은 여전히 사람이에요.</p>
-
+<p>발표자는 이걸 모니터와 컴퓨터에 비유해요. 터미널 창은 모니터, 멀티플렉서 서버는 그 뒤의 컴퓨터예요. 모니터를 꺼도 틀어 둔 유튜브 영상은 계속 재생되고, 다시 켜면 이어서 볼 수 있죠. 프로세스는 모니터가 아니라 컴퓨터 안, 즉 서버에서 돌고 있어요.</p>
+<p>아래 화면 맨 아래 '2007' 카드가 tmux 이야기예요. 지금 가장 많이 쓰는 멀티플렉서 tmux는 2007년에 나왔어요. 원래는 서버 관리자가 SSH(Secure Shell)로 원격 서버에 붙어 일하다가 연결이 끊겨도 작업이 날아가지 않게 쓰던 도구예요.</p>
 <figure>
-  <img src="assets/frame-0837.png" alt="tmux pane 세 개에 각각 테스트 로그, 'Allow this edit? (y/n)' 승인 요청, 개발 서버 로그가 떠 있는 예시 화면">
+  <img src="assets/frame-0352.png" alt="모니터와 컴퓨터 아이콘으로 터미널 창과 멀티플렉서를 비유한 카드, 그리고 tmux 첫 릴리스 2007을 소개하는 카드">
   <figcaption>
-    'tmux가 보는 세상' 예시예요. 두 번째 pane이 승인을 기다리지만, 글자를 직접 읽기 전에는 알 수 없어요.
-    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=517s" target="_blank" rel="noopener">영상 08:37에서 보기</a>
+    카드 끝 파란 문장이 다음 질문으로 넘어가요. 20년 된 도구가 왜 최근 갑자기 다시 뜨고 있을까요?
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=232s" target="_blank" rel="noopener">영상 03:52에서 보기</a>
   </figcaption>
 </figure>
 </section>
 
 <section id="s3">
-  <a class="stamp" href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=549s" target="_blank" rel="noopener">09:09</a>
-  <h2>herdr는 tmux와 무엇이 다를까요</h2>
-<p>herdr의 공식 표현은 '코딩 에이전트가 사는 런타임'이에요. 발표자 식으로 풀면 '에이전트 상태를 아는 tmux'예요.</p>
-<p>tmux에서 가져온 건 그대로예요. 서버-클라이언트 구조라서 지속성, 병렬 시야, 원격을 다 갖고 있어요. <span class="term" data-term="프리픽스 키" data-desc="단축키 앞에 먼저 누르는 키예요. tmux와 herdr는 Ctrl+B를 누른 뒤 다음 키로 명령을 내려서, 터미널 프로그램의 단축키와 겹치지 않게 해요.">프리픽스 키</span>까지 같아서 tmux에 익숙하면 바로 쓸 수 있어요. 발표자도 그렇게 바로 넘어왔대요.</p>
-<p>다른 점은 에이전트 상태를 안다는 거예요. herdr를 켜면 왼쪽에 사이드바가 생기고, pane마다 Claude인지 Codex인지, 작업 중인지 막혔는지 끝났는지 표시돼요. 에이전트가 아니라 그냥 터미널이면 터미널이라고 나와요. 어떤 에이전트가 내 주의를 필요로 하는지 보고 바로 풀어 줄 수 있어요.</p>
-
+  <a class="stamp" href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=247s" target="_blank" rel="noopener">04:07</a>
+  <h2>에이전트 시대에 tmux가 다시 뜬 이유와 한계</h2>
+<h3>내가 안 볼 때도 도는 프로세스</h3>
+<p>예전에는 개발자 한 명이 굴리는 프로세스가 내가 타이핑하는 시간과 거의 똑같았어요. 에디터를 쓰는 동안만 뭔가가 돌았죠. 탭이 많이 필요 없었고, 발표자도 팀원들도 tmux를 거의 안 썼어요. tmux는 서버 관리자의 도구였어요.</p>
+<p>아래 화면의 타임라인이 에이전트 시대의 10분이에요. 맨 윗줄 '나 (지시)'에는 흰 점 세 개만 찍혀 있어요. 지시를 내린 순간들이에요. 그 아래 claude #1, claude #2, codex 리뷰는 파란 막대로 길게 이어져요. 지시 한 번에 10분, 20분, 30분씩 혼자 도는 거예요. 화면 문구대로 프로세스의 성격이 '내가 지켜보지 않는 동안 오래 도는 것'으로 바뀌었어요.</p>
 <figure>
-  <img src="assets/frame-1039.png" alt="herdr 화면 예시. 왼쪽 사이드바에 claude working, claude blocked, codex done, zsh가 나열되고 오른쪽 위에 'claude (pane 2) needs your approval' 알림이 떠 있음">
+  <img src="assets/frame-0522.png" alt="개발자 1명이 claude 두 개, codex 리뷰, dev 서버를 돌리는 10분 타임라인과, 그 아래 지속성·병렬 시야·원격 세 카드">
   <figcaption>
-    같은 pane 세 개라도 herdr는 누가 나를 기다리는지 사이드바와 알림으로 알려 줘요. 아래 상태 막대에도 blocked·working·done 개수가 나와요.
-    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=639s" target="_blank" rel="noopener">영상 10:39에서 보기</a>
+    나는 점 세 번만 찍었는데 에이전트 막대는 화면 끝까지 가요. 이 차이가 멀티플렉서를 다시 불러냈어요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=322s" target="_blank" rel="noopener">영상 05:22에서 보기</a>
   </figcaption>
 </figure>
+<p>그래서 화면 아래 카드 세 장이 말하는 세 가지가 필요해졌어요.</p>
+<ul>
+  <li><b>지속성</b> — 터미널이 닫혀도, 노트북을 덮어도, SSH가 끊겨도 작업이 살아 있어야 해요.</li>
+  <li><b>병렬 시야</b> — 에이전트 여러 개를 한 화면에서 관리할 수 있어야 해요. 다 동시에 읽을 수는 없어도 관리는 돼야 해요.</li>
+  <li><b>원격</b> — 에이전트를 서버에 두고 24시간 돌려요. 발표자는 회사에서 서버를 여러 대 받아, 서버마다 에이전트를 네다섯 개씩 돌린대요. 로컬에서는 거의 안 돌려요.</li>
+</ul>
+<p>이 셋이 정확히 멀티플렉서가 하는 일이에요. 그래서 Claude Code나 Codex 쓰는 사람들의 글을 찾아보면 tmux 얘기가 꼭 따라 나와요.</p>
+<h3>tmux가 보는 세상</h3>
+<p>그런데 tmux로 에이전트를 여럿 굴려 보면 한계가 하나 보여요. 발표자는 퀴즈를 하나 내요. 아래 화면의 페인 세 개 중 승인을 기다리는 건 어느 것일까요? 정답은 가운데 pane 2예요. 마지막 줄에 노란 글씨로 <code>Allow this edit? (y/n)</code>이 떠 있거든요. 화면 설명대로, 맞혔든 틀렸든 우리는 텍스트를 전부 읽어서 알아냈어요.</p>
+<figure>
+  <img src="assets/frame-0842.png" alt="tmux 페인 세 개가 나란히 있고 가운데 pane 2에 Allow this edit (y/n) 승인 질문이 떠 있는 퀴즈 화면">
+  <figcaption>
+    tmux에게 세 페인은 똑같은 텍스트 흐름일 뿐이에요. 누가 기다리는지는 사람이 읽어서 찾아야 해요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=522s" target="_blank" rel="noopener">영상 08:42에서 보기</a>
+  </figcaption>
+</figure>
+<p>tmux는 에이전트가 승인을 기다리는지, 끝났는지, 에러로 멈췄는지 구분해 주지 못해요. 글자를 보여 줄 뿐이에요. 결국 탭을 돌며 확인하는 병목이 다시 생겨요. 멀티플렉서는 있는데 병목은 여전히 나인 상태예요. 여기서 에이전트를 아는 멀티플렉서라는 개념이 나와요.</p>
+</section>
 
-<h3>다른 도구들과 어디가 다를까요</h3>
-<p>요즘 에이전트용 터미널 도구가 많아서 발표자도 처음엔 헷갈렸대요. 그래서 '보고 있던 화면을 끄면 에이전트가 어떻게 되나'를 기준으로 정리해요.</p>
-
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=549s" target="_blank" rel="noopener">09:09</a>
+  <h2>herdr: 에이전트 상태를 아는 tmux</h2>
+<p>아래 화면 위쪽에 herdr의 공식 표현이 적혀 있어요. "the runtime your coding agents live on", 코딩 에이전트가 사는 런타임이라는 뜻이에요. 발표자는 이걸 자기 식으로 '에이전트 상태를 아는 tmux'라고 옮겨요. 가운데 'tmux와 같은 것' 줄에는 체크 표시 세 개가 있어요. 서버-클라이언트 구조, <span class="term" data-term="detach" data-en="Detach" data-desc="화면(클라이언트)만 떼어 내고 서버와 그 안의 프로세스는 그대로 두는 동작이에요. 다시 붙는 건 attach라고 해요." data-g="3">detach</span>/attach, 그리고 프리픽스 키 <code>ctrl+b</code>예요.</p>
+<figure>
+  <img src="assets/frame-0925.png" alt="herdr 소개 화면. the runtime your coding agents live on 문구와 '에이전트 상태를 아는 tmux' 번역, tmux와 같은 것 세 가지, tmux와 다른 것 3가지 탭">
+  <figcaption>
+    지속성·병렬 시야·원격은 그대로 가져오고, 프리픽스 키까지 같아서 tmux 손가락이 그대로 먹혀요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=565s" target="_blank" rel="noopener">영상 09:25에서 보기</a>
+  </figcaption>
+</figure>
+<h3>다른 점: 사이드바가 상태를 알려 줘요</h3>
+<p>화면 아래 'tmux와 다른 것 3가지' 탭은 에이전트 상태 인식, 에이전트가 herdr를 조작, 에이전트 세션 복원이에요. 발표자가 짚는 건 첫 번째예요. 같은 페인 세 개를 herdr로 보면 아래처럼 왼쪽에 사이드바가 생겨요. claude는 working, 다른 claude는 blocked, codex는 done, zsh는 dev라고 적혀 있어요. 오른쪽 위에는 'claude (pane 2) needs your approval' 알림이 떠 있고, 맨 아래 줄은 1 blocked · 1 working · 1 done으로 요약해요.</p>
+<figure>
+  <img src="assets/frame-1029.png" alt="herdr 화면 예시. 왼쪽 사이드바에 claude working, claude blocked, codex done, zsh가 표시되고, pane 2 위에 승인 대기 알림이 뜬 모습">
+  <figcaption>
+    앞 절의 퀴즈를 herdr는 대신 풀어 줘요. 승인 대기 페인에는 노란 테두리와 알림이 붙어요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=629s" target="_blank" rel="noopener">영상 10:29에서 보기</a>
+  </figcaption>
+</figure>
+<p>에이전트가 아닌 일반 터미널을 돌리는 페인도 따로 보여서, 워크스페이스 전체를 한눈에 관리할 수 있어요. 어느 에이전트가 지금 내 주의를 필요로 하는지 바로 알고, 막힌 걸 곧장 풀어 줄 수 있죠. 발표자는 이걸로 자기라는 병목을 상당 부분 줄였다고 해요.</p>
+<h3>다른 도구들과의 위치</h3>
+<p>요즘 에이전트용 터미널 도구가 많아서 발표자도 처음엔 tmux와 cmux가 뭐가 다른지 헷갈렸대요. 아래 화면 표는 기준을 하나로 정리해요. '보던 화면이 사라지면 에이전트는 어떻게 되나'예요. 표 아래 인용은 herdr 공식 비교 페이지의 문장이에요.</p>
+<figure>
+  <img src="assets/frame-1149.png" alt="다른 도구들과의 위치 표. cmux·Warp, Conductor·Superset, tmux·zellij, herdr를 종류와 화면을 끌 때의 결과로 비교">
+  <figcaption>
+    '앱(화면)을 끈다' 버튼을 누르면 위 두 줄의 에이전트는 꺼지고, 아래 두 줄만 살아남아요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=709s" target="_blank" rel="noopener">영상 11:49에서 보기</a>
+  </figcaption>
+</figure>
 <div class="table-scroll">
   <table>
     <thead><tr><th>도구</th><th>종류</th><th>화면을 끄면</th></tr></thead>
     <tbody>
-      <tr><td>cmux · Warp</td><td>터미널 앱</td><td>앱을 끄면 끝나요</td></tr>
+      <tr><td>cmux · Warp</td><td>터미널 앱</td><td>앱을 끄면 프로세스도 끝나요</td></tr>
       <tr><td>Conductor · Superset</td><td>에이전트 매니저 앱</td><td>앱을 끄면 에이전트도 끝나요</td></tr>
       <tr><td>tmux · zellij</td><td>멀티플렉서</td><td>살아 있지만 에이전트를 몰라요</td></tr>
-      <tr><td>herdr</td><td>런타임 + 클라이언트</td><td>살아 있고, 에이전트도 알아요</td></tr>
+      <tr><td>herdr</td><td>런타임 + 클라이언트</td><td>살아 있고, 에이전트를 알아요</td></tr>
     </tbody>
   </table>
 </div>
-
-<figure>
-  <img src="assets/frame-1154.png" alt="'다른 도구들과의 위치' 표. cmux·Warp, Conductor·Superset, tmux·zellij, herdr를 종류와 화면을 끄면 어떻게 되는지로 비교">
-  <figcaption>
-    발표자가 띄운 비교표예요. herdr는 앱이 아니라 그 아래에 있는 서버라서, 위에서 뭘 꺼도 에이전트가 살아 있어요.
-    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=714s" target="_blank" rel="noopener">영상 11:54에서 보기</a>
-  </figcaption>
-</figure>
-
+<p>발표자는 Conductor와 Superset은 써 보지 않았다고 밝혀요. 영상 초반에는 herdr가 올여름 GitHub 트렌딩 1위를 했고, GitHub 스타가 3만 4천 개, 8월에는 YC(Y Combinator) 투자까지 받았다고 소개해요.</p>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>herdr 공식 비교 페이지는 같은 기준으로 9개 도구를 견줘요. 영상 표에 없는 Emdash(매니저 앱)와 Solo(프로세스 대시보드)도 들어 있어요. 핵심 기준도 영상과 같아요. '보고 있던 것이 사라졌을 때 에이전트에게 무슨 일이 생기나'예요. 공식 페이지는 herdr가 worktree 관리 도구와 함께 쓰기 좋고, 멋진 터미널 앱 안에서도 잘 돈다고 덧붙여요. 경쟁이라기보다 층이 다르다는 뜻이에요.</p>
-  <p class="cite">출처: <a href="https://herdr.dev/compare/" target="_blank" rel="noopener">herdr 공식 사이트 — Compare</a></p>
+  <p>herdr 공식 블로그에는 2026년 8월 6일 'Herdr is joining Y Combinator' 글이 있어요. 9월 8일에는 Bessemer Venture Partners가 이끈 600만 달러 시드 투자를 받았다고 알렸어요. 런타임은 Apache-2.0 라이선스의 오픈소스로 남는다고 밝히고 있어요.</p>
+  <p>GitHub 저장소 <code>herdrdev/herdr</code>의 스타는 이 문서를 만든 2026년 10월 14일 기준 약 4만 4천 개예요. 영상의 3만 4천 개는 촬영 당시 숫자예요.</p>
+  <p class="cite">출처: <a href="https://herdr.dev/blog/" target="_blank" rel="noopener">herdr 공식 블로그</a> · <a href="https://github.com/herdrdev/herdr" target="_blank" rel="noopener">GitHub herdrdev/herdr</a></p>
 </aside>
-</section>
-
-<section id="s4">
-  <a class="stamp" href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=736s" target="_blank" rel="noopener">12:16</a>
-  <h2>설치와 화면 구조</h2>
-<p>설치는 간단해요. herdr.dev 첫 화면의 설치 명령을 복사해 붙이면 돼요. macOS, Linux, Windows를 지원해요. 발표자는 설치 명령을 Claude에게 붙여 넣어 설치했어요.</p>
-
-<figure>
-  <img src="assets/frame-1231.png" alt="herdr.dev 첫 화면. 'Run them anywhere. Leave them running.' 문구와 curl 설치 명령, GitHub 스타·설치 수 통계가 보임">
-  <figcaption>
-    herdr 공식 사이트 첫 화면이에요. 여기 있는 한 줄 명령으로 설치해요.
-    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=751s" target="_blank" rel="noopener">영상 12:31에서 보기</a>
-  </figcaption>
-</figure>
-
-<p>공식 사이트에는 <span class="term" data-term="에이전트 스킬" data-desc="에이전트가 특정 도구나 작업을 잘 다루도록 적어 둔 지침 파일이에요. 필요할 때 에이전트가 불러와서 따라요.">에이전트 스킬</span> 파일도 있어요. 에이전트가 herdr를 잘 쓰도록 만든 스킬이에요. 이걸 Claude에 설치해 두면 Claude가 스스로 pane을 만들고 다른 에이전트를 부리기 시작해요. 이 장면은 뒤의 데모에서 나와요.</p>
-
-<figure>
-  <img src="assets/frame-1316.png" alt="herdr 문서의 'Agent skill file' 페이지. What the skill does와 Install it 항목이 보임">
-  <figcaption>
-    문서의 에이전트 스킬 페이지예요. 설치와 함께 이 스킬까지 깔아 두길 권해요.
-    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=796s" target="_blank" rel="noopener">영상 13:16에서 보기</a>
-  </figcaption>
-</figure>
-
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>공식 문서 기준으로 스킬은 <code>npx skills add herdrdev/herdr --skill herdr -g</code>로 설치해요. herdr가 이미 깔려 있다면 <code>herdr --skill</code>로 그 버전에 맞는 스킬 내용을 출력할 수도 있어요. 스킬에는 안전장치가 하나 있어요. 환경변수 <code>HERDR_ENV=1</code>이 없으면 herdr 안이 아니라고 말하고 멈춰요. herdr 밖의 에이전트가 남의 세션을 건드리지 못하게 하려는 거예요.</p>
-  <p class="cite">출처: <a href="https://herdr.dev/docs/agent-skill/" target="_blank" rel="noopener">herdr 문서 — Agent skill file</a></p>
-</aside>
-
-<h3>세션, 스페이스, 탭, pane</h3>
-<p>터미널에서 <code>herdr</code>를 치면 하던 작업이 그대로 다시 나와요. 터미널을 껐어도 herdr 서버에서 계속 돌고 있었기 때문이에요. <code>herdr session attach &lt;이름&gt;</code>으로 세션을 따로 만들 수도 있어요. 일과 사이드 프로젝트를 다른 세션에 나눠 둘 수 있죠. 다만 발표자는 귀찮아서 기본 세션 하나에 다 둔대요. 세션이라는 개념이 있다는 것만 알면 돼요.</p>
-<p>화면은 왼쪽 위 스페이스(워크스페이스), 왼쪽 아래 에이전트 목록, 오른쪽 메인 pane으로 나뉘어요. tmux는 마우스를 기본으로 지원하지 않아서 단축키부터 배워야 하는데, herdr는 마우스로 다 돼요. 클릭으로 새 스페이스를 만들고 이름을 바꿀 수 있어요. 스페이스 안에서 Claude를 띄우면 에이전트 목록에 바로 나타나요. 리뷰용 탭을 따로 만들어 거기서 다른 에이전트를 돌릴 수도 있어요.</p>
 </section>
 
 <section id="s5">
-  <a class="stamp" href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=988s" target="_blank" rel="noopener">16:28</a>
-  <h2>사이드바 상태와 꺼지지 않는 세션</h2>
-<p>에이전트 상태는 색으로 구분돼요. 발표자가 데모에서 설명한 색은 이래요.</p>
-
-<div class="table-scroll">
-  <table>
-    <thead><tr><th>색</th><th>뜻</th></tr></thead>
-    <tbody>
-      <tr><td>노란색</td><td>작업 중이에요</td></tr>
-      <tr><td>꽉 찬 초록색</td><td>끝났는데 아직 안 읽었어요</td></tr>
-      <tr><td>속이 빈 초록색</td><td>끝났고 읽었어요(쉬는 중)</td></tr>
-      <tr><td>빨간색</td><td>blocked, 내 승인을 기다려요</td></tr>
-    </tbody>
-  </table>
-</div>
-
-<p>pane은 오른쪽이나 아래로 쪼갤 수 있어요. 네 칸으로 나눠 Claude, Codex, Pi 같은 다른 에이전트를 함께 돌려도 각각 이름이 표시돼요. 스페이스 안 에이전트 하나라도 노란색이면 스페이스도 노란색이 돼요. 그래서 어느 프로젝트가 아직 일하는 중이고 어느 쪽이 쉬는 중인지 한눈에 보여요.</p>
-
+  <a class="stamp" href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=736s" target="_blank" rel="noopener">12:16</a>
+  <h2>설치하고 첫 화면 보기</h2>
+<h3>설치와 에이전트 스킬</h3>
+<p>브라우저에 herdr를 검색해 맨 위에 나오는 herdr.dev로 가면 설치 페이지가 있어요. 아래 화면처럼 macOS·Linux는 <code>curl</code> 한 줄, Windows는 PowerShell 명령, 그 아래 Homebrew(<code>brew install herdr</code>)와 mise 설치법이 나와요. 발표자는 이 명령을 그냥 Claude에게 붙여 넣어 설치를 맡겼어요.</p>
 <figure>
-  <img src="assets/frame-1743.png" alt="herdr 화면을 네 칸으로 나눠 왼쪽은 Claude Code, 오른쪽은 codex를 실행 중이고 왼쪽 에이전트 목록에 Autokliq 항목들이 claude·codex로 표시됨">
+  <img src="assets/frame-1236.png" alt="herdr.dev 설치 페이지. Linux·macOS용 curl 설치 명령, Windows용 PowerShell 명령, Homebrew와 mise 설치법">
   <figcaption>
-    pane 네 개에 Claude와 Codex를 섞어 돌리는 장면이에요. 왼쪽 에이전트 목록에 어떤 에이전트인지까지 나와요.
-    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1063s" target="_blank" rel="noopener">영상 17:43에서 보기</a>
+    Linux·macOS·Windows를 모두 지원해요. 왼쪽 메뉴 Reference 아래에 뒤에서 쓰는 Socket API(Application Programming Interface)와 Agent skill file이 있어요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=756s" target="_blank" rel="noopener">영상 12:36에서 보기</a>
   </figcaption>
 </figure>
-
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>공식 문서는 상태를 다섯 가지로 나눠요. blocked(입력·승인·결정이 필요해요), working(작업 중이에요), done(끝났는데 아직 안 봤어요), idle(끝났거나 기다리는 중이고 이미 봤어요), unknown(판단할 수 없어요)이에요. 영상의 색 설명과 짝을 맞추면 꽉 찬 초록색이 done, 속이 빈 초록색이 idle이에요. herdr는 pane 맨 아래 화면을 읽어서 상태를 판단하고, 연동(integration)을 설치한 에이전트는 직접 보고한 상태를 써요. 공식 문서에는 Claude Code, Codex, Pi를 비롯해 지원 에이전트가 20개 넘게 올라 있어요.</p>
-  <p class="cite">출처: <a href="https://herdr.dev/docs/concepts/" target="_blank" rel="noopener">herdr 문서 — Concepts</a> · <a href="https://herdr.dev/docs/agents/" target="_blank" rel="noopener">herdr 문서 — Agents</a></p>
-</aside>
-
-<h3>단축키와 설정</h3>
-<p>단축키는 tmux처럼 Ctrl+B를 먼저 누르는 프리픽스 방식이에요. 화면 아래에 'prefix'가 뜨면 명령을 받을 준비가 된 거예요. 여기서 <code>?</code>를 누르면 단축키 목록, <code>s</code>를 누르면 설정이 열려요. 마우스로도 다 되니 단축키는 필요할 때 하나씩 외우면 돼요.</p>
-
+<p>발표자가 재미있다고 꼽는 건 같은 사이트의 Agent skill file이에요. 에이전트가 herdr를 잘 다루도록 만든 에이전트 스킬이에요. 아래 화면 'What the skill does'에 스킬을 깐 에이전트가 할 수 있는 일이 적혀 있어요. 워크스페이스·탭·페인과 이웃 에이전트 살펴보기, 포커스를 뺏지 않고 페인을 나눠 명령 실행하기, 페인 출력 읽기, 서버·테스트·다른 에이전트가 끝나길 기다리기, 옆 페인에 도우미 에이전트 띄우기예요.</p>
 <figure>
-  <img src="assets/frame-2013.png" alt="herdr keybinds 창. ctrl+b prefix mode, prefix+? keybinds, prefix+s settings, prefix+q detach 등이 나열됨">
+  <img src="assets/frame-1316.png" alt="herdr Agent skill file 문서. 스킬이 하는 일 다섯 가지 목록과 npx skills add herdrdev/herdr --skill herdr -g 설치 명령">
   <figcaption>
-    Ctrl+B 다음 ?를 누르면 뜨는 단축키 목록이에요. prefix+q가 <span class="term" data-term="detach" data-desc="세션은 서버에 그대로 두고 보고 있던 화면만 떼어 내는 동작이에요. 나중에 다시 붙으면 작업이 이어져요.">detach</span>예요.
-    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1213s" target="_blank" rel="noopener">영상 20:13에서 보기</a>
+    설치는 <code>npx skills add</code> 한 줄이에요. herdr가 이미 깔려 있다면 <code>herdr --skill</code>로 그 버전에 맞는 스킬 파일을 출력할 수도 있어요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=796s" target="_blank" rel="noopener">영상 13:16에서 보기</a>
   </figcaption>
 </figure>
-
-<p>설정에서는 테마, 소리 알림, 토스트 알림, 연동을 바꿀 수 있어요. 에이전트가 끝나면 알림이 오니 소리는 켜 두길 권해요. 발표자 화면에는 Claude와 Codex 연동만 켜져 있었고, 다른 에이전트는 따로 연동하면 된대요.</p>
-
-<h3>터미널을 닫았다가 다시 붙기</h3>
-<p>마지막으로 터미널을 완전히 닫았다가 아까 세션에 다시 붙어요. 리뷰를 시켜 둔 에이전트가 그대로 계속 돌고 있어요. 이게 지속성이에요.</p>
-
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>공식 문서는 '터미널을 닫는 것(detach)'과 'herdr 서버가 재시작되는 것'을 구분해요. detach 후 다시 붙으면 프로세스가 한 번도 멈추지 않았으니 전부 그대로예요. 서버가 재시작되면 실행 중이던 프로세스는 사라지고, 레이아웃과 작업 폴더만 복원돼요. 에이전트 대화까지 이어 가려면 <code>herdr integration install claude</code>처럼 그 에이전트의 연동을 설치해 둬야 해요.</p>
-  <p class="cite">출처: <a href="https://herdr.dev/docs/session-state/" target="_blank" rel="noopener">herdr 문서 — Session state and restore</a> · <a href="https://herdr.dev/docs/integrations/" target="_blank" rel="noopener">herdr 문서 — Integrations</a></p>
-</aside>
+<p>이 스킬을 Claude에게 설치해 두면 Claude가 페인을 직접 만들고 다른 에이전트를 부리기 시작해요. 이 장면은 3부에서 실제로 나와요.</p>
+<h3>세션, 스페이스, 탭, 페인</h3>
+<p>Ghostty에서 새 창을 열고 <code>herdr</code>만 치면 하던 작업이 그대로 다시 떠요. 터미널을 껐다 와도 herdr 서버에서 계속 돌고 있었기 때문이에요. 앞에서 말한 지속성이 바로 이거예요.</p>
+<p>처음 쓰는 사람은 <code>herdr</code>만 치면 기본 세션에 붙어요. 이름을 붙인 세션(<code>herdr session attach work</code>)을 만들면 일과 사이드 프로젝트처럼 완전히 다른 영역을 나눠 관리할 수 있어요. 발표자는 귀찮아서 기본 세션 하나에 다 둔대요. 세션이라는 개념이 있다는 것만 알면 돼요. 한 세션 안의 구조는 아래 그림과 같아요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="세션 안에 스페이스가, 스페이스 안에 탭이, 탭 안에 페인이 들어 있는 포함 관계">
+    <rect class="c1 cell" x="10" y="10" width="620" height="210" rx="12"/>
+    <text x="28" y="34">세션</text><text x="70" y="34" class="sub">기본 세션 · work · side-project …</text>
+    <rect class="c2 cell" x="28" y="46" width="584" height="160" rx="10"/>
+    <text x="44" y="68">스페이스</text><text x="104" y="68" class="sub">프로젝트 하나 (예: Autoliq)</text>
+    <rect class="c3 cell" x="44" y="80" width="268" height="112" rx="8"/>
+    <text x="58" y="100">탭 1</text>
+    <rect class="box" x="58" y="110" width="116" height="70" rx="6"/><text x="116" y="150" text-anchor="middle" class="sub">페인 · claude</text>
+    <rect class="box" x="184" y="110" width="116" height="70" rx="6"/><text x="242" y="150" text-anchor="middle" class="sub">페인 · codex</text>
+    <rect class="c3 cell" x="328" y="80" width="268" height="112" rx="8"/>
+    <text x="342" y="100">탭 2 · review</text>
+    <rect class="box" x="342" y="110" width="240" height="70" rx="6"/><text x="462" y="150" text-anchor="middle" class="sub">페인 · PR 리뷰 claude</text>
+  </svg>
+  <figcaption>데모에서 만든 그대로예요. Autoliq 스페이스에 탭 두 개를 두고, 리뷰 전용 탭을 따로 뺐어요.</figcaption>
+</figure>
+<p>herdr 화면은 왼쪽 위 스페이스 목록, 왼쪽 아래 에이전트 목록, 오른쪽 메인 페인으로 나뉘어요. tmux는 마우스를 기본 지원하지 않아서 단축키를 먼저 외워야 하지만, herdr는 마우스가 기본이에요. new를 눌러 스페이스를 만들고, 이름을 바꾸고, 탭을 추가하는 걸 다 클릭으로 해요.</p>
+<p>아래 화면은 Autoliq 스페이스를 만들고 Claude Code를 실행한 직후예요. 왼쪽 아래 agents 목록에 Autoliq 항목이 새로 생긴 게 보여요. 에이전트를 실행하면 herdr가 알아서 목록에 올려요. 발표자가 스페이스 이름을 치다 오타를 내서 AutoKliq가 아니라 Autoliq로 적혔어요.</p>
+<figure>
+  <img src="assets/frame-1556.png" alt="herdr 화면. 왼쪽 위 spaces에 Projects와 Autoliq, 오른쪽에 Claude Code 실행 화면, 왼쪽 아래 agents에 Autoliq가 새로 생긴 모습">
+  <figcaption>
+    Claude를 띄우자마자 에이전트 목록에 잡혀요. 따로 등록할 필요가 없어요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=956s" target="_blank" rel="noopener">영상 15:56에서 보기</a>
+  </figcaption>
+</figure>
 </section>
 
 <section id="s6">
-  <a class="stamp" href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1312s" target="_blank" rel="noopener">21:52</a>
-  <h2>오케스트레이터가 pane을 직접 만들어요</h2>
-<p>3부는 발표자가 함께 만들고 있는 썸네일 생성 서비스 AutoKliq를 실제로 고치는 데모예요. 이 서비스는 썸네일을 바로 만들지 않고 시안(concept proposal)을 먼저 보여 줘요. 한 번에 다 넣고 돌리면 블랙박스처럼 결과만 나오고 크레딧만 빠지니까, 마음에 드는 시안을 골랐을 때만 크레딧을 쓰게 바꾼 거예요.</p>
-
+  <a class="stamp" href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=988s" target="_blank" rel="noopener">16:28</a>
+  <h2>사이드바 색으로 상태 읽기</h2>
+<h3>색 네 가지</h3>
+<p>발표자는 review 탭을 하나 더 만들어 PR 8번 리뷰를 맡겨요. 에이전트가 돌기 시작하면 사이드바의 동그라미가 색으로 상태를 알려 줘요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>사이드바 표시</th><th>뜻</th></tr></thead>
+    <tbody>
+      <tr><td>노란색</td><td>일하는 중이에요 (working)</td></tr>
+      <tr><td>빨간색</td><td>내 승인을 기다려요 (blocked)</td></tr>
+      <tr><td>꽉 찬 초록색</td><td>끝났는데 아직 안 읽었어요 (done)</td></tr>
+      <tr><td>속이 빈 초록색</td><td>끝났고 읽었어요. 아무것도 안 하는 상태예요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>이어서 페인을 오른쪽과 아래로 나눠 네 칸을 만들고, Claude 옆에 Codex를 띄워요. 아래 화면에서 왼쪽 위는 "hi"에 답한 Claude, 오른쪽 위는 막 실행한 Codex예요. 왼쪽 아래 agents 목록을 보면 Autoliq 항목마다 claude, codex가 따로 적혀 있어요. 보이지 않는 탭까지 합쳐 에이전트 여섯 개가 돌고 있고, 그중 셋이 Claude, 나머지가 Codex예요.</p>
 <figure>
-  <img src="assets/frame-2207.png" alt="AutoKliq 썸네일 생성 화면. Content Analysis 아래에 시안 카드 두 개가 나란히 놓여 있음">
+  <img src="assets/frame-1748.png" alt="2×2로 나눈 herdr 화면. 왼쪽 위 Claude Code, 오른쪽 위와 아래에 OpenAI Codex가 실행 중이고, 왼쪽 아래 agents 목록에 claude와 codex가 섞여 있는 모습">
   <figcaption>
-    이번 작업의 대상인 시안 화면이에요. 시안을 먼저 보여 주고, 고른 것만 생성해요.
-    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1327s" target="_blank" rel="noopener">영상 22:07에서 보기</a>
+    목록에 에이전트 종류까지 붙어서, 어느 페인이 Claude고 어느 페인이 Codex인지 따로 기억하지 않아도 돼요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1068s" target="_blank" rel="noopener">영상 17:48에서 보기</a>
   </figcaption>
 </figure>
-
-<p>오늘 할 일은 세 가지예요.</p>
-<ol>
-  <li>시안 생성 단계를 프로파일링해서 가장 느린 구간을 찾고, 품질은 지키면서 시간을 줄이기</li>
-  <li>Inspirations 탭이 로딩되지 않는 버그 고치기</li>
-  <li>시안 섹션을 더 쓰기 편하게 만들 아이디어 브레인스토밍</li>
-</ol>
-
-<h3>메인 에이전트가 일을 나눠 줘요</h3>
-<p>세 작업은 영역이 겹치지 않아요. 발표자는 메인 Claude Code에게 세 작업을 설명하고 "pane별로 띄워서 나한테 보고해"라고만 말해요. Claude는 herdr 스킬을 불러와 pane 세 개를 만들고, 각 pane에 Claude를 <span class="term" data-term="bypassPermissions" data-desc="Claude Code가 파일 수정이나 명령 실행 때마다 묻지 않고 바로 진행하는 권한 모드예요. 편하지만 확인 없이 움직이니 조심해서 써야 해요.">bypassPermissions</span> 모드로 띄워요. 그 모드를 쓰라고 한 적은 없는데 알아서 그렇게 했대요.</p>
-<p>그다음 작업마다 브리프 파일을 만들어 두고, 각 에이전트에게 "다음 브리프를 읽고 전부 실행해라"라는 프롬프트를 보내요. 일종의 <span class="term" data-term="핸드오프" data-desc="작업 맥락을 정리해서 다른 에이전트나 사람에게 넘겨주는 일이에요. 여기서는 브리프 파일을 만들어 넘겼어요.">핸드오프</span>예요. 메인 에이전트가 <span class="term" data-term="오케스트레이터" data-desc="직접 일하기보다 다른 에이전트에게 일을 나눠 주고 결과를 모으는 총괄 에이전트예요.">오케스트레이터</span>가 되어 나머지 세 에이전트를 부리기 시작한 거예요. 발표자는 이게 진짜 에이전트 오케스트레이션이라고 느꼈다고 해요.</p>
-
+<p>스페이스도 상태를 물려받아요. Autoliq 안의 에이전트 하나가 노란색이면 Autoliq 스페이스 자체가 노란색으로 보여요. 이 스페이스는 아직 일하는 중인지, 다 끝나고 쉬는 중인지 프로젝트 단위로 바로 알 수 있어요.</p>
+<h3>단축키와 설정</h3>
+<p>단축키는 외우면 훨씬 빨라지지만, 마우스로 다 되니 필요할 때 조금씩 익히면 돼요. <code>ctrl+b</code>를 누르면 화면 아래에 prefix가 뜨면서 명령을 받을 수 있는 상태가 돼요. 여기서 <code>?</code>를 누르면 아래 키 목록이 열려요.</p>
 <figure>
-  <img src="assets/frame-2607.png" alt="herdr 화면 네 칸. 왼쪽 위 메인 Claude가 세 pane에 에이전트를 띄웠다고 보고하고, 나머지 세 pane의 Claude가 각자 브리프 파일을 읽기 시작함">
+  <img src="assets/frame-1908.png" alt="herdr keybinds 창. global 항목에 ctrl+b prefix mode, prefix+? keybinds, prefix+s settings, prefix+q detach 등이 있고 navigation 항목이 이어지는 모습">
   <figcaption>
-    메인 오케스트레이터(왼쪽 위)가 pane 세 개를 만들어 에이전트에게 브리프를 넘긴 직후예요. 사람은 pane을 하나도 직접 만들지 않았어요.
-    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1567s" target="_blank" rel="noopener">영상 26:07에서 보기</a>
+    global 묶음의 여섯 줄만 알아도 충분해요. 나머지는 navigation 이동 키예요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1148s" target="_blank" rel="noopener">영상 19:08에서 보기</a>
   </figcaption>
 </figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>키</th><th>하는 일</th></tr></thead>
+    <tbody>
+      <tr><td><code>ctrl+b</code></td><td>프리픽스 모드로 들어가요</td></tr>
+      <tr><td><code>prefix+?</code></td><td>키 목록을 열어요</td></tr>
+      <tr><td><code>prefix+s</code></td><td>설정을 열어요</td></tr>
+      <tr><td><code>prefix+q</code></td><td>detach해요</td></tr>
+      <tr><td><code>prefix+shift+r</code></td><td>설정을 다시 불러와요</td></tr>
+      <tr><td><code>prefix+o</code></td><td>알림이 가리키는 곳으로 가요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p><code>s</code>로 연 설정에는 테마, 소리, 토스트 알림, 페인 라벨, 통합 탭이 있어요. 에이전트가 끝나면 알림이 오니 소리는 켜 두라고 권해요. 아래는 integrations 탭이에요. 발표자 컴퓨터에서는 claude와 codex만 available이고, pi, copilot, cursor, grok 같은 나머지는 not found예요. 쓰는 에이전트가 있으면 여기서 install로 통합하면 돼요.</p>
+<figure>
+  <img src="assets/frame-2048.png" alt="herdr settings의 integrations 탭. claude와 codex는 available, pi, omp, copilot, devin, cursor, grok 등은 not found로 표시된 목록">
+  <figcaption>
+    통합을 설치하면 에이전트가 화면 읽기에만 기대지 않고 상태를 직접 알려 줘요. 탭 위 설명 문구가 그 뜻이에요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1248s" target="_blank" rel="noopener">영상 20:48에서 보기</a>
+  </figcaption>
+</figure>
+<h3>터미널을 꺼도</h3>
+<p>마지막으로 터미널을 종료한 뒤 기본 세션에서 다시 아까 세션으로 들어가요. 아래 화면처럼 review 탭의 Claude가 "PR #8 리뷰가 백그라운드에서 진행 중"이라는 상태 그대로, 여전히 코드 리뷰를 하고 있어요.</p>
+<figure>
+  <img src="assets/frame-2148.png" alt="터미널을 껐다가 다시 붙은 뒤의 herdr 화면. review 탭에서 PR 8 코드 리뷰가 백그라운드로 계속 진행 중이라는 Claude Code 메시지">
+  <figcaption>
+    창을 닫았던 동안에도 리뷰는 멈추지 않았어요. 아래 상태줄의 code-review 진행 표시가 그 증거예요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1308s" target="_blank" rel="noopener">영상 21:48에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>herdr 공식 문서는 에이전트 상태를 다섯 가지로 정의해요. blocked(입력·승인·결정이 필요함), working(일하는 중), done(끝났는데 아직 안 봄), idle(끝났거나 기다리는 중이고 이미 봄), unknown(herdr가 확신하지 못함)이에요. 영상의 '속이 빈 초록색'이 idle이에요.</p>
+  <p>지원 에이전트는 두 방식으로 상태를 알려 줘요. herdr가 페인 맨 아래 화면을 읽어 판단하거나, 통합을 설치한 에이전트가 상태를 직접 보내요. 통합이 상태를 보내면 화면 읽기 대신 그 보고를 써요.</p>
+  <p class="cite">출처: <a href="https://herdr.dev/docs/concepts/" target="_blank" rel="noopener">herdr 문서 — Concepts</a> · <a href="https://herdr.dev/docs/agents/" target="_blank" rel="noopener">herdr 문서 — Agents</a></p>
+</aside>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상이 보여 준 건 detach 후 다시 붙기예요. 이때는 프로세스가 한 번도 멈추지 않아서 화면, 레이아웃, 에이전트 대화가 모두 그대로예요. herdr 서버 자체를 멈췄다 켜면 사정이 달라요. 레이아웃은 돌아오지만 실행 중이던 프로세스는 사라지고, 에이전트 대화는 그 에이전트의 세션 복원을 지원할 때만 이어져요. 서버를 끝내려면 <code>herdr server stop</code>을 써요.</p>
+  <p class="cite">출처: <a href="https://herdr.dev/docs/session-state/" target="_blank" rel="noopener">herdr 문서 — Session state and restore</a> · <a href="https://herdr.dev/docs/persistence-remote/" target="_blank" rel="noopener">herdr 문서 — Persistence and remote access</a></p>
+</aside>
 </section>
 
 <section id="s7">
-  <a class="stamp" href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1580s" target="_blank" rel="noopener">26:20</a>
-  <h2>사람의 역할은 검증이에요</h2>
-<p>물론 백그라운드 프로세스로 돌리면 pane을 볼 필요도 없어요. 그런데도 pane으로 띄우는 건 중간에 사람이 끼어들 수 있어서예요. 버그 수정 방향이 틀렸거나, 브레인스토밍 중에 바로 구현하고 싶어지면 그 pane으로 가서 세션을 직접 넘겨받으면 돼요.</p>
-<p>메인 오케스트레이터는 현재 레이아웃까지 보고해요. pane마다 <code>w6:p5</code> 같은 ID가 있고, 에이전트끼리 이 ID와 <span class="term" data-term="소켓 API" data-desc="같은 컴퓨터 안의 프로그램끼리 소켓으로 요청을 주고받는 통로예요. herdr에서는 스크립트나 에이전트가 이걸로 pane을 만들고 읽고 조종해요.">소켓 API</span>로 서로를 조종해요. 사람은 평소엔 메인 오케스트레이터만 보다가, 손을 더 대고 싶을 때만 해당 pane에 들어가면 돼요.</p>
-
+  <a class="stamp" href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1312s" target="_blank" rel="noopener">21:52</a>
+  <h2>오케스트레이터에게 작업 세 개 맡기기</h2>
+<h3>오늘의 작업 세 개</h3>
+<p>3부에서는 발표자가 함께 만들고 있는 썸네일 생성 서비스 AutoKliq를 실제로 개발해요. 최근에 생성 흐름을 바꿨어요. 아래 화면처럼 썸네일을 바로 만들지 않고 'Concept proposals'로 시안 두 개를 먼저 보여 줘요. 시안마다 방향, 구도, 색, 문구가 적혀 있어요. 마음에 드는 시안을 골라 Generate를 눌러야 그때 크레딧이 빠져요. 화면 아래 줄에 시안 하나에 30 크레딧이라고 나와요.</p>
 <figure>
-  <img src="assets/frame-2705.png" alt="메인 오케스트레이터 pane에 2×2 레이아웃 그림과 pane ID별 담당 작업 표(w6:p5 profiling, w6:p6 inspbug 등)가 출력된 화면">
+  <img src="assets/frame-2252.png" alt="AutoKliq 프로젝트 화면. Concept proposals 아래 Visual Spectacle과 Minimalist 시안 두 개가 방향·구도·색·문구와 함께 나란히 있고, 하단에 시안당 30 credits 표시">
   <figcaption>
-    오케스트레이터가 정리한 레이아웃이에요. w6:p1은 사람과 대화하는 총괄, 나머지 셋은 프로파일링·버그 수정·UX 아이디어를 맡아요.
-    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1625s" target="_blank" rel="noopener">영상 27:05에서 보기</a>
+    크레딧 장사라서, 다 넣고 돌리는 블랙박스 대신 시안을 보고 고른 것에만 돈을 쓰게 했어요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1372s" target="_blank" rel="noopener">영상 22:52에서 보기</a>
   </figcaption>
 </figure>
-
+<p>왜 바꿨는지도 설명해요. 예를 들어 300 크레딧을 가진 사용자가 원하는 썸네일이 안 나오는데 크레딧만 다 써 버리면 기분이 상하죠. 시안을 먼저 읽고 고르게 하면 사용자가 결과를 더 쥐고 있다고 느껴요. 다만 지금 시안 단계에 버그가 좀 있고 느려서 손보고 싶어요. 오늘 할 일은 이렇게 세 가지고, 영역이 달라서 서로 겹치지 않아요.</p>
+<ol class="steps">
+  <li><b>시안(draft) 생성 단계 최적화</b> — <span class="term" data-term="프로파일링" data-en="Profiling" data-desc="프로그램이 어느 구간에서 시간을 얼마나 쓰는지 재는 일이에요. 어디가 느린지 알아야 무엇을 고칠지 정할 수 있어요." data-g="8">프로파일링</span>으로 가장 느린 구간을 찾고, 품질은 지키면서 시간을 줄여요.</li>
+  <li><b>Inspirations 탭 버그 수정</b> — 탭이 로딩되지 않아요.</li>
+  <li><b>시안 섹션 UX(User Experience) 브레인스토밍</b> — 더 쓰기 편하게 만들 아이디어를 모아요.</li>
+</ol>
+<p>아래 화면이 Claude Code에 그대로 말로 넣은 지시예요. 마지막 줄이 핵심이에요. "그렇게 세 가지를 이 pane 각 pane별로 띄어서 나한테 보고해."</p>
+<figure>
+  <img src="assets/frame-2452.png" alt="Claude Code 입력창에 오토클릭 작업 세 가지를 설명하고 각 pane별로 띄워서 보고하라고 적은 프롬프트">
+  <figcaption>
+    페인을 어떻게 나누라는 말은 없어요. 그건 herdr 스킬을 가진 Claude가 알아서 해요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1492s" target="_blank" rel="noopener">영상 24:52에서 보기</a>
+  </figcaption>
+</figure>
+<h3>Claude가 페인을 만들고 일을 나눠요</h3>
+<p>Claude는 herdr 스킬을 불러와 일을 시작해요. 아래 화면 왼쪽 위가 Claude 자신의 페인이에요. 먼저 "Herdr 세션 안이 맞다"고 확인하고, 처음에 백그라운드로 띄웠던 에이전트 세 개를 중복과 파일 충돌을 막으려고 멈춘 뒤 보이는 페인으로 다시 띄워요. 2×2 그리드를 만들어 좌상단은 자기 자리로 두고, 나머지 세 칸에 이름을 붙였어요. 1-profiling, 2-inspirations-bug, 3-ux-brainstorm이에요.</p>
+<figure>
+  <img src="assets/frame-2552.png" alt="2×2 herdr 화면. 왼쪽 위 오케스트레이터 Claude가 herdr agent prompt 명령으로 작업을 보내고, 1-profiling, 2-inspirations-bug, 3-ux-brainstorm 페인에서 각각 Claude Code가 브리프 파일을 읽으라는 지시를 받은 모습">
+  <figcaption>
+    각 페인이 받은 지시는 짧아요. "다음 브리프를 읽고 전부 실행해라"와 브리프 파일 경로, 지켜야 할 제약이 전부예요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1552s" target="_blank" rel="noopener">영상 25:52에서 보기</a>
+  </figcaption>
+</figure>
+<p>구조를 그림으로 보면 이래요. 오케스트레이터가 작업마다 브리프를 <code>.herdr-briefs/</code> 아래 파일로 써 두고, <code>herdr agent prompt</code> 명령으로 각 페인에 "이 파일을 읽고 실행해라"만 보내요. 긴 지시문을 통째로 넘기지 않고 파일로 <span class="term" data-term="핸드오프" data-en="Handoff" data-desc="한 에이전트가 하던 일이나 지시를 다른 에이전트에게 넘기는 것이에요. 영상에서는 지시를 파일로 써서 넘겼어요." data-g="9">핸드오프</span>하는 거예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 250" role="img" aria-label="메인 오케스트레이터가 브리프 파일 세 개를 쓰고, 각 페인의 작업자 Claude에게 읽고 실행하라고 보낸 뒤 결과를 다시 보고받는 구조">
+    <defs><marker id="arrow-orch" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-orch"></g>
+  </svg>
+  <figcaption>발표자가 한 일은 맨 위 칸에 말을 건 것뿐이에요. 페인 나누기, 브리프 쓰기, 일 보내기는 오케스트레이터가 했어요.</figcaption>
+</figure>
+<p>눈여겨볼 점이 하나 있어요. 발표자는 권한 확인을 건너뛰라고 시킨 적이 없는데, 오케스트레이터가 작업자를 <span class="term" data-term="bypass permissions" data-en="Bypass permissions mode" data-desc="Claude Code가 파일 수정이나 명령 실행 전에 묻는 권한 확인을 건너뛰는 모드예요. 멈추지 않고 일하지만 그만큼 위험해요." data-g="11">bypass permissions</span> 모드(<code>--permission-mode bypassPermissions</code>)로 띄웠어요. 승인 질문 때문에 작업이 멈추지 않게 한 거예요. 대신 브리프마다 이미지 API 호출 금지, 코드 수정 금지(프로파일링), 프로덕션 배포·DDL(Data Definition Language) 금지, 커밋 금지 같은 제약을 적어 뒀어요. 발표자는 이걸 보고 진짜 오케스트레이션이라고 말해요.</p>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>공식 문서는 자동화를 세 층으로 나눠요. 레이아웃(워크스페이스·탭·pane 만들기), pane(명령 실행·입력·출력 읽기), 에이전트(이름이나 pane ID로 시작·대기·프롬프트)예요. 예를 들어 <code>herdr pane split w1:p1 --direction right</code>로 pane을 나누고, 생성 명령이 돌려준 JSON에서 새 pane ID를 꺼내 쓰라고 해요. 같은 기능을 소켓 API로 직접 부를 수도 있어요. 다만 대부분의 자동화는 CLI로 시작하라고 권해요.</p>
-  <p class="cite">출처: <a href="https://herdr.dev/docs/agent-automation/" target="_blank" rel="noopener">herdr 문서 — Agent automation</a> · <a href="https://herdr.dev/docs/socket-api/" target="_blank" rel="noopener">herdr 문서 — Socket API</a></p>
+  <p><code>bypassPermissions</code>는 Claude Code가 도구를 쓸 때마다 묻는 권한 확인을 거의 다 건너뛰는 모드예요. .git이나 .claude 같은 보호 경로에 쓰는 것도 묻지 않아요. Claude Code 공식 문서는 이 모드를 컨테이너나 VM(Virtual Machine)처럼 망가져도 괜찮은 격리 환경에서만 쓰라고 해요. 영상처럼 브리프에 금지 사항을 적는 건 에이전트에게 부탁하는 것이지 강제로 막는 장치가 아니에요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/permissions" target="_blank" rel="noopener">Claude Code 문서 — Configure permissions</a></p>
 </aside>
-
-<h3>사람은 검증을 맡아요</h3>
-<p>Codex 리뷰도 보통은 <span class="term" data-term="서브에이전트" data-desc="메인 에이전트가 일부 작업을 맡기려고 띄우는 보조 에이전트예요. 보통 백그라운드에서 돌고 결과만 돌려줘요.">서브에이전트</span>로 돌아서 결과만 받게 돼요. pane으로 띄우면 리뷰가 어떻게 진행되는지 볼 수 있어요. 최적화처럼 여러 기법을 동시에 시도할 때도 좋아요. 런타임을 10% 줄이려고 실험 네 개를 돌린다면, 네 개를 백그라운드에 맡기는 대신 pane으로 보면서 진행할 수 있어요.</p>
-<p>이게 중요한 이유는 최적화 결과를 믿기 어려울 때가 많아서예요. 발표자는 사람의 역할이 거의 검증으로 넘어갔다고 봐요.</p>
-
-<blockquote>
-  <p>이 사람의 역할은 검증의 역할로 저는 거의 다 넘어갔다고 생각하거든요.</p>
-  <cite>— 영상 29:02</cite>
-</blockquote>
-
-<p>회사의 마이그레이션 프로젝트에서는 서브에이전트를 20~30개씩 돌린대요. 그걸 다 pane으로 볼 수는 없으니 열 개 정도만 띄워 하나씩 봐요. 가설이 틀렸으면 왜 틀렸는지, 맞았으면 어떻게 고칠지 확인하고, 오늘 당장 고칠 것만 골라 그 pane의 에이전트와 직접 대화해요. 그 사이 메인 오케스트레이터에서는 전체 그림을 봐요. 예를 들어 'A, B, C는 잘 되고 나머지 일곱 개는 이런 이유로 실패 중' 같은 식이에요.</p>
-<p>메인 오케스트레이터는 하루 동안의 정보를 다 갖고 있어서 종합 보고서를 만들 수 있어요. 팀원이 진행 상황을 물으면 그 보고서를 공유하거나, 오케스트레이터에게 직접 보내 달라고 할 수도 있어요. 발표자는 이렇게 오케스트레이터를 두고 일을 관리하는 법에 익숙해져야 한다고 말해요.</p>
 </section>
 
 <section id="s8">
-  <a class="stamp" href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1896s" target="_blank" rel="noopener">31:36</a>
-  <h2>결과를 모아 PR로, 그리고 에이전트를 위한 도구들</h2>
-<p>작업이 끝나자 발표자는 메인 오케스트레이터에게 정리를 부탁해요. 세 pane 모두 끝나서 초록색이에요. 버그는 고쳤고, 프로파일링은 분석까지만 하고 코드는 아직 안 바꿨고, UI 개선 아이디어도 받았어요. 오케스트레이터는 커밋할지, 최적화를 구현할지, 3번에서 착수할 게 있는지 골라 달라고 물어요.</p>
-
+  <a class="stamp" href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1580s" target="_blank" rel="noopener">26:20</a>
+  <h2>사람은 검증하는 자리로</h2>
+<h3>왜 굳이 페인으로 보나요</h3>
+<p>사실 에이전트는 백그라운드 프로세스로 돌려도 돼요. 그런데도 페인에 띄우는 이유는 사람이 중간에 끼어들 수 있어서예요. 작업이 엉뚱하게 가고 있거나, 버그 수정 방식이 마음에 안 들거나, 브레인스토밍 도중 "이건 당장 구현하고 싶다"는 생각이 들 수 있죠. 그때 그 페인으로 가서 세션을 바로 넘겨받으면 돼요.</p>
+<p>메인 오케스트레이터는 그동안 상황을 보고해요. 아래 화면 왼쪽 위 보고에는 현재 레이아웃이 박스로 그려져 있어요. w6:p1은 자기(총괄·결과 취합), w6:p5는 draft 단계 프로파일링, w6:p6는 /inspirations 수정, w6:p7은 UX 개선 아이디어예요. 그 아래 표는 페인마다 할 일의 순서와 상태(실행 중)를 정리했어요.</p>
 <figure>
-  <img src="assets/frame-3221.png" alt="메인 오케스트레이터의 세션 리캡. Inspirations 로딩 버그 수정 완료와 원인 분석이 보이고, 나머지 pane에는 각 작업의 DONE 표시가 있음">
+  <img src="assets/frame-2710.png" alt="오케스트레이터의 보고 화면. w6:p1부터 w6:p7까지 페인 배치 박스와, profiling·inspbug·uxideas 세 작업의 단계와 실행 중 상태를 적은 표">
   <figcaption>
-    세 작업이 끝난 뒤 오케스트레이터가 정리한 리캡이에요. 각 pane의 결과 보고서는 브리프 폴더에 따로 남아요.
-    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1941s" target="_blank" rel="noopener">영상 32:21에서 보기</a>
+    페인마다 ID가 있어서, 오케스트레이터는 이 ID로 다른 페인을 가리키고 조종해요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1630s" target="_blank" rel="noopener">영상 27:10에서 보기</a>
   </figcaption>
 </figure>
+<p>페인 사이의 조종은 herdr의 <span class="term" data-term="소켓 API" data-en="Socket API" data-desc="같은 컴퓨터 안의 프로그램끼리 소켓으로 요청을 주고받는 인터페이스예요. herdr는 이걸로 페인 생성, 입력, 출력 읽기를 열어 둬요." data-g="10">소켓 API</span>로 해요. 사람은 원래 메인 오케스트레이터만 보면 돼요. 끝나면 이렇게 해 달라고 맡겨 둘 수도 있고, 더 손을 대고 싶을 때만 해당 페인으로 가서 진행 상황을 직접 보면 돼요.</p>
+<p>보고는 계속 이어져요. 아래 화면 '진행하면서 한 것들'에는 오케스트레이터가 왜 그렇게 했는지가 적혀 있어요. 같은 작업을 두 번 돌리면 비용도 두 배라서 기존 백그라운드 에이전트를 멈췄고, 긴 프롬프트를 터미널에 붙여 넣다 생기는 이스케이프 사고를 피하려고 브리프를 파일로 넘겼대요. 작업 페인은 <code>--no-focus</code>로 띄워 발표자의 작업 흐름도 끊지 않았어요.</p>
+<figure>
+  <img src="assets/frame-2825.png" alt="오케스트레이터의 '진행하면서 한 것들' 목록. 백그라운드 에이전트 중지 이유, 브리프 파일 핸드오프, bypassPermissions와 제약, no-focus로 포커스 유지가 적혀 있고, 오른쪽과 아래 페인에서 작업자들이 코드를 읽는 중">
+  <figcaption>
+    오케스트레이터가 결정의 이유까지 남겨서, 나중에 사람이 검토하기 쉬워요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1705s" target="_blank" rel="noopener">영상 28:25에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>herdr는 로컬 소켓 API로 워크스페이스·탭·페인을 만들고, 페인에 입력을 보내고 출력을 읽고, 에이전트에게 프롬프트를 보내고 상태가 바뀔 때까지 기다릴 수 있어요. 대부분은 이걸 감싼 CLI(<code>herdr pane split</code>, <code>herdr agent prompt</code> 등)로 쓰면 되고, 이벤트 구독처럼 세밀한 제어가 필요할 때만 소켓을 직접 써요. 에이전트 스킬은 이 CLI를 에이전트에게 가르치는 층이에요.</p>
+  <p class="cite">출처: <a href="https://herdr.dev/docs/socket-api/" target="_blank" rel="noopener">herdr 문서 — Socket API</a> · <a href="https://herdr.dev/docs/agent-automation/" target="_blank" rel="noopener">herdr 문서 — Agent automation</a></p>
+</aside>
+<h3>사람의 역할은 검증이에요</h3>
+<p>페인을 여러 개 띄우는 게 특히 쓸모 있는 건 최적화처럼 여러 기법을 시도해야 하는 일이에요. 런타임을 10% 줄이는 방법이 네 가지쯤 있다면, 보통은 <span class="term" data-term="서브에이전트" data-en="Subagent" data-desc="메인 에이전트가 일부 작업을 맡기려고 띄우는 보조 에이전트예요. 보통 백그라운드에서 돌고 결과만 돌려줘요." data-g="7">서브에이전트</span> 네 개를 백그라운드로 돌리겠죠. 이걸 페인 네 개로 띄워 놓고 보면 최적화가 실제로 잘 되는지 확인할 수 있어요. 돌아온 결과가 믿을 만하지 않은 경우가 많거든요.</p>
+<blockquote>
+  <p>사람의 역할은 검증의 역할로 저는 거의 다 넘어갔다고 생각하거든요.</p>
+  <cite>— 영상 29:02</cite>
+</blockquote>
+<p>모든 걸 페인으로 보지는 않아요. 리뷰 같은 건 그냥 백그라운드로 알아서 하게 둬요. 발표자는 회사에서 마이그레이션 프로젝트를 하면서 서브에이전트를 20~30개씩 돌려요. 30개 페인을 다 보기는 어려우니 열 개 정도만 띄워 하나씩 봐요. 가설이 틀렸으면 왜 틀렸는지, 맞았으면 어떻게 고칠지를 정하고, 그 고치는 작업을 다시 병렬로 돌려요.</p>
+<p>큰 그림은 메인 오케스트레이터에서 봐요. "A, B, C는 잘 되는데 나머지 일곱 개는 이런 이유로 실패한다"는 보고가 오면, 그중 오늘 당장 고칠 것만 골라 해당 페인에 가서 그 에이전트와 직접 대화해요. 일이 끝나면 오케스트레이터에 상태가 다시 모여요. 오케스트레이터는 그날 일을 다 알고 있어서 마지막에 리포트를 만들 수 있어요. 팀원이 현재 상태를 물으면 그 리포트를 공유하거나, 오케스트레이터에게 그 사람에게 보내라고 시킬 수도 있어요. 발표자는 메인 오케스트레이터를 두고 일을 관리하는 법에 익숙해져야 한다고 말해요.</p>
+</section>
 
-<p>발표자는 늘 하던 대로 "PR 만들기 전에 Codex 리뷰 한 번 돌려 줘"라고 해요. 다른 스페이스에서 돌린 작업 네 개도 몇 군데 고쳐 달라고 한 뒤 검증 통과를 확인하고, PR 하나로 합쳐 달라고 해요. 이날 AutoKliq에는 오케스트레이터 두 개가 서브에이전트를 서너 개씩 만들어, 모두 일곱 개쯤의 에이전트가 붙었어요.</p>
-
-<h3>마무리 — 에이전트를 위한 도구들</h3>
-<p>정리하면 터미널 멀티플렉서는 '터미널을 닫아도 프로세스를 살려 두는 서버'예요. 덕분에 에이전트가 몇 시간씩 혼자 돌 수 있어요. 발표자는 자기 전에 일을 걸어 두고, 아침에 만들어진 PR을 리뷰해요. 출근길 지하철을 타거나 운전하기 전에도 몇 개 돌려 두면, 30~40분 뒤 회사에 도착할 즈음 PR이 생겨 있어요. 에이전트가 늘 나를 위해 일하는 상태가 기본이 될 거고, 그 바탕이 멀티플렉서라고 봐요.</p>
-<p>도구들도 에이전트 중심으로 다시 만들어지고 있어요. herdr는 tmux의 에이전트 버전이고, Orca는 에이전트를 위한 개발 환경(ADE), Aside는 에이전트를 위한 브라우저예요. 발표자는 Aside로 썸네일 생성 자동화도 해 봤는데 잘 됐다고 해요.</p>
+<section id="s9">
+  <a class="stamp" href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1896s" target="_blank" rel="noopener">31:36</a>
+  <h2>결과 취합과 PR, 그리고 하루의 리듬</h2>
+<h3>결과를 모아 PR로</h3>
+<p>세 작업이 다 끝난 뒤 발표자는 오케스트레이터에게 정리를 부탁해요. 아래 화면 왼쪽 위가 그 답이에요. "pane 3개로 병렬 실행했고 전부 완료"라는 첫 문장 아래, Inspirations 로딩 버그는 수정 완료라고 적혀 있어요. 원인은 GenerateFromButton 컴포넌트 쪽 문제였대요. 세 페인 모두 끝을 알리는 <code>=== DONE ===</code> 줄이 보여요.</p>
+<figure>
+  <img src="assets/frame-3226.png" alt="오케스트레이터의 세션 리캡. pane 3개 병렬 실행 완료, /inspirations 로딩 버그 수정 완료와 원인 설명, 오른쪽과 아래 페인에 DONE 표시">
+  <figcaption>
+    프로파일링은 분석까지만 하고 코드는 아직 안 바꿨어요. 브리프에서 코드 수정을 막아 뒀기 때문이에요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1946s" target="_blank" rel="noopener">영상 32:26에서 보기</a>
+  </figcaption>
+</figure>
+<p>리캡 끝에는 '결정이 필요한 것'이 번호로 붙어요. 아래 화면에서 보면 이래요. ② 버그 수정을 커밋할까요(<span class="term" data-term="검증 게이트" data-en="Verification gate" data-desc="코드 변경이 통과해야 하는 자동 검사 묶음이에요. 영상에서는 check, lint, test 같은 검사를 가리켜요." data-g="12">검증 게이트</span> 4종 통과, 변경은 8줄과 테스트 1개), ① 최적화를 구현할까요, ③ 아이디어 중 착수할 게 있으면 골라 달라, 그리고 <code>.herdr-briefs/</code>는 git에 안 올라가 있으니 지울지 알려 달라는 내용이에요. 위에는 정리해 둔 것도 있어요. 이미지 API 호출 0건, 프로덕션 DDL·배포 0건, 커밋·푸시 0건이에요. 브리프의 제약을 지켰다는 확인이에요.</p>
+<figure>
+  <img src="assets/frame-3136.png" alt="오케스트레이터 보고의 정리해둔 것과 결정이 필요한 것 목록. 커밋 여부, 최적화 구현 여부, 착수할 아이디어 선택, herdr-briefs 정리 여부를 묻는 네 항목">
+  <figcaption>
+    사람에게 남는 건 결정뿐이에요. 무엇을 커밋하고 무엇을 구현할지만 고르면 돼요.
+    <a href="https://www.youtube.com/watch?v=U9AConAimzM&amp;t=1896s" target="_blank" rel="noopener">영상 31:36에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 "2번 PR을 만들되, 그 전에 Codex 리뷰를 한 번 돌려 줘"라고 답해요. PR 전에 Codex 리뷰를 붙이는 건 평소 습관이래요. 그러자 사이드바의 에이전트가 다시 노란색으로 바뀌어요.</p>
+<p>같은 시간 옆에서는 다른 오케스트레이터가 썸네일 관련 작업 네 개(왼쪽 위 스페이스의 ak-select3, ak-headline, ak-logo, ak-reuse)를 돌리고 있었어요. 작은 버그 몇 개를 더 고치게 한 뒤 네 개 모두 게이트 검증을 통과했고, 발표자는 이걸 PR 하나로 합쳐 Codex 리뷰 후 만들라고 해요. 이날 AutoKliq에는 오케스트레이터 두 개가 서브에이전트를 3~4개씩 만들어, 모두 7개 정도의 에이전트가 붙었어요.</p>
+<h3>잘 때도 일하는 에이전트</h3>
+<p>발표자의 정리는 이래요. 터미널 멀티플렉서는 터미널을 닫아도 프로세스를 살려 두는 서버예요. 그래서 에이전트가 10분, 한 시간, 몇 시간씩 혼자 돌 수 있어요. 발표자의 하루는 아래처럼 흘러가요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["자기 전에 일을 걸어 둬요"] --> B["아침에 생성된 PR 리뷰"]
+  B --> C["출근 전에 몇 개 더 걸어 둬요"]
+  C --> D["지하철·운전 30~40분"]
+  D --> E["회사 도착, PR·결과 확인"]
+</pre>
+  <figcaption>컴퓨터를 계속 지켜보지 않아도 서버에서 일이 돌아요. 이동 시간에는 팟캐스트나 AI(Artificial Intelligence) 유튜브를 본대요.</figcaption>
+</figure>
+<p>발표자는 에이전트가 계속 나를 위해 일하는 상태가 기본이 될 거라고 봐요. 그 바탕이 터미널 멀티플렉서라고요. herdr는 그중에서도 에이전트를 볼 줄 아는 tmux라서, 여러 에이전트를 운영하기 쉽게 만들어 줘요. 발표자는 메타에서 매일 쓰면서 아주 만족한다고 해요.</p>
+<p>도구들도 에이전트 중심으로 다시 만들어지는 중이에요. herdr는 tmux의 에이전트 버전이고, Orca는 에이전트용 IDE(Integrated Development Environment), Aside는 에이전트용 브라우저예요. 발표자는 Aside로 AutoKliq 썸네일 생성을 자동화해 봤는데 잘 됐다며, 다음에 다뤄 보고 싶다고 해요.</p>
 </section>
 
 <section id="corrections">
   <h2>자막 표기 바로잡기</h2>
 <aside class="note">
   <span class="tag">자막 관련 참고</span>
-  <p>자동생성 자막이라 영어 이름이 많이 잘못 받아적혔어요. 화면과 공식 사이트를 보고 이렇게 바로잡았어요.</p>
+  <p>자동생성 자막이라 영어 이름이 많이 잘못 받아적혔어요. 화면 글자와 영상에 박힌 자막을 보고 이렇게 바로잡았어요.</p>
   <div class="table-scroll"><table>
     <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
     <tbody>
       <tr><td>실베 기발자</td><td>실밸개발자</td><td>채널 이름</td></tr>
-      <tr><td>허롤, 허더, 헐드, 허들, 헐들, 허율, 홀로, 허도 등</td><td>herdr</td><td></td></tr>
+      <tr><td>이미 어이, 허롤, 허더, 헐드, 허들, 헐들, 홀로, 허율</td><td>herdr</td><td>같은 도구를 여러 가지로 받아적었어요</td></tr>
       <tr><td>팀웍스, 티웍스</td><td>tmux</td><td></td></tr>
-      <tr><td>팀웍스랑 놀이</td><td>tmux랑 herdr</td><td>(추정) 화면 표기는 &#x27;tmux / herdr&#x27;</td></tr>
-      <tr><td>아이터미, 고스티</td><td>iTerm, Ghostty</td><td></td></tr>
+      <tr><td>시웍스, 시where</td><td>cmux</td><td></td></tr>
+      <tr><td>와프</td><td>Warp</td><td></td></tr>
+      <tr><td>수풀셋</td><td>Superset</td><td></td></tr>
+      <tr><td>아이터미, 고스티</td><td>iTerm, Ghostty</td><td>터미널 앱</td></tr>
       <tr><td>mpm 런데브</td><td>npm run dev</td><td></td></tr>
-      <tr><td>기업 트렌딩</td><td>GitHub 트렌딩</td><td></td></tr>
-      <tr><td>시where, 와프</td><td>cmux, Warp</td><td></td></tr>
-      <tr><td>컨덕터, 수풀셋</td><td>Conductor, Superset</td><td></td></tr>
-      <tr><td>오토클릭, 오트클릭, 어토클릭</td><td>AutoKliq</td><td></td></tr>
+      <tr><td>기업 트렌딩, 깃업 스타</td><td>GitHub 트렌딩, GitHub 스타</td><td></td></tr>
+      <tr><td>오토클릭, 오트클릭</td><td>AutoKliq</td><td>발표자가 만드는 썸네일 서비스</td></tr>
       <tr><td>인스레이션 탭</td><td>Inspirations 탭</td><td></td></tr>
-      <tr><td>파이</td><td>Pi</td><td>코딩 에이전트 이름</td></tr>
+      <tr><td>서켓 API</td><td>소켓 API (Socket API)</td><td></td></tr>
+      <tr><td>C 마이너스 마이너스 Permiss션 모드 바이패스 perm미션</td><td>--permission-mode bypassPermissions</td><td></td></tr>
+      <tr><td>메인케스트레이터, 메인 오르케스트레이터</td><td>메인 오케스트레이터</td><td></td></tr>
+      <tr><td>피어, 피얼</td><td>PR</td><td></td></tr>
       <tr><td>블cked</td><td>blocked</td><td></td></tr>
-      <tr><td>Permiss션 모드 바이패스 perm미션</td><td>--permission-mode bypassPermissions</td><td></td></tr>
-      <tr><td>서켓 API</td><td>소켓 API</td><td></td></tr>
-      <tr><td>올카</td><td>Orca</td><td></td></tr>
-      <tr><td>AD, 에이전트 development 뭐먼트</td><td>ADE (Agent Development Environment)</td><td>(추정)</td></tr>
-      <tr><td>어사이드</td><td>Aside</td><td></td></tr>
+      <tr><td>파이</td><td>Pi</td><td>코딩 에이전트 이름</td></tr>
+      <tr><td>올카</td><td>Orca</td><td>(추정) 챕터 제목 기준</td></tr>
+      <tr><td>어사이드</td><td>Aside</td><td>영상에 박힌 자막 기준</td></tr>
     </tbody>
   </table></div>
 </aside>
 </section>
 </main>
 
-<div class="tail">
+<div class="tail" id="glossary">
   <h2>이 글에 나온 용어</h2>
-  <div class="table-scroll">
-    <table>
-      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
-      <tbody>
-        <tr><td>터미널 멀티플렉서</td><td>터미널 하나를 여러 창으로 나누고, 창을 닫아도 그 안의 프로세스를 서버에서 계속 돌려 주는 도구예요. tmux가 대표적이에요.</td></tr>
-        <tr><td>pane</td><td>멀티플렉서 화면을 나눈 한 칸이에요. 칸마다 진짜 터미널이 하나씩 돌아가요.</td></tr>
-        <tr><td>세션</td><td>멀티플렉서 서버 안에 묶여 있는 작업 단위예요. 창을 닫았다가 다시 붙으면 같은 세션이 그대로 나와요.</td></tr>
-        <tr><td>detach</td><td>세션은 서버에 그대로 두고 보고 있던 화면만 떼어 내는 동작이에요. 나중에 다시 붙으면 작업이 이어져요.</td></tr>
-        <tr><td>프리픽스 키</td><td>단축키 앞에 먼저 누르는 키예요. tmux와 herdr는 Ctrl+B를 누른 뒤 다음 키로 명령을 내려서, 터미널 프로그램의 단축키와 겹치지 않게 해요.</td></tr>
-        <tr><td>에이전트 스킬</td><td>에이전트가 특정 도구나 작업을 잘 다루도록 적어 둔 지침 파일이에요. 필요할 때 에이전트가 불러와서 따라요.</td></tr>
-        <tr><td>오케스트레이터</td><td>직접 일하기보다 다른 에이전트에게 일을 나눠 주고 결과를 모으는 총괄 에이전트예요.</td></tr>
-        <tr><td>서브에이전트</td><td>메인 에이전트가 일부 작업을 맡기려고 띄우는 보조 에이전트예요. 보통 백그라운드에서 돌고 결과만 돌려줘요.</td></tr>
-        <tr><td>소켓 API</td><td>같은 컴퓨터 안의 프로그램끼리 소켓으로 요청을 주고받는 통로예요. herdr에서는 스크립트나 에이전트가 이걸로 pane을 만들고 읽고 조종해요.</td></tr>
-        <tr><td>bypassPermissions</td><td>Claude Code가 파일 수정이나 명령 실행 때마다 묻지 않고 바로 진행하는 권한 모드예요. 편하지만 확인 없이 움직이니 조심해서 써야 해요.</td></tr>
-        <tr><td>핸드오프</td><td>작업 맥락을 정리해서 다른 에이전트나 사람에게 넘겨주는 일이에요. 여기서는 브리프 파일을 만들어 넘겼어요.</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-12"><dt>검증 게이트<span class="en">Verification gate</span></dt><dd>코드 변경이 통과해야 하는 자동 검사 묶음이에요. 영상에서는 check, lint, test 같은 검사를 가리켜요.</dd></div>
+    <div class="g" id="g-7"><dt>서브에이전트<span class="en">Subagent</span></dt><dd>메인 에이전트가 일부 작업을 맡기려고 띄우는 보조 에이전트예요. 보통 백그라운드에서 돌고 결과만 돌려줘요.</dd></div>
+    <div class="g" id="g-10"><dt>소켓 API<span class="en">Socket API</span></dt><dd>같은 컴퓨터 안의 프로그램끼리 소켓으로 요청을 주고받는 인터페이스예요. herdr는 이걸로 페인 생성, 입력, 출력 읽기를 열어 둬요.</dd></div>
+    <div class="g" id="g-5"><dt>에이전트 스킬<span class="en">Agent skill</span></dt><dd>에이전트가 특정 도구를 다루는 법을 적어 둔 지침 파일이에요. herdr 스킬을 깔면 에이전트가 herdr CLI로 페인을 만들고 다른 에이전트를 부려요.</dd></div>
+    <div class="g" id="g-6"><dt>오케스트레이터<span class="en">Orchestrator</span></dt><dd>직접 일하기보다 다른 에이전트에게 일을 나눠 주고 결과를 모으는 총괄 에이전트예요. 사람은 이 하나와만 대화하면 돼요.</dd></div>
+    <div class="g" id="g-1"><dt>터미널 멀티플렉서<span class="en">Terminal multiplexer</span></dt><dd>터미널 하나 안에 여러 셸을 띄우고, 창을 닫아도 그 셸들이 뒤에서 계속 돌게 해 주는 프로그램이에요. tmux가 대표적이에요.</dd></div>
+    <div class="g" id="g-2"><dt>페인<span class="en">Pane</span></dt><dd>화면을 나눈 칸 하나예요. 칸마다 진짜 터미널이 하나씩 돌아요. herdr에서는 칸마다 w6:p5 같은 ID가 붙어요.</dd></div>
+    <div class="g" id="g-8"><dt>프로파일링<span class="en">Profiling</span></dt><dd>프로그램이 어느 구간에서 시간을 얼마나 쓰는지 재는 일이에요. 어디가 느린지 알아야 무엇을 고칠지 정할 수 있어요.</dd></div>
+    <div class="g" id="g-4"><dt>프리픽스 키<span class="en">Prefix key</span></dt><dd>단축키 앞에 먼저 누르는 키예요. tmux와 herdr 모두 기본값이 ctrl+b라서, 누른 뒤 다음 키를 명령으로 받아요.</dd></div>
+    <div class="g" id="g-9"><dt>핸드오프<span class="en">Handoff</span></dt><dd>한 에이전트가 하던 일이나 지시를 다른 에이전트에게 넘기는 것이에요. 영상에서는 지시를 파일로 써서 넘겼어요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g" id="g-11"><dt>bypass permissions<span class="en">Bypass permissions mode</span></dt><dd>Claude Code가 파일 수정이나 명령 실행 전에 묻는 권한 확인을 건너뛰는 모드예요. 멈추지 않고 일하지만 그만큼 위험해요.</dd></div>
+    <div class="g"><dt>CLI</dt><dd>Command-Line Interface</dd></div>
+    <div class="g"><dt>DDL</dt><dd>Data Definition Language</dd></div>
+    <div class="g" id="g-3"><dt>detach<span class="en">Detach</span></dt><dd>화면(클라이언트)만 떼어 내고 서버와 그 안의 프로세스는 그대로 두는 동작이에요. 다시 붙는 건 attach라고 해요.</dd></div>
+    <div class="g"><dt>IDE</dt><dd>Integrated Development Environment</dd></div>
+    <div class="g"><dt>PR</dt><dd>Pull Request</dd></div>
+    <div class="g"><dt>SSH</dt><dd>Secure Shell</dd></div>
+    <div class="g"><dt>UX</dt><dd>User Experience</dd></div>
+    <div class="g"><dt>VM</dt><dd>Virtual Machine</dd></div>
+    <div class="g"><dt>YC</dt><dd>Y Combinator</dd></div>
+  </dl>
 </div>
 
-<div class="tail">
+<div class="tail" id="sources">
   <h2>참고한 곳</h2>
   <ol>
-    <li><a href="https://www.youtube.com/watch?v=U9AConAimzM" target="_blank" rel="noopener">원본 영상 — 실밸개발자</a></li>
-    <li><a href="https://herdr.dev/" target="_blank" rel="noopener">herdr 공식 사이트</a></li>
-    <li><a href="https://herdr.dev/blog/herdr-raised-a-seed/" target="_blank" rel="noopener">herdr 블로그 — Herdr raised a $6M seed</a></li>
-    <li><a href="https://herdr.dev/compare/" target="_blank" rel="noopener">herdr 공식 사이트 — Compare</a></li>
-    <li><a href="https://herdr.dev/docs/agent-skill/" target="_blank" rel="noopener">herdr 문서 — Agent skill file</a></li>
-    <li><a href="https://herdr.dev/docs/concepts/" target="_blank" rel="noopener">herdr 문서 — Concepts</a></li>
-    <li><a href="https://herdr.dev/docs/agents/" target="_blank" rel="noopener">herdr 문서 — Agents</a></li>
-    <li><a href="https://herdr.dev/docs/session-state/" target="_blank" rel="noopener">herdr 문서 — Session state and restore</a></li>
-    <li><a href="https://herdr.dev/docs/integrations/" target="_blank" rel="noopener">herdr 문서 — Integrations</a></li>
-    <li><a href="https://herdr.dev/docs/agent-automation/" target="_blank" rel="noopener">herdr 문서 — Agent automation</a></li>
-    <li><a href="https://herdr.dev/docs/socket-api/" target="_blank" rel="noopener">herdr 문서 — Socket API</a></li>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=U9AConAimzM" target="_blank" rel="noopener">원본 영상 — 실밸개발자</a></li>
+    <li id="src-2"><a href="https://herdr.dev/" target="_blank" rel="noopener">herdr 공식 사이트</a></li>
+    <li id="src-3"><a href="https://herdr.dev/docs/concepts/" target="_blank" rel="noopener">herdr 문서 — Concepts</a></li>
+    <li id="src-4"><a href="https://herdr.dev/docs/agents/" target="_blank" rel="noopener">herdr 문서 — Agents</a></li>
+    <li id="src-5"><a href="https://herdr.dev/docs/session-state/" target="_blank" rel="noopener">herdr 문서 — Session state and restore</a></li>
+    <li id="src-6"><a href="https://herdr.dev/docs/persistence-remote/" target="_blank" rel="noopener">herdr 문서 — Persistence and remote access</a></li>
+    <li id="src-7"><a href="https://herdr.dev/docs/socket-api/" target="_blank" rel="noopener">herdr 문서 — Socket API</a></li>
+    <li id="src-8"><a href="https://herdr.dev/docs/agent-automation/" target="_blank" rel="noopener">herdr 문서 — Agent automation</a></li>
+    <li id="src-9"><a href="https://herdr.dev/blog/" target="_blank" rel="noopener">herdr 공식 블로그</a></li>
+    <li id="src-10"><a href="https://github.com/herdrdev/herdr" target="_blank" rel="noopener">GitHub — herdrdev/herdr</a></li>
+    <li id="src-11"><a href="https://code.claude.com/docs/en/permissions" target="_blank" rel="noopener">Claude Code 문서 — Configure permissions</a></li>
   </ol>
 </div>
 
-<footer>2026년 10월 1일에 이 영상을 보고 정리했어요. 원본은 실밸개발자 채널에 있어요.</footer>
+<footer>2026년 10월 14일에 이 영상을 보고 정리했어요. 원본은 실밸개발자 채널에 있어요.</footer>
 
 </div>
 
-<div id="tip" role="tooltip"></div>
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
 <script>
 (function () {
-  // ── 용어 툴팁 ───────────────────────────────────────
-  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
-  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
-  var tip = document.getElementById('tip');
-  var open = null;
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
 
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
   function show(el) {
+    clearTimeout(hideTimer);
     var desc = el.getAttribute('data-desc');
     if (!desc) return;
-    var name = el.getAttribute('data-term') || el.textContent;
+    if (open && open !== el) open.classList.remove('open');
     tip.innerHTML = '';
-    var b = document.createElement('b');
-    b.textContent = name;
-    tip.appendChild(b);
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
     tip.appendChild(document.createTextNode(desc));
-    tip.classList.add('on');
-
-    var r = el.getBoundingClientRect();
-    var t = tip.getBoundingClientRect();
-    var pad = 12;
-    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
-    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
-    var top = r.top + window.scrollY - t.height - 10;
-    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
-    tip.style.left = left + 'px';
-    tip.style.top = top + 'px';
-    open = el;
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
   }
-
-  function hide() {
-    tip.classList.remove('on');
-    open = null;
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
   }
 
   document.querySelectorAll('.term').forEach(function (el) {
-    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
-    el.addEventListener('mouseenter', function () { show(el); });
-    el.addEventListener('mouseleave', hide);
-    el.addEventListener('focus', function () { show(el); });
-    el.addEventListener('blur', hide);
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
     el.addEventListener('click', function (e) {
-      e.preventDefault();
-      open === el ? hide() : show(el);
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
     });
   });
 
-  document.addEventListener('click', function (e) {
-    if (open && !e.target.closest('.term')) hide();
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
   });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') hide();
-  });
-  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
-  window.addEventListener('resize', hide);
 
-  // ── 목차 현재 위치 표시 ─────────────────────────────
-  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
-  var map = {};
-  links.forEach(function (a) {
-    var s = document.getElementById(a.getAttribute('href').slice(1));
-    if (s) map[s.id] = a;
-  });
-  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
-  if ('IntersectionObserver' in window && targets.length) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (!en.isIntersecting) return;
-        links.forEach(function (a) { a.classList.remove('active'); });
-        map[en.target.id].classList.add('active');
-      });
-    }, { rootMargin: '-10% 0px -75% 0px' });
-    targets.forEach(function (t) { io.observe(t); });
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
   }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+
+// 에이전트 11개: 프로젝트 A 5개, 프로젝트 B 2개, 사이드 4개
+(() => {
+  const g = document.getElementById('fig-agents');
+  if (!g) return;
+  const groups = [['한 프로젝트', 5, 'c1'], ['다른 프로젝트', 2, 'c2'], ['사이드 프로젝트', 4, 'c3']];
+  const size = 44, gap = 8, groupGap = 30;
+  let x = 14;
+  groups.forEach(([name, n, cls]) => {
+    const w = n * size + (n - 1) * gap;
+    for (let i = 0; i < n; i++) {
+      const cx = x + i * (size + gap);
+      g.append(el('rect', { x: cx, y: 40, width: size, height: size, rx: 8, class: `${cls} cell` }));
+    }
+    g.append(el('text', { x: x + w / 2, y: 112, 'text-anchor': 'middle' }, `${name}`));
+    g.append(el('text', { x: x + w / 2, y: 132, 'text-anchor': 'middle', class: 'sub' }, `${n}개`));
+    x += w + groupGap;
+  });
+  g.append(el('text', { x: 14, y: 24, class: 'sub' }, '퇴근 직전에 돌고 있던 에이전트 11개'));
+})();
+
+// 오케스트레이터 → 브리프 파일 → 작업자 페인 세 개 → 보고
+(() => {
+  const g = document.getElementById('fig-orch');
+  if (!g) return;
+  g.append(el('rect', { x: 170, y: 10, width: 300, height: 50, rx: 10, class: 'accent' }));
+  g.append(el('text', { x: 320, y: 32, 'text-anchor': 'middle' }, '메인 오케스트레이터 (w6:p1)'));
+  g.append(el('text', { x: 320, y: 50, 'text-anchor': 'middle', class: 'sub' }, '발표자가 말을 거는 유일한 칸'));
+  const workers = [
+    ['01-profiling.md', '1-profiling', '시안 단계 병목 찾기', 'c1'],
+    ['02-inspirations-bug.md', '2-inspbug', '로딩 버그 수정', 'c2'],
+    ['03-ux-brainstorm.md', '3-uxideas', 'UX 아이디어 Top 3', 'c3'],
+  ];
+  workers.forEach(([file, pane, job, cls], i) => {
+    const x = 14 + i * 210, cx = x + 96;
+    g.append(el('path', { d: `M${320 + (i - 1) * 90} 62 L${cx} 92`, class: 'line', 'marker-end': 'url(#arrow-orch)' }));
+    g.append(el('rect', { x, y: 96, width: 192, height: 34, rx: 6, class: 'box' }));
+    g.append(el('text', { x: cx, y: 118, 'text-anchor': 'middle', class: 'mono', 'font-size': 11 }, file));
+    g.append(el('path', { d: `M${cx} 132 L${cx} 150`, class: 'line', 'marker-end': 'url(#arrow-orch)' }));
+    g.append(el('rect', { x, y: 154, width: 192, height: 54, rx: 8, class: `${cls} cell` }));
+    g.append(el('text', { x: cx, y: 176, 'text-anchor': 'middle' }, pane));
+    g.append(el('text', { x: cx, y: 196, 'text-anchor': 'middle', class: 'sub' }, job));
+  });
+  g.append(el('text', { x: 320, y: 236, 'text-anchor': 'middle', class: 'sub' }, '끝나면 리포트 파일을 남기고 오케스트레이터가 모아서 보고해요'));
 })();
 </script>
 </body>
