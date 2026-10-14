@@ -1,0 +1,896 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>약은 약사에게, 검색은 검색엔진에게 — 하이브리드 DB 전략</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>약은 약사에게, 검색은 검색엔진에게 — 하이브리드 DB 전략</h1>
+  <p class="lede">원본은 RDB에 두고, 필요한 일만 보조 저장소에 맡기는 법</p>
+  <div class="meta">
+    <span>코딩하는기술사</span><span class="dot">·</span>
+    <span>영상 13:00</span><span class="dot">·</span>
+    <span>읽는 데 약 11분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=NiMYcLA5EqE" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>원본 데이터는 트랜잭션과 정합성을 책임지는 RDB(Relational Database)에 두고, 검색·랭킹·캐시·위치 같은 일은 그 일에 맞는 보조 저장소에 맡겨요.</li>
+    <li>보조 저장소의 데이터는 날아가도 원본에서 다시 만들 수 있어야 해요. 영상에서 가장 많이 반복되는 원칙이에요.</li>
+    <li>조회는 두 단계예요. 보조 저장소에서 후보 ID(Identifier)를 찾고, 원본 RDB에서 그 ID로 전체 데이터를 가져와요.</li>
+    <li>처음엔 PostgreSQL 하나로 시작하고, 병목이 증명될 때 Redis, 검색 엔진 순서로 늘려요.</li>
+    <li>두 저장소에 동시에 쓰면 어긋날 수 있어요. 원본에서 한 방향으로 동기화하고 <span class="term" data-term="Outbox 패턴" data-en="Transactional outbox" data-desc="다른 시스템에 보낼 변경을 원본 DB의 outbox 테이블에 기록해 두고, 별도 과정이 그걸 읽어 내보내는 방식이에요. 애플리케이션이 두 곳에 직접 쓰지 않아도 돼요." data-g="12">Outbox 패턴</span>이나 CDC(Change Data Capture)로 맞춰요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">게임 커뮤니티 검색을 RDB와 Elasticsearch로 나눈 이유</a></li>
+    <li><a href="#s2">원본 데이터 + 보조 저장소 패턴</a></li>
+    <li><a href="#s3">먼저 찾고, 그다음 가져오기</a></li>
+    <li><a href="#s4">분리는 공짜가 아니에요</a></li>
+    <li><a href="#s5">듀얼 라이트와 최종적 일관성</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=NiMYcLA5EqE&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>게임 커뮤니티 검색을 RDB와 Elasticsearch로 나눈 이유</h2>
+<p>발표자가 게임 회사에서 커뮤니티를 직접 만들던 경험으로 시작해요. 보통 모바일 게임은 네이버 카페를 커뮤니티로 쓰지만, 이 게임은 자체 커뮤니티를 만들기로 했어요. 수십만 명이 동시에 접속할 규모였고, 검색 대상은 6개월, 12개월, 전체 누적 게시물까지였어요. 시간이 갈수록 검색할 데이터가 끝없이 늘어나는 구조였죠.</p>
+<p>아래 슬라이드의 왼쪽 주황 칸이 그 상황이에요. 맨 아래 '요구사항'에 다중 필드 검색, 본문 검색, 한국어 <span class="term" data-term="형태소 분석" data-en="Morphological analysis" data-desc="문장을 뜻을 가진 가장 작은 단위로 쪼개는 일이에요. 한국어는 조사가 붙어서, 이걸 해야 &#x27;검색엔진에게&#x27;로도 &#x27;검색엔진&#x27;을 찾을 수 있어요." data-g="1">형태소 분석</span>, 오타 허용(fuzzy), 자동완성(suggester)이 적혀 있어요. 오른쪽 보라 칸은 RDB 풀텍스트 검색(FTS(Full-Text Search))과 Elasticsearch를 비교한 결정이에요.</p>
+<figure>
+  <img src="assets/frame-0040.png" alt="제 실무 경험 — 게임 커뮤니티 검색 설계 슬라이드. 왼쪽은 상황과 요구사항, 오른쪽은 원본은 RDB 유지, 검색 전용으로 Elasticsearch 도입이라는 결정, 아래에 운영 흐름">
+  <figcaption>
+    원본은 RDB에 그대로 두고, Elasticsearch는 '검색 전용'으로만 붙였다는 점이 핵심이에요.
+    <a href="https://www.youtube.com/watch?v=NiMYcLA5EqE&amp;t=40s" target="_blank" rel="noopener">영상 00:40에서 보기</a>
+  </figcaption>
+</figure>
+<h3>왜 RDB를 버리지 않았을까요</h3>
+<p>원본 데이터는 RDB에 남겼어요. 트랜잭션과 정합성을 보장해 주고, 회사의 <span class="term" data-term="데이터 거버넌스" data-en="Data governance" data-desc="조직이 데이터를 어디에 두고 누가 어떻게 쓰는지 정한 규칙과 체계예요. 이게 RDB 기준이면 원본을 다른 곳으로 옮기기 어려워요." data-g="2">데이터 거버넌스</span>가 RDB 위에 서 있었기 때문이에요. OLAP(Online Analytical Processing)이나 BI(Business Intelligence)가 전부 RDB를 기준으로 연결돼 있었어요.</p>
+<p>Elasticsearch를 들인 이유는 세 가지예요. 앞에서 말한 강력한 검색 기능, 게임 이벤트나 정기 점검 때 몰리는 트래픽 대비, 그리고 RDB에서 검색 부하를 떼어 내는 것이에요.</p>
+<p>슬라이드 맨 아래 점선 칸이 운영 흐름이에요. 글을 쓰면 RDB에 저장하면서 검색 대상 필드를 Elasticsearch에도 색인해요. 검색 요청이 오면 Elasticsearch에서 게시물 ID를 찾고, RDB에서 그 ID로 인덱스 <code>IN</code> 조회를 해서 전체 내용을 만들어 돌려줘요. 이 흐름이 3장에서 다시 나와요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>슬라이드의 'nori 공식 플러그인'은 Elasticsearch의 한국어 형태소 분석 플러그인이에요. Lucene의 nori 모듈을 Elasticsearch에 붙인 것이고, mecab-ko-dic 사전으로 한국어 문장을 형태소 단위로 쪼개요. 그래서 '검색엔진에게'를 '검색엔진'과 '에게'로 나눠 색인할 수 있어요.</p>
+  <p class="cite">출처: <a href="https://www.elastic.co/docs/reference/elasticsearch/plugins/analysis-nori" target="_blank" rel="noopener">Elastic 공식 문서 — Korean (nori) analysis plugin</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=NiMYcLA5EqE&amp;t=133s" target="_blank" rel="noopener">02:13</a>
+  <h2>원본 데이터 + 보조 저장소 패턴</h2>
+<p>발표자는 RDB 하나로 부족해지는 순간을 네 장의 카드로 보여 줘요. 카드마다 아래 빨간 줄에 '왜 막히는지'가 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0232.png" alt="RDB만으로 부족했던 그 순간 슬라이드. 게시판 검색이 5초, 좋아요 버튼이 죽는다, 실시간 랭킹이 무겁다, 내 주변 1km 검색 네 장의 카드">
+  <figcaption>
+    네 카드 모두 RDB가 못 해서가 아니라, 그 일에 맞지 않아서 생기는 문제예요.
+    <a href="https://www.youtube.com/watch?v=NiMYcLA5EqE&amp;t=152s" target="_blank" rel="noopener">영상 02:32에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>막히는 순간</th><th>RDB에서 생기는 일</th><th>영상이 권하는 보조 저장소</th></tr></thead>
+    <tbody>
+      <tr><td>게시판 본문 검색</td><td><code>LIKE '%검색어%'</code>는 인덱스를 못 타서 <span class="term" data-term="풀 테이블 스캔" data-en="Full table scan" data-desc="인덱스를 못 쓰고 테이블의 모든 행을 처음부터 끝까지 읽는 일이에요. 행이 많을수록 그만큼 느려져요." data-g="3">풀 테이블 스캔</span>이 일어나요</td><td>Elasticsearch</td></tr>
+      <tr><td>인기 글 좋아요 폭주</td><td><code>UPDATE ... SET likes</code>에 행 단위 <span class="term" data-term="락 경합" data-en="Lock contention" data-desc="여러 트랜잭션이 같은 행을 동시에 고치려고 서로 락을 기다리는 상황이에요. 인기 글 좋아요처럼 한 행에 쓰기가 몰리면 생겨요." data-g="4">락 경합</span>이 생겨 응답이 늦어져요</td><td>Redis (쓰기가 빠르고 싱글 스레드)</td></tr>
+      <tr><td>실시간 랭킹 TOP 100</td><td>1초마다 <code>ORDER BY ... LIMIT</code>를 돌려 정렬 비용이 DB(Database) CPU(Central Processing Unit)를 잡아먹어요</td><td>Redis <span class="term" data-term="Sorted Set" data-en="Redis Sorted Set (ZSET)" data-desc="값마다 점수를 붙여 항상 점수 순으로 정렬된 상태를 유지하는 Redis 자료구조예요. 상위 N개를 매번 정렬하지 않고 바로 꺼낼 수 있어 랭킹에 맞아요." data-g="7">Sorted Set</span></td></tr>
+      <tr><td>내 주변 1km 검색</td><td>모든 행에 거리 계산식을 적용해야 하고 일반 인덱스로는 못 풀어요</td><td>위치 기반 DB</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>패턴에 이름 붙이기</h3>
+<p>발표자는 이 구조를 '원본 데이터 + 보조 저장소 패턴'이라고 직접 이름 지었어요. 슬라이드 위쪽 보라 상자가 정의예요. 신뢰의 기준이 되는 원본 데이터(Source of Truth)를 두고, 특정 <span class="term" data-term="워크로드" data-en="Workload" data-desc="시스템이 처리하는 일의 종류와 패턴이에요. 영상은 &#x27;특정 업무 패턴&#x27; 정도로 이해하면 된다고 해요." data-g="5">워크로드</span>에 최적화된 보조 저장소를 함께 쓰는 아키텍처라는 뜻이에요. 워크로드는 '특정 업무 패턴' 정도로 이해하면 된다고 해요.</p>
+<figure>
+  <img src="assets/frame-0336.png" alt="원본 데이터 + 보조 저장소 패턴이란? 슬라이드. 정의, 핵심 통찰, 원본 데이터·보조 저장소·핵심 원칙 세 줄, Polyglot Persistence 안내">
+  <figcaption>
+    세 번째 줄 '핵심 원칙'이 영상 전체에서 가장 자주 반복되는 문장이에요.
+    <a href="https://www.youtube.com/watch?v=NiMYcLA5EqE&amp;t=216s" target="_blank" rel="noopener">영상 03:36에서 보기</a>
+  </figcaption>
+</figure>
+<p>원본은 보통 RDB예요. 트랜잭션과 정합성을 책임지니까요. 다만 꼭 RDB일 필요는 없어서, 문서나 이미지라면 S3 같은 파일 저장소가 원본이 될 수도 있어요. 보조 저장소는 특화된 성능을 위해 원본에서 파생해 만든 저장소(derived store)예요. 슬라이드에는 Redis, Elasticsearch, 벡터 DB, BigQuery가 적혀 있어요.</p>
+<p>맨 아래 줄은 이 패턴이 더 큰 개념인 <span class="term" data-term="Polyglot Persistence" data-desc="한 서비스 안에서 데이터의 쓰임에 따라 서로 다른 종류의 저장소를 골라 함께 쓰는 접근이에요. 원본 + 보조 저장소 패턴은 그 한 가지 모습이에요." data-g="8">Polyglot Persistence</span>를 구현하는 한 가지 모습이라는 설명이에요.</p>
+<h3>모든 패턴의 공통 구조</h3>
+<p>다음 슬라이드는 이걸 한 장으로 그려요. 위의 큰 보라 상자가 원본 데이터 저장소이고, 아래 네 칸이 보조 저장소예요. 칸마다 쓰임이 붙어 있어요. Redis는 캐시·랭킹·카운터·위치, Elasticsearch는 전문 검색, 벡터 DB는 의미 검색·RAG(Retrieval-Augmented Generation), BigQuery는 분석·OLAP이에요. 두 층 사이 화살표에는 '동기화 (CDC / Event / Cache Fill / ETL)'라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0512.png" alt="모든 패턴의 공통 구조 슬라이드. 위에 Source of Truth 원본 데이터 저장소, 아래에 Redis, Elasticsearch, Vector DB, BigQuery 네 칸, 사이에 동기화 화살표">
+  <figcaption>
+    화살표가 위에서 아래로만 흘러요. 보조 저장소가 사라져도 위에서 다시 채우면 된다는 뜻이에요.
+    <a href="https://www.youtube.com/watch?v=NiMYcLA5EqE&amp;t=312s" target="_blank" rel="noopener">영상 05:12에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Martin Fowler는 2011년 글에서 이 흐름을 'polyglot persistence'라고 소개했어요. 문제마다 맞는 프로그래밍 언어가 다르듯, 데이터 저장소도 일에 따라 골라 쓰게 될 거라는 내용이에요. 같은 글에서 저장소가 늘면 복잡도라는 비용이 따른다고도 적었어요. 4장의 '분리는 공짜가 아니다'와 같은 이야기예요.</p>
+  <p class="cite">출처: <a href="https://martinfowler.com/bliki/PolyglotPersistence.html" target="_blank" rel="noopener">Martin Fowler — PolyglotPersistence (2011)</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=NiMYcLA5EqE&amp;t=320s" target="_blank" rel="noopener">05:20</a>
+  <h2>먼저 찾고, 그다음 가져오기</h2>
+<p>보조 저장소를 붙인 뒤 조회는 어떻게 할까요? 발표자는 자주 보이는 두 사례로 보여 줘요. 슬라이드 왼쪽이 게시판 본문 검색, 오른쪽이 다중 기준 랭킹이에요. 두 칸 모두 위에서 아래로 같은 순서를 밟아요. 가운데 진한 보라 칸이 원본 쪽이에요.</p>
+<figure>
+  <img src="assets/frame-0534.png" alt="실무 사례 2가지 슬라이드. 왼쪽은 검색어, Elasticsearch, 게시물 ID 목록, RDB PK IN 조회, 본문·작성자·댓글 순서. 오른쪽은 랭킹 요청, Redis ZSET ZRANGE, ID와 1차 점수, RDB 또는 Redis Hash 보조 정보, 앱 재정렬, 최종 순위 순서">
+  <figcaption>
+    두 흐름 모두 '보조 저장소에서 ID → 원본에서 전체 데이터' 순서예요.
+    <a href="https://www.youtube.com/watch?v=NiMYcLA5EqE&amp;t=334s" target="_blank" rel="noopener">영상 05:34에서 보기</a>
+  </figcaption>
+</figure>
+<p><b>게시판 풀텍스트 검색</b>은 1장의 운영 흐름 그대로예요. 검색어가 Elasticsearch로 가면 분석기와 <span class="term" data-term="역색인" data-en="Inverted index" data-desc="단어마다 그 단어가 들어 있는 문서 목록을 미리 만들어 둔 색인이에요. 본문 전체를 훑지 않고 단어로 바로 문서를 찾게 해 줘요." data-g="6">역색인</span>이 본문 단어를 빠르게 매칭해서 게시물 ID 목록을 줘요. 그 ID로 RDB에서 PK(Primary Key) <code>IN</code> 조회를 해서 본문·작성자·댓글을 가져와요. 왼쪽 칸 아래 작은 글씨는 RDB도 풀텍스트 검색(MySQL <code>FULLTEXT</code>, PostgreSQL FTS)을 지원하지만, 검색이 핵심 기능이거나 규모가 크면 Elasticsearch가 진가를 발휘한다는 말이에요.</p>
+<p><b>다중 기준 랭킹</b>은 동점이 생기거나 기준이 여럿일 때예요. Redis Sorted Set에 1차 점수로 정렬해 두고, <code>ZRANGE</code>로 상위 후보를 빠르게 줄여요. 그 ID로 RDB나 Redis Hash에서 시간·카테고리·가중치 같은 보조 정보를 가져와요. 마지막으로 애플리케이션이 이걸 합쳐 최종 순위를 다시 정렬해요. 오른쪽 칸의 노란 '앱 재정렬'이 그 단계예요.</p>
+<h3>2단계 조회 (Find then Fetch)</h3>
+<p>발표자는 이 조회 방식을 '2단계 조회'라고 불러요. 먼저 찾고(Find), 그다음 가져온다(Fetch)는 뜻이에요. 슬라이드 가운데 줄을 왼쪽부터 읽으면 돼요. 'STEP 1' 보조 저장소가 <code>[42, 17, 88, ...]</code> 같은 ID 목록을 내놓고, 'STEP 2' 원본 RDB가 <code>WHERE id IN (...)</code>으로 완성된 데이터를 돌려줘요.</p>
+<figure>
+  <img src="assets/frame-0702.png" alt="효율적인 조회 패턴 — 2단계 조회 (Find then Fetch) 슬라이드. Client, STEP 1 보조 저장소, ID 목록, STEP 2 원본 RDB WHERE id IN, 완성 데이터로 이어지는 흐름">
+  <figcaption>
+    ID 목록이 두 저장소를 잇는 유일한 연결 고리예요. 보조 저장소에는 ID와 찾는 데 필요한 필드만 있으면 돼요.
+    <a href="https://www.youtube.com/watch?v=NiMYcLA5EqE&amp;t=422s" target="_blank" rel="noopener">영상 07:02에서 보기</a>
+  </figcaption>
+</figure>
+<p>왜 굳이 둘로 나눌까요? 보조 저장소는 특정 조회 패턴에 최적화돼 있고, 원본 RDB는 트랜잭션 보장과 관계형 조인에 강하기 때문이에요. 각자 잘하는 일만 시키는 거예요.</p>
+<h3>일곱 가지 사례, 하나의 모양</h3>
+<p>발표자는 실무 사례 일곱 가지를 표 한 장에 모아요. 가운데 열 '대표 보조 저장소'만 바뀌고, 나머지 구조는 행마다 같아요.</p>
+<figure>
+  <img src="assets/frame-0745.png" alt="실무 사례 7가지 — 한눈에 정리 표. 검색, 랭킹, 캐시, 카운터, 위치, 의미 검색, 분석 일곱 행에 대표 보조 저장소와 실무 사례">
+  <figcaption>
+    맨 아래 문장처럼 모든 행이 '원본 RDB + 특화된 보조 저장소'예요.
+    <a href="https://www.youtube.com/watch?v=NiMYcLA5EqE&amp;t=465s" target="_blank" rel="noopener">영상 07:45에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>분류</th><th>대표 보조 저장소</th><th>실무 사례</th></tr></thead>
+    <tbody>
+      <tr><td>검색</td><td>Elasticsearch</td><td>게시판 본문 검색, 이커머스 상품 검색, 로그 검색(ELK(Elasticsearch, Logstash, Kibana))</td></tr>
+      <tr><td>랭킹</td><td>Redis Sorted Set</td><td>실시간 인기 글, 게임 리더보드, 다중 기준 랭킹</td></tr>
+      <tr><td>캐시</td><td>Redis (Look-aside)</td><td>사용자 세션, 프로필 조회, 권한 정보, 자주 안 변하는 코드 테이블</td></tr>
+      <tr><td>카운터</td><td>Redis <code>INCR</code> / Bitmap</td><td>조회수, 좋아요, DAU(Daily Active Users), 출석 체크 (RDB 행 락 회피)</td></tr>
+      <tr><td>위치</td><td>Redis <code>GEO</code> / PostGIS</td><td>배달앱 근처 음식점, 차량 디스패치, 부동산 위치 검색</td></tr>
+      <tr><td>의미 검색</td><td>Pinecone / pgvector</td><td>AI(Artificial Intelligence) 상품 추천, 콘텐츠 의미 검색, RAG 챗봇</td></tr>
+      <tr><td>분석</td><td>BigQuery / ClickHouse</td><td>운영 DB와 분석 DB 분리(OLTP(Online Transaction Processing)↔OLAP), 광고 클릭 로그</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>발표자는 이렇게 개별 사례를 넘어 그 밑의 공통 구조를 보는 눈을 '메타 시각'이라고 불러요. 도구 이름을 많이 외우는 것보다 이 모양을 알아보는 게 중요하다는 뜻이에요.</p>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=NiMYcLA5EqE&amp;t=516s" target="_blank" rel="noopener">08:36</a>
+  <h2>분리는 공짜가 아니에요</h2>
+<p>그럼 무조건 나누는 게 좋을까요? 발표자는 다중 저장소가 늘 정답은 아니라고 해요. 슬라이드 왼쪽 초록 칸은 PostgreSQL 하나로 이미 할 수 있는 일, 오른쪽 빨간 칸은 저장소를 나눌 때 숨어 있는 비용이에요.</p>
+<figure>
+  <img src="assets/frame-0850.png" alt="잠깐, 무조건 분리해야 할까? 슬라이드. 왼쪽은 PostgreSQL이 이미 하는 것들(pgvector, PostGIS, Full-Text Search, JSONB, LISTEN/NOTIFY, TimescaleDB), 오른쪽은 분리의 숨은 비용 다섯 가지">
+  <figcaption>
+    왼쪽 여섯 줄이 2장 표의 보조 저장소 자리를 거의 다 채워요. 그래서 처음엔 PostgreSQL 하나로 충분하다는 이야기예요.
+    <a href="https://www.youtube.com/watch?v=NiMYcLA5EqE&amp;t=530s" target="_blank" rel="noopener">영상 08:50에서 보기</a>
+  </figcaption>
+</figure>
+<p>왼쪽 칸을 보면 PostgreSQL은 pgvector로 벡터 검색, PostGIS로 위치 검색, 기본 풀텍스트 검색을 해요. <code>JSONB</code>로 문서를 저장하고, <code>LISTEN/NOTIFY</code>로 가벼운 pub/sub 알림을 만들고, TimescaleDB 확장으로 시계열 DB까지 돼요. 아래 회색 줄의 'Just Use Postgres'는 작은 팀이나 초기 트래픽에서는 DB 하나가 더 빨리 가치를 만든다는 말이에요. 도구가 늘수록 운영 부채도 함께 불어나요.</p>
+<p>오른쪽 칸의 비용은 다섯 가지예요.</p>
+<ul>
+  <li><b>운영 포인트가 N배</b> — 백업, 모니터링, HA(High Availability), 보안을 저장소마다 챙겨야 해요.</li>
+  <li><b><span class="term" data-term="듀얼 라이트" data-en="Dual write" data-desc="애플리케이션이 같은 데이터를 두 저장소에 각각 쓰는 방식이에요. 한쪽만 성공하면 두 저장소가 어긋나요." data-g="9">듀얼 라이트</span> 정합성 위험</b> — 두 저장소에 함께 써야 해서, 한쪽만 기록되는 일이 생겨요. 5장에서 자세히 다뤄요.</li>
+  <li><b>학습 비용</b> — 팀 전체가 새 도구를 익혀야 해요.</li>
+  <li><b>인프라 비용</b> — 노드 수가 늘고, 경우에 따라 라이선스 비용도 들어요.</li>
+  <li><b>디버깅 복잡도</b> — 장애가 났을 때 원인을 따라가기 어려워져요.</li>
+</ul>
+<h3>병목이 증명될 때 한 단계씩</h3>
+<p>그래서 발표자는 처음부터 모든 도구를 갖추지 말라고 해요. 슬라이드의 네 칸을 왼쪽부터 따라가면 돼요. 칸마다 위에 단계 이름, 가운데 보라 상자에 그 단계에서 쓰는 저장소, 아래에 이유가 있어요.</p>
+<figure>
+  <img src="assets/frame-0950.png" alt="현실적 진화 전략 — 단계별 도입 슬라이드. PHASE 1 MVP/초기 PostgreSQL 단일+확장, PHASE 2 성장기 +Redis, PHASE 3 확장기 운영 부담 영역 선택적 분리, PHASE 4 대규모 본격적 Polyglot">
+  <figcaption>
+    단계를 넘어가는 조건은 시간이 아니라 '병목이 증명됐는가'예요.
+    <a href="https://www.youtube.com/watch?v=NiMYcLA5EqE&amp;t=590s" target="_blank" rel="noopener">영상 09:50에서 보기</a>
+  </figcaption>
+</figure>
+<ol class="steps">
+  <li><b>MVP(Minimum Viable Product)·초기 — PostgreSQL 하나와 확장 기능</b> — 트래픽이 작고 패턴도 한정적이에요. 운영이 단순한 게 가장 큰 가치예요.</li>
+  <li><b>성장기 — Redis 추가</b> — 특정 조회 부하가 쌓이면 캐시·세션용으로 붙여요. 트랜잭션 부하가 큰 서비스에서 가장 먼저 추가되는 도구라고 해요.</li>
+  <li><b>확장기 — 필요가 증명된 영역만 분리</b> — 검색은 Elasticsearch, 분석은 BigQuery처럼 병목이 생긴 곳만 떼어 내요.</li>
+  <li><b>대규모 — 본격적인 Polyglot</b> — 데이터와 트래픽이 아주 커지면 목적마다 저장소를 둬요. 이때 Outbox나 CDC 같은 정합성 장치를 함께 만들어요.</li>
+</ol>
+<p>슬라이드 아래 초록 줄이 이 장의 결론이에요.</p>
+<blockquote>
+  <p>병목이 증명되기 전에는 분리하지 마라.</p>
+  <cite>— 영상 10:27 (슬라이드 문구)</cite>
+</blockquote>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p><code>LISTEN/NOTIFY</code>는 PostgreSQL에 들어 있는 알림 기능이에요. 한 연결이 <code>LISTEN 채널명</code>으로 기다리고, 다른 연결이 <code>NOTIFY 채널명</code>을 보내면 알림을 받아요. 공식 문서는 알림이 보낸 쪽 트랜잭션이 커밋될 때 전달된다고 설명해요. 별도 메시지 브로커 없이 '데이터가 바뀌었어요' 정도를 알리기에 맞아요.</p>
+  <p class="cite">출처: <a href="https://www.postgresql.org/docs/current/sql-notify.html" target="_blank" rel="noopener">PostgreSQL 공식 문서 — NOTIFY</a></p>
+</aside>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=NiMYcLA5EqE&amp;t=660s" target="_blank" rel="noopener">11:00</a>
+  <h2>듀얼 라이트와 최종적 일관성</h2>
+<p>여러 저장소를 쓸 때는 정합성을 꼭 따로 챙겨야 해요. 발표자는 이걸 '공짜 점심은 없다'고 표현해요. 슬라이드 위쪽 빨간 칸의 큰따옴표 문장이 흔히 하는 생각이에요. RDB에 저장하고 바로 Elasticsearch에도 저장하면 되겠지, 하는 거죠.</p>
+<figure>
+  <img src="assets/frame-1112.png" alt="공짜 점심은 없다 — 정합성 함정 슬라이드. 위쪽 빨간 칸은 Dual Write 문제, 아래 초록 칸은 최종적 일관성, 단방향 동기화, 재인덱싱, Outbox 패턴·CDC(Debezium) 네 가지 원칙">
+  <figcaption>
+    빨간 칸이 문제, 초록 칸이 대응이에요. 초록 칸 네 줄이 이 장의 체크리스트예요.
+    <a href="https://www.youtube.com/watch?v=NiMYcLA5EqE&amp;t=672s" target="_blank" rel="noopener">영상 11:12에서 보기</a>
+  </figcaption>
+</figure>
+<p>문제는 RDB 쓰기는 성공했는데 Elasticsearch 쓰기가 실패할 때예요. 그 순간부터 두 저장소의 데이터가 어긋나기 시작해요. 슬라이드 말대로 네트워크가 한 번만 끊겨도 정합성이 깨져요. 이게 듀얼 라이트 문제예요.</p>
+<p>아래 그림 왼쪽이 그 상황이고, 오른쪽이 영상이 권하는 방향이에요. 애플리케이션은 원본에만 쓰고, 보조 저장소는 원본에서 한 방향으로 따라오게 해요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 660 230" role="img" aria-label="(a) 듀얼 라이트: 앱이 RDB와 Elasticsearch에 따로 쓰다가 한쪽만 실패해 어긋남. (b) 단방향 동기화: 앱은 RDB에만 쓰고 Outbox 또는 CDC가 Elasticsearch로 옮김">
+    <defs>
+      <marker id="arrow-dw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker>
+    </defs>
+    <text x="150" y="20" text-anchor="middle">(a) 듀얼 라이트</text>
+    <rect x="95" y="34" width="110" height="40" rx="8" class="box"/>
+    <text x="150" y="59" text-anchor="middle">애플리케이션</text>
+    <rect x="20" y="150" width="110" height="44" rx="8" class="c1 cell"/>
+    <text x="75" y="170" text-anchor="middle">RDB (원본)</text>
+    <text x="75" y="186" text-anchor="middle" class="sub">쓰기 성공</text>
+    <rect x="170" y="150" width="120" height="44" rx="8" class="bad"/>
+    <text x="230" y="170" text-anchor="middle">Elasticsearch</text>
+    <text x="230" y="186" text-anchor="middle" class="sub">쓰기 실패</text>
+    <path d="M125 76 L85 146" class="line" marker-end="url(#arrow-dw)"/>
+    <path d="M175 76 L218 146" class="line" marker-end="url(#arrow-dw)"/>
+    <text x="150" y="218" text-anchor="middle" class="sub">두 저장소가 어긋나기 시작해요</text>
+
+    <text x="500" y="20" text-anchor="middle">(b) 원본 → 보조, 한 방향</text>
+    <rect x="445" y="34" width="110" height="40" rx="8" class="box"/>
+    <text x="500" y="59" text-anchor="middle">애플리케이션</text>
+    <rect x="355" y="150" width="110" height="44" rx="8" class="c1 cell"/>
+    <text x="410" y="170" text-anchor="middle">RDB (원본)</text>
+    <text x="410" y="186" text-anchor="middle" class="sub">여기에만 써요</text>
+    <rect x="525" y="150" width="120" height="44" rx="8" class="ok"/>
+    <text x="585" y="170" text-anchor="middle">Elasticsearch</text>
+    <text x="585" y="186" text-anchor="middle" class="sub">뒤따라 맞춰져요</text>
+    <path d="M480 76 L425 146" class="line" marker-end="url(#arrow-dw)"/>
+    <path d="M467 172 L521 172" class="line accent" marker-end="url(#arrow-dw)"/>
+    <text x="494" y="140" text-anchor="middle" class="sub">Outbox·CDC</text>
+    <text x="500" y="218" text-anchor="middle" class="sub">깨지면 원본에서 재인덱싱해요</text>
+  </svg>
+  <figcaption>(a)에는 앱에서 나가는 화살표가 둘이라 하나만 실패해도 어긋나요. (b)는 앱이 원본 하나에만 쓰고, 보조 저장소는 원본을 따라가요.</figcaption>
+</figure>
+<h3>강한 일관성과 최종적 일관성</h3>
+<p>발표자가 강조하는 원칙은 보조 저장소 구조가 대부분 <span class="term" data-term="최종적 일관성" data-en="Eventual consistency" data-desc="잠깐은 저장소끼리 데이터가 다를 수 있지만, 시간이 지나면 결국 같아지는 성질이에요. 강한 일관성보다 느슨한 대신 빠르고 나누기 쉬워요." data-g="10">최종적 일관성</span>을 받아들인다는 거예요. RDB는 <span class="term" data-term="강한 일관성" data-en="Strong consistency" data-desc="언제 읽어도 마지막으로 쓴 값이 정확히 보이는 성질이에요. 영상은 RDB를 그 예로 들어요." data-g="11">강한 일관성</span>이라 데이터가 언제나 정확히 맞아요. 보조 저장소는 잠깐 어긋날 수 있지만 결국에는 맞춰지면 돼요. 발표자는 유튜브 조회수를 예로 들어요. 내가 보는 숫자와 다른 사람이 보는 숫자가 잠깐 다르다가 결국 맞춰지는 것과 같아요.</p>
+<ul class="checklist">
+  <li>보조 저장소는 최종적 일관성을 받아들이는가?</li>
+  <li>동기화가 원본 → 보조 저장소 한 방향인가? (반대 방향은 위험해요)</li>
+  <li>보조 저장소가 깨졌을 때 원본에서 재인덱싱으로 복구할 수 있는가?</li>
+  <li>듀얼 라이트 정합성을 Outbox 패턴이나 CDC(Debezium)로 따로 설계했는가?</li>
+</ul>
+<p>마지막으로 발표자는 이렇게 정리해요. 아키텍처 역량은 도구를 많이 아는 데서가 아니라, 적절한 도구를 고르는 안목에서 나온다고요.</p>
+<blockquote>
+  <p>올바른 도구를 올바른 자리에</p>
+  <cite>— 영상 12:38</cite>
+</blockquote>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Debezium 공식 문서는 Outbox 패턴을 서비스 내부 상태(보통 DB에 저장된 데이터)와 다른 쪽이 받아 가는 이벤트가 어긋나지 않게 데이터를 주고받는 방법으로 설명해요. 애플리케이션은 이벤트를 원본 DB의 outbox 테이블에 기록하고, Debezium 커넥터가 그 테이블의 변경만 잡아(CDC) 바깥으로 내보내요. 애플리케이션이 원본 DB 한 곳에만 쓰게 되니 그림 (b)의 모양이 돼요.</p>
+  <p class="cite">출처: <a href="https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html" target="_blank" rel="noopener">Debezium 공식 문서 — Outbox Event Router</a></p>
+</aside>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 이름과 기술 용어가 많이 잘못 받아적혔어요. 슬라이드를 보고 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>고등하는 기울사</td><td>코딩하는기술사</td><td>채널 이름</td></tr>
+      <tr><td>온본 데이터</td><td>원본 데이터</td><td></td></tr>
+      <tr><td>관경 데이터베이스</td><td>관계형 데이터베이스</td><td></td></tr>
+      <tr><td>엘라서직 서치 / 엘라트서치 / 엘락스제</td><td>Elasticsearch</td><td></td></tr>
+      <tr><td>세 개를 시켰죠</td><td>색인을 시켰죠</td><td></td></tr>
+      <tr><td>인덱스 코리 / 인덱스 코드</td><td>인덱스 쿼리</td><td></td></tr>
+      <tr><td>솔지드 셋 / 솔티드 셋 / 솔드 셋</td><td>Sorted Set</td><td></td></tr>
+      <tr><td>에디스 / 레지스</td><td>Redis</td><td></td></tr>
+      <tr><td>소스 오브루</td><td>Source of Truth</td><td></td></tr>
+      <tr><td>오크로드</td><td>워크로드</td><td></td></tr>
+      <tr><td>대구성</td><td>재구성</td><td></td></tr>
+      <tr><td>비퀄리 / 비코리</td><td>BigQuery</td><td></td></tr>
+      <tr><td>폴리그라 퍼시스턴스</td><td>Polyglot Persistence</td><td></td></tr>
+      <tr><td>IDB / RGB</td><td>RDB</td><td></td></tr>
+      <tr><td>오조 정보</td><td>보조 정보</td><td></td></tr>
+      <tr><td>2단계 조회 패치</td><td>2단계 조회 (Find then Fetch)</td><td></td></tr>
+      <tr><td>룩 어사이드</td><td>Look-aside</td><td></td></tr>
+      <tr><td>레지스 GO</td><td>Redis GEO</td><td></td></tr>
+      <tr><td>포스트 거래 포스트 GIS</td><td>PostgreSQL PostGIS</td><td></td></tr>
+      <tr><td>파인콘 / PG 벡터</td><td>Pinecone / pgvector</td><td></td></tr>
+      <tr><td>비코리 클릭하우스</td><td>BigQuery, ClickHouse</td><td></td></tr>
+      <tr><td>저스트 유저 포스트 그래</td><td>Just Use Postgres</td><td></td></tr>
+      <tr><td>경량의 법 알림</td><td>가벼운 pub/sub 알림</td><td></td></tr>
+      <tr><td>듀얼라이트 / 정압성</td><td>Dual Write / 정합성</td><td></td></tr>
+      <tr><td>아웃박스 배터리</td><td>Outbox 패턴</td><td></td></tr>
+      <tr><td>eventual consistance</td><td>Eventual Consistency</td><td></td></tr>
+      <tr><td>증가를 발휘</td><td>진가를 발휘</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-11"><dt>강한 일관성<span class="en">Strong consistency</span></dt><dd>언제 읽어도 마지막으로 쓴 값이 정확히 보이는 성질이에요. 영상은 RDB를 그 예로 들어요.</dd></div>
+    <div class="g" id="g-2"><dt>데이터 거버넌스<span class="en">Data governance</span></dt><dd>조직이 데이터를 어디에 두고 누가 어떻게 쓰는지 정한 규칙과 체계예요. 이게 RDB 기준이면 원본을 다른 곳으로 옮기기 어려워요.</dd></div>
+    <div class="g" id="g-9"><dt>듀얼 라이트<span class="en">Dual write</span></dt><dd>애플리케이션이 같은 데이터를 두 저장소에 각각 쓰는 방식이에요. 한쪽만 성공하면 두 저장소가 어긋나요.</dd></div>
+    <div class="g" id="g-4"><dt>락 경합<span class="en">Lock contention</span></dt><dd>여러 트랜잭션이 같은 행을 동시에 고치려고 서로 락을 기다리는 상황이에요. 인기 글 좋아요처럼 한 행에 쓰기가 몰리면 생겨요.</dd></div>
+    <div class="g" id="g-6"><dt>역색인<span class="en">Inverted index</span></dt><dd>단어마다 그 단어가 들어 있는 문서 목록을 미리 만들어 둔 색인이에요. 본문 전체를 훑지 않고 단어로 바로 문서를 찾게 해 줘요.</dd></div>
+    <div class="g" id="g-5"><dt>워크로드<span class="en">Workload</span></dt><dd>시스템이 처리하는 일의 종류와 패턴이에요. 영상은 &#x27;특정 업무 패턴&#x27; 정도로 이해하면 된다고 해요.</dd></div>
+    <div class="g" id="g-10"><dt>최종적 일관성<span class="en">Eventual consistency</span></dt><dd>잠깐은 저장소끼리 데이터가 다를 수 있지만, 시간이 지나면 결국 같아지는 성질이에요. 강한 일관성보다 느슨한 대신 빠르고 나누기 쉬워요.</dd></div>
+    <div class="g" id="g-3"><dt>풀 테이블 스캔<span class="en">Full table scan</span></dt><dd>인덱스를 못 쓰고 테이블의 모든 행을 처음부터 끝까지 읽는 일이에요. 행이 많을수록 그만큼 느려져요.</dd></div>
+    <div class="g" id="g-1"><dt>형태소 분석<span class="en">Morphological analysis</span></dt><dd>문장을 뜻을 가진 가장 작은 단위로 쪼개는 일이에요. 한국어는 조사가 붙어서, 이걸 해야 &#x27;검색엔진에게&#x27;로도 &#x27;검색엔진&#x27;을 찾을 수 있어요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>BI</dt><dd>Business Intelligence</dd></div>
+    <div class="g"><dt>CDC</dt><dd>Change Data Capture</dd></div>
+    <div class="g"><dt>CPU</dt><dd>Central Processing Unit</dd></div>
+    <div class="g"><dt>DAU</dt><dd>Daily Active Users</dd></div>
+    <div class="g"><dt>DB</dt><dd>Database</dd></div>
+    <div class="g"><dt>ELK</dt><dd>Elasticsearch, Logstash, Kibana</dd></div>
+    <div class="g"><dt>FTS</dt><dd>Full-Text Search</dd></div>
+    <div class="g"><dt>HA</dt><dd>High Availability</dd></div>
+    <div class="g"><dt>ID</dt><dd>Identifier</dd></div>
+    <div class="g"><dt>MVP</dt><dd>Minimum Viable Product</dd></div>
+    <div class="g"><dt>OLAP</dt><dd>Online Analytical Processing</dd></div>
+    <div class="g"><dt>OLTP</dt><dd>Online Transaction Processing</dd></div>
+    <div class="g" id="g-12"><dt>Outbox 패턴<span class="en">Transactional outbox</span></dt><dd>다른 시스템에 보낼 변경을 원본 DB의 outbox 테이블에 기록해 두고, 별도 과정이 그걸 읽어 내보내는 방식이에요. 애플리케이션이 두 곳에 직접 쓰지 않아도 돼요.</dd></div>
+    <div class="g"><dt>PK</dt><dd>Primary Key</dd></div>
+    <div class="g" id="g-8"><dt>Polyglot Persistence</dt><dd>한 서비스 안에서 데이터의 쓰임에 따라 서로 다른 종류의 저장소를 골라 함께 쓰는 접근이에요. 원본 + 보조 저장소 패턴은 그 한 가지 모습이에요.</dd></div>
+    <div class="g"><dt>RAG</dt><dd>Retrieval-Augmented Generation</dd></div>
+    <div class="g"><dt>RDB</dt><dd>Relational Database</dd></div>
+    <div class="g" id="g-7"><dt>Sorted Set<span class="en">Redis Sorted Set (ZSET)</span></dt><dd>값마다 점수를 붙여 항상 점수 순으로 정렬된 상태를 유지하는 Redis 자료구조예요. 상위 N개를 매번 정렬하지 않고 바로 꺼낼 수 있어 랭킹에 맞아요.</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=NiMYcLA5EqE" target="_blank" rel="noopener">원본 영상 — 코딩하는기술사</a></li>
+    <li id="src-2"><a href="https://www.elastic.co/docs/reference/elasticsearch/plugins/analysis-nori" target="_blank" rel="noopener">Elastic 공식 문서 — Korean (nori) analysis plugin</a></li>
+    <li id="src-3"><a href="https://martinfowler.com/bliki/PolyglotPersistence.html" target="_blank" rel="noopener">Martin Fowler — PolyglotPersistence (2011)</a></li>
+    <li id="src-4"><a href="https://www.postgresql.org/docs/current/sql-notify.html" target="_blank" rel="noopener">PostgreSQL 공식 문서 — NOTIFY</a></li>
+    <li id="src-5"><a href="https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html" target="_blank" rel="noopener">Debezium 공식 문서 — Outbox Event Router</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 15일에 이 영상을 보고 정리했어요. 원본은 코딩하는기술사 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

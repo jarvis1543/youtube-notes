@@ -1,0 +1,1484 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>브라우저 캐시부터 Redis까지, 구간별 성능 최적화</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>브라우저 캐시부터 Redis까지, 구간별 성능 최적화</h1>
+  <p class="lede">캐시 계층 전체를 보고, Redis가 빠른 이유와 느려지는 순간까지 짚어요</p>
+  <div class="meta">
+    <span>코딩하는기술사</span><span class="dot">·</span>
+    <span>영상 1:41:54</span><span class="dot">·</span>
+    <span>읽는 데 약 40분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=sdIfMnxALuY" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>캐시는 브라우저, CDN(Content Delivery Network), 로컬 캐시, 공유 캐시(Redis), DB(Database) 순으로 겹겹이 있어요. 요청은 사용자와 가까운 계층에서 끝낼수록 빠르고 싸요.</li>
+    <li>정적 파일은 파일명에 해시를 박고 <code>max-age</code>를 1년처럼 길게 둬요. 이름이 바뀌지 않는 <code>index.html</code>만 <code>no-cache</code>로 매번 재검증해요.</li>
+    <li>NVMe SSD(Solid State Drive)도 RAM(Random Access Memory)보다 약 200배 느려요. SSD가 빨라졌다고 메모리 캐시가 필요 없어지지 않아요.</li>
+    <li>성능 질문에는 키워드를 나열하지 말고 웹·앱·DB 레이어로 나눠, 병목부터 찾는다는 말과 함께 답해요. 읽기는 캐시, 쓰기는 메시지 큐가 대표 처방이에요.</li>
+    <li>Redis는 인메모리, epoll, O(1) 자료구조, RESP(REdis Serialization Protocol), 파이프라인 덕분에 싱글 스레드로도 빨라요. 느려지는 건 O(N) 연산, BigKey, HotKey 때문이에요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">캐시는 Redis만 있는 게 아니에요</a></li>
+    <li><a href="#s2">브라우저 캐시(HTTP 캐시)는 이렇게 움직여요</a></li>
+    <li><a href="#s3">메모리 계층과 레이턴시 숫자</a></li>
+    <li><a href="#s4">읽기 성능과 쓰기 성능, 레이어로 나눠 답하기</a></li>
+    <li><a href="#s5">캐시와 메시지 큐, 언제 무엇을 쓸까요</a></li>
+    <li><a href="#s6">싱글 스레드 Redis가 빠른 이유</a></li>
+    <li><a href="#s7">랭킹 조회: MySQL vs Redis와 실시간 랭킹 설계</a></li>
+    <li><a href="#s8">Redis를 느리게 하는 BigKey와 HotKey</a></li>
+    <li><a href="#s9">트랜잭션과 메시징, 캐시 너머의 Redis</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>캐시는 Redis만 있는 게 아니에요</h2>
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>이 영상은 같은 채널의 짧은 강의 여러 편을 이어 붙인 연속재생판이에요. 그래서 중간중간 인사말과 슬라이드 디자인이 바뀌어요. 이 문서는 강의 단위로 섹션을 나눴어요.</p>
+</aside>
+<p>웹사이트 조회를 빠르게 하려면 대부분 Redis부터 떠올려요. 발표자는 그게 틀린 건 아니지만, 사용자 화면에서 서버까지 가는 길에 캐시가 훨씬 많다고 짚어요. 슬라이드의 지도를 보면 왼쪽 사용자 쪽부터 Browser Cache, CDN, In-App Local Cache, 공유 캐시(Redis), DB Buffer Cache, Disk 순으로 놓여 있어요. 오른쪽 두 칸은 흐리게 처리돼 있는데, DBMS(Database Management System)가 알아서 관리해서 개발자가 세밀하게 다루는 영역이 아니라는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0220.png" alt="왼쪽부터 Browser Cache, CDN, In-App Local Cache, 공유 캐시(Redis), DB Buffer Cache, Disk를 화살표로 이은 전체 캐시 계층 지도">
+  <figcaption>
+    개발자가 직접 설계하는 건 왼쪽 네 칸, 브라우저부터 Redis까지예요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=140s" target="_blank" rel="noopener">영상 02:20에서 보기</a>
+  </figcaption>
+</figure>
+<p>백엔드 개발자는 로컬 캐시와 Redis에, 프론트엔드 개발자는 브라우저 캐시에 익숙하죠. 발표자는 이 전체를 한 번에 보고 계층마다 맞는 데이터를 두는 '풀스택 캐시'를 목표로 삼자고 해요. 원칙은 하나예요. <b>요청은 사용자와 가까운 곳에서 끝낼수록 좋아요.</b> 사용자가 느끼는 응답이 빨라지고, 뒤쪽 서버 자원도 쓰지 않으니까요.</p>
+
+<h3>왜 한 계층만 쓰면 안 될까요</h3>
+<p>슬라이드는 이유를 네 칸으로 정리해요. 왼쪽 위 '변경 빈도'는 정적 이미지는 몇 달씩 안 바뀌고 장바구니는 초 단위로 바뀐다는 이야기예요. 오른쪽 위 '공유 범위'는 국가 코드는 모든 사용자가, 세션은 한 사람만 쓴다는 차이예요. 아래 두 칸은 용량과 네트워크 비용(이미지는 MB(Megabyte), 코드 목록은 KB(Kilobyte)), 최신성 요구(주식 시세는 실시간, 공지사항은 5분 늦어도 괜찮음)예요.</p>
+<figure>
+  <img src="assets/frame-0458.png" alt="변경 빈도, 공유 범위, 용량과 네트워크 비용, 최신성 요구가 다르다는 네 개의 카드">
+  <figcaption>
+    네 기준이 곧 '이 데이터는 어느 계층에 둘까'를 정하는 체크리스트예요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=298s" target="_blank" rel="noopener">영상 04:58에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>계층별로 무엇을 두고, 무엇을 조심할까요</h3>
+<p>발표자가 계층마다 짚은 내용을 한 표로 모았어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>계층</th><th>어디에 저장하나요</th><th>주로 두는 것</th><th>조심할 점</th></tr></thead>
+    <tbody>
+      <tr><td>브라우저 캐시</td><td>사용자 PC(Personal Computer)의 브라우저</td><td>CSS(Cascading Style Sheets), JS(JavaScript), 이미지, 폰트</td><td>사용자마다 따로 있어요. 갱신은 파일명 해시나 URL(Uniform Resource Locator) 버전으로 해요</td></tr>
+      <tr><td>CDN</td><td>사용자와 가까운 엣지 서버</td><td>이미지, 영상, 게임 설치·패치 파일</td><td>배포만 하고 <span class="term" data-term="퍼지" data-en="Purge (Invalidation)" data-desc="CDN 엣지 서버에 캐시된 파일을 강제로 지우는 작업이에요. 배포만 하고 퍼지하지 않으면 사용자는 계속 옛 파일을 받아요." data-g="1">퍼지</span>하지 않으면 옛 파일이 나가요. 동적 콘텐츠는 개인정보가 섞일 수 있어요</td></tr>
+      <tr><td>로컬 캐시</td><td>서버 인스턴스 메모리 (Caffeine, Guava)</td><td>국가 코드, 공통 코드, 설정값</td><td>서버마다 따로 있어서 여러 대일 때 동기화 문제가 생겨요</td></tr>
+      <tr><td>공유 캐시</td><td>중앙 Redis</td><td>세션, 장바구니, 사용자별 상태</td><td>네트워크 왕복 비용이 있어 로컬보다 느려요. TTL(Time To Live) 없이 쓰면 메모리가 차요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>공유 캐시는 TTL로 만료 시간을 정하고, <span class="term" data-term="에빅션" data-en="Eviction" data-desc="캐시 메모리가 꽉 찼을 때 정해진 규칙(LRU, LFU 등)으로 기존 데이터를 밀어내는 일이에요. 정책을 정해 두지 않으면 레이턴시가 갑자기 튀어요." data-g="2">에빅션</span> 정책으로 오래된 데이터를 밀어내요.</p>
+
+<h3>요청은 위에서 아래로, 데이터는 아래에서 위로</h3>
+<p>Cache Fill Flow 슬라이드의 왼쪽 열은 요청이 내려가는 길이에요. 브라우저에서 미스가 나면 CDN, 다시 미스면 로컬 캐시, Redis를 거쳐 마지막으로 DB를 조회해요. 오른쪽 노란 열은 거꾸로 올라오는 길이에요. DB에서 읽은 값을 Redis에 저장하고, 로컬 캐시와 CDN, 브라우저에 차례로 채워요. 그래서 첫 요청은 느려도 다음 요청부터는 가장 가까운 계층에서 바로 끝나요.</p>
+<figure>
+  <img src="assets/frame-1128.png" alt="왼쪽에 Browser, CDN, Local Cache, Redis, DB 조회로 내려가는 MISS 흐름, 오른쪽에 Redis 저장부터 Browser 저장까지 역순으로 채우는 흐름">
+  <figcaption>
+    슬라이드 아래 문장처럼 '첫 요청은 느리지만 이후는 가까운 계층에서 빠르게' 응답하는 게 계층 캐시의 핵심이에요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=688s" target="_blank" rel="noopener">영상 11:28에서 보기</a>
+  </figcaption>
+</figure>
+<p>현실에서는 갈래가 나뉘어요. 정적 리소스는 브라우저·CDN에서 미스가 나면 로컬 캐시가 아니라 웹 서버 디렉터리나 S3(Amazon Simple Storage Service) 같은 스토리지로 가요. 동적 데이터는 보통 로컬 캐시부터 DB까지의 구간을 써요. 덧붙여 CloudFront는 API(Application Programming Interface) 앞에도 많이 세우는데, 캐시 만료 시간을 0으로 둬서 캐싱은 하지 않고 아마존의 전용 통신망만 타게 하려는 목적이에요.</p>
+
+<h3>실무에서는 데이터마다 계층을 골라요</h3>
+<p>실무 선택 슬라이드는 데이터 네 종류에 계층 배지를 붙였어요. 이미지·CSS·JS는 Browser Cache와 CDN, 공지사항·배너는 Redis(TTL 5~10분이면 충분), 권한 정보·메뉴는 Local Cache와 Redis를 함께, 국가 코드·공통 코드는 Local Cache만이에요. 국가 코드는 거의 바뀌지 않아서 서버 간 동기화 문제가 없으니 로컬 캐시가 가장 효율적이에요.</p>
+<figure>
+  <img src="assets/frame-1255.png" alt="이미지·CSS·JS, 공지사항·배너, 권한 정보·메뉴, 국가 코드·공통 코드 네 칸에 각각 쓸 캐시 계층 배지를 붙인 슬라이드">
+  <figcaption>
+    한 서비스 안에서도 데이터마다 다른 계층을 쓰는 게 실무 캐싱 전략이에요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=775s" target="_blank" rel="noopener">영상 12:55에서 보기</a>
+  </figcaption>
+</figure>
+<p>반대로 자주 하는 실수 세 가지도 있어요. CSS를 매번 내려받는 것(Cache-Control 헤더 하나로 해결), 바뀌지 않는 공통 코드까지 전부 Redis로 조회하는 것(로컬 캐시로 충분), TTL 없이 캐시를 계속 쌓는 것이에요. 발표자는 여기에 캐시가 만료된 순간 요청이 한꺼번에 원본 DB로 몰리는 <span class="term" data-term="캐시 스탬피드" data-en="Cache stampede" data-desc="인기 있는 캐시가 만료되는 순간 몰려 있던 요청이 한꺼번에 원본 DB로 쏟아지는 현상이에요. 만료 시점을 흩어 두거나 한 요청만 다시 채우게 해서 막아요." data-g="3">캐시 스탬피드</span>도 덧붙여요.</p>
+<figure>
+  <img src="assets/frame-1330.png" alt="실수 1 CSS를 매번 다운로드, 실수 2 모든 조회를 Redis로, 실수 3 TTL 없이 계속 캐시 추가를 적은 빨간 카드 세 장">
+  <figcaption>
+    세 실수 모두 '데이터 성격에 맞는 계층'을 고르지 않아서 생겨요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=810s" target="_blank" rel="noopener">영상 13:30에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=899s" target="_blank" rel="noopener">14:59</a>
+  <h2>브라우저 캐시(HTTP 캐시)는 이렇게 움직여요</h2>
+<p>두 번째 강의는 사용자와 가장 가까운 브라우저 캐시를 파고들어요. 정식 이름은 <b>HTTP(HyperText Transfer Protocol) 캐시</b>예요. HTML(HyperText Markup Language), CSS, JS, 이미지, 폰트처럼 무거운 정적 리소스의 사본을 브라우저에 두고 재사용하는 개념이에요. 서버는 같은 파일을 다시 보내지 않아도 되고, 사용자는 네트워크로 받아오는 시간을 아껴요. 대신 서버에서 파일이 바뀌면 옛 사본을 버리고 새로 받아야 해요. 결국 사본 재사용과 최신성을 함께 지키는 구조를 짜는 게 이 강의의 주제예요.</p>
+
+<h3>동작 흐름</h3>
+<p>발표자는 화이트보드에 브라우저와 웹 서버를 그려 놓고 순서대로 번호를 매겨요. 다섯 단계를 정리하면 아래 그림과 같아요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  participant B as 브라우저
+  participant S as 웹 서버
+  B->>S: ① 리소스 요청 (HTML, CSS, JS, 이미지)
+  S-->>B: 응답 + 캐시 사용 여부, 유효 기간, 재검증 방법
+  Note over B: ② 사본 저장 (메모리 또는 디스크)
+  Note over B: ③ 다음 요청은 사본 재사용, 서버 요청 없음
+  Note over B: ④ 유효 기간 만료 또는 재검증 설정
+  B->>S: ⑤ 재검증 요청 (ETag 또는 수정 시각)
+  alt 바뀌지 않음
+    S-->>B: 304 Not Modified (본문 없음)
+  else 바뀜
+    S-->>B: 200 OK + 새 리소스
+  end
+</pre>
+  <figcaption>304 응답은 본문이 없어서 훨씬 가벼워요. 다음 재검증 전까지는 다시 로컬 사본을 써요.</figcaption>
+</figure>
+<p>화이트보드의 완성본을 보면 아래쪽 빨간 글씨로 설정이 두 갈래로 나뉘어 있어요. ① 유효 기간은 Cache-Control(HTTP/1.1)과 Expires(HTTP/1.0), ② 재검증 기준은 ETag(태그 기준)와 Last-Modified(시간 기준)예요. 사본을 메모리에 둘지 디스크에 둘지는 브라우저가 리소스 크기나 변경 가능성을 보고 알아서 정해요.</p>
+<figure>
+  <img src="assets/frame-2458.png" alt="브라우저와 웹 서버 사이에 리소스 요청, 응답, 로컬 사본 저장, 신선도 체크, 재검증 요청과 304, 200 응답을 손으로 그린 화이트보드">
+  <figcaption>
+    손글씨라 읽기 어렵지만, 아래 빨간 두 묶음(유효기간, 재검증 기준)이 이 강의의 뼈대예요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=1498s" target="_blank" rel="noopener">영상 24:58에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>① 유효 기간: Cache-Control과 Expires</h3>
+<p>왼쪽 카드의 Cache-Control은 HTTP/1.1부터 지금까지 표준이에요. <code>max-age=3600</code>처럼 받은 시점부터 몇 초 동안 유지할지 상대 시간으로 적어요. 오른쪽 Expires는 HTTP/1.0 시절 방식이고, 특정 날짜·시각까지라는 절대 시간을 써요. 지금도 둘 다 쓸 수 있지만, 슬라이드 아래 문장처럼 Cache-Control이 있으면 Expires는 무시돼요.</p>
+<figure>
+  <img src="assets/frame-2529.png" alt="Cache-Control(HTTP/1.1)과 Expires(HTTP/1.0)를 나란히 비교한 슬라이드와 각각의 응답 헤더 예시">
+  <figcaption>
+    max-age=3600은 한 시간이에요. 새로 설정한다면 Cache-Control 하나로 충분해요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=1529s" target="_blank" rel="noopener">영상 25:29에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>② 재검증: ETag와 Last-Modified</h3>
+<p>재검증은 <span class="term" data-term="조건부 요청" data-en="Conditional request" data-desc="브라우저가 가진 사본의 ETag나 수정 시각을 함께 보내며 &#x27;바뀌었으면 새로 달라&#x27;고 묻는 요청이에요. 안 바뀌었으면 본문 없는 304만 와서 가벼워요." data-g="4">조건부 요청</span>으로 해요. 표의 가운데 열이 내용 기준(ETag)이에요. 서버가 <code>ETag: "abc123"</code>을 주면, 브라우저는 재검증 때 <code>If-None-Match: "abc123"</code>으로 되물어요. 오른쪽 열은 시간 기준으로, <code>Last-Modified</code>로 받은 날짜를 <code>If-Modified-Since</code>로 돌려보내요. 값이 같으면 본문 없이 304가 와요. 둘 다 있으면 ETag가 우선이에요. 슬라이드 아래 메모처럼 ETag는 내용이 바뀌면 바로 달라져서 시간 기준보다 정밀해요.</p>
+<figure>
+  <img src="assets/frame-2659.png" alt="내용 기준 ETag와 시간 기준 Last-Modified의 응답 헤더, 재요청 헤더, 매칭 결과를 비교한 표">
+  <figcaption>
+    재검증 요청에는 처음에 받은 값을 그대로 돌려보내요. 같으면 304, 다르면 새 파일이에요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=1619s" target="_blank" rel="noopener">영상 26:59에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>Cache-Control 옵션 총정리</h3>
+<p>왼쪽 카드는 '어디에 저장하나'예요. <code>public</code>은 브라우저뿐 아니라 CDN·프록시에도 저장 가능, <code>private</code>는 개인화된 응답이라 브라우저에만, <code>no-store</code>는 아예 저장 금지예요. 오른쪽 카드는 '언제 재검증하나'예요. 이름이 헷갈리는 <code>no-cache</code>는 캐시를 쓰지 말라는 게 아니라 저장은 하되 쓸 때마다 재검증하라는 뜻이에요. <code>must-revalidate</code>는 만료되면 반드시 재검증하라는 옵션이에요. 프록시나 CDN 같은 공유 캐시는 원래 서버 연결이 실패하면 오래된 응답이라도 내주는 경우가 있는데, 그것까지 막아요. <code>immutable</code>은 유효 기간 동안 절대 안 바뀌니 재검증 자체를 하지 말라는 뜻이에요. 강력 새로고침처럼 브라우저가 기간 안에도 재검증을 보내는 경우를 막아 줘요.</p>
+<figure>
+  <img src="assets/frame-2759.png" alt="public, private, no-store와 no-cache, must-revalidate, immutable을 두 카드로 정리하고 아래에 Cache-Control: private, no-cache, must-revalidate 조합 예시를 둔 슬라이드">
+  <figcaption>
+    옵션은 쉼표로 조합해요. 아래 예시는 개인화 응답을 매번 확인하며 쓰는 설정이에요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=1679s" target="_blank" rel="noopener">영상 27:59에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>모질라 개발자 문서도 같은 구분을 해요. <code>no-cache</code>는 저장은 허용하지만 재사용할 때마다 원 서버에 확인해야 한다는 뜻이고, <code>immutable</code>은 유효 기간 동안 응답이 바뀌지 않는다는 표시예요. 이 문서는 정적 리소스에 버전이나 해시를 URL에 넣고 파일 자체는 고치지 않는 방식을 '현대적인 모범 사례'로 소개하고, 예시로 <code>public, max-age=604800, immutable</code>을 들어요.</p>
+  <p class="cite">출처: <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control" target="_blank" rel="noopener">MDN — Cache-Control</a></p>
+</aside>
+
+<h3>네이버는 어떻게 설정했을까요</h3>
+<p>발표자는 모바일 네이버를 열고 개발자 도구의 Network 탭에서 Cache-Control 열을 확대해요. 대부분 <code>max-age=31536000</code>이고 중간에 2592000, 7776000이 섞여 있어요. 계산기로 바꿔 보면 31536000초는 1년, 2592000초는 30일이에요. ETag 열은 거의 비어 있고 Last-Modified만 채워져 있어요. 반면 index 페이지 한 줄은 <code>no-cache, no-store, must-revalidate</code>를 모두 걸어 뒀어요. <code>no-store</code> 하나로도 되지만 안전장치를 겹겹이 둔 거예요.</p>
+<figure>
+  <img src="assets/frame-3025.png" alt="개발자 도구 Network 탭에서 확대한 Cache-Control, ETag, Last-Modified 열. 대부분 max-age=31536000이고 ETag는 비어 있음">
+  <figcaption>
+    무거운 정적 파일은 1년씩 캐시해요. 새로고침하면 이 파일들이 memory cache, disk cache에서 바로 나와요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=1825s" target="_blank" rel="noopener">영상 30:25에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>요즘 대세는 핑거프린팅</h3>
+<p>네이버 파일명에는 의미 없는 숫자와 문자가 붙어 있었죠. 이게 파일 지문, 즉 <span class="term" data-term="핑거프린팅" data-en="Fingerprinting (cache busting)" data-desc="파일 내용의 해시를 파일명에 넣는 방식이에요. 내용이 바뀌면 이름이 바뀌어 새 리소스가 되니, 캐시 기간을 길게 잡아도 업데이트가 바로 반영돼요." data-g="5">핑거프린팅</span>이에요. 슬라이드처럼 빌드할 때 <code>main.js</code>를 <code>main.a1b2c3.js</code>로 바꿔요. 내용이 바뀌면 파일명이 바뀌고, 파일명이 다르면 브라우저는 완전히 다른 리소스로 인식해요. 재검증 메커니즘이 필요 없고, 배포하는 즉시 새 파일이 반영돼요.</p>
+<figure>
+  <img src="assets/frame-3359.png" alt="파일 내용의 해시를 파일명에 박아 main.js가 main.a1b2c3.js가 되는 핑거프린팅 설명 슬라이드">
+  <figcaption>
+    파일명이 곧 버전이에요. 그래서 max-age를 1년처럼 길게 잡아도 안전해요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=2039s" target="_blank" rel="noopener">영상 33:59에서 보기</a>
+  </figcaption>
+</figure>
+<p>마지막 슬라이드가 실무 조합이에요. 왼쪽, 이름이 고정된 <code>index.html</code>은 <code>no-cache</code>로 매번 재검증해서 304나 새 응답을 받아요. 오른쪽, JS·CSS·이미지 같은 정적 자산은 핑거프린팅을 적용하고 <code>immutable, max-age=31536000</code>을 걸어 서버에 묻지 않고 100% 로컬 캐시를 써요. 새 <code>index.html</code>이 새 파일명을 가리키니 업데이트도 바로 반영돼요.</p>
+<figure>
+  <img src="assets/frame-3459.png" alt="일반적인 HTML은 no-cache, 정적 자산은 Fingerprinting과 immutable, max-age=31536000을 쓰라는 두 카드">
+  <figcaption>
+    바뀔 수 있는 진입점(index.html)은 짧게, 이름이 곧 버전인 자산은 길게 캐시하는 조합이에요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=2099s" target="_blank" rel="noopener">영상 34:59에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=2136s" target="_blank" rel="noopener">35:36</a>
+  <h2>메모리 계층과 레이턴시 숫자</h2>
+<p>세 번째 강의는 캐시가 왜 효과가 있는지를 하드웨어 숫자로 보여 줘요. CPU(Central Processing Unit)는 아주 빠르고 디스크는 아주 느려요. 그 간극을 메우려고 저장 장치를 여러 층으로 둔 게 메모리 계층 구조예요. 피라미드 위쪽(CPU 레지스터, L1, L2/L3 캐시)으로 갈수록 빠르지만 작고 비싸고, 아래쪽(RAM, SSD, HDD(Hard Disk Drive))으로 갈수록 크고 싸지만 느려요.</p>
+<figure>
+  <img src="assets/frame-3605.png" alt="CPU 레지스터, L1 캐시, L2/L3 캐시, 메인 메모리(RAM), SSD(NVMe/SATA), HDD를 위에서 아래로 쌓은 피라미드">
+  <figcaption>
+    속도·용량·비용을 한꺼번에 가질 수 없어서 층을 나눠요. 자주 쓰는 데이터는 위로, 큰 데이터는 아래로 둬요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=2165s" target="_blank" rel="noopener">영상 36:05에서 보기</a>
+  </figcaption>
+</figure>
+<p>그래서 빨리 조회해야 할 것은 CPU 가까이, 크고 자주 안 보는 것은 디스크 쪽에 둬요. 레지스터와 L2 캐시가 빠르다고 전부 그걸로 만들 수는 없고, 하드디스크가 싸다고 전부 하드디스크로 만들면 속도가 안 나오니까요.</p>
+
+<h3>계층별 레이턴시</h3>
+<p>표의 노란 줄이 기준인 RAM(약 100ns)이에요. 그 아래로 NVMe SSD 약 20µs, SATA(Serial Advanced Technology Attachment) SSD 약 100µs, HDD 약 5ms예요. 나노초(ns), 마이크로초(µs), 밀리초(ms)는 각각 1,000배씩 차이 나요. 그래서 오른쪽 열을 보면 NVMe도 RAM보다 약 200배, SATA SSD는 약 1,000배, HDD는 약 5만 배 느려요. 슬라이드 아래쪽에 적힌 대로 이 숫자는 Peter Norvig, Jeff Dean, Colin Scott가 정리한 자료를 기반으로 한 대표값이고, 실제 하드웨어와 접근 패턴에 따라 달라져요.</p>
+<figure>
+  <img src="assets/frame-3720.png" alt="CPU 레지스터부터 HDD까지 계층별 레이턴시와 RAM 대비 배수를 적은 표. 메인 메모리 줄이 노란색으로 강조됨">
+  <figcaption>
+    단위 자체가 바뀌는 격차예요. 하드웨어가 발전해도 이 상대적 격차는 그대로 유지돼 왔어요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=2240s" target="_blank" rel="noopener">영상 37:20에서 보기</a>
+  </figcaption>
+</figure>
+<p>나노초는 감이 잘 안 오니 L1 캐시 1ns를 1초로 늘려 봐요. 표의 오른쪽 열처럼 RAM은 1분 40초, NVMe SSD는 5시간 30분, SATA SSD는 28시간, HDD는 약 2개월이에요. CPU 입장에서 RAM을 기다리는 건 1~2분이지만 HDD를 기다리는 건 두 달 휴가예요.</p>
+<figure>
+  <img src="assets/frame-3838.png" alt="L1 캐시 1ns를 1초로 환산하면 RAM 1분 40초, NVMe SSD 5시간 30분, SATA SSD 28시간, HDD 약 2개월이라는 표">
+  <figcaption>
+    숫자를 사람의 시간으로 바꾸면 계층 간 차이가 확 와닿아요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=2318s" target="_blank" rel="noopener">영상 38:38에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>랜덤 읽기와 순차 읽기는 달라요</h3>
+<p>앞의 숫자는 모두 랜덤 액세스 기준이에요. 왼쪽 카드의 랜덤 액세스는 흩어진 위치로 매번 새로 점프해서 <span class="term" data-term="레이턴시" data-en="Latency" data-desc="요청을 보낸 뒤 응답이 오기까지 걸리는 시간이에요. 데이터 크기와 상관없이 한 번 접근하는 데 드는 고정 비용이라, 크기에 비례하는 처리량과 구분해야 해요." data-g="6">레이턴시</span>(NVMe 약 20µs/회)가 성능을 좌우해요. 오른쪽 순차 읽기는 한 번 접근한 뒤 쭉 스트리밍해서 처리량(NVMe 초당 수 GB(Gigabyte))이 좌우해요. 같은 NVMe SSD라도 작은 랜덤 읽기 1만 번과 큰 파일 연속 읽기는 성능이 수십 배 차이 나요. 발표자는 DB 인덱스 설계가 중요한 이유가 여기 있다고 해요.</p>
+<figure>
+  <img src="assets/frame-3904.png" alt="랜덤 액세스는 레이턴시가 지배(NVMe 약 20µs/회), 순차 읽기는 처리량이 지배(NVMe 수 GB/s)라고 비교한 두 카드">
+  <figcaption>
+    디스크 성능을 말할 때는 레이턴시와 처리량 중 어느 쪽이 문제인지부터 구분해야 해요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=2344s" target="_blank" rel="noopener">영상 39:04에서 보기</a>
+  </figcaption>
+</figure>
+<p>실무에서 자주 하는 오해도 짚어요. "최신 SSD 썼으니 충분히 빠르겠지"라는 생각이에요. NVMe가 많이 빨라진 건 맞지만 여전히 RAM보다 약 200배 느려요. 그래서 SSD로 바꿨다고 버퍼 캐시나 Redis 같은 메모리 캐시가 필요 없어지지 않아요. 자주 참조하는 데이터를 위쪽 계층, 즉 메모리에 두는 게 성능의 핵심이에요.</p>
+<figure>
+  <img src="assets/frame-3935.png" alt="'NVMe SSD도 RAM보다 약 200배 느리다'는 오해 카드와 계층 간 격차, 위쪽 계층 배치, 상대적 격차 유지라는 기억할 원칙 세 줄">
+  <figcaption>
+    앞의 두 강의에서 메모리 캐시를 쓰라고 한 근거가 바로 이 격차예요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=2375s" target="_blank" rel="noopener">영상 39:35에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=2446s" target="_blank" rel="noopener">40:46</a>
+  <h2>읽기 성능과 쓰기 성능, 레이어로 나눠 답하기</h2>
+<p>네 번째 강의는 면접 질문 하나로 시작해요. "성능 향상 전략을 읽기와 쓰기로 나눠서 말해 보세요." 정답이 정해진 문제가 아니라서 답하는 방식에서 역량이 드러나요.</p>
+
+<h3>키워드를 나열하면 감점이에요</h3>
+<p>슬라이드의 말풍선 세 개가 흔한 답이에요. "캐시 쓰면 빨라지고요", "인덱스 걸고... 샤딩도 하고...", "레디스? 카프카? 그런 거 쓰면 됩니다". 발표자는 이렇게 키워드만 던지면 감점이라고 해요. 어느 레이어에서 무엇을 왜 쓰는지 구조적으로 말해야 해요.</p>
+<figure>
+  <img src="assets/frame-4145.png" alt="캐시, 인덱스와 샤딩, 레디스와 카프카를 두서없이 나열하는 답변 세 개와 '키워드만 던지면 감점'이라는 경고">
+  <figcaption>
+    내용이 같아도 분류 없이 늘어놓으면 깊이가 안 보여요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=2505s" target="_blank" rel="noopener">영상 41:45에서 보기</a>
+  </figcaption>
+</figure>
+<p>추천하는 방법은 Layered Approach예요. 요청이 들어오고 나가는 Network/Web, 중간 처리를 하는 Application, 저장소인 Database로 나눠 말해요. 필요하면 전체를 아우르는 아키텍처 레이어를 더할 수도 있어요. 발표자는 이렇게 나누면 내용이 조금 부실해도 체계적이고 고민한 사람처럼 보이고, 본인 기억에도 오래 남는다고 해요.</p>
+<figure>
+  <img src="assets/frame-4246.png" alt="Network/Web(입구), Application(중간 처리), Database(저장소)를 화살표로 이은 추천 답변 전략 슬라이드">
+  <figcaption>
+    질문을 받으면 먼저 레이어부터 나누고, 그 안을 채우는 순서로 답해요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=2566s" target="_blank" rel="noopener">영상 42:46에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>읽기 최적화</h3>
+<p>세 칸 중 Network/Web에는 HTTP Cache, CDN, HTTP/2·HTTP/3가 있어요. 브라우저가 요청 자체를 안 하게 만드는 게 첫째고, CDN이 가장 강력해요. 요즘은 API 같은 동적 리소스도 CDN을 태우는 경우가 많아요. HTTP/2는 거의 다 쓰고, HTTP/3는 브라우저는 지원하지만 서버·네트워크 장비 호환성이 아직 덜 갖춰졌다고 봐요. App/Cache에는 Redis 같은 분산 캐시와 로컬 캐시가 있어요. Database에는 같은 데이터를 여러 서버에 복제해 읽기를 나누는 레플리케이션, 인덱싱, 테이블을 날짜·지역 등으로 나누는 파티셔닝, 미리 계산해 둔 통계 테이블이 있어요.</p>
+<figure>
+  <img src="assets/frame-4416.png" alt="읽기 최적화를 Network/Web(HTTP Cache, CDN, HTTP/2·3), App/Cache(Redis, Local Cache), Database(Replication, Indexing, Partitioning, 미리 계산된 결과) 세 칸으로 나눈 슬라이드">
+  <figcaption>
+    발표자는 대용량일수록 병목이 조회에서 나는 경우가 많아 인덱스 튜닝 효과가 크다고 강조해요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=2656s" target="_blank" rel="noopener">영상 44:16에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>쓰기 최적화</h3>
+<p>쓰기는 레이어 이름이 조금 달라요. App/Broker에는 Message Queue(Kafka)와 비동기 처리가 있어요. 쓰기 요청을 DB에 바로 꽂지 않고 큐에 쌓아 두고 사용자에게는 빨리 응답해요. DB Arch에는 데이터를 여러 노드로 나눠 쓰기 부하를 분산하는 샤딩, 파티셔닝, <span class="term" data-term="최종 일관성" data-en="Eventual consistency" data-desc="지금 당장은 노드마다 값이 다를 수 있지만 시간이 지나면 같아지는 성질이에요. 강한 일관성을 잠시 포기하는 대신 쓰기 성능과 확장성을 얻어요." data-g="7">최종 일관성</span>이 있어요. 최종 일관성은 강한 일관성을 잠시 내려놓는 대신 성능과 확장성을 얻는 트레이드오프예요. DB Internal에는 여러 건을 묶어 디스크·네트워크 왕복을 줄이는 배치 쓰기와, 불필요한 인덱스를 줄이는 인덱스 최적화가 있어요.</p>
+<figure>
+  <img src="assets/frame-4716.png" alt="쓰기 최적화를 App/Broker(Message Queue, 비동기 처리), DB Arch(Sharding, Partitioning, Eventual Consistency), DB Internal(Batch Write, 인덱스 최적화) 세 칸으로 나눈 슬라이드">
+  <figcaption>
+    읽기 쪽 인덱스가 쓰기 쪽에서는 '줄여야 할 비용'으로 다시 나와요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=2836s" target="_blank" rel="noopener">영상 47:16에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>튜닝 전에 따질 세 가지</h3>
+<p>발표자가 다른 회사 시스템을 튜닝해 보며 얻은 기준이에요. 첫째 줄, 병목 찾기가 최우선이에요. 20%의 병목이 80%의 성능을 잡아먹는 느낌이라서, 추측하지 말고 슬로우 쿼리나 APM(Application Performance Monitoring)으로 측정해야 해요. 둘째 줄, 트레이드오프에 은탄환은 없어요. 대표 예가 인덱스예요. 탐색 경로를 줄여 읽기를 빠르게 하지만, 쓸 때마다 인덱스를 갱신하고 정렬해야 해서 쓰기는 느려져요. 셋째 줄, 읽기·쓰기 비율을 봐요. 대부분 서비스는 읽기가 압도적이라 읽기 최적화 효과가 커요.</p>
+<figure>
+  <img src="assets/frame-4920.png" alt="병목 찾기가 최우선, 트레이드오프 고려, Read:Write 비율 고려라는 성능 튜닝 전 고려사항 세 줄">
+  <figcaption>
+    이 세 줄을 답변 끝에 덧붙이면 모범 답안이 돼요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=2960s" target="_blank" rel="noopener">영상 49:20에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>모범 답안과 꼬리 질문</h3>
+<p>모범 답안은 세 문장이에요. 읽기는 Web(CDN), App(캐싱), DB(복제·인덱싱) 계층별로 최적화하고, 쓰기는 App(비동기 큐), DB(샤딩·배치 처리)로 부하를 분산하고, 무엇보다 튜닝 전에 병목을 파악하고 읽기·쓰기 비율에 따른 트레이드오프를 고려한다는 거예요.</p>
+<figure>
+  <img src="assets/frame-5216.png" alt="읽기는 계층별 최적화, 쓰기는 부하 분산, 튜닝 전 병목 파악과 트레이드오프 고려라는 세 문장짜리 100점짜리 모범 답안">
+  <figcaption>
+    레이어 분류, 구체적 기법, 판단 기준까지 세 층이 다 들어 있어요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=3136s" target="_blank" rel="noopener">영상 52:16에서 보기</a>
+  </figcaption>
+</figure>
+<p>답을 잘하면 꼬리 질문이 따라와요. 레플리케이션 지연으로 마스터와 슬레이브 데이터가 안 맞을 때 어떻게 하나요? CQRS(Command Query Responsibility Segregation) 패턴은 무엇인가요(쓰기와 읽기의 책임을 나누는 아키텍처)? 캐시 전략 Write-Back과 Write-Through의 차이는(쓰기 성능 대 데이터 일관성)? 영상은 답을 주지 않고 직접 찾아보라고 해요.</p>
+<figure>
+  <img src="assets/frame-5246.png" alt="Replication Lag 해결, CQRS 패턴, Write-Back과 Write-Through의 차이라는 꼬리 질문 세 개">
+  <figcaption>
+    세 질문 모두 '성능과 일관성 사이의 균형'을 묻고 있어요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=3166s" target="_blank" rel="noopener">영상 52:46에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=3211s" target="_blank" rel="noopener">53:31</a>
+  <h2>캐시와 메시지 큐, 언제 무엇을 쓸까요</h2>
+<p>다섯 번째 강의도 면접 질문이에요. "트래픽이 폭주해서 서버가 느려졌습니다. 캐시와 MQ 중 무엇을 도입하시겠습니까?"</p>
+<p>슬라이드의 두 답, "Redis가 빠르니까 캐시를 쓰겠습니다", "Kafka가 핫하니까 도입하면 되지 않을까요?"는 지엽적인 답이에요. 발표자는 두 가지를 지적해요. Redis와 Kafka는 캐시와 MQ(Message Queue)라는 개념을 구현한 제품 이름일 뿐이니 개념을 먼저 말해야 하고, 원인(병목)을 먼저 찾아야 처방을 고를 수 있어요. 읽기가 문제인지 쓰기가 문제인지에 따라 답이 달라지니까요.</p>
+<figure>
+  <img src="assets/frame-5406.png" alt="Redis가 빠르니 캐시를 쓰겠다, Kafka가 핫하니 도입하자는 두 답변과 '원인(병목)을 먼저 찾아야 한다'는 결론">
+  <figcaption>
+    제품 이름부터 말하는 습관을 버리고, 병목 → 개념 → 제품 순서로 답해요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=3246s" target="_blank" rel="noopener">영상 54:06에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>캐시는 읽기, 메시지 큐는 쓰기</h3>
+<p>캐시의 핵심은 "똑같은 일 또 하지 마"예요. 자주 찾는 데이터나 복잡한 계산 결과를 빠른 저장소에 두고 재사용해요. 주문마다 새로 요리하지 않고 미리 만들어 둔 음식을 집어 가는 뷔페와 같아요. 메시지 큐의 핵심은 "나중에 해"와 디커플링이에요. 요청을 대기열에 넣고 비동기로 처리하면서 요청한 쪽에는 바로 응답해요. 맛집 대기표처럼 일단 접수만 받고 손님을 보내면 새 손님을 계속 받을 수 있어요. 덤으로 시스템 사이의 결합도도 낮아져요.</p>
+<p>둘의 자리는 시스템 구조 슬라이드에 나와요. 왼쪽 읽기 경로에서는 캐시(Redis)가 User와 DB 사이, 즉 DB 앞단에 서서 DB 부하를 막아요. 오른쪽 쓰기 경로에서는 MQ(Kafka)가 API Server와 Worker 사이에 서서 쓰기 작업을 비동기로 넘겨요. 워커는 큐에서 꺼낸 일로 DB에 저장하거나 알림을 보내거나 외부 시스템을 불러요.</p>
+<figure>
+  <img src="assets/frame-5650.png" alt="왼쪽 Read Path는 User, Cache(Redis), DB 순서, 오른쪽 Write Path는 User, API Server, MQ(Kafka), Worker/DB 순서로 쌓은 시스템 구조 슬라이드">
+  <figcaption>
+    캐시는 DB 앞, MQ는 API와 워커 사이예요. 위치만 기억해도 역할이 구분돼요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=3410s" target="_blank" rel="noopener">영상 56:50에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>각각 어떻게 쓰나요</h3>
+<p>캐시의 표준 패턴은 Look-Aside예요. 슬라이드의 세 줄 그대로, 데이터가 캐시에 있는지 먼저 보고, 있으면(히트) 바로 반환하고, 없으면(미스) DB에서 조회해 캐시에 저장한 뒤 반환해요. 읽기 요청이 많은 서비스의 기본형이에요.</p>
+<figure>
+  <img src="assets/frame-5736.png" alt="Look Aside 전략: 캐시에 있는지 확인, 있으면 바로 반환, 없으면 DB에서 조회해 캐시에 저장">
+  <figcaption>
+    미스가 난 요청이 다음 요청을 위해 캐시를 채워 둬요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=3456s" target="_blank" rel="noopener">영상 57:36에서 보기</a>
+  </figcaption>
+</figure>
+<p>MQ는 Async Worker 패턴이에요. 클라이언트 요청을 받으면 MQ에 넣고 바로 OK를 응답해요. 백그라운드 워커가 MQ에서 메시지를 하나씩 꺼내 이메일 발송, 썸네일 생성 같은 무거운 일을 처리해요. 슬라이드 아래 메모처럼 시스템 과부하를 막는 스로틀링 효과도 있어요.</p>
+<figure>
+  <img src="assets/frame-5811.png" alt="MQ 전략 Async Worker: 요청을 MQ에 넣고 바로 응답, 백그라운드 워커가 메시지를 꺼냄, 무거운 작업을 순차 처리">
+  <figcaption>
+    사용자는 빨리 응답받고, 무거운 일은 워커가 자기 속도로 처리해요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=3491s" target="_blank" rel="noopener">영상 58:11에서 보기</a>
+  </figcaption>
+</figure>
+<p>한 눈에 정리 표는 네 줄이에요. 주 목적은 캐시가 읽기 성능, MQ가 쓰기·로직 성능이에요. 핵심 원리는 재사용 대 비동기·버퍼링, 위치는 DB 앞단 대 API 서버와 워커 사이, 대표 기술은 Redis·Memcached 대 Kafka·RabbitMQ·SQS(Amazon Simple Queue Service)예요. 발표자는 진단도 단순하게 정리해요. 조회(select) 쿼리가 너무 많아 DB가 느리면 캐시, 주문·결제처럼 insert/update가 복잡해 느리면 MQ예요.</p>
+<figure>
+  <img src="assets/frame-5846.png" alt="Cache와 Message Queue를 주 목적, 핵심 원리, 위치, 대표 기술 네 기준으로 비교한 표">
+  <figcaption>
+    표의 '위치' 줄이 앞의 시스템 구조 그림과 그대로 대응해요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=3526s" target="_blank" rel="noopener">영상 58:46에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>도입 전에 따질 것</h3>
+<p>도입한다고 모든 게 해결되지는 않아요. 왼쪽 카드의 캐시는 DB와 캐시 값이 달라질 수 있는 데이터 정합성(Stale Data) 문제와, 만료 시간·갱신 정책을 관리하는 비용이 있어요. 오른쪽 카드의 MQ는 비동기라서 에러 처리가 어려워지고 전체 흐름 설계가 복잡해지며, 처리가 밀리면 사용자가 결과를 늦게 받아요.</p>
+<figure>
+  <img src="assets/frame-5921.png" alt="Cache 고려사항(데이터 정합성, 관리 비용)과 MQ 고려사항(복잡도 증가, 실시간성)을 나눈 Trade-off 슬라이드">
+  <figcaption>
+    캐시는 '틀린 값', MQ는 '늦은 값'을 감수하는 선택이에요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=3561s" target="_blank" rel="noopener">영상 59:21에서 보기</a>
+  </figcaption>
+</figure>
+<p>모범 답안은 이래요. 먼저 APM 같은 모니터링 툴로 병목이 읽기인지 쓰기인지 파악하겠다. 조회 쿼리 부하가 원인이면 Redis 같은 캐시로 DB 부하를 줄이겠다. 트래픽 폭주로 처리가 지연되는 거라면 Kafka 같은 MQ로 작업을 비동기로 바꾸고 부하를 조절하겠다. 꼬리 질문으로는 비동기 처리 시 사용자에게 완료 응답을 어떻게 주는지, 캐시 스탬피드가 무엇인지, Redis는 캐시인지 MQ인지가 나올 수 있어요.</p>
+<figure>
+  <img src="assets/frame-5956.png" alt="모니터링으로 병목 파악, 조회 부하면 Cache(Redis), 트래픽 폭주로 처리 지연이면 MQ(Kafka)라는 세 줄짜리 모범 답안">
+  <figcaption>
+    앞 강의와 같은 구조예요. 병목 진단이 먼저, 처방은 그다음이에요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=3596s" target="_blank" rel="noopener">영상 59:56에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=3628s" target="_blank" rel="noopener">1:00:28</a>
+  <h2>싱글 스레드 Redis가 빠른 이유</h2>
+<p>여섯 번째 강의부터는 Redis 이야기예요. 출발점은 이 질문이에요. "Redis는 싱글 스레드인데 왜 빠를까? 서버 코어가 8개인데 하나만 쓰면 나머지 7개는 노는 거잖아?" 흔한 답은 "메모리 기반이라서", "락이 없어서"예요. 발표자는 맞는 말이지만 전부는 아니라고 해요.</p>
+<p>슬라이드 오른쪽 위 숫자가 반박의 근거예요. Redis 공식 벤치마크로 처리량은 초당 수만~수백만 건, 평균 응답 시간은 1ms 미만이에요. 파이프라인 없이는 초당 약 7만~18만 건, 파이프라인을 쓰면 <code>GET</code> 181만·<code>SET</code> 153만 건이에요. 그래서 핵심 명제는 "싱글 스레드<b>라서</b> 빠른 게 아니라, 싱글 스레드<b>여도</b> 빠르게 설계했다"예요. 맨 아래 카드처럼 Redis가 느려지는 건 대부분 스레드 구조가 아니라 O(N) 연산이나 너무 큰 단일 키 때문이에요.</p>
+<figure>
+  <img src="assets/frame-010158.png" alt="'싱글 스레드면 느린 거 아닌가요?'라는 질문과 처리량 수만~수백만 req/sec, 평균 응답 1ms 미만, 파이프라인 시 GET 181만·SET 153만이라는 벤치마크 수치">
+  <figcaption>
+    멀티코어를 쓰면 무조건 빠르다는 가정을 Redis는 정면으로 반박해요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=3718s" target="_blank" rel="noopener">영상 1:01:58에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>멀티스레드에는 비용이 따라요</h3>
+<p>스레드 여러 개가 공유 자원(Lock/Mutex, Shared Memory)에 달려들면 오른쪽 네 가지 비용이 생겨요. 스레드를 바꿀 때마다 레지스터·스택·캐시를 저장하고 복원하는 <span class="term" data-term="컨텍스트 스위칭" data-en="Context switching" data-desc="CPU가 실행 중인 스레드를 바꿀 때 레지스터와 스택 상태를 저장하고 복원하는 일이에요. 스레드가 많을수록 이 비용이 쌓여요." data-g="8">컨텍스트 스위칭</span>, 락을 얻으려고 기다리는 시간, 코어마다 가진 CPU 캐시를 맞추는 캐시 일관성 비용, 경쟁 상태(race condition)예요. 스레드를 늘리면 처리량이 정비례로 는다는 생각은 공유 자원이 없을 때만 맞아요.</p>
+<figure>
+  <img src="assets/frame-010328.png" alt="Thread 1부터 Thread N이 공유 자원(Lock/Mutex, Shared Memory)으로 몰리고 Context Switching, Lock 획득 대기, Cache Coherence, Race Condition 비용이 생기는 그림">
+  <figcaption>
+    Redis는 처음부터 공유 자원 경쟁이 없는 구조로 설계했어요. 락이 없으면 대기도 없어요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=3808s" target="_blank" rel="noopener">영상 1:03:28에서 보기</a>
+  </figcaption>
+</figure>
+<p>Redis를 만든 antirez는 FAQ(Frequently Asked Questions)와 블로그에서 멀티스레드가 기술적으로 불가능했던 게 아니라 일부러 싱글 스레드를 택했다고 밝혔어요. 이유는 세 가지예요. 첫째, CPU는 병목이 아니었어요. 진짜 병목은 메모리 대역폭과 네트워크 I/O라서 코어를 더 써도 풀리지 않아요. <code>GET</code> 연산이 100ns 이하인데 뮤텍스 락이 최대 50ns라면 오버헤드가 연산의 절반이 될 수 있어요. 둘째, 단순함이 최우선이었어요. 락·데드락이 없다고 가정하면 코드가 근본적으로 단순해져요. 셋째, 얻을 것보다 잃을 것이 많았어요. 리스트 앞에서 빼는 스레드와 뒤에 넣는 스레드를 맞추려면 복잡한 코드가 필요해요. 대신 인스턴스를 여러 개 띄우는 수평 확장을 권해요.</p>
+
+<h3>빠른 이유 ① 인메모리</h3>
+<p>왼쪽 그림에서 전통적인 DB는 Application, Buffer Pool을 지나 디스크 I/O와 Storage까지 내려가요. 버퍼 풀이 있어도 기본은 디스크 구조예요. Redis는 Application에서 RAM으로 바로 가요. 오른쪽 숫자처럼 RAM 접근이 50~100ns인 반면 NVMe SSD는 20~200µs, SATA SSD는 약 0.5ms, HDD는 5~10ms예요. 아래 빨간 카드는 단점이에요. 재시작하면 데이터가 날아갈 수 있어서 RDB(Redis Database) 스냅샷과 AOF(Append Only File) 로그로 디스크에 보관하는 장치를 둬요.</p>
+<figure>
+  <img src="assets/frame-010628.png" alt="전통적인 DB는 Buffer Pool과 디스크 I/O를 거치고 Redis는 RAM으로 바로 접근하는 비교 그림과 RAM 50~100ns, NVMe 20~200µs, SATA SSD 약 0.5ms, HDD 5~10ms 수치">
+  <figcaption>
+    세 번째 강의의 메모리 계층 숫자가 여기서 Redis 설계의 근거로 다시 나와요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=3988s" target="_blank" rel="noopener">영상 1:06:28에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>빠른 이유 ② I/O 멀티플렉싱(epoll)</h3>
+<p>그림은 왼쪽에서 오른쪽으로 네 단계예요. ① 수만 개 클라이언트가 연결돼 있고, ② Redis는 각 소켓의 파일 디스크립터(fd)를 커널에 등록해요. ③ 커널의 epoll이 fd=3, fd=4는 기다리는 중, fd=5는 데이터가 도착해 <code>READY</code>라고 감시해요. ④ 싱글 스레드 <span class="term" data-term="이벤트 루프" data-en="Event loop" data-desc="준비된 이벤트를 받아 처리하고 다시 다음 이벤트를 기다리기를 반복하는 단일 실행 흐름이에요. Redis, Node.js, Nginx가 이 구조로 많은 연결을 다뤄요." data-g="10">이벤트 루프</span>는 epoll_wait()으로 준비된 fd만 받아 명령을 실행하고 응답한 뒤 다시 처음으로 돌아가요. 감시는 커널이 하니 Redis는 감시용 스레드가 필요 없어요.</p>
+<figure>
+  <img src="assets/frame-010758.png" alt="Client 1~N의 fd를 epoll에 등록하고, 데이터가 도착한 fd=5만 READY로 Event Loop에 넘겨 처리하는 I/O Multiplexing 그림">
+  <figcaption>
+    '읽기 준비'는 소켓 버퍼에 명령이 도착했다는 뜻이고, '쓰기 준비'는 응답을 담을 버퍼 공간이 있다는 뜻이에요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=4078s" target="_blank" rel="noopener">영상 1:07:58에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 식당으로 비유해요. 왼쪽 Blocking 방식은 웨이터(스레드)가 손님 1의 주문을 주방에 넣고 음식이 나올 때까지 기다려요. 그동안 손님 2, 3은 대기해요. 해결하려면 웨이터를 늘려야 해요. 오른쪽 epoll 방식은 웨이터가 한 명뿐이지만 모든 주문을 주방장(epoll)에게 넘기고 "다 된 것만 알려 주세요"라고 해요. 주방장이 "손님 2 요리 나왔어요"라고 하면 그것만 서빙해요.</p>
+<figure>
+  <img src="assets/frame-010930.png" alt="왼쪽은 웨이터가 손님 1 음식이 나올 때까지 대기해 손님 2·3이 기다리는 Blocking 방식, 오른쪽은 주방장(epoll)이 준비된 손님만 알려 주는 방식의 식당 비유">
+  <figcaption>
+    웨이터는 기다리지 않고 준비된 일만 해요. 이게 논블로킹 I/O와 <span class="term" data-term="I/O 멀티플렉싱" data-en="I/O multiplexing" data-desc="스레드 하나가 수많은 연결을 동시에 지켜보고, 읽거나 쓸 준비가 된 연결만 골라 처리하는 방식이에요. 리눅스에서는 epoll이 이 감시를 맡아요." data-g="9">I/O 멀티플렉싱</span>이에요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=4170s" target="_blank" rel="noopener">영상 1:09:30에서 보기</a>
+  </figcaption>
+</figure>
+<p>이 구조는 오래된 문제의 해법이기도 해요. 1999년 Dan Kegel이 "서버 한 대로 동시 연결 1만 개를 어떻게 처리할까"라는 <code>C10K</code> 문제를 던졌어요. 연결 하나에 스레드 하나를 붙이면 1만 연결은 1만 스레드라 메모리가 바닥나요. 이벤트 루프와 epoll이면 스레드 하나로 처리해요. 오른쪽 목록처럼 Node.js, Nginx, FastAPI도 같은 원리를 써요.</p>
+<figure>
+  <img src="assets/frame-011158.png" alt="C10K 문제(1999, Dan Kegel) 설명, 스레드 방식은 1만 커넥션에 1만 스레드로 메모리 고갈, 이벤트 루프는 1 스레드라는 비교와 같은 원리를 쓰는 Redis, Node.js, Nginx, FastAPI 목록">
+  <figcaption>
+    Redis만의 비법이 아니라 고성능 서버들의 공통 패턴이에요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=4318s" target="_blank" rel="noopener">영상 1:11:58에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>빠른 이유 ③ O(1) 자료구조</h3>
+<p>그림 왼쪽의 키(user:1001, session:abc, leaderboard 등)를 해시 함수에 넣으면 해시 테이블의 버킷 번호가 바로 나와요. 처음부터 훑을 필요 없이 해당 버킷으로 점프해서 오른쪽의 실제 값(String, Hash, Sorted Set)을 가리켜요. 그래서 키 조회가 O(1)이에요. 해시가 충돌하면 체이닝으로 해결해요.</p>
+<figure>
+  <img src="assets/frame-011228.png" alt="user:1001, session:abc 같은 키를 해시 함수로 bucket에 매핑하고 각 bucket의 포인터가 String, Hash, Sorted Set 값을 가리키는 해시 테이블 그림">
+  <figcaption>
+    키 공간 전체가 하나의 해시 테이블이라 <code>GET</code>, <code>SET</code> 모두 O(1)이에요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=4348s" target="_blank" rel="noopener">영상 1:12:28에서 보기</a>
+  </figcaption>
+</figure>
+<p>내부 타입도 대부분 상수 시간이에요. 표를 보면 String, Hash, Set, List의 대표 연산이 모두 O(1)이고 Sorted Set만 O(log N)이에요. 오른쪽 위 카드는 Sorted Set이 레드블랙 트리 대신 <span class="term" data-term="스킵 리스트" data-en="Skip list" data-desc="정렬된 연결 리스트 위에 듬성듬성 건너뛰는 층을 여러 개 얹은 자료구조예요. 평균 O(log N)으로 찾고 넣을 수 있고, 트리보다 구현이 단순해요." data-g="11">스킵 리스트</span>를 쓴 이유예요. 성능은 비슷한데 구현이 단순하고 범위 조회(<code>ZRANGE</code>)가 직관적이에요. antirez는 "성능 최적이 아닌 단순함을 선택했다"고 했어요.</p>
+<figure>
+  <img src="assets/frame-011258.png" alt="String, Hash, Set, List, Sorted Set의 내부 구현과 대표 연산, 복잡도를 정리한 표와 Skip List를 고른 이유, antirez의 말">
+  <figcaption>
+    표 맨 아래 Sorted Set이 일곱 번째 강의의 랭킹 벤치마크로 이어져요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=4378s" target="_blank" rel="noopener">영상 1:12:58에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>빠른 이유 ④ RESP 프로토콜</h3>
+<p>RESP는 Redis가 클라이언트와 주고받는 통신 규약이에요. 핵심은 "길이를 먼저 알려 주면 스캔할 필요가 없다"예요. 왼쪽 위 일반 방식(<code>SET,hello,world</code>)은 쉼표가 나올 때까지 한 글자씩 읽어야 하고, 크기를 모르니 버퍼를 미리 잡을 수 없어요. 아래 RESP 방식은 <code>*3</code>(인자 3개), <code>$3 SET</code>, <code>$5 hello</code>, <code>$5 world</code>처럼 길이를 앞에 붙여요. <code>$5</code>를 읽으면 정확히 5바이트만 읽으면 끝이에요. 오른쪽 위처럼 첫 1바이트(+, -, :, $, *)로 타입도 바로 정해져요.</p>
+<figure>
+  <img src="assets/frame-011358.png" alt="구분자를 스캔하는 일반 방식과 길이를 먼저 선언하는 RESP 방식(*3, $3 SET, $5 hello, $5 world) 비교, 첫 1바이트로 타입을 정하는 표">
+  <figcaption>
+    초당 100만 건을 처리하려면 명령 하나 파싱하는 시간까지 줄여야 해요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=4438s" target="_blank" rel="noopener">영상 1:13:58에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>빠른 이유 ⑤ 파이프라인</h3>
+<p>파이프라인은 여러 명령을 묶어 한 번에 보내는 기능이에요. 묶지 않으면 명령 하나 보내고 응답 받고, 또 보내고 받고를 반복하니 명령마다 네트워크 왕복 시간(RTT(Round-Trip Time))이 붙어요. 묶으면 한 번 보내고 한 번 받아요. 발표자가 든 숫자로 아래 그림을 그렸어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 270" role="img" aria-label="파이프라인 없이 명령 세 개를 따로 보내면 왕복이 세 번, 파이프라인으로 묶으면 왕복이 한 번">
+    <defs><marker id="arrow-pipe" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="160" y="22" text-anchor="middle">(a) 파이프라인 없이</text>
+    <text x="490" y="22" text-anchor="middle">(b) 파이프라인으로 묶기</text>
+    <rect class="box" x="20" y="36" width="100" height="30" rx="6"/><text x="70" y="56" text-anchor="middle">클라이언트</text>
+    <rect class="box accent" x="190" y="36" width="100" height="30" rx="6"/><text x="240" y="56" text-anchor="middle">Redis</text>
+    <path class="line dim" d="M70 66 V230"/><path class="line dim" d="M240 66 V230"/>
+    <path class="line" d="M72 84 L238 98" marker-end="url(#arrow-pipe)"/>
+    <path class="line" d="M238 104 L72 118" marker-end="url(#arrow-pipe)"/>
+    <path class="line" d="M72 134 L238 148" marker-end="url(#arrow-pipe)"/>
+    <path class="line" d="M238 154 L72 168" marker-end="url(#arrow-pipe)"/>
+    <path class="line" d="M72 184 L238 198" marker-end="url(#arrow-pipe)"/>
+    <path class="line" d="M238 204 L72 218" marker-end="url(#arrow-pipe)"/>
+    <text x="250" y="105" class="sub">RTT 1</text>
+    <text x="250" y="155" class="sub">RTT 2</text>
+    <text x="250" y="205" class="sub">RTT 3</text>
+    <rect class="box" x="350" y="36" width="100" height="30" rx="6"/><text x="400" y="56" text-anchor="middle">클라이언트</text>
+    <rect class="box accent" x="520" y="36" width="100" height="30" rx="6"/><text x="570" y="56" text-anchor="middle">Redis</text>
+    <path class="line dim" d="M400 66 V230"/><path class="line dim" d="M570 66 V230"/>
+    <path class="line hot" d="M402 100 L568 114" marker-end="url(#arrow-pipe)"/>
+    <text x="485" y="94" text-anchor="middle" class="sub">명령 3개를 한 번에</text>
+    <path class="line hot" d="M568 130 L402 144" marker-end="url(#arrow-pipe)"/>
+    <text x="485" y="162" text-anchor="middle" class="sub">결과도 한 번에</text>
+    <text x="160" y="256" text-anchor="middle" class="sub">RTT 1ms에서 명령 100개 → 100ms 이상</text>
+    <text x="490" y="256" text-anchor="middle" class="sub">100개를 묶으면 → 약 1ms</text>
+  </svg>
+  <figcaption>왕복 횟수가 명령 수에서 1로 줄어요. 공식 벤치마크에서 초당 10만 건 정도가 180만 건까지 오른 이유예요.</figcaption>
+</figure>
+<p>슬라이드는 주의점도 짚어요. 파이프라인은 네트워크 최적화일 뿐 원자성은 없어요. 원자적 실행은 마지막 강의의 <code>MULTI</code>/<code>EXEC</code>가 맡아요. 중간에 에러가 나도 나머지 명령은 계속 실행되고 롤백도 없어요.</p>
+<figure>
+  <img src="assets/frame-011558.png" alt="RTT 1ms 환경에서 명령 100개는 100ms 이상이지만 묶으면 약 1ms, Pipeline은 네트워크 최적화이고 MULTI/EXEC는 원자적 실행이라는 비교, 중간 에러 시 롤백 없음 주의">
+  <figcaption>
+    목적이 다른 두 기능을 헷갈리지 않는 게 중요해요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=4558s" target="_blank" rel="noopener">영상 1:15:58에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>지금도 싱글 스레드일까요</h3>
+<p>버전별로 보면 조금 달라졌어요. 왼쪽 위 1.x~3.x는 메인 스레드 하나가 I/O, 파싱, 실행, 응답을 전부 했어요. 4.0에서 bio.c 스레드가 생겨 <code>UNLINK</code>(비동기 삭제)와 AOF fsync 같은 느린 디스크 작업을 맡았어요. 그래서 수백만 건을 지워도 메인 스레드가 막히지 않아요. 6.0에서는 소켓 읽기·쓰기를 맡는 I/O 스레드를 N개 둘 수 있는 선택 옵션(<code>io-threads</code>)이 생겼어요. 오른쪽 위처럼 RDB 스냅샷과 AOF 재작성은 fork한 자식 프로세스가 다른 코어에서 해요.</p>
+<figure>
+  <img src="assets/frame-011658.png" alt="1.x~3.x 완전한 싱글 스레드, 4.0 bio.c 스레드 분리, 6.0 I/O 스레드 추가를 비교하고 '명령 실행은 1.x부터 지금까지 단 하나의 스레드'라는 원칙을 강조한 슬라이드">
+  <figcaption>
+    'Redis는 싱글 스레드'의 정확한 뜻은 프로세스 전체가 아니라 명령 실행 경로가 싱글 스레드라는 거예요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=4618s" target="_blank" rel="noopener">영상 1:16:58에서 보기</a>
+  </figcaption>
+</figure>
+<p>I/O 스레드는 클라이언트가 많거나 응답이 클 때 처리량을 30~60% 올릴 수 있지만, 클라이언트가 적고 명령이 가벼우면 컨텍스트 비용 때문에 오히려 느려질 수 있어요. 발표자는 코어 수보다 1~2개 적게, 예를 들어 8코어면 6이나 7로 시작해 벤치마크로 맞추라고 권해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Redis 공식 문서에 따르면 <code>UNLINK</code>는 <code>DEL</code>처럼 키를 지우지만 실제 메모리 회수는 다른 스레드에서 해서 블로킹하지 않아요. 키를 키 공간에서 '떼어 내기만' 하고 진짜 삭제는 나중에 비동기로 일어나서 이런 이름이 붙었어요. Redis 4.0.0부터 쓸 수 있어요.</p>
+  <p class="cite">출처: <a href="https://redis.io/docs/latest/commands/unlink/" target="_blank" rel="noopener">Redis 문서 — <code>UNLINK</code></a></p>
+</aside>
+
+<h3>Redis가 느려지는 진짜 이유</h3>
+<p>마지막 표가 실무 체크포인트예요. <code>KEYS *</code>는 O(N) 전체 스캔이라 서버 전체가 막혀요(<code>SCAN</code> 커서로 교체). 수십만 필드짜리 대형 Hash/List는 명령 처리가 늦어져요(키 샤딩·만료 정책). <code>SMEMBERS</code>로 대형 Set을 통째로 받으면 응답이 커져요(<code>SSCAN</code>). 한 키에 요청이 몰리는 Hot Key는 싱글 스레드를 직격해요(로컬 캐시 계층 추가). AOF를 매 쓰기마다 fsync하면 처리량이 급락하고(everysec 검토), maxmemory를 넘으면 에빅션으로 레이턴시가 튀어요(정책 명시와 용량 계획).</p>
+<figure>
+  <img src="assets/frame-011930.png" alt="KEYS * 사용, 대형 Hash/List, SMEMBERS, Hot Key 집중, AOF fsync always, 메모리 부족과 eviction을 원인·증상·대응으로 정리한 표">
+  <figcaption>
+    맨 아래 문장이 결론이에요. Redis 병목은 스레드 수가 아니라 거의 항상 O(N) 연산이나 대형 단일 키예요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=4770s" target="_blank" rel="noopener">영상 1:19:30에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=4800s" target="_blank" rel="noopener">1:20:00</a>
+  <h2>랭킹 조회: MySQL vs Redis와 실시간 랭킹 설계</h2>
+<p>일곱 번째 강의는 직접 돌려 보는 벤치마크예요. 게임 실시간 랭킹이나 포털 실시간 검색 순위처럼 '몇 등부터 몇 등까지'를 조회하는 기능을 MySQL과 Redis로 비교해요.</p>
+<p>왼쪽 MySQL 8.0 카드는 user_id, username, score 컬럼을 가진 테이블에 score 인덱스를 걸고 <code>ORDER BY score DESC LIMIT 10 OFFSET ...</code>으로 조회해요. 오른쪽 Redis 7.0 카드는 Sorted Set에 멤버(사용자)와 점수를 넣고 <code>ZREVRANGE</code>로 조회해요. 데이터는 100만 건이고, 500등 구간이면 501~510등 10명을 가져오는 식으로 90만 등까지 점점 깊이 내려가요.</p>
+<figure>
+  <img src="assets/frame-012020.png" alt="MySQL 8.0(score 인덱스, ORDER BY와 LIMIT OFFSET)과 Redis 7.0(Sorted Set, ZREVRANGE)을 나란히 놓고 데이터 수 1000000을 입력한 벤치마크 화면">
+  <figcaption>
+    같은 데이터, 같은 질문을 두 저장소에 던져요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=4820s" target="_blank" rel="noopener">영상 1:20:20에서 보기</a>
+  </figcaption>
+</figure>
+<p>결과 화면의 그래프에서 노란 선이 MySQL, 빨간 선이 Redis예요. 오프셋이 작을 때는 둘이 비슷해요. 5,000등을 넘어가면서 MySQL이 급격히 올라가고, Redis는 바닥에 붙어 거의 그대로예요. 왼쪽 표의 마지막 줄, 오프셋 90만에서 MySQL은 690ms, Redis는 1.9ms로 Redis가 약 354배 빨랐어요.</p>
+<figure>
+  <img src="assets/frame-012140.png" alt="오프셋별 MySQL과 Redis 응답 시간 표와 그래프. 오프셋 90만에서 MySQL 690ms, Redis 1.9ms로 354.4배 차이">
+  <figcaption>
+    오프셋이 작을 때는 2~3배, 깊어질수록 수백 배로 벌어져요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=4900s" target="_blank" rel="noopener">영상 1:21:40에서 보기</a>
+  </figcaption>
+</figure>
+<p>차이의 큰 이유는 메모리와 디스크보다 자료구조예요. MySQL은 인덱스가 있어도 오프셋 90만이면 앞의 90만 건을 세고 건너뛰어야 해요. Redis Sorted Set은 내부의 스킵 리스트로 90만 번째든 100만 번째든 바로 점프해요. 실무에서 페이지가 깊어지거나 랭킹 하위권을 볼 때 MySQL이 느려지는 이유가 이거예요. 발표자는 Sorted Set, List, Hash 같은 자료형을 비즈니스 요건에 맞게 고르면 큰 이점을 얻는다고 정리해요.</p>
+
+<h3>설계 퀴즈: 수십만 명의 실시간 랭킹</h3>
+<p>이어지는 강의는 면접 설계 질문이에요. "수십만 명 규모의 게임 랭킹을 실시간으로 보여 줘야 하고, 순위가 바뀌면 모든 클라이언트에게 즉시 알려야 합니다." 슬라이드 아래 다섯 칸이 풀어야 할 설계 포인트예요. 수십만 명 접속, 실시간 랭킹, 순위 조회, 실시간 알림, 병목이에요.</p>
+<figure>
+  <img src="assets/frame-012305.png" alt="수십만 명 규모의 게임 랭킹을 실시간으로 보여 주고 순위가 바뀌면 즉시 알려야 한다는 면접 질문과 수십만명 접속, 실시간 랭킹, 순위 조회, 실시간 알림, 병목 다섯 개의 설계 포인트">
+  <figcaption>
+    질문 하나에 서버 구조, 자료구조, 서버 간 통신, 클라이언트 푸시가 다 들어 있어요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=4985s" target="_blank" rel="noopener">영상 1:23:05에서 보기</a>
+  </figcaption>
+</figure>
+<p>수십만 명이면 서버 한 대로는 안 되니 먼저 로드밸런서와 서버 N대로 요청과 동시 접속을 나눠요. 그다음이 자료구조예요. 발표자는 좋은 아키텍트가 좋은 개발자인 이유가 플랫폼이 주는 자료구조를 알아야 해서라고 해요. 상위 N명, 내 순위, 내 앞뒤 순위, 점수 갱신이라는 요구사항의 답은 Redis Sorted Set이에요. 오른쪽 핵심 명령어처럼 <code>ZADD</code>로 넣고, <code>ZREVRANGE ... WITHSCORES</code>로 상위권을, <code>ZREVRANK</code>로 내 순위를, <code>ZRANGE</code> 범위로 내 근처를 뽑아요.</p>
+<figure>
+  <img src="assets/frame-012440.png" alt="랭킹 요구사항(상위 N명, 내 순위, 내 앞뒤 순위, 점수 갱신)의 답은 Sorted Set이라는 슬라이드와 ZADD, ZREVRANGE, ZREVRANK, ZRANGE 명령 예시">
+  <figcaption>
+    요구사항 네 개가 명령 네 개에 하나씩 대응해요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5080s" target="_blank" rel="noopener">영상 1:24:40에서 보기</a>
+  </figcaption>
+</figure>
+<p>점수가 바뀌면 다시 정렬해야 하죠. Sorted Set은 점수를 바꾸는 순간 정렬 상태를 유지해 줘요. 세 카드처럼 <code>ZINCRBY</code>로 점수를 올리고, 바로 <code>ZREVRANK</code>로 내 순위를, <code>ZREVRANGE 0 99</code>로 상위권을 확인할 수 있어요.</p>
+<figure>
+  <img src="assets/frame-012500.png" alt="점수 반영 ZINCRBY, 내 순위 확인 ZREVRANK, 상위권 조회 ZREVRANGE 세 카드와 정렬 유지, 랭킹 조회 빠름, 수십만 명도 현실적이라는 태그">
+  <figcaption>
+    정렬을 따로 다시 돌릴 필요가 없어요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5100s" target="_blank" rel="noopener">영상 1:25:00에서 보기</a>
+  </figcaption>
+</figure>
+<p>한 서버에서 순위가 바뀌면 다른 서버들도 바로 알아야 해요. 서버 간 알림 채널로는 Redis Pub/Sub을 써요. 점수가 바뀐 서버가 <code>PUBLISH rank:update</code>로 발행하면, 구독(<code>SUBSCRIBE rank:update</code>) 중인 모든 서버가 즉시 받아요.</p>
+<figure>
+  <img src="assets/frame-012540.png" alt="Server 1이 순위를 갱신하면 Server 2와 Server N도 알아야 한다는 그림과 Redis Pub/Sub의 PUBLISH rank:update, SUBSCRIBE rank:update 예시">
+  <figcaption>
+    서버끼리 직접 부르지 않고 Redis 채널 하나로 전파해요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5140s" target="_blank" rel="noopener">영상 1:25:40에서 보기</a>
+  </figcaption>
+</figure>
+<p>마지막으로 서버가 브라우저에 알려야 해요. 여기에는 SSE(Server-Sent Events)를 써요. HTTP 기반이고 서버에서 클라이언트로 가는 단방향 푸시라 랭킹 알림에 잘 맞아요. 전체 흐름을 한 줄로 보면 N Clients → Load Balancer → N Servers → Redis(Sorted Set)이고, 순위 변경은 Pub/Sub으로 서버에 퍼진 뒤 SSE로 클라이언트에 돌아가요.</p>
+<figure>
+  <img src="assets/frame-012640.png" alt="N Clients, Load Balancer, N Servers, Redis(Sorted Set)를 잇고 Pub/Sub과 SSE로 알림이 돌아가는 전체 아키텍처와 핵심 역할 요약">
+  <figcaption>
+    저장과 조회는 Sorted Set, 서버 간 전파는 Pub/Sub, 클라이언트 알림은 SSE예요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5200s" target="_blank" rel="noopener">영상 1:26:40에서 보기</a>
+  </figcaption>
+</figure>
+<p>왜 이 조합일까요? 왼쪽 카드의 스킵 리스트는 이진 탐색 트리처럼 검색·삽입·삭제가 평균 O(log N)이에요. 1억 명(N=100,000,000)이어도 log₂ N은 약 26.6이라 27단계 정도면 내 등수를 찾아요. 오른쪽 Pub/Sub은 구현이 단순하고 서버 간 알림에 적합하고 지연이 낮아요. 아래 노란 메모처럼 실무에서는 모든 사용자에게 브로드캐스트하기보다 랭킹 화면을 보고 있는 사용자에게만 푸시하는 경우가 많아요. 발표자의 결론은 "아키텍트는 문제를 제대로 정의하고, 맞는 도구를 골라 복잡한 시스템을 단순한 구조로 풀어내는 사람"이에요.</p>
+<figure>
+  <img src="assets/frame-012700.png" alt="Sorted Set은 삽입·조회가 O(log N)이라 1억 명도 약 27단계 탐색이고, Pub/Sub은 구현 단순·서버 간 알림 적합·지연 낮음이라는 비교">
+  <figcaption>
+    정렬과 조회를 한 자료구조로, 전파를 한 기능으로 해결해서 구조가 단순해져요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5220s" target="_blank" rel="noopener">영상 1:27:00에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s8">
+  <a class="stamp" href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5266s" target="_blank" rel="noopener">1:27:46</a>
+  <h2>Redis를 느리게 하는 BigKey와 HotKey</h2>
+<p>여덟 번째 강의는 Redis를 쓰러뜨리는 두 가지 키예요. 한 줄로 BigKey는 너무 큰 키, HotKey는 너무 몰리는 키예요.</p>
+<figure>
+  <img src="assets/frame-012810.png" alt="BigKey(하나의 키에 저장된 데이터가 너무 큰 경우)와 HotKey(특정 키로 요청이 과도하게 몰리는 현상)를 나란히 놓은 카드">
+  <figcaption>
+    하나는 데이터 양, 하나는 트래픽의 문제예요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5290s" target="_blank" rel="noopener">영상 1:28:10에서 보기</a>
+  </figcaption>
+</figure>
+<p>비교 표를 줄별로 보면 차이가 분명해요. BigKey의 본질은 한 번 처리할 때 작업이 무겁다는 거예요. 원소가 계속 쌓이는 Set/Hash/ZSet/List나 큰 String이 대표 예이고, 조회·삭제·복제·영속화 때 블로킹, 메모리 단편화, 네트워크 부하가 생겨요. 싱글 스레드라 한 명령이 오래 걸리면 다른 요청도 다 기다려요. HotKey의 본질은 요청이 한 곳에 집중된다는 거예요. 인기 상품 캐시, 메인 배너, 실시간 랭킹 상위 키가 대표 예이고, 데이터가 작아도 특정 노드의 CPU가 급증하고 네트워크가 막혀요.</p>
+<figure>
+  <img src="assets/frame-012858.png" alt="BigKey와 HotKey를 개념, 문제의 본질, 대표 예시, 주요 문제 네 줄로 비교한 표">
+  <figcaption>
+    표의 '대표 예시' 줄을 보면 어떤 키가 위험한지 미리 짐작할 수 있어요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5338s" target="_blank" rel="noopener">영상 1:28:58에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>찾는 법</h3>
+<p><code>redis-cli --bigkeys</code>는 String, List, Set, Hash, ZSet 타입별로 가장 큰 키를 하나씩 보여 줘요. <code>redis-cli --hotkeys</code>는 자주 접근되는 키 후보를 보여 주는데, 메모리 정책이 LFU(Least Frequently Used) 계열일 때만 동작해요. 아래 경고처럼 두 옵션 모두 '이 정도면 위험하다'는 절대 기준값은 없어서 관리자가 결과를 보고 판단해야 해요.</p>
+<figure>
+  <img src="assets/frame-012946.png" alt="redis-cli --bigkeys로 타입별 가장 큰 키를, --hotkeys로 자주 접근되는 키 후보를 확인하는 탐지 방법과 '두 옵션 모두 절대 기준은 없다'는 경고">
+  <figcaption>
+    --hotkeys는 메모리 정책이 LFU일 때만 켜져요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5386s" target="_blank" rel="noopener">영상 1:29:46에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>redis-cli 공식 문서도 <code>--hotkeys</code>가 <code>maxmemory-policy</code>가 <code>*lfu</code>일 때만 동작한다고 적어 둬요. 같은 문서에는 <code>--bigkeys</code> 외에 <code>--memkeys</code>, <code>--keystats</code>도 있고, 이 옵션들은 <code>--pattern</code>으로 검사할 키 패턴을 좁힐 수 있어요.</p>
+  <p class="cite">출처: <a href="https://redis.io/docs/latest/develop/tools/cli/" target="_blank" rel="noopener">Redis 문서 — Redis CLI</a></p>
+</aside>
+
+<h3>푸는 법</h3>
+<p>왼쪽 BigKey 해결은 세 가지예요. 데이터 분할은 <code>user:1:orders</code> 하나를 <code>user:1:orders:2024</code>, <code>user:1:orders:2025</code>처럼 연도·월로 쪼개는 거예요. 큰 키를 <code>DEL</code>하면 싱글 스레드가 막히니 Redis 4.0부터 있는 <code>UNLINK</code>로 비동기 삭제해요. 조회도 한 번에 다 가져오지 말고 <code>ZRANGE</code>·<code>LRANGE</code>로 범위를 잘라, Hash는 <code>HSCAN</code>으로 나눠 읽어요. 오른쪽 HotKey 해결도 세 가지예요. 애플리케이션에 Caffeine·Guava 같은 로컬 캐시를 앞에 둬서 Redis에 오는 요청 자체를 줄여요. 같은 데이터를 <code>product:123:1</code>, <code>product:123:2</code>처럼 여러 키로 복제해 랜덤하게 골라 여러 노드로 나눠요. 읽기 전용 레플리카로 읽기 트래픽을 분산해요.</p>
+<figure>
+  <img src="assets/frame-013058.png" alt="BigKey 해결(데이터 분할, UNLINK 비동기 삭제, 조회 범위 제한)과 HotKey 해결(Local Cache, 키 복제, 읽기 전용 Replica) 두 카드">
+  <figcaption>
+    아래 문장처럼 BigKey는 데이터 분할, HotKey는 요청 분산이 핵심이에요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5458s" target="_blank" rel="noopener">영상 1:30:58에서 보기</a>
+  </figcaption>
+</figure>
+<p>실무 가이드라인 표는 네 줄이에요. 키 설계 단계에서 BigKey는 키 하나가 얼마나 커질지, HotKey는 어느 키에 요청이 몰릴지 미리 예측해요. 컬렉션 정책으로 Set/ZSet/Hash에 최대 n개 같은 상한을 두고, HotKey가 예상되면 처음부터 캐시·샤드·레플리카를 고려해요. TTL로 무한 성장을 막고, HotKey는 만료되는 순간 요청이 DB로 한꺼번에 몰리는 캐시 스탬피드를 대비해요. 운영에서는 slowlog와 두 옵션으로 주기적으로 후보를 확인해요.</p>
+<figure>
+  <img src="assets/frame-013120.png" alt="키 설계, 컬렉션 정책, TTL, 운영 점검 네 줄을 BigKey 관점과 HotKey 관점으로 나눈 실무 가이드라인 표">
+  <figcaption>
+    두 문제 모두 생긴 뒤 고치기보다 키를 설계할 때 막는 편이 훨씬 싸요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5480s" target="_blank" rel="noopener">영상 1:31:20에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자의 마무리는 "Redis가 느려질 때는 BigKey인지 HotKey인지 구분해서 보라"예요. 데이터 양이 문제면 쪼개고 작게 읽고 <code>UNLINK</code>로 지우고, 트래픽이 문제면 캐시·샤드·레플리카로 나눠요.</p>
+</section>
+
+<section id="s9">
+  <a class="stamp" href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5545s" target="_blank" rel="noopener">1:32:25</a>
+  <h2>트랜잭션과 메시징, 캐시 너머의 Redis</h2>
+<p>마지막은 Redis를 캐시 너머로 쓰는 두 강의예요. 먼저 트랜잭션이에요. 초창기부터 있던 기능인데 의외로 모르는 사람이 많다고 해요.</p>
+
+<h3>명령이 하나면 이미 안전해요</h3>
+<p>Redis에는 두 동작을 한 명령으로 합친 원자적 편의 명령이 많아요. 조회와 삭제를 한 번에 하는 <code>GETDEL</code>, 조회하면서 만료 시간을 바꾸는 <code>GETEX</code>가 그래요. 명령이 하나면 중간에 다른 요청이 끼어들 수 없어서 따로 신경 쓸 게 없어요.</p>
+<figure>
+  <img src="assets/frame-013255.png" alt="조회+삭제 GETDEL, 조회+만료시간 GETEX라는 원자적 단일 명령 카드와 '명령 1개면 끝, Redis가 이미 처리'라는 카드">
+  <figcaption>
+    트랜잭션이 필요한 건 명령이 두 개 이상일 때부터예요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5575s" target="_blank" rel="noopener">영상 1:32:55에서 보기</a>
+  </figcaption>
+</figure>
+<p>문제는 여러 명령이에요. 좋아요를 처리하려면 게시물의 좋아요 수를 올리는 <code>HINCRBY post:1 likes 1</code>과 누른 사람을 목록에 넣는 <code>SADD post:1:likers user42</code>를 둘 다 해야 해요. 슬라이드 아래 흐름처럼 카운트는 101로 올랐는데 중간에 연결이 끊겨 목록에 user42가 빠지면 데이터 일관성이 깨져요.</p>
+<figure>
+  <img src="assets/frame-013325.png" alt="좋아요 처리에 HINCRBY와 SADD 두 명령이 필요하고, 카운트 증가 후 중간 실패로 목록에 user42가 반영되지 않는 흐름">
+  <figcaption>
+    여러 명령 중 일부만 실행되면 전체 데이터가 어긋나요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5605s" target="_blank" rel="noopener">영상 1:33:25에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3><code>MULTI</code> / <code>EXEC</code></h3>
+<p>그래서 트랜잭션이에요. 명령 A, B, C를 하나의 실행 단위로 묶어요. <code>MULTI</code>로 시작하면 그 뒤의 <code>SET</code>, <code>DEL</code>, <code>INCR</code> 같은 명령은 바로 실행되지 않고 큐에 쌓여요. <code>EXEC</code>을 보내면 쌓인 명령을 순서대로 한 번에 실행하고, 그동안 다른 요청은 끼어들지 못해요. 슬라이드의 '보장해 주는 것' 세 칸이 바로 이거예요. 묶어서 실행, 순서 보장, 중간 간섭 없음이에요.</p>
+<figure>
+  <img src="assets/frame-013425.png" alt="명령 A, B, C를 Redis가 하나의 실행 단위로 묶는 그림과 'Redis는 MULTI/EXEC로 여러 명령을 모아서 실행할 수 있다'는 문장">
+  <figcaption>
+    <code>MULTI</code>가 큐를 열고, <code>EXEC</code>이 한꺼번에 실행해요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5665s" target="_blank" rel="noopener">영상 1:34:25에서 보기</a>
+  </figcaption>
+</figure>
+<figure>
+  <img src="assets/frame-013525.png" alt="Redis Transaction이 보장해 주는 것: 묶어서 실행, 순서 보장, 중간 간섭 없음 세 카드">
+  <figcaption>
+    세 가지 중 '되돌리기'는 없다는 점을 기억해 두세요. 아래 한계에서 다시 나와요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5725s" target="_blank" rel="noopener">영상 1:35:25에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>WATCH는 낙관적 락</h3>
+<p>재고를 확인하고 남아 있으면 줄이는 로직을 생각해 봐요. 확인과 감소 사이에 다른 요청이 재고를 먼저 줄일 수 있어요. 슬라이드의 세 칸처럼 요청 A가 <code>WATCH stock:1</code>로 재고 키를 지켜보며 stock=1을 확인하는 동안, 다른 요청이 먼저 값을 1에서 0으로 바꾸면, A의 <code>EXEC</code>은 실패하고 A는 다시 시도해요. 락을 먼저 걸지 않고 쓰는 시점에 충돌을 확인하는 <span class="term" data-term="낙관적 락" data-en="Optimistic locking" data-desc="미리 잠그지 않고 일단 작업한 뒤, 저장하는 순간에 그사이 누가 값을 바꿨는지 확인하는 방식이에요. 바뀌었으면 실패시키고 다시 시도해요." data-g="12">낙관적 락</span>이에요.</p>
+<figure>
+  <img src="assets/frame-013555.png" alt="WATCH로 stock=1을 확인, 다른 요청이 먼저 값을 바꿈, EXEC 실패 후 다시 시도라는 세 단계와 WATCH, GET, MULTI, DECR, EXEC 명령 예시">
+  <figcaption>
+    동시에 여러 요청이 같은 재고를 건드릴 때 중복 차감을 막아 줘요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5755s" target="_blank" rel="noopener">영상 1:35:55에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>한계와 넘는 법</h3>
+<p>Redis 트랜잭션은 RDBMS(Relational Database Management System) 트랜잭션과 달라요. 세 카드 중 첫째, 중간에 실패해도 롤백이 안 돼요. 한 번에 실행된다는 뜻에서는 원자적이지만 전부 아니면 전무(all-or-nothing)는 아니에요. 둘째, 조건문을 쓸 수 없어요. 셋째, 그래서 복잡한 로직에는 부족해요.</p>
+<figure>
+  <img src="assets/frame-013625.png" alt="롤백 불가, 조건문 불가, 복잡한 로직엔 부족이라는 한계 세 카드와 'RDBMS의 완전한 트랜잭션과는 다르다'는 메모">
+  <figcaption>
+    실행 순서와 격리는 보장하지만 실패 복구는 애플리케이션 몫이에요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5785s" target="_blank" rel="noopener">영상 1:36:25에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Redis 공식 문서는 롤백을 지원하지 않는 이유를 이렇게 설명해요. 롤백을 넣으면 Redis의 단순함과 성능에 큰 영향을 주기 때문이에요. 대신 <code>EXEC</code> 전에 <code>DISCARD</code>를 보내면 큐에 쌓인 명령을 하나도 실행하지 않고 트랜잭션을 버릴 수 있어요. 또 명령 이름이나 인자 개수가 틀린 문법 오류는 큐에 넣는 단계에서 바로 거절돼요.</p>
+  <p class="cite">출처: <a href="https://redis.io/docs/latest/develop/using-commands/transactions/" target="_blank" rel="noopener">Redis 문서 — Transactions</a></p>
+</aside>
+<p>한계를 넘는 도구는 두 가지예요. Lua 스크립트는 조건과 여러 명령을 스크립트 하나로 서버 안에서 한 번에 실행해요. Redis Functions는 그걸 한 단계 발전시켜, RDB의 저장 프로시저처럼 서버에 함수로 등록해 두고 재사용하는 서버사이드 코드예요. 정리하면 명령이 하나면 그냥 쓰고, 여러 개가 함께 동작해야 하면 트랜잭션, 조건을 보고 다음 행동을 정해야 하면 Lua나 Functions예요.</p>
+<figure>
+  <img src="assets/frame-013655.png" alt="한계 극복 수단인 Lua Script(조건과 여러 명령을 서버 안에서 한 번에)와 Redis Functions(재사용 가능한 로직, 운영하기 쉬운 서버사이드 코드)">
+  <figcaption>
+    발표자의 결론은 '적절한 곳에 적절하게'예요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5815s" target="_blank" rel="noopener">영상 1:36:55에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>Redis 메시징: Pub/Sub과 Streams</h3>
+<p>마지막 강의는 "Redis를 아직 캐시로만 쓰고 있나요?"라는 질문으로 시작해요. 타임라인을 보면 2009년 인메모리 키-값 저장소로 태어났고, 2018년 5.0에서 Streams가 들어와 메시지 저장과 <span class="term" data-term="컨슈머 그룹" data-en="Consumer group" data-desc="여러 워커가 한 스트림의 메시지를 겹치지 않게 나눠 받도록 묶은 단위예요. 누가 어떤 메시지를 처리했는지 ACK로 추적해요." data-g="13">컨슈머 그룹</span>이 생겼어요. 2025년 Redis 8 정식판에서는 JSON(JavaScript Object Notation), 검색, 시계열 같은 Redis Stack 기능이 기본 배포판에 합쳐졌어요. 발표자는 이제 Redis를 실시간 데이터 플랫폼이라고 불러요.</p>
+<figure>
+  <img src="assets/frame-013755.png" alt="2009 Redis 등장, 2018 Streams 도입, 2025 Redis 8 GA로 Redis Stack 기능 통합이라는 세 단계 타임라인">
+  <figcaption>
+    캐시로 시작했지만 지금은 메시징까지 하는 플랫폼이에요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5875s" target="_blank" rel="noopener">영상 1:37:55에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Redis 공식 블로그의 Redis 8 GA(General Availability) 발표는 2025년 5월 1일에 나왔어요. 이 글에서 Redis Stack과 커뮤니티 배포판을 하나의 Redis Open Source 배포판으로 합쳤고, 모든 모듈이 이미 패키지에 들어 있다고 밝혔어요. 같은 글에서 무료 제품 이름도 Redis Community Edition에서 Redis Open Source로 바꿨는데, AGPLv3를 라이선스 선택지로 추가한 걸 반영한 이름이에요.</p>
+  <p class="cite">출처: <a href="https://redis.io/blog/redis-8-ga/" target="_blank" rel="noopener">Redis 블로그 — Redis 8 is now GA</a></p>
+</aside>
+<p>메시징 시스템은 주문 서비스가 알림·결제·로그 서비스를 직접 부르지 않고 중간의 메시지 브로커를 거치는 구조예요. 세 카드처럼 서비스끼리 느슨하게 결합되고, 비동기 처리로 응답 지연과 병목을 줄이고, 작업을 나누고 소비자를 늘리기 쉬워 확장에 유리해요.</p>
+<figure>
+  <img src="assets/frame-013825.png" alt="주문 서비스, 메시지 브로커, 알림·결제·로그를 잇고 느슨한 결합, 비동기 처리, 확장성 세 장점을 정리한 슬라이드">
+  <figcaption>
+    대규모 서비스일수록 직접 호출보다 탄력적이에요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5905s" target="_blank" rel="noopener">영상 1:38:25에서 보기</a>
+  </figcaption>
+</figure>
+<p>Redis 메시징의 시작은 Pub/Sub이에요. Publisher가 Channel에 메시지를 발행하면, 그 채널을 구독 중인 모든 Subscriber에게 전달돼요. 메모리 기반이라 지연이 매우 낮고, 채팅 알림이나 실시간 이벤트 전파 같은 방송형 용도에 맞아요. 아래 코드처럼 <code>PUBLISH system:notices "deploy complete"</code>로 발행하고 <code>SUBSCRIBE system:notices</code>로 구독해요.</p>
+<figure>
+  <img src="assets/frame-013855.png" alt="Publisher, Channel, Subscribers 흐름과 매우 빠름, 실시간 방송형이라는 강점, PUBLISH와 SUBSCRIBE 예시">
+  <figcaption>
+    랭킹 설계에서 서버 간 전파에 쓴 바로 그 기능이에요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5935s" target="_blank" rel="noopener">영상 1:38:55에서 보기</a>
+  </figcaption>
+</figure>
+<p>하지만 세 가지 한계가 있어요. 구독자가 오프라인이면 그 순간의 메시지를 못 받고, 메시지를 저장하지 않으니 나중에 다시 조회할 수 없고, 처리 완료(ack)나 대기(pending)를 관리하지 않아서 재처리가 안 돼요. 그래서 나온 게 Streams예요. 아래 코드처럼 <code>XADD</code>로 기록하고, <code>XGROUP CREATE</code>로 컨슈머 그룹을 만들고, <code>XREADGROUP</code>으로 그룹이 나눠 읽어요.</p>
+<figure>
+  <img src="assets/frame-013925.png" alt="구독자 오프라인, 메시지 저장 없음, 재처리 불가라는 Pub/Sub 한계 세 카드와 XADD, XGROUP CREATE, XREADGROUP 예시">
+  <figcaption>
+    Pub/Sub은 방송에는 강하지만 신뢰성이 필요한 큐로는 부족해요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5965s" target="_blank" rel="noopener">영상 1:39:25에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Redis 공식 문서는 Pub/Sub의 전달 보장을 'at-most-once'라고 표현해요. 메시지는 많아야 한 번 전달되고, 구독자가 오류나 연결 끊김으로 처리하지 못하면 그 메시지는 영영 사라져요. 더 강한 보장이 필요하면 Streams를 보라고 안내하는데, Streams는 메시지를 저장하고 at-least-once 전달도 지원해요.</p>
+  <p class="cite">출처: <a href="https://redis.io/docs/latest/develop/pubsub/" target="_blank" rel="noopener">Redis 문서 — Redis Pub/Sub</a></p>
+</aside>
+<p>Streams는 '저장되는 메시징'이에요. 세 카드처럼 메시지를 로그처럼 남겨 나중에도 읽을 수 있고, 컨슈머 그룹으로 여러 워커가 메시지를 나눠 처리하고, 처리 완료와 대기 중인 메시지를 추적할 수 있어요. 아래 흐름은 Producer가 이벤트를 기록하면 Consumer Group이 나눠 가져가고 ACK(Acknowledgement)로 처리 완료를 확인하는 순서예요.</p>
+<figure>
+  <img src="assets/frame-013955.png" alt="메시지 저장, Consumer Group, 재처리/추적 세 카드와 Producer, Consumer Group, ACK로 이어지는 흐름">
+  <figcaption>
+    저장과 ACK 덕분에 메시지를 잃어도 다시 처리할 수 있어요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=5995s" target="_blank" rel="noopener">영상 1:39:55에서 보기</a>
+  </figcaption>
+</figure>
+<p>비교표를 줄별로 보면, 메시지 저장은 Pub/Sub 없음 대 Streams 있음, 오프라인 소비자는 놓치면 끝 대 나중에 읽기 가능, 재처리는 불가 대 가능, Consumer 관리는 없음 대 Consumer Group이에요. 대표 용도는 실시간 알림·방송 대 작업 큐·이벤트 파이프라인이에요. 한 줄로 Pub/Sub은 실시간 방송, Streams는 큐와 로그예요.</p>
+<figure>
+  <img src="assets/frame-014025.png" alt="Pub/Sub과 Streams를 메시지 저장, 오프라인 소비자, 재처리, Consumer 관리, 대표 용도, 한 줄 요약으로 비교한 표">
+  <figcaption>
+    놓쳐도 되는 알림이면 Pub/Sub, 놓치면 안 되는 작업이면 Streams예요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=6025s" target="_blank" rel="noopener">영상 1:40:25에서 보기</a>
+  </figcaption>
+</figure>
+<p>실무 예시는 여섯 칸이에요. 지금 접속 중인 사용자에게 즉시 알리는 채팅·알림은 Pub/Sub, 주문 완료 후 포인트 적립과 문자 발송 같은 후처리는 Streams, 애플리케이션 이벤트를 쌓고 별도 소비자가 저장하는 로그 파이프라인도 Streams, 썸네일·리포트 생성과 대량 알림 같은 백그라운드 작업 큐는 Streams와 컨슈머 그룹, 상태 변경을 운영 대시보드에 바로 보여 주는 실시간 대시보드는 Pub/Sub이에요. 실무에서는 즉시 알림은 Pub/Sub, 중요한 작업은 Streams로 나눠 하이브리드로 써요.</p>
+<figure>
+  <img src="assets/frame-014100.png" alt="채팅·알림, 주문 후처리, 로그 파이프라인, 백그라운드 작업 큐, 실시간 대시보드, 하이브리드 구성 여섯 가지 실무 사용 예">
+  <figcaption>
+    발표자는 Redis를 이미 쓰는 조직이라면 메시징 기능을 한번 검토해 보라고 권해요.
+    <a href="https://www.youtube.com/watch?v=sdIfMnxALuY&amp;t=6060s" target="_blank" rel="noopener">영상 1:41:00에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 용어와 이름이 많이 잘못 받아적혔어요. 슬라이드와 문맥으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>코딩하는 기유사, 고딩가는 기유사</td><td>코딩하는기술사</td><td>채널 이름</td></tr>
+      <tr><td>레디서, 에디스, 레지스, 레티스, 네디스</td><td>Redis</td><td></td></tr>
+      <tr><td>카페인, 구하바, 고아바</td><td>Caffeine, Guava</td><td>자바 로컬 캐시 라이브러리</td></tr>
+      <tr><td>이익션 정책</td><td>eviction 정책</td><td></td></tr>
+      <tr><td>이태그</td><td>ETag</td><td></td></tr>
+      <tr><td>if모디파이드스</td><td>If-Modified-Since</td><td></td></tr>
+      <tr><td>이쁜 넌 매치</td><td>If-None-Match</td><td></td></tr>
+      <tr><td>304 not디파이, 304 람모티 파일</td><td>304 Not Modified</td><td></td></tr>
+      <tr><td>205k</td><td>200 OK</td><td>리소스가 바뀌었을 때의 응답</td></tr>
+      <tr><td>mus리밸리데, 머스트 리벨데이트</td><td>must-revalidate</td><td></td></tr>
+      <tr><td>이무터블</td><td>immutable</td><td></td></tr>
+      <tr><td>MVM, MVM이 SSD</td><td>NVMe SSD</td><td></td></tr>
+      <tr><td>사타 SSD</td><td>SATA SSD</td><td></td></tr>
+      <tr><td>피터 노비, 제프딘 콜린 스콧</td><td>Peter Norvig, Jeff Dean, Colin Scott</td><td></td></tr>
+      <tr><td>수루프</td><td>throughput(처리량)</td><td></td></tr>
+      <tr><td>컨시스턴스</td><td>Eventual Consistency</td><td></td></tr>
+      <tr><td>캐시피드 그 캐시 섀도</td><td>캐시 스탬피드(Cache Stampede)</td><td></td></tr>
+      <tr><td>안티레지, 안티레즈</td><td>antirez</td><td>Redis를 만든 Salvatore Sanfilippo의 닉네임</td></tr>
+      <tr><td>애플, 애홀</td><td>epoll</td><td></td></tr>
+      <tr><td>댄 개글</td><td>Dan Kegel</td><td></td></tr>
+      <tr><td>시탱케 문제</td><td>C10K 문제</td><td></td></tr>
+      <tr><td>RSP, RSB, 레스퍼 프로토콜</td><td>RESP 프로토콜</td><td></td></tr>
+      <tr><td>바이오.c 쓰레드, 바이오시 쓰레드</td><td>bio.c 스레드</td><td></td></tr>
+      <tr><td>솔티드 셋, 솔트드셋, 솔직드셋</td><td>Sorted Set</td><td></td></tr>
+      <tr><td>G리버스 레인지</td><td>ZREVRANGE</td><td></td></tr>
+      <tr><td>G인크러바이</td><td>ZINCRBY</td><td></td></tr>
+      <tr><td>퍼 서버, 팝섭, 톱섭, 법섭, 폼섭</td><td>Pub/Sub</td><td></td></tr>
+      <tr><td>서버센터 이벤트</td><td>Server-Sent Events(SSE)</td><td></td></tr>
+      <tr><td>언크로 삭제</td><td>UNLINK 삭제</td><td></td></tr>
+      <tr><td>H 스캔</td><td>HSCAN</td><td></td></tr>
+      <tr><td>합기, 하키</td><td>핫키(HotKey)</td><td></td></tr>
+      <tr><td>비키, p키</td><td>빅키(BigKey)</td><td></td></tr>
+      <tr><td>겟델 겟 ex</td><td>GETDEL, GETEX</td><td></td></tr>
+      <tr><td>멀티 EXC, 이시</td><td>MULTI, EXEC</td><td></td></tr>
+      <tr><td>왓치, 와치</td><td>WATCH</td><td></td></tr>
+      <tr><td>X드</td><td>XADD</td><td></td></tr>
+      <tr><td>제이슨 스킨마</td><td>JSON 지원 (추정)</td><td>슬라이드에는 JSON, Search, Time Series로 적혀 있어요</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-12"><dt>낙관적 락<span class="en">Optimistic locking</span></dt><dd>미리 잠그지 않고 일단 작업한 뒤, 저장하는 순간에 그사이 누가 값을 바꿨는지 확인하는 방식이에요. 바뀌었으면 실패시키고 다시 시도해요.</dd></div>
+    <div class="g" id="g-6"><dt>레이턴시<span class="en">Latency</span></dt><dd>요청을 보낸 뒤 응답이 오기까지 걸리는 시간이에요. 데이터 크기와 상관없이 한 번 접근하는 데 드는 고정 비용이라, 크기에 비례하는 처리량과 구분해야 해요.</dd></div>
+    <div class="g" id="g-11"><dt>스킵 리스트<span class="en">Skip list</span></dt><dd>정렬된 연결 리스트 위에 듬성듬성 건너뛰는 층을 여러 개 얹은 자료구조예요. 평균 O(log N)으로 찾고 넣을 수 있고, 트리보다 구현이 단순해요.</dd></div>
+    <div class="g" id="g-2"><dt>에빅션<span class="en">Eviction</span></dt><dd>캐시 메모리가 꽉 찼을 때 정해진 규칙(LRU, LFU 등)으로 기존 데이터를 밀어내는 일이에요. 정책을 정해 두지 않으면 레이턴시가 갑자기 튀어요.</dd></div>
+    <div class="g" id="g-10"><dt>이벤트 루프<span class="en">Event loop</span></dt><dd>준비된 이벤트를 받아 처리하고 다시 다음 이벤트를 기다리기를 반복하는 단일 실행 흐름이에요. Redis, Node.js, Nginx가 이 구조로 많은 연결을 다뤄요.</dd></div>
+    <div class="g" id="g-4"><dt>조건부 요청<span class="en">Conditional request</span></dt><dd>브라우저가 가진 사본의 ETag나 수정 시각을 함께 보내며 &#x27;바뀌었으면 새로 달라&#x27;고 묻는 요청이에요. 안 바뀌었으면 본문 없는 304만 와서 가벼워요.</dd></div>
+    <div class="g" id="g-7"><dt>최종 일관성<span class="en">Eventual consistency</span></dt><dd>지금 당장은 노드마다 값이 다를 수 있지만 시간이 지나면 같아지는 성질이에요. 강한 일관성을 잠시 포기하는 대신 쓰기 성능과 확장성을 얻어요.</dd></div>
+    <div class="g" id="g-3"><dt>캐시 스탬피드<span class="en">Cache stampede</span></dt><dd>인기 있는 캐시가 만료되는 순간 몰려 있던 요청이 한꺼번에 원본 DB로 쏟아지는 현상이에요. 만료 시점을 흩어 두거나 한 요청만 다시 채우게 해서 막아요.</dd></div>
+    <div class="g" id="g-13"><dt>컨슈머 그룹<span class="en">Consumer group</span></dt><dd>여러 워커가 한 스트림의 메시지를 겹치지 않게 나눠 받도록 묶은 단위예요. 누가 어떤 메시지를 처리했는지 ACK로 추적해요.</dd></div>
+    <div class="g" id="g-8"><dt>컨텍스트 스위칭<span class="en">Context switching</span></dt><dd>CPU가 실행 중인 스레드를 바꿀 때 레지스터와 스택 상태를 저장하고 복원하는 일이에요. 스레드가 많을수록 이 비용이 쌓여요.</dd></div>
+    <div class="g" id="g-1"><dt>퍼지<span class="en">Purge (Invalidation)</span></dt><dd>CDN 엣지 서버에 캐시된 파일을 강제로 지우는 작업이에요. 배포만 하고 퍼지하지 않으면 사용자는 계속 옛 파일을 받아요.</dd></div>
+    <div class="g" id="g-5"><dt>핑거프린팅<span class="en">Fingerprinting (cache busting)</span></dt><dd>파일 내용의 해시를 파일명에 넣는 방식이에요. 내용이 바뀌면 이름이 바뀌어 새 리소스가 되니, 캐시 기간을 길게 잡아도 업데이트가 바로 반영돼요.</dd></div>
+    <div class="g"><dt>ACK</dt><dd>Acknowledgement</dd></div>
+    <div class="g"><dt>AOF</dt><dd>Append Only File</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>APM</dt><dd>Application Performance Monitoring</dd></div>
+    <div class="g"><dt>CDN</dt><dd>Content Delivery Network</dd></div>
+    <div class="g"><dt>CPU</dt><dd>Central Processing Unit</dd></div>
+    <div class="g"><dt>CQRS</dt><dd>Command Query Responsibility Segregation</dd></div>
+    <div class="g"><dt>CSS</dt><dd>Cascading Style Sheets</dd></div>
+    <div class="g"><dt>DB</dt><dd>Database</dd></div>
+    <div class="g"><dt>DBMS</dt><dd>Database Management System</dd></div>
+    <div class="g"><dt>FAQ</dt><dd>Frequently Asked Questions</dd></div>
+    <div class="g"><dt>GA</dt><dd>General Availability</dd></div>
+    <div class="g"><dt>GB</dt><dd>Gigabyte</dd></div>
+    <div class="g"><dt>HDD</dt><dd>Hard Disk Drive</dd></div>
+    <div class="g"><dt>HTML</dt><dd>HyperText Markup Language</dd></div>
+    <div class="g"><dt>HTTP</dt><dd>HyperText Transfer Protocol</dd></div>
+    <div class="g" id="g-9"><dt>I/O 멀티플렉싱<span class="en">I/O multiplexing</span></dt><dd>스레드 하나가 수많은 연결을 동시에 지켜보고, 읽거나 쓸 준비가 된 연결만 골라 처리하는 방식이에요. 리눅스에서는 epoll이 이 감시를 맡아요.</dd></div>
+    <div class="g"><dt>JS</dt><dd>JavaScript</dd></div>
+    <div class="g"><dt>JSON</dt><dd>JavaScript Object Notation</dd></div>
+    <div class="g"><dt>KB</dt><dd>Kilobyte</dd></div>
+    <div class="g"><dt>LFU</dt><dd>Least Frequently Used</dd></div>
+    <div class="g"><dt>MB</dt><dd>Megabyte</dd></div>
+    <div class="g"><dt>MQ</dt><dd>Message Queue</dd></div>
+    <div class="g"><dt>PC</dt><dd>Personal Computer</dd></div>
+    <div class="g"><dt>RAM</dt><dd>Random Access Memory</dd></div>
+    <div class="g"><dt>RDB</dt><dd>Redis Database</dd></div>
+    <div class="g"><dt>RDBMS</dt><dd>Relational Database Management System</dd></div>
+    <div class="g"><dt>RESP</dt><dd>REdis Serialization Protocol</dd></div>
+    <div class="g"><dt>RTT</dt><dd>Round-Trip Time</dd></div>
+    <div class="g"><dt>S3</dt><dd>Amazon Simple Storage Service</dd></div>
+    <div class="g"><dt>SATA</dt><dd>Serial Advanced Technology Attachment</dd></div>
+    <div class="g"><dt>SQS</dt><dd>Amazon Simple Queue Service</dd></div>
+    <div class="g"><dt>SSD</dt><dd>Solid State Drive</dd></div>
+    <div class="g"><dt>SSE</dt><dd>Server-Sent Events</dd></div>
+    <div class="g"><dt>TTL</dt><dd>Time To Live</dd></div>
+    <div class="g"><dt>URL</dt><dd>Uniform Resource Locator</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=sdIfMnxALuY" target="_blank" rel="noopener">원본 영상 — 코딩하는기술사</a></li>
+    <li id="src-2"><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control" target="_blank" rel="noopener">MDN — Cache-Control</a></li>
+    <li id="src-3"><a href="https://redis.io/docs/latest/commands/unlink/" target="_blank" rel="noopener">Redis 문서 — UNLINK</a></li>
+    <li id="src-4"><a href="https://redis.io/docs/latest/develop/tools/cli/" target="_blank" rel="noopener">Redis 문서 — Redis CLI</a></li>
+    <li id="src-5"><a href="https://redis.io/docs/latest/develop/using-commands/transactions/" target="_blank" rel="noopener">Redis 문서 — Transactions</a></li>
+    <li id="src-6"><a href="https://redis.io/docs/latest/develop/pubsub/" target="_blank" rel="noopener">Redis 문서 — Redis Pub/Sub</a></li>
+    <li id="src-7"><a href="https://redis.io/blog/redis-8-ga/" target="_blank" rel="noopener">Redis 블로그 — Redis 8 is now GA</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 15일에 이 영상을 보고 정리했어요. 원본은 코딩하는기술사 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
