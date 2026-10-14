@@ -68,9 +68,58 @@
   footer{padding:48px 0 64px; color:var(--text-mute); font-size:13px}
   [hidden]{display:none !important}
   @media (max-width:560px){ header{padding-top:32px} header h1{font-size:26px} .grid{grid-template-columns:1fr} }
+  /* 비밀번호 화면: 통과 전에는 본문을 그리지 않아요 (보안 장치가 아니라 가림막이에요) */
+  #lock{display:none}
+  html.locked body > :not(#lock){display:none !important}
+  html.locked #lock{display:flex; min-height:100vh; align-items:center; justify-content:center; padding:16px}
+  #lock form{width:100%; max-width:320px; display:flex; flex-direction:column; gap:10px}
+  #lock h1{margin:0 0 6px; font-size:22px; letter-spacing:-.02em}
+  #lock input{font:inherit; font-size:16px; color:var(--text); background:var(--surface-2);
+    border:1px solid transparent; border-radius:12px; padding:12px 14px; outline:none}
+  #lock input:focus{border-color:var(--brand); background:var(--bg)}
+  #lock button{font:inherit; font-size:16px; font-weight:700; color:#fff; background:var(--brand);
+    border:0; border-radius:12px; padding:12px; cursor:pointer}
+  #lock .err{margin:0; min-height:1.4em; font-size:14px; color:#f04452}
 </style>
+<script>
+  var LOCK_HASH = "{{PW_HASH}}";
+  if (LOCK_HASH) {
+    var unlocked = false;
+    try { unlocked = localStorage.getItem('yn-unlock') === LOCK_HASH; } catch (e) {}
+    if (!unlocked) document.documentElement.classList.add('locked');
+  }
+</script>
 </head>
 <body>
+<div id="lock">
+  <form id="lock-form" autocomplete="off">
+    <h1>유튜브 학습 노트</h1>
+    <input type="password" id="lock-pw" placeholder="비밀번호" aria-label="비밀번호" autofocus>
+    <button type="submit">들어가기</button>
+    <p class="err" id="lock-err" role="alert"></p>
+  </form>
+</div>
+<script>
+(function(){
+  var form = document.getElementById('lock-form'), pw = document.getElementById('lock-pw'), err = document.getElementById('lock-err');
+  function sha256(s){
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)).then(function(buf){
+      return Array.prototype.map.call(new Uint8Array(buf), function(b){ return ('0' + b.toString(16)).slice(-2); }).join('');
+    });
+  }
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    sha256(pw.value).then(function(h){
+      if (h === LOCK_HASH) {
+        try { localStorage.setItem('yn-unlock', h); } catch (e) {}
+        document.documentElement.classList.remove('locked');
+      } else {
+        err.textContent = '비밀번호가 맞지 않아요.'; pw.select();
+      }
+    });
+  });
+})();
+</script>
 <div class="wrap">
   <header>
     <h1>유튜브 학습 노트</h1>

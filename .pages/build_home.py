@@ -134,8 +134,12 @@ def main():
         )
 
     tpl = (HERE / "home_template.html").read_text(encoding="utf-8")
+    # SHA-256 of the home password, one line. Empty or missing = no lock screen.
+    hash_file = HERE / "password.sha256"
+    pw_hash = hash_file.read_text(encoding="utf-8").strip() if hash_file.exists() else ""
     out = (
-        tpl.replace("{{COUNT}}", str(len(videos)))
+        tpl.replace("{{PW_HASH}}", pw_hash)
+        .replace("{{COUNT}}", str(len(videos)))
         .replace("{{CATS}}", str(len(cats)))
         .replace("{{CHANNELS}}", str(len(by_ch)))
         .replace("{{NAV}}", "".join(nav))
