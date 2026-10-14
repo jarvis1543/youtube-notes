@@ -25,6 +25,8 @@
 <!-- yn-lock:end -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Gmail로 무료 비즈니스 이메일 만들기</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 <style>
   :root{
     --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
@@ -32,7 +34,10 @@
     --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
     --warn:#ff8a00; --warn-soft:#fff4e6;
     --info:#00b8a9; --info-soft:#e4f8f6;
-    --radius:16px; --maxw:760px;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
   }
   @media (prefers-color-scheme:dark){
     :root{
@@ -41,6 +46,8 @@
       --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
       --warn:#ffab4a; --warn-soft:#3a2a13;
       --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
     }
   }
   *{box-sizing:border-box}
@@ -78,13 +85,29 @@
   .keypoints li strong{color:var(--text)}
 
   /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
   nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
     border-radius:var(--radius)}
   nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
   nav.toc ol{margin:0; padding-left:20px}
-  nav.toc li{margin:6px 0; font-size:15px}
-  nav.toc a{color:var(--text-sub)}
-  nav.toc a.active{color:var(--brand); font-weight:600}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
 
   /* ── 본문 ──────────────────────────────────────────── */
   section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
@@ -99,6 +122,16 @@
     background:var(--surface-2); color:var(--text-mute);
     font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
   a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
 
   /* ── 그림 ──────────────────────────────────────────── */
   figure{margin:28px 0}
@@ -115,23 +148,33 @@
   thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
     font-weight:700; white-space:nowrap}
   tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
   td code{font-size:13.5px}
 
-  /* ── 용어 툴팁 ─────────────────────────────────────── */
-  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
-    font-weight:600; background:none}
-  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
-  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
-    background:var(--text); color:var(--bg); border-radius:12px;
-    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
-    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
-    transition:opacity .12s ease; pointer-events:none}
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
   #tip.on{opacity:1; visibility:visible}
-  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
 
   /* ── 박스 두 종류 ───────────────────────────────────
      .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
-     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
   aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
   aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
   aside p{margin:8px 0}
@@ -144,6 +187,92 @@
   aside .table-scroll{margin:12px 0 0}
   aside table{min-width:320px; font-size:14.5px}
   aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
 
   /* ── 인용 ──────────────────────────────────────────── */
   blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
@@ -159,13 +288,14 @@
   pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
     border:1px solid var(--line); overflow-x:auto; line-height:1.6}
   pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
 
   /* ── 꼬리말 ────────────────────────────────────────── */
   .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
   .tail h2{font-size:20px; margin:0 0 14px}
   .tail + .tail{margin-top:40px}
   .tail ol{padding-left:20px}
-  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
   footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
     font-size:13.5px; color:var(--text-mute)}
 
@@ -182,11 +312,11 @@
 
 <header>
   <h1>Gmail로 무료 비즈니스 이메일 만들기</h1>
-  <p class="lede">Cloudflare + Gmail 구성과 2027년에 막히는 부분을 짚어요</p>
+  <p class="lede">Cloudflare와 Gmail을 엮는 공짜 구성, 그리고 2027년에 사라지는 절반</p>
   <div class="meta">
     <span>Business Email</span><span class="dot">·</span>
-    <span>12:42</span><span class="dot">·</span>
-    <span>유튜브 영상 정리</span>
+    <span>영상 12:42</span><span class="dot">·</span>
+    <span>읽는 데 약 7분</span>
   </div>
   <a class="src-btn" href="https://www.youtube.com/watch?v=UpOHAzG-nKE" target="_blank" rel="noopener">
     원본 영상 보러 가기 →
@@ -196,271 +326,477 @@
 <div class="keypoints">
   <h2>핵심만 먼저</h2>
   <ol>
-    <li>무료 구성은 두 조각이에요. 받기는 Cloudflare Email Routing, 보내기는 Gmail의 'Send mail as'가 맡아요.</li>
-    <li>메일 전달은 무료여도 도메인은 따로 사야 해요. 영상 기준 1년에 20~25달러쯤이에요.</li>
-    <li>2027년 1월부터 Gmail은 외부 주소용 'Send mail as'를 지원하지 않아요. Cloudflare로 받는 부분은 계속 돼요.</li>
-    <li>받기만 필요하면 Cloudflare로 충분하고, 같은 주소로 보내고 받으려면 유료 전용 메일함이 편해요.</li>
+    <li>받기는 Cloudflare <span class="term" data-term="이메일 라우팅" data-en="Email Routing" data-desc="내 도메인 주소로 온 메일을 받아서 이미 쓰는 다른 메일함으로 넘겨 주는 기능이에요. 메일을 보관하지는 않고 전달만 해요." data-g="3">이메일 라우팅</span>이, 보내기는 Gmail의 '<span class="term" data-term="Send mail as" data-en="Send mail as" data-desc="Gmail에서 내 Gmail 주소가 아닌 다른 주소를 보내는 사람으로 골라 메일을 보내는 기능이에요. 이 구성에서 답장을 회사 주소로 보이게 해 주는 부분이에요." data-g="4">Send mail as</span>'가 맡아서 메일함 비용 없이 회사 주소를 써요.</li>
+    <li>메일 전달은 무료지만 <span class="term" data-term="도메인" data-en="Domain" data-desc="yourbusiness.com처럼 인터넷에서 쓰는 내 이름 주소예요. 해마다 돈을 내고 빌려 쓰는 것이라 갱신을 잊으면 메일 주소도 함께 못 쓰게 돼요." data-g="1">도메인</span>은 직접 사야 하고, 1년에 20~25달러쯤 들어요.</li>
+    <li>Google이 2027년 1월부터 외부 주소의 'Send mail as' 지원을 끝내서, 보내기 쪽이 사라져요.</li>
+    <li>받기만 필요하면 Cloudflare로 충분하고, 같은 주소로 보내고 받아야 하면 전용 비즈니스 이메일 서비스가 편해요.</li>
   </ol>
 </div>
 
 <nav class="toc">
   <h2>목차</h2>
   <ol>
-    <li><a href="#s1">무료 비즈니스 이메일은 어떻게 돌아갈까요</a></li>
-    <li><a href="#s2">Cloudflare Email Routing으로 메일 받기</a></li>
-    <li><a href="#s3">Gmail &#x27;Send mail as&#x27;로 같은 주소로 답장하기</a></li>
-    <li><a href="#s4">2027년 1월에 사라지는 기능</a></li>
-    <li><a href="#s5">대안: 받기·보내기가 되는 전용 메일함</a></li>
+    <li><a href="#s1">비즈니스 이메일과 공짜 구성의 원리</a></li>
+    <li><a href="#s2">Cloudflare 이메일 라우팅으로 받기</a></li>
+    <li><a href="#s3">Gmail &#x27;Send mail as&#x27;로 회사 주소로 답장하기</a></li>
+    <li><a href="#s4">2027년 1월에 무엇이 사라지나요?</a></li>
+    <li><a href="#s5">어떤 방법을 고를까요?</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
   </ol>
 </nav>
 
 <main>
 <section id="s1">
-  <a class="stamp" href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=0s" target="_blank" rel="noopener">00:00</a>
-  <h2>무료 비즈니스 이메일은 어떻게 돌아갈까요</h2>
-<p>비즈니스 이메일은 <code>@gmail.com</code> 같은 무료 주소 대신 내 회사 <span class="term" data-term="도메인" data-desc="yourbusiness.com처럼 인터넷에서 쓰는 내 주소 이름이에요. 등록 업체에서 사서 해마다 갱신해야 해요.">도메인</span>을 쓰는 주소예요. <code>hello@yourbusiness.com</code>처럼요. 이 영상이 다루는 방법은 이메일 호스팅 비용을 한 푼도 내지 않고 이런 주소를 쓰는 방법이에요.</p>
-<p>다만 공짜인 건 메일 전달뿐이에요. 도메인은 직접 사서 매년 갱신해야 해요. 영상은 확장자와 구입처에 따라 1년에 20~25달러쯤 든다고 짚어요.</p>
-<h3>받는 쪽과 보내는 쪽이 따로 움직여요</h3>
-<p>구성은 두 조각이에요. 고객이 비즈니스 주소로 메일을 보내면 Cloudflare가 받아서 내 Gmail 받은편지함으로 넘겨줘요. 이게 <span class="term" data-term="이메일 포워딩" data-desc="한 주소로 온 메일을 다른 주소로 자동으로 넘겨주는 거예요. 메일함이 따로 없어도 평소 쓰는 곳에서 받아 볼 수 있어요.">이메일 포워딩</span>이에요. 그다음 Gmail에서 답장할 때 'Send mail as' 기능으로 보내는 사람 주소를 비즈니스 주소로 바꿔요.</p>
-<p>고객 눈에는 처음부터 끝까지 비즈니스 주소로 대화한 것처럼 보여요. 실제로는 Cloudflare가 받기를, Gmail이 보내기를 나눠 맡고 있어요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=52s" target="_blank" rel="noopener">00:52</a>
+  <h2>비즈니스 이메일과 공짜 구성의 원리</h2>
+<p>비즈니스 이메일은 <code>hello@yourbusiness.com</code>처럼 내 회사 도메인을 쓰는 주소예요. <code>yourbusiness@gmail.com</code> 같은 무료 주소보다 손님에게 훨씬 믿음직하게 보이죠.</p>
+<p>영상이 소개하는 방법은 메일함 호스팅 비용 없이 이런 주소를 쓰는 길이에요. 다만 처음부터 짚고 가는 비용이 하나 있어요. 도메인은 직접 사야 하고, 확장자와 판매처에 따라 1년에 20~25달러쯤 들어요. 공짜인 건 메일을 옮겨 주는 부분뿐이에요.</p>
+<h3>받기와 보내기를 두 서비스가 나눠 맡아요</h3>
+<p>이 구성은 서비스 두 개를 엮어요. Cloudflare의 이메일 라우팅이 회사 주소로 온 메일을 받아서 쓰던 Gmail로 넘겨 주고, Gmail의 'Send mail as' 기능이 답장을 회사 주소로 보내 줘요. 아래 화면의 카드 네 장이 메일 한 통이 오가는 순서예요. 맨 아래 카드처럼 손님 눈에는 개인 Gmail 주소가 아니라 회사 주소만 보여요.</p>
 <figure>
-  <img src="assets/frame-0208.png" alt="고객이 메일을 보내고, Cloudflare가 Gmail로 전달하고, Gmail에서 Send mail as로 답장하는 3단계 흐름도">
-  <figcaption>무료 구성의 전체 흐름이에요. 가운데가 받기(Cloudflare), 아래가 보내기(Gmail)예요. <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=128s" target="_blank" rel="noopener">영상 02:08에서 보기</a></figcaption>
+  <img src="assets/frame-0214.png" alt="손님이 hello@yourbusiness.com으로 메일을 보내고, Cloudflare가 Gmail로 넘기고, Gmail에서 Send mail as로 답장하고, 손님은 회사 주소를 보는 네 단계 카드">
+  <figcaption>
+    받는 일은 Cloudflare, 보내는 일은 Gmail이 해요. 손님은 이 분업을 눈치채지 못해요.
+    <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=134s" target="_blank" rel="noopener">영상 02:14에서 보기</a>
+  </figcaption>
 </figure>
+<p>따로 메일함을 사지 않아도 완성된 회사 메일함처럼 느껴지는 이유가 이 분업이에요. 그리고 영상이 경고하는 문제도 바로 이 둘 중 보내기 쪽에서 생겨요.</p>
 </section>
 
 <section id="s2">
   <a class="stamp" href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=165s" target="_blank" rel="noopener">02:45</a>
-  <h2>Cloudflare Email Routing으로 메일 받기</h2>
-<p>먼저 도메인을 Cloudflare에 추가해야 해요. 이 기능은 도메인이 Cloudflare의 <span class="term" data-term="DNS" data-desc="도메인 이름을 실제 서버 위치와 연결해 주는 주소록이에요. 메일이 어디로 가야 하는지도 여기에 적혀 있어요.">DNS</span>를 쓸 때만 동작해요. 다른 곳에서 DNS를 관리하고 있었다면 Cloudflare로 옮겨야 해요.</p>
-<h3>주소 만들기와 받을 곳 지정</h3>
-<p>대시보드에서 Email → Email Routing → Get started 순서로 들어가요. 쓰고 싶은 주소(예: <code>hello</code>)를 만들고, 메일을 넘겨받을 기존 Gmail 주소를 적어요. Cloudflare가 그 Gmail로 확인 메일을 보내니 열어서 승인하면 돼요. 이후 필요한 레코드는 Cloudflare가 도메인에 알아서 추가해요.</p>
+  <h2>Cloudflare 이메일 라우팅으로 받기</h2>
+<p>첫 번째 절반은 받기예요. 손님이 <code>hello@yourbusiness.com</code>으로 보낸 메일이 매일 열어 보는 Gmail로 바로 들어오게 만드는 단계예요. 새 메일함을 하나 더 챙기지 않아도 돼요.</p>
+<p>시작 전에 조건이 하나 있어요. 도메인을 Cloudflare에 추가하고, 그 도메인의 <span class="term" data-term="DNS" data-en="Domain Name System" data-desc="도메인 이름을 실제 서버 주소로 바꿔 주는 전화번호부 같은 장치예요. 메일이 어디로 가야 하는지도 여기에 적어 둬요." data-g="2">DNS(Domain Name System)</span>를 Cloudflare가 관리해야 해요. 다른 곳에서 DNS를 관리하고 있다면 먼저 Cloudflare로 옮겨야 이메일 라우팅이 동작해요.</p>
+<h3>설정 순서</h3>
+<p>대시보드 왼쪽 메뉴에서 빨간 상자로 표시한 Email 항목이 출발점이에요.</p>
 <figure>
-  <img src="assets/frame-0345.png" alt="Cloudflare 대시보드 Email Routing 화면에서 Custom address 칸에 hello를 입력하는 모습">
-  <figcaption>받을 주소(hello)와 넘겨줄 곳(Destination address)을 한 줄로 정하는 화면이에요. <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=225s" target="_blank" rel="noopener">영상 03:45에서 보기</a></figcaption>
+  <img src="assets/frame-0333.png" alt="Cloudflare 대시보드 Overview 화면, 왼쪽 메뉴의 Email 항목에 빨간 테두리">
+  <figcaption>
+    Email → Email Routing → Get started 순서로 들어가요.
+    <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=213s" target="_blank" rel="noopener">영상 03:33에서 보기</a>
+  </figcaption>
 </figure>
-<h3>테스트와 한도</h3>
-<p>다른 계정에서 비즈니스 주소로 메일을 보내 보면 Gmail 받은편지함에 바로 들어와요. 보낸 사람은 비즈니스 주소로 보냈지만, 나는 평소 쓰던 받은편지함에서 읽는 거예요.</p>
+<p>Email Routing 화면에서는 세 칸을 채워요. 왼쪽 Custom address에 <code>hello</code>를 넣고, 가운데 Action은 Send to, 오른쪽 Destination address에 받을 Gmail 주소를 넣어요.</p>
 <figure>
-  <img src="assets/frame-0415.png" alt="Gmail 받은편지함에 테스트 메일과 Cloudflare 확인 메일이 도착한 화면">
-  <figcaption>비즈니스 주소로 보낸 메일이 개인 Gmail에 도착했어요. 받기 설정은 여기까지예요. <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=255s" target="_blank" rel="noopener">영상 04:15에서 보기</a></figcaption>
+  <img src="assets/frame-0345.png" alt="Cloudflare Email Routing의 Create custom address 양식. Custom address 칸에 hello가 입력되어 있고 Action, Destination address 칸이 옆에 있음">
+  <figcaption>
+    도메인 뒷부분은 자동으로 붙어요. 앞부분만 정하면 돼요.
+    <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=225s" target="_blank" rel="noopener">영상 03:45에서 보기</a>
+  </figcaption>
 </figure>
+<p>저장하면 Cloudflare가 그 Gmail로 확인 메일을 보내요. 메일 안의 파란 Verify email address 버튼을 눌러 받는 주소를 인증해요. 그러면 Cloudflare가 도메인에 필요한 라우팅 레코드를 알아서 추가해요.</p>
+<figure>
+  <img src="assets/frame-0357.png" alt="Gmail에 도착한 Cloudflare의 Verify Email Routing address 메일과 파란 Verify email address 버튼">
+  <figcaption>
+    이 버튼까지 누르면 받기 설정은 끝이에요.
+    <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=237s" target="_blank" rel="noopener">영상 03:57에서 보기</a>
+  </figcaption>
+</figure>
+<p>마지막으로 다른 계정에서 회사 주소로 'test email forwarding'이라는 메일을 보내 봐요. 받은편지함 맨 위에 그 메일이 들어와 있어요. 그 아래 줄은 앞에서 받은 Cloudflare 인증 메일이에요.</p>
+<figure>
+  <img src="assets/frame-0417.png" alt="Gmail 받은편지함 맨 위에 test email forwarding 메일, 그 아래 Cloudflare 인증 메일이 있는 화면">
+  <figcaption>
+    회사 주소로 보낸 메일이 개인 Gmail에 그대로 도착했어요.
+    <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=257s" target="_blank" rel="noopener">영상 04:17에서 보기</a>
+  </figcaption>
+</figure>
+<h3>무료로 쓸 수 있는 한도</h3>
+<p>영상은 작은 사업체라면 아래 한도로 충분하다고 봐요.</p>
 <div class="table-scroll">
   <table>
-    <thead><tr><th>항목</th><th>영상에서 말한 한도</th></tr></thead>
+    <thead><tr><th>항목</th><th>한도</th></tr></thead>
     <tbody>
       <tr><td>라우팅 규칙</td><td>도메인당 200개</td></tr>
-      <tr><td>확인된 받을 주소</td><td>계정당 200개</td></tr>
-      <tr><td>들어오는 메일 크기</td><td>약 25MB</td></tr>
+      <tr><td>인증된 받는 주소</td><td>계정당 200개</td></tr>
+      <tr><td>받는 메일 크기</td><td>약 25MB</td></tr>
     </tbody>
   </table>
 </div>
-<p>작은 사업체라면 넉넉한 수준이라고 해요. 하지만 여기까지는 절반이에요. 답장할 때도 고객이 같은 비즈니스 주소를 봐야 하거든요.</p>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>Cloudflare 공식 문서도 같은 한도(규칙 200개, 받을 주소 200개, 메일 25MiB)를 적고 있어요. 받을 주소는 계정 단위라 여러 도메인이 함께 써요. 기능을 켜면 Cloudflare가 <span class="term" data-term="MX 레코드" data-desc="DNS에 적는 항목 중 하나로, 이 도메인 앞으로 온 메일을 어느 서버가 받을지 정해요.">MX 레코드</span>와 SPF용 TXT 레코드를 추가해요. 이미 다른 메일 서비스의 MX 레코드가 있다면 그쪽 메일 수신과 겹칠 수 있으니 먼저 확인해 보는 게 좋아요.</p>
-  <p class="cite">출처: <a href="https://developers.cloudflare.com/email-routing/limits/" target="_blank" rel="noopener">Cloudflare Docs — Email Routing limits</a> · <a href="https://developers.cloudflare.com/email-routing/get-started/enable-email-routing/" target="_blank" rel="noopener">Cloudflare Docs — Enable Email Routing</a></p>
+  <p>Cloudflare 공식 문서도 같은 한도(규칙 200개, 받는 주소 200개, 25MiB)를 적고 있어요. 다만 지금 문서는 메뉴 위치를 Compute → Email Service → Email Routing으로, 시작 버튼을 Onboard Domain으로 안내해요. 영상의 Email → Get started가 안 보이면 이쪽을 찾아보세요.</p>
+  <p>이때 Cloudflare가 추가하는 레코드는 세 종류예요. 메일을 Cloudflare로 보내라는 <span class="term" data-term="MX 레코드" data-en="MX record" data-desc="이 도메인으로 온 메일을 어느 서버가 받는지 적어 둔 DNS 항목이에요. Cloudflare가 메일을 받으려면 이 항목이 Cloudflare를 가리켜야 해요." data-g="7">MX(Mail Exchanger) 레코드</span>, 그리고 발신 인증용 SPF(Sender Policy Framework)와 DKIM(DomainKeys Identified Mail) 레코드예요.</p>
+  <p class="cite">출처: <a href="https://developers.cloudflare.com/email-routing/limits/" target="_blank" rel="noopener">Cloudflare 문서 — Email Routing limits</a> · <a href="https://developers.cloudflare.com/email-routing/get-started/enable-email-routing/" target="_blank" rel="noopener">Cloudflare 문서 — Enable Email Routing</a></p>
 </aside>
 </section>
 
 <section id="s3">
-  <a class="stamp" href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=338s" target="_blank" rel="noopener">05:38</a>
-  <h2>Gmail &#x27;Send mail as&#x27;로 같은 주소로 답장하기</h2>
-<p>받기만 설정한 상태에서 그냥 답장하면 고객은 개인 Gmail 주소로 답을 받아요. 비즈니스 주소로 연락했는데 개인 주소로 답이 오면 인상이 좋지 않죠. 이걸 막는 게 Gmail의 'Send mail as' 기능이에요.</p>
-<h3>설정 순서</h3>
-<p>Gmail 설정 → 계정 및 가져오기(Accounts and Import) → Send mail as에서 '다른 이메일 주소 추가'를 눌러요. 앞에서 만든 비즈니스 주소를 넣으면, 그 주소로 보낼 때 쓸 정보를 물어봐요. 영상은 상황에 따라 <span class="term" data-term="SMTP" data-desc="메일을 보낼 때 쓰는 약속된 방식이에요. 다른 주소로 보내려면 어느 서버를 거쳐 보낼지 알려 줘야 해요.">SMTP</span> 정보, <span class="term" data-term="2단계 인증" data-desc="비밀번호에 더해 휴대폰 확인 같은 두 번째 절차를 거쳐 로그인하는 방식이에요. 비밀번호가 새도 계정을 지킬 수 있어요.">2단계 인증</span>, <span class="term" data-term="앱 비밀번호" data-desc="Google 계정 비밀번호 대신 특정 앱에만 따로 발급하는 16자리 비밀번호예요. 2단계 인증을 켠 계정에서만 만들 수 있어요.">앱 비밀번호</span>가 필요하다고 말해요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=299s" target="_blank" rel="noopener">04:59</a>
+  <h2>Gmail &#x27;Send mail as&#x27;로 회사 주소로 답장하기</h2>
+<p>받기만 해 두면 절반짜리예요. 회사 주소로 온 메일에 Gmail에서 그냥 답장하면, 손님은 <code>yourname@gmail.com</code>에서 온 답을 받게 돼요. 아래 세 장의 카드가 그 흐름이에요. 맨 오른쪽 빨간 카드처럼 회사 주소로 연락했는데 개인 주소로 답이 오면, 애써 만든 전문적인 인상이 깨져요.</p>
 <figure>
-  <img src="assets/frame-0556.png" alt="Gmail의 다른 이메일 주소 추가 창. SMTP 서버 smtp.gmail.com, 포트 587, TLS 보안 연결이 선택돼 있어요">
-  <figcaption>화면에서는 SMTP 서버로 Gmail 자체 서버(smtp.gmail.com, 포트 587, TLS)를 쓰고, 비밀번호 칸에 앱 비밀번호를 넣어요. 브라우저 탭에 '2-Step Verification', 'App passwords'가 열려 있어요. <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=356s" target="_blank" rel="noopener">영상 05:56에서 보기</a></figcaption>
+  <img src="assets/frame-0520.png" alt="손님이 hello@yourbusiness.com으로 메일을 보냄, 개인 Gmail로 답장함, 손님은 yourname@gmail.com에서 온 답을 받음 이라는 세 카드. 마지막 카드는 빨간 아이콘">
+  <figcaption>
+    'Send mail as'를 설정하지 않으면 Gmail은 내 개인 주소로 답장해요.
+    <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=320s" target="_blank" rel="noopener">영상 05:20에서 보기</a>
+  </figcaption>
 </figure>
-<p>설정을 마치면 Gmail이 비즈니스 주소로 확인 메일을 보내요. 이 메일도 Cloudflare를 거쳐 같은 Gmail 받은편지함으로 들어와요. 열어서 확인하면 끝이에요.</p>
-<h3>이제 보내는 사람을 고를 수 있어요</h3>
-<p>메일을 쓰거나 답장할 때 보내는 사람(From) 칸에서 비즈니스 주소를 고를 수 있어요. 고객은 개인 주소 대신 <code>hello@yourbusiness.com</code>을 보게 돼요. 별도 메일함 비용 없이 받기와 보내기가 다 되니, 많은 튜토리얼이 이 방법을 무료 비즈니스 이메일로 추천해 온 거예요.</p>
+<h3>Gmail에 회사 주소 추가하기</h3>
+<p>Gmail 설정의 Accounts and Import 탭으로 가요. 가운데쯤 Send mail as 줄에 있는 Add another email address 링크를 눌러요.</p>
 <figure>
-  <img src="assets/frame-0626.png" alt="Gmail 새 메일 창에서 보내는 사람 드롭다운에 비즈니스 주소와 개인 Gmail 주소가 함께 표시된 모습">
-  <figcaption>From 칸에서 비즈니스 주소와 개인 주소 중 하나를 골라요. <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=386s" target="_blank" rel="noopener">영상 06:26에서 보기</a></figcaption>
+  <img src="assets/frame-0546.png" alt="Gmail 설정 Accounts and Import 탭, Send mail as 항목 옆의 Add another email address 링크">
+  <figcaption>
+    바로 아래 Check mail from other accounts와 헷갈리지 않게 Send mail as 줄을 골라요.
+    <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=346s" target="_blank" rel="noopener">영상 05:46에서 보기</a>
+  </figcaption>
+</figure>
+<p>회사 주소를 넣으면 어떤 메일 서버로 보낼지 묻는 노란 창이 떠요. 영상 화면에서는 SMTP(Simple Mail Transfer Protocol) Server에 <code>smtp.gmail.com</code>, Port에 587, Username에 개인 Gmail 주소를 넣고 TLS(Transport Layer Security) 연결을 골랐어요. 영상은 설정에 따라 SMTP 정보, <span class="term" data-term="2단계 인증" data-en="2-Step Verification" data-desc="비밀번호에 더해 휴대폰 확인 같은 두 번째 단계를 거쳐 로그인하는 방식이에요. 앱 비밀번호를 만들려면 먼저 켜 둬야 해요." data-g="6">2단계 인증</span>, <span class="term" data-term="앱 비밀번호" data-en="App password" data-desc="Google 계정 비밀번호 대신 다른 프로그램에 넣는 16자리 코드예요. 2단계 인증을 켠 계정에서만 만들 수 있어요." data-g="5">앱 비밀번호</span>가 필요할 수 있다고만 말해요. 위쪽 탭에 2-Step Verification과 App passwords가 열려 있는 것도 그래서예요.</p>
+<figure>
+  <img src="assets/frame-0556.png" alt="Add another email address you own 창의 Send mail through your SMTP server 단계. SMTP Server smtp.gmail.com, Port 587, Username에 Gmail 주소, TLS 선택, Add Account 버튼">
+  <figcaption>
+    보내는 길은 결국 Gmail의 메일 서버예요. 회사 주소는 이름표처럼 붙어요.
+    <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=356s" target="_blank" rel="noopener">영상 05:56에서 보기</a>
+  </figcaption>
+</figure>
+<p>Add Account를 누르면 Gmail이 회사 주소로 확인 메일을 보내요. 앞에서 Cloudflare가 회사 주소로 온 메일을 Gmail로 넘기도록 해 뒀으니, 이 확인 메일도 같은 받은편지함에 들어와요. 열어서 확인하면 끝이에요.</p>
+<p>이제 새 메일을 쓰거나 답장할 때 보내는 사람 칸에서 주소를 고를 수 있어요. 아래 화면의 빨간 상자 안 드롭다운에 회사 주소와 개인 Gmail 주소가 함께 떠 있어요.</p>
+<figure>
+  <img src="assets/frame-0626.png" alt="Gmail 새 메일 창의 From 드롭다운에 회사 주소와 Gmail 주소 두 개가 표시되고 빨간 상자로 강조됨">
+  <figcaption>
+    회사 주소를 고르면 손님은 그 주소에서 온 답장을 받아요.
+    <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=386s" target="_blank" rel="noopener">영상 06:26에서 보기</a>
+  </figcaption>
 </figure>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>앱 비밀번호는 2단계 인증을 켠 계정에서만 만들 수 있는 16자리 비밀번호예요. Google은 앱 비밀번호를 권장하지 않고, 대부분은 필요 없다고 안내해요. 만들었다면 남에게 보이지 않게 보관하고, 쓰지 않게 되면 지우는 편이 안전해요.</p>
-  <p class="cite">출처: <a href="https://support.google.com/accounts/answer/185833?hl=en" target="_blank" rel="noopener">Google 계정 고객센터 — Sign in with app passwords</a></p>
+  <p>앱 비밀번호는 Google 계정 비밀번호 대신 쓰는 16자리 코드예요. 2단계 인증을 켠 계정에서만 만들 수 있어요. 위 창의 Password 칸에 넣는 게 바로 이 코드예요.</p>
+  <p class="cite">출처: <a href="https://support.google.com/accounts/answer/185833?hl=en" target="_blank" rel="noopener">Google 계정 고객센터 — 앱 비밀번호로 로그인하기</a></p>
 </aside>
 </section>
 
 <section id="s4">
   <a class="stamp" href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=434s" target="_blank" rel="noopener">07:14</a>
-  <h2>2027년 1월에 사라지는 기능</h2>
-<p>문제는 이 구성의 보내기 쪽이에요. Google은 2027년 1월부터 Gmail에서 외부 주소용 'Send mail as'를 지원하지 않는다고 발표했어요.</p>
+  <h2>2027년 1월에 무엇이 사라지나요?</h2>
+<p>여기까지가 인터넷에서 많이 추천하는 무료 구성이에요. 그런데 영상이 가장 강조하는 문제가 있어요. Google이 2027년 1월부터 외부 주소에 대한 'Send mail as' 지원을 끝낸다고 발표했어요. 영상은 이 소식을 다룬 Android Authority 기사를 보여 줘요. 노란 형광펜 부분이 그 핵심 문장이에요.</p>
 <figure>
-  <img src="assets/frame-0720.png" alt="Android Authority 기사 화면. 제목은 Google이 Gmail의 파워유저 기능 하나를 없앤다는 내용이고, 2027년 1월 Send as 지원 중단 문장이 강조돼 있어요">
-  <figcaption>영상은 이 변경을 다룬 기사를 띄워 보여 줘요. 2027년 1월에 외부 주소의 'Send as' 지원을 끝낸다는 문장이 강조돼 있어요. <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=440s" target="_blank" rel="noopener">영상 07:20에서 보기</a></figcaption>
+  <img src="assets/frame-0721.png" alt="Android Authority 기사 'Google is killing one of Gmail's most useful power-user features'. 2027년 1월 외부 Send as 주소 지원 종료 문장에 노란 형광펜, 아래 TL;DR 요약 세 줄">
+  <figcaption>
+    기사 요약에는 Gmailify와 POP(Post Office Protocol) 가져오기도 함께 없어진다고 적혀 있어요.
+    <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=441s" target="_blank" rel="noopener">영상 07:21에서 보기</a>
+  </figcaption>
 </figure>
-<h3>멈추는 것과 계속 되는 것</h3>
-<p>그렇다고 전체가 멈추는 건 아니에요. Cloudflare가 메일을 받아서 Gmail로 넘기는 부분은 그대로 동작해요. 사라지는 건 Gmail 안에서 같은 비즈니스 주소로 손쉽게 답장하던 부분이에요. 고객 메일은 계속 받을 수 있지만, 답장 방법은 따로 마련해야 해요.</p>
-<div class="table-scroll">
-  <table>
-    <thead><tr><th>역할</th><th>담당</th><th>2027년 1월 이후</th></tr></thead>
-    <tbody>
-      <tr><td>받기</td><td>Cloudflare Email Routing</td><td>계속 돼요</td></tr>
-      <tr><td>같은 주소로 보내기</td><td>Gmail Send mail as</td><td>외부 주소는 지원이 끝나요</td></tr>
-    </tbody>
-  </table>
-</div>
+<h3>멈추는 쪽은 보내기뿐이에요</h3>
+<p>영상은 모든 게 한꺼번에 멈추는 건 아니라고 짚어요. Cloudflare가 맡은 받기는 계속 돼요. 회사 주소로 온 메일은 여전히 Gmail로 들어와요. 사라지는 건 Gmail에서 회사 주소로 답장하던 보내기 쪽이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 210" role="img" aria-label="받기 경로는 계속 되고 보내기 경로는 2027년 1월에 끊긴다는 그림">
+    <defs>
+      <marker id="arrow-recv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker>
+      <marker id="arrow-send" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker>
+    </defs>
+    <text x="10" y="24" class="sub">받기</text>
+    <rect x="10" y="34" width="150" height="56" rx="10" class="box"/>
+    <text x="85" y="67" text-anchor="middle">손님</text>
+    <path d="M162 62 h56" class="line" marker-end="url(#arrow-recv)"/>
+    <rect x="222" y="34" width="170" height="56" rx="10" class="c1 cell"/>
+    <text x="307" y="60" text-anchor="middle">Cloudflare</text>
+    <text x="307" y="78" text-anchor="middle" class="sub">이메일 라우팅</text>
+    <path d="M394 62 h56" class="line" marker-end="url(#arrow-recv)"/>
+    <rect x="454" y="34" width="176" height="56" rx="10" class="ok"/>
+    <text x="542" y="60" text-anchor="middle">Gmail 받은편지함</text>
+    <text x="542" y="78" text-anchor="middle" class="sub">계속 돼요</text>
+    <text x="10" y="128" class="sub">보내기</text>
+    <rect x="10" y="138" width="150" height="56" rx="10" class="c2 cell"/>
+    <text x="85" y="164" text-anchor="middle">Gmail</text>
+    <text x="85" y="182" text-anchor="middle" class="sub">Send mail as</text>
+    <path d="M162 166 h56" class="line" marker-end="url(#arrow-send)"/>
+    <rect x="222" y="138" width="170" height="56" rx="10" class="bad"/>
+    <text x="307" y="164" text-anchor="middle">회사 주소로 답장</text>
+    <text x="307" y="182" text-anchor="middle" class="sub">2027년 1월 중단</text>
+    <path d="M394 166 h56" class="line dim" marker-end="url(#arrow-send)"/>
+    <rect x="454" y="138" width="176" height="56" rx="10" class="box dim"/>
+    <text x="542" y="171" text-anchor="middle">손님</text>
+  </svg>
+  <figcaption>받는 길은 그대로 남고, 회사 주소로 답장하는 길만 끊겨요. 영상이 '절반만 남는다'고 말하는 이유예요.</figcaption>
+</figure>
+<p>그래서 이미 이 구성을 쓰는 사람보다, 오늘 새로 회사 메일을 꾸리는 사람이 더 신경 써야 해요. 곧 없어질 기능 위에 일하는 방식을 쌓는 셈이니까요.</p>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>Google 도움말은 2027년 1월부터 외부 계정용 'Send as', Gmailify, 웹의 POP 가져오기를 함께 종료한다고 적고 있어요. 다른 Gmail 주소나 Google Workspace 별칭으로 보내는 건 그대로예요. 외부에서 Gmail로 자동 전달받는 것도 영향이 없다고 해요.</p>
-  <p>대안으로는 해당 메일 서비스에서 직접 보내기, IMAP/SMTP를 지원하는 데스크톱 메일 앱 쓰기, Gmail 모바일 앱으로 외부 계정 보기를 제시해요. 'Send as'를 대신해 준다는 제3자 서비스는 보안 위험이 있다며 주의하라고 해요.</p>
+  <p>Google 고객센터 공지에도 같은 내용이 있어요. 2027년 1월부터 Gmail 웹과 모바일 앱 모두에서 외부 이메일 계정 주소로 보낼 수 없어요. Gmail끼리의 별칭과 <span class="term" data-term="Google Workspace" data-en="Google Workspace" data-desc="Google의 유료 업무용 서비스예요. 내 도메인 주소로 된 진짜 Gmail 메일함을 쓸 수 있고, 이번 &#x27;Send as&#x27; 중단의 영향도 받지 않아요." data-g="8">Google Workspace</span>의 'Send as'는 영향이 없어요.</p>
+  <p>공지의 일정표는 이래요. 2026년 3분기에 공지와 안내가 시작되고, 3~4분기에는 기능은 돌아가지만 새로 설정하는 것은 막힐 수 있어요. 2027년 1월에 완전히 없어져요. 사업용으로 쓰던 사람에게는 IMAP(Internet Message Access Protocol)·SMTP를 지원하는 데스크톱 메일 프로그램, 원래 메일 업체의 화면, 또는 자기 도메인용 Google Workspace를 권해요.</p>
   <p class="cite">출처: <a href="https://support.google.com/mail/answer/17101213?hl=en" target="_blank" rel="noopener">Gmail 고객센터 — Learn about changes to third-party email account support in Gmail</a></p>
 </aside>
 </section>
 
 <section id="s5">
-  <a class="stamp" href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=476s" target="_blank" rel="noopener">07:56</a>
-  <h2>대안: 받기·보내기가 되는 전용 메일함</h2>
-<p>영상은 대안으로 받기와 보내기가 한 곳에서 되는 유료 메일 서비스 Neo(neo.space)의 가입 과정을 보여 줘요.</p>
-<h3>가입 흐름</h3>
-<p>이미 도메인이 있으면 연결하면 되고, 없으면 가입하면서 새 도메인을 검색해 고를 수 있어요. 고객 계정을 만들고 나면 첫 메일함을 만드는데, 이게 관리자 계정이 돼요. 이어서 팀원 메일함을 추가하고, <code>support@</code>나 <code>info@</code> 같은 공용 주소도 만들어요. 문의 종류별로 주소를 나누면 한 사람 받은편지함에 다 몰리지 않아서 정리하기 좋다고 해요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=655s" target="_blank" rel="noopener">10:55</a>
+  <h2>어떤 방법을 고를까요?</h2>
+<p>영상은 끝에서 Cloudflare 쪽 장단점을 카드 네 장으로 정리해요. 위 두 장은 장점, 아래 두 장은 한계예요. 받는 일은 공짜로 잘하지만 혼자서는 완성된 회사 메일함이 아니고, 보내기를 메워 주던 Gmail 기능은 2027년 1월에 빠져요.</p>
 <figure>
-  <img src="assets/frame-0821.png" alt="Neo 가입 첫 화면. 이메일에 쓸 도메인을 검색하는 칸과 이미 도메인이 있으면 연결하는 링크가 있어요">
-  <figcaption>도메인이 없어도 가입 과정에서 바로 검색해서 고를 수 있어요. <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=501s" target="_blank" rel="noopener">영상 08:21에서 보기</a></figcaption>
+  <img src="assets/frame-1135.png" alt="Cloudflare 로고 아래 네 카드. A free way to receive business emails, The forwarding itself is free good at receiving, Not a complete business mailbox on its own, Google has announced this is being removed in January 2027(빨간 글씨)">
+  <figcaption>
+    마지막 빨간 카드가 이 구성을 새로 시작할지 정하는 기준이에요.
+    <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=695s" target="_blank" rel="noopener">영상 11:35에서 보기</a>
+  </figcaption>
 </figure>
-<h3>요금</h3>
-<p>영상 기준으로 요금은 결제 주기에 따라 월 1.25달러부터 시작해요. 기본 요금제에 15GB 저장공간, 안드로이드·iOS 앱, 읽음 확인, Gmail 이전, 2단계 인증이 들어 있어요. 15일 무료 체험도 있어요. 영구 무료는 아니지만, 같은 주소로 보내고 받는 진짜 메일함이라는 점이 차이예요.</p>
-<figure>
-  <img src="assets/frame-1003.png" alt="Neo 요금표. Starter 1.25달러, Standard 3.99달러, Max 7.99달러가 나란히 있어요">
-  <figcaption>영상 속 요금표예요. 가격은 바뀔 수 있으니 가입 전에 공식 사이트에서 다시 확인하는 게 좋아요. <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=603s" target="_blank" rel="noopener">영상 10:03에서 보기</a></figcaption>
-</figure>
-<h3>둘 중 무엇을 고를까요</h3>
-<p>영상의 결론은 필요에 따라 다르다는 거예요. 도메인이 이미 있고 받기만 무료로 하고 싶다면 Cloudflare로 충분해요. 같은 주소로 보내고 받는 완전한 메일함을 여러 서비스를 엮지 않고 쓰고 싶다면 전용 메일 서비스가 설정과 관리 모두 편해요.</p>
-<figure>
-  <img src="assets/frame-1143.png" alt="Cloudflare 정리 카드. 무료로 받기 가능, 전달은 무료, 완전한 메일함은 아님, 2027년 1월 제거 발표가 적혀 있어요">
-  <figcaption>Cloudflare 쪽 장단점을 정리한 화면이에요. 마지막 줄이 2027년 1월 변경이에요. <a href="https://www.youtube.com/watch?v=UpOHAzG-nKE&amp;t=703s" target="_blank" rel="noopener">영상 11:43에서 보기</a></figcaption>
-</figure>
+<p>결론은 무엇이 필요하냐에 따라 갈려요.</p>
 <div class="table-scroll">
   <table>
-    <thead><tr><th>항목</th><th>Cloudflare + Gmail</th><th>전용 메일함 (Neo)</th></tr></thead>
+    <thead><tr><th>상황</th><th>영상이 권하는 쪽</th></tr></thead>
     <tbody>
-      <tr><td>비용</td><td>전달은 무료, 도메인은 따로 사요</td><td>월 1.25달러부터, 도메인 포함 가능</td></tr>
-      <tr><td>받기</td><td>돼요</td><td>돼요</td></tr>
-      <tr><td>같은 주소로 보내기</td><td>2027년 1월부터 막혀요</td><td>돼요</td></tr>
-      <tr><td>맞는 경우</td><td>도메인이 있고 받기만 필요할 때</td><td>처음부터 완전한 메일함이 필요할 때</td></tr>
+      <tr><td>도메인이 이미 있고, 회사 주소로 오는 메일을 쓰던 메일함에서 받기만 하면 돼요</td><td>Cloudflare 이메일 라우팅. 전달은 무료이고 받기는 잘해요</td></tr>
+      <tr><td>같은 회사 주소로 보내고 받기를 모두 해야 해요</td><td>전용 비즈니스 이메일 서비스. 여러 서비스를 엮지 않아도 돼서 설정과 관리가 훨씬 쉬워요</td></tr>
     </tbody>
   </table>
 </div>
+<p>전용 서비스는 달마다 돈이 들어요. 대신 진짜 메일함이라 보내기와 받기가 한 주소에서 끝나요. 공짜 구성은 도메인 값 말고는 비용이 없지만, 보내기 쪽이 남의 기능에 기대고 있다는 게 약점이에요.</p>
 </section>
 </main>
 
-<div class="tail">
+<div class="tail" id="glossary">
   <h2>이 글에 나온 용어</h2>
-  <div class="table-scroll">
-    <table>
-      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
-      <tbody>
-        <tr><td>도메인</td><td>yourbusiness.com처럼 인터넷에서 쓰는 내 주소 이름이에요. 등록 업체에서 사서 해마다 갱신해야 해요.</td></tr>
-        <tr><td>이메일 포워딩</td><td>한 주소로 온 메일을 다른 주소로 자동으로 넘겨주는 거예요. 메일함이 따로 없어도 평소 쓰는 곳에서 받아 볼 수 있어요.</td></tr>
-        <tr><td>DNS</td><td>도메인 이름을 실제 서버 위치와 연결해 주는 주소록이에요. 메일이 어디로 가야 하는지도 여기에 적혀 있어요.</td></tr>
-        <tr><td>SMTP</td><td>메일을 보낼 때 쓰는 약속된 방식이에요. 다른 주소로 보내려면 어느 서버를 거쳐 보낼지 알려 줘야 해요.</td></tr>
-        <tr><td>2단계 인증</td><td>비밀번호에 더해 휴대폰 확인 같은 두 번째 절차를 거쳐 로그인하는 방식이에요. 비밀번호가 새도 계정을 지킬 수 있어요.</td></tr>
-        <tr><td>앱 비밀번호</td><td>Google 계정 비밀번호 대신 특정 앱에만 따로 발급하는 16자리 비밀번호예요. 2단계 인증을 켠 계정에서만 만들 수 있어요.</td></tr>
-        <tr><td>MX 레코드</td><td>DNS에 적는 항목 중 하나로, 이 도메인 앞으로 온 메일을 어느 서버가 받을지 정해요.</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-1"><dt>도메인<span class="en">Domain</span></dt><dd>yourbusiness.com처럼 인터넷에서 쓰는 내 이름 주소예요. 해마다 돈을 내고 빌려 쓰는 것이라 갱신을 잊으면 메일 주소도 함께 못 쓰게 돼요.</dd></div>
+    <div class="g" id="g-5"><dt>앱 비밀번호<span class="en">App password</span></dt><dd>Google 계정 비밀번호 대신 다른 프로그램에 넣는 16자리 코드예요. 2단계 인증을 켠 계정에서만 만들 수 있어요.</dd></div>
+    <div class="g" id="g-3"><dt>이메일 라우팅<span class="en">Email Routing</span></dt><dd>내 도메인 주소로 온 메일을 받아서 이미 쓰는 다른 메일함으로 넘겨 주는 기능이에요. 메일을 보관하지는 않고 전달만 해요.</dd></div>
+    <div class="g"><dt>DKIM</dt><dd>DomainKeys Identified Mail</dd></div>
+    <div class="g" id="g-2"><dt>DNS<span class="en">Domain Name System</span></dt><dd>도메인 이름을 실제 서버 주소로 바꿔 주는 전화번호부 같은 장치예요. 메일이 어디로 가야 하는지도 여기에 적어 둬요.</dd></div>
+    <div class="g" id="g-8"><dt>Google Workspace<span class="en">Google Workspace</span></dt><dd>Google의 유료 업무용 서비스예요. 내 도메인 주소로 된 진짜 Gmail 메일함을 쓸 수 있고, 이번 &#x27;Send as&#x27; 중단의 영향도 받지 않아요.</dd></div>
+    <div class="g"><dt>IMAP</dt><dd>Internet Message Access Protocol</dd></div>
+    <div class="g"><dt>MX</dt><dd>Mail Exchanger</dd></div>
+    <div class="g" id="g-7"><dt>MX 레코드<span class="en">MX record</span></dt><dd>이 도메인으로 온 메일을 어느 서버가 받는지 적어 둔 DNS 항목이에요. Cloudflare가 메일을 받으려면 이 항목이 Cloudflare를 가리켜야 해요.</dd></div>
+    <div class="g"><dt>POP</dt><dd>Post Office Protocol</dd></div>
+    <div class="g" id="g-4"><dt>Send mail as<span class="en">Send mail as</span></dt><dd>Gmail에서 내 Gmail 주소가 아닌 다른 주소를 보내는 사람으로 골라 메일을 보내는 기능이에요. 이 구성에서 답장을 회사 주소로 보이게 해 주는 부분이에요.</dd></div>
+    <div class="g"><dt>SMTP</dt><dd>Simple Mail Transfer Protocol</dd></div>
+    <div class="g"><dt>SPF</dt><dd>Sender Policy Framework</dd></div>
+    <div class="g"><dt>TLS</dt><dd>Transport Layer Security</dd></div>
+    <div class="g" id="g-6"><dt>2단계 인증<span class="en">2-Step Verification</span></dt><dd>비밀번호에 더해 휴대폰 확인 같은 두 번째 단계를 거쳐 로그인하는 방식이에요. 앱 비밀번호를 만들려면 먼저 켜 둬야 해요.</dd></div>
+  </dl>
 </div>
 
-<div class="tail">
+<div class="tail" id="sources">
   <h2>참고한 곳</h2>
   <ol>
-    <li><a href="https://www.youtube.com/watch?v=UpOHAzG-nKE" target="_blank" rel="noopener">원본 영상 — Business Email</a></li>
-    <li><a href="https://support.google.com/mail/answer/17101213?hl=en" target="_blank" rel="noopener">Gmail 고객센터 — Learn about changes to third-party email account support in Gmail</a></li>
-    <li><a href="https://developers.cloudflare.com/email-routing/limits/" target="_blank" rel="noopener">Cloudflare Docs — Email Routing limits</a></li>
-    <li><a href="https://developers.cloudflare.com/email-routing/get-started/enable-email-routing/" target="_blank" rel="noopener">Cloudflare Docs — Enable Email Routing</a></li>
-    <li><a href="https://support.google.com/accounts/answer/185833?hl=en" target="_blank" rel="noopener">Google 계정 고객센터 — Sign in with app passwords</a></li>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=UpOHAzG-nKE" target="_blank" rel="noopener">원본 영상 — Business Email</a></li>
+    <li id="src-2"><a href="https://support.google.com/mail/answer/17101213?hl=en" target="_blank" rel="noopener">Gmail 고객센터 — Learn about changes to third-party email account support in Gmail</a></li>
+    <li id="src-3"><a href="https://support.google.com/accounts/answer/185833?hl=en" target="_blank" rel="noopener">Google 계정 고객센터 — 앱 비밀번호로 로그인하기</a></li>
+    <li id="src-4"><a href="https://developers.cloudflare.com/email-routing/limits/" target="_blank" rel="noopener">Cloudflare 문서 — Email Routing limits</a></li>
+    <li id="src-5"><a href="https://developers.cloudflare.com/email-routing/get-started/enable-email-routing/" target="_blank" rel="noopener">Cloudflare 문서 — Enable Email Routing</a></li>
   </ol>
 </div>
 
-<footer>2026년 10월 1일에 이 영상을 보고 정리했어요. 원본은 Business Email 채널에 있어요.</footer>
+<footer>2026년 10월 14일에 이 영상을 보고 정리했어요. 원본은 Business Email 채널에 있어요.</footer>
 
 </div>
 
-<div id="tip" role="tooltip"></div>
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
 <script>
 (function () {
-  // ── 용어 툴팁 ───────────────────────────────────────
-  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
-  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
-  var tip = document.getElementById('tip');
-  var open = null;
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
 
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
   function show(el) {
+    clearTimeout(hideTimer);
     var desc = el.getAttribute('data-desc');
     if (!desc) return;
-    var name = el.getAttribute('data-term') || el.textContent;
+    if (open && open !== el) open.classList.remove('open');
     tip.innerHTML = '';
-    var b = document.createElement('b');
-    b.textContent = name;
-    tip.appendChild(b);
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
     tip.appendChild(document.createTextNode(desc));
-    tip.classList.add('on');
-
-    var r = el.getBoundingClientRect();
-    var t = tip.getBoundingClientRect();
-    var pad = 12;
-    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
-    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
-    var top = r.top + window.scrollY - t.height - 10;
-    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
-    tip.style.left = left + 'px';
-    tip.style.top = top + 'px';
-    open = el;
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
   }
-
-  function hide() {
-    tip.classList.remove('on');
-    open = null;
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
   }
 
   document.querySelectorAll('.term').forEach(function (el) {
-    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
-    el.addEventListener('mouseenter', function () { show(el); });
-    el.addEventListener('mouseleave', hide);
-    el.addEventListener('focus', function () { show(el); });
-    el.addEventListener('blur', hide);
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
     el.addEventListener('click', function (e) {
-      e.preventDefault();
-      open === el ? hide() : show(el);
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
     });
   });
 
-  document.addEventListener('click', function (e) {
-    if (open && !e.target.closest('.term')) hide();
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
   });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') hide();
-  });
-  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
-  window.addEventListener('resize', hide);
 
-  // ── 목차 현재 위치 표시 ─────────────────────────────
-  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
-  var map = {};
-  links.forEach(function (a) {
-    var s = document.getElementById(a.getAttribute('href').slice(1));
-    if (s) map[s.id] = a;
-  });
-  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
-  if ('IntersectionObserver' in window && targets.length) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (!en.isIntersecting) return;
-        links.forEach(function (a) { a.classList.remove('active'); });
-        map[en.target.id].classList.add('active');
-      });
-    }, { rootMargin: '-10% 0px -75% 0px' });
-    targets.forEach(function (t) { io.observe(t); });
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
   }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
 })();
 </script>
+
 </body>
 </html>

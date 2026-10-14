@@ -24,7 +24,9 @@
 </script>
 <!-- yn-lock:end -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Claude Design 실력을 끌어올리는 25가지 요령</title>
+<title>Claude Design 실력을 올리는 25가지 요령</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 <style>
   :root{
     --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
@@ -32,7 +34,10 @@
     --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
     --warn:#ff8a00; --warn-soft:#fff4e6;
     --info:#00b8a9; --info-soft:#e4f8f6;
-    --radius:16px; --maxw:760px;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
   }
   @media (prefers-color-scheme:dark){
     :root{
@@ -41,6 +46,8 @@
       --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
       --warn:#ffab4a; --warn-soft:#3a2a13;
       --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
     }
   }
   *{box-sizing:border-box}
@@ -78,13 +85,29 @@
   .keypoints li strong{color:var(--text)}
 
   /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
   nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
     border-radius:var(--radius)}
   nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
   nav.toc ol{margin:0; padding-left:20px}
-  nav.toc li{margin:6px 0; font-size:15px}
-  nav.toc a{color:var(--text-sub)}
-  nav.toc a.active{color:var(--brand); font-weight:600}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
 
   /* ── 본문 ──────────────────────────────────────────── */
   section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
@@ -99,6 +122,16 @@
     background:var(--surface-2); color:var(--text-mute);
     font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
   a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
 
   /* ── 그림 ──────────────────────────────────────────── */
   figure{margin:28px 0}
@@ -115,23 +148,33 @@
   thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
     font-weight:700; white-space:nowrap}
   tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
   td code{font-size:13.5px}
 
-  /* ── 용어 툴팁 ─────────────────────────────────────── */
-  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
-    font-weight:600; background:none}
-  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
-  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
-    background:var(--text); color:var(--bg); border-radius:12px;
-    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
-    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
-    transition:opacity .12s ease; pointer-events:none}
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
   #tip.on{opacity:1; visibility:visible}
-  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
 
   /* ── 박스 두 종류 ───────────────────────────────────
      .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
-     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
   aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
   aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
   aside p{margin:8px 0}
@@ -144,6 +187,92 @@
   aside .table-scroll{margin:12px 0 0}
   aside table{min-width:320px; font-size:14.5px}
   aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
 
   /* ── 인용 ──────────────────────────────────────────── */
   blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
@@ -159,13 +288,14 @@
   pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
     border:1px solid var(--line); overflow-x:auto; line-height:1.6}
   pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
 
   /* ── 꼬리말 ────────────────────────────────────────── */
   .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
   .tail h2{font-size:20px; margin:0 0 14px}
   .tail + .tail{margin-top:40px}
   .tail ol{padding-left:20px}
-  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
   footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
     font-size:13.5px; color:var(--text-mute)}
 
@@ -181,12 +311,12 @@
 <div class="wrap">
 
 <header>
-  <h1>Claude Design 실력을 끌어올리는 25가지 요령</h1>
-  <p class="lede">AI 티 나는 디자인을 벗어나는 요령을 쉬운 것부터 고급까지 짚어요</p>
+  <h1>Claude Design 실력을 올리는 25가지 요령</h1>
+  <p class="lede">AI 티 나는 디자인을 벗어나는 요령을 쉬움·중간·고급 순으로 짚어요</p>
   <div class="meta">
     <span>Jay E | RoboNuggets</span><span class="dot">·</span>
-    <span>13:32</span><span class="dot">·</span>
-    <span>유튜브 영상 정리</span>
+    <span>영상 13:32</span><span class="dot">·</span>
+    <span>읽는 데 약 20분</span>
   </div>
   <a class="src-btn" href="https://www.youtube.com/watch?v=_SVU3oC4JX8" target="_blank" rel="noopener">
     원본 영상 보러 가기 →
@@ -196,357 +326,801 @@
 <div class="keypoints">
   <h2>핵심만 먼저</h2>
   <ol>
-    <li>모든 출발점은 디자인 시스템이에요. 마음에 드는 사이트나 스크린샷을 넣으면 Claude가 색·폰트·컴포넌트를 뽑아 줘요.</li>
-    <li>AI 티는 기본 폰트와 AI 말투에서 가장 먼저 나요. 폰트를 직접 고르고 업계 상위 5곳의 카피 패턴을 시스템에 넣어요.</li>
-    <li>컴포넌트·이펙트·아이콘은 처음부터 그리게 하지 말고 21st.dev, React Bits, Iconify 같은 자료실에서 가져다 줘요.</li>
-    <li>그래픽은 SVG로 받고, 움직임은 GSAP을 쓰라고 지시해요.</li>
-    <li>Claude Code에서는 /design 명령, tweak 스킬, 디자인 OS로 작업 흐름 전체를 묶을 수 있어요.</li>
+    <li>모든 작업은 <span class="term" data-term="디자인 시스템" data-en="Design system" data-desc="색, 서체, 간격, 컴포넌트 규칙을 한데 묶은 기준서예요. 이게 있어야 AI가 매번 같은 스타일로 결과물을 내요." data-g="1">디자인 시스템</span>에서 시작해요. 마음에 드는 덱·사이트·스크린샷이나 styles.refero.design에서 가져오면 처음부터 쓸 필요가 없어요.</li>
+    <li>AI(Artificial Intelligence) 디자인이 티 나는 곳은 폰트, 문구, 아이콘이에요. 무료 폰트 사이트, 상위 다섯 곳의 문구 분석, 한 스타일 아이콘 팩으로 먼저 바꿔요.</li>
+    <li>21st.dev, React Bits, Canvas UI(User Interface), Lordicon처럼 에이전트에 바로 넘길 자료를 쓰면 품질이 오르고 토큰도 아껴요.</li>
+    <li>Claude Code에서는 디자인 시스템, 글투, Apple HIG(Human Interface Guidelines), 슬라이더 패널까지 전부 스킬로 만들어 불러 쓸 수 있어요.</li>
+    <li>끝으로 내 작업물과 생성물을 한곳에 모아 Claude도 찾아 쓰게 하는 '디자인 운영체제'를 만들어요.</li>
   </ol>
 </div>
 
 <nav class="toc">
   <h2>목차</h2>
   <ol>
-    <li><a href="#s1">디자인 시스템부터 세워요</a></li>
-    <li><a href="#s2">폰트·카피·조합으로 AI 티 지우기</a></li>
-    <li><a href="#s3">이미지·레퍼런스·마감 스킬</a></li>
-    <li><a href="#s4">가져다 쓰는 컴포넌트·아이콘 자료실</a></li>
-    <li><a href="#s5">고급: 규칙·모션·Claude Code 흐름</a></li>
+    <li><a href="#s1">디자인 시스템부터 만들어요 (1–4)</a></li>
+    <li><a href="#s2">폰트·문구·조합으로 티를 지워요 (5–7)</a></li>
+    <li><a href="#s3">이미지·참고 자료·글투 다듬기 (8–12)</a></li>
+    <li><a href="#s4">가져다 쓰는 컴포넌트와 아이콘 (13–19)</a></li>
+    <li><a href="#s5">고급: 규칙·모션·작업 환경 (20–25)</a></li>
     <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
   </ol>
 </nav>
 
 <main>
 <section id="s1">
   <a class="stamp" href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=33s" target="_blank" rel="noopener">00:33</a>
-  <h2>디자인 시스템부터 세워요</h2>
-<p>영상은 25가지 요령을 쉬운 것, 중간, 고급 세 단계로 나눠 소개해요. 첫 단계의 출발점은 <span class="term" data-term="디자인 시스템" data-desc="색, 글꼴, 간격, 컴포넌트 규칙을 한데 모은 것이에요. 이게 있어야 화면이 여러 개여도 한 브랜드처럼 보여요.">디자인 시스템</span>이에요. Claude뿐 아니라 어떤 AI 에이전트로 디자인을 하든, 색과 글꼴과 컴포넌트 규칙이 먼저 있어야 결과물이 한 브랜드처럼 보여요.</p>
-<h3>1. 디자인 시스템 만들기</h3>
-<p>claude.ai/design에서 Design systems로 들어가 Create를 누르면 돼요. 사업 설명을 적고 폰트·로고·자산을 올려요. 꼭 처음부터 쓸 필요는 없어요. 마음에 드는 덱이나 웹사이트, 스크린샷 한 장만 넣어도 Claude가 거기서 색·폰트·컴포넌트를 뽑아내요.</p>
+  <h2>디자인 시스템부터 만들어요 (1–4)</h2>
+<p>영상은 25가지 요령을 쉬움, 중간, 고급 세 단계로 나눠요. 첫 단계의 출발점은 모두 같아요. Claude든 다른 AI 에이전트든 디자인을 맡기려면 먼저 디자인 시스템이 있어야 한다는 거예요.</p>
+
+<h3>1. 빈칸 대신 마음에 드는 자료를 넣어요</h3>
+<p>Claude Design(claude.ai/design)에서 Design systems로 가서 Create를 누르면 사업 설명, 폰트, 로고, 자산을 넣는 칸이 나와요. 처음부터 채울 필요는 없어요. 아래 화면 왼쪽처럼 덱 PDF(Portable Document Format), 웹사이트, 앱 스크린샷 세 개를 넣고 "I love this. Turn it into a design system."이라고만 써도 돼요. 가운데 카드가 그 결과예요. Claude가 색 견본, Aa로 표시한 서체 두 개, 버튼과 입력창 같은 컴포넌트를 뽑아 정리했어요.</p>
 <figure>
-  <img src="assets/frame-0048.png" alt="Claude Design의 'What should we create?' 입력창에서 디자인 시스템 메뉴를 열고 Create design system을 고르는 화면">
-  <figcaption>새 작업을 만들 때 디자인 시스템을 고르거나 새로 만들 수 있어요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=48s" target="_blank" rel="noopener">영상 00:48에서 보기</a></figcaption>
+  <img src="assets/frame-0105.png" alt="덱, 웹사이트, 스크린샷 파일 세 개가 Claude를 거쳐 Nexora 디자인 시스템 카드로 바뀌는 장면. 카드에 색 견본 네 개, 서체 두 종류, 버튼과 입력창이 있어요">
+  <figcaption>
+    입력은 파일 세 개와 한 문장이 전부예요. 색, 서체, 컴포넌트는 Claude가 알아서 나눠요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=65s" target="_blank" rel="noopener">영상 01:05에서 보기</a>
+  </figcaption>
 </figure>
-<h3>2~3. 남이 만든 시스템을 빌려 오기</h3>
-<p>참고할 게 없다면 styles.refero.design을 열어 봐요. Mercury, Linear, Apple 같은 실제 서비스의 디자인 시스템 2,000여 개가 모여 있어요. 색·글꼴·간격이 Claude가 읽기 좋은 문서(DESIGN.md)로 정리돼 있어서, 하나를 복사해 붙이고 고칠 점만 말하면 한 번에 좋은 시스템이 나와요.</p>
+
+<h3>2. 2,000개 넘는 디자인 시스템을 가져다 써요</h3>
+<p>참고할 자료조차 없다면 styles.refero.design에 가요. Mercury, Linear, Apple처럼 실제 서비스의 디자인 시스템 2,000개 이상을 모아 둔 갤러리예요. 화면 오른쪽 검색창 위 문구처럼 색, 서체, 간격이 Claude, Cursor 같은 도구가 읽기 좋은 형식으로 적혀 있어요. 마음에 드는 걸 열어 복사하고, 바꾸고 싶은 점만 덧붙여 Claude에 붙이면 한 번에 쓸 만한 디자인 시스템이 나와요.</p>
 <figure>
-  <img src="assets/frame-0112.png" alt="styles.refero.design 첫 화면. 'Your favorite sites, in DESIGN.md' 문구와 검색창이 보여요">
-  <figcaption>2,000여 개 디자인 시스템을 DESIGN.md 형태로 모아 둔 갤러리예요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=72s" target="_blank" rel="noopener">영상 01:12에서 보기</a></figcaption>
+  <img src="assets/frame-0113.png" alt="styles.refero.design 첫 화면. 디자인 시스템 검색창과 대시보드, AI 제품, 에디토리얼 같은 분류 링크가 보여요">
+  <figcaption>
+    분류 링크와 검색창으로 원하는 분위기를 찾을 수 있어요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=73s" target="_blank" rel="noopener">영상 01:13에서 보기</a>
+  </figcaption>
 </figure>
-<p>수천 개를 직접 넘겨 볼 필요도 없어요. 갤러리 링크를 주고 '우리 사업에 가장 가까운 디자인 시스템 세 개를 찾아서 링크를 달라'고 하면 Claude가 내 분야에 맞게 추려 줘요. 이 갤러리뿐 아니라 웹에서 찾은 어떤 갤러리에도 통하는 방법이에요.</p>
-<h3>4. Claude Code에서는 스킬로</h3>
-<p>Claude Design 웹앱은 좋지만 웹 기반이라 내 컴퓨터 파일을 하나씩 올려야 해요. Claude Code나 Cowork를 쓴다면 디자인 시스템을 <span class="term" data-term="커스텀 스킬" data-desc="Claude Code나 Cowork에 직접 만들어 넣는 지침 묶음이에요. 이름으로 부르면 그 지침대로 작업해서, 같은 스타일을 매번 다시 설명하지 않아도 돼요.">커스텀 스킬</span> 하나로 만들면 끝이에요. 영상에서는 /duolingo 스킬을 만들어, 부를 때마다 듀오링고 스타일로 화면을 만들게 했어요. 발표자는 이 영상의 다른 요령도 대부분 Claude Code에서 그대로 통한다고 해요.</p>
+
+<h3>3. 고르는 일도 Claude에게 맡겨요</h3>
+<p>수천 개를 직접 넘겨 보는 건 비효율적이에요. 갤러리 링크를 주고 내 사업을 한 줄로 설명한 다음, 가장 가까운 세 개를 골라 링크와 이유를 달라고 하면 돼요. 아래 프롬프트의 대괄호 부분에 내가 하는 일과 고객을 채우면 그대로 쓸 수 있어요.</p>
 <figure>
-  <img src="assets/frame-0236.png" alt="듀오링고 웹페이지가 /duolingo 스킬을 거쳐 같은 스타일의 robonuggets 앱 화면으로 바뀌는 도식">
-  <figcaption>스킬로 만든 디자인 시스템은 부를 때마다 같은 스타일을 입혀요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=156s" target="_blank" rel="noopener">영상 02:36에서 보기</a></figcaption>
+  <img src="assets/frame-0153.png" alt="styles.refero.design을 훑어 내 사업에 가장 가까운 디자인 시스템 세 개를 링크와 이유와 함께 달라는 프롬프트">
+  <figcaption>
+    "왜 맞는지 한 줄"을 요구해 두면 고른 근거를 바로 확인할 수 있어요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=113s" target="_blank" rel="noopener">영상 01:53에서 보기</a>
+  </figcaption>
 </figure>
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>Anthropic 공식 발표에 따르면 Claude Design은 Anthropic Labs의 리서치 프리뷰로 나왔고, Pro·Max·Team·Enterprise 구독자가 쓸 수 있어요. 온보딩 때 팀의 코드베이스와 디자인 파일을 읽어 디자인 시스템을 만들고, 이후 프로젝트에 그 색·글꼴·컴포넌트를 자동으로 적용한다고 설명해요. 요금제 조건은 바뀔 수 있으니 최신 안내를 확인하는 게 좋아요.</p>
-  <p class="cite">출처: <a href="https://www.anthropic.com/news/claude-design-anthropic-labs" target="_blank" rel="noopener">Anthropic — Introducing Claude Design by Anthropic Labs</a></p>
-</aside>
+<p>결과는 이렇게 나와요. 음료 브랜드 Olipop, 올리브유 브랜드 Graza, 샐러드 체인 sweetgreen 세 곳의 카드가 색상 코드와 함께 추려졌어요. 식음료 사업을 설명했을 때 그 분야 브랜드만 남은 거예요.</p>
+<figure>
+  <img src="assets/frame-0201.png" alt="Olipop, Graza, sweetgreen 세 브랜드의 디자인 시스템 카드. 각 카드에 대표 이미지와 색상 코드 견본이 있어요">
+  <figcaption>
+    수천 개가 내 분야에 맞는 세 개로 줄었어요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=121s" target="_blank" rel="noopener">영상 02:01에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>4. Claude Code에서는 디자인 시스템이 곧 스킬이에요</h3>
+<p>웹판 Claude Design은 좋지만 한계가 있어요. 웹에서 돌아가니 내 컴퓨터 파일에 닿지 못하고, 하나씩 올려야 해요. Claude Code나 Claude Cowork에서는 디자인 시스템을 <span class="term" data-term="커스텀 스킬" data-en="Custom skill" data-desc="Claude Code에서 지침과 파일을 묶어 이름으로 불러 쓰게 만든 꾸러미예요. /duolingo처럼 부르면 그 안의 규칙을 따라 작업해요." data-g="2">커스텀 스킬</span>로 만들면 끝이에요. 아래 화면에서 Claude가 brand 폴더의 logo.svg, fonts.zip, pitch-deck.pdf를 읽고(Read) skills 폴더에 디자인 시스템 파일을 쓰는(Write) 과정을 볼 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0225.png" alt="Claude Code 화면에서 brand 폴더의 로고, 폰트, 피치덱 파일을 읽고 skills 폴더에 디자인 시스템 스킬 파일을 쓰는 로그. 옆에 Documents 폴더 창이 있어요">
+  <figcaption>
+    파일을 올릴 필요 없이 내 폴더를 바로 읽는 게 웹판과의 차이예요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=145s" target="_blank" rel="noopener">영상 02:25에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상은 Duolingo 스타일 스킬을 만드는 프롬프트를 예로 보여 줘요. duolingo.com과 브랜드 가이드를 조사해 색, 서체, 모서리 둥글기, 일러스트·모션 스타일, 글투를 정확한 색상 코드와 크기로 적으라고 해요. 그러면 이후 <code>/duolingo</code>를 부를 때마다 그 스타일로 결과물이 나와요.</p>
+<figure>
+  <img src="assets/frame-0233.png" alt="Duolingo의 시각 스타일과 브랜드 가이드를 조사해 /duolingo 스킬로 만들라는 프롬프트">
+  <figcaption>
+    '정확한 색상 코드와 크기'를 요구하는 부분이 핵심이에요. 막연한 분위기 대신 숫자로 남아요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=153s" target="_blank" rel="noopener">영상 02:33에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 이 영상의 다른 요령 대부분도 Claude Code에서 그대로 통한다고 말해요. 그래서 이후 요령들은 모두 하나의 디자인 시스템에 무언가를 보태는 방향으로 읽으면 쉬워요. 아래 그림은 영상 앞부분의 요령들이 어디로 모이는지 정리한 거예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 250" role="img" aria-label="여러 입력이 디자인 시스템 하나로 모이고, 그것이 Claude Design 프로젝트와 Claude Code 스킬로 쓰이는 구조">
+    <defs><marker id="arrow-hub" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="c1 cell" x="10" y="15" width="190" height="40" rx="8"/><text x="105" y="40" text-anchor="middle">덱·사이트·스크린샷 (1)</text>
+    <rect class="c1 cell" x="10" y="70" width="190" height="40" rx="8"/><text x="105" y="95" text-anchor="middle">refero 갤러리 (2·3)</text>
+    <rect class="c1 cell" x="10" y="125" width="190" height="40" rx="8"/><text x="105" y="150" text-anchor="middle">폰트·문구 규칙 (5·6)</text>
+    <rect class="c1 cell" x="10" y="180" width="190" height="40" rx="8"/><text x="105" y="205" text-anchor="middle">다른 디자인 시스템 (7)</text>
+    <rect class="accent" x="250" y="90" width="150" height="60" rx="10"/><text x="325" y="125" text-anchor="middle">디자인 시스템</text>
+    <path class="line" d="M202 35 L248 100" marker-end="url(#arrow-hub)"/>
+    <path class="line" d="M202 90 L248 112" marker-end="url(#arrow-hub)"/>
+    <path class="line" d="M202 145 L248 128" marker-end="url(#arrow-hub)"/>
+    <path class="line" d="M202 200 L248 140" marker-end="url(#arrow-hub)"/>
+    <rect class="c2 cell" x="450" y="60" width="180" height="50" rx="8"/><text x="540" y="82" text-anchor="middle">Claude Design</text><text x="540" y="100" text-anchor="middle" class="sub">웹 프로젝트</text>
+    <rect class="c3 cell" x="450" y="135" width="180" height="50" rx="8"/><text x="540" y="157" text-anchor="middle">Claude Code 스킬</text><text x="540" y="175" text-anchor="middle" class="sub">/duolingo 처럼 호출 (4)</text>
+    <path class="line" d="M402 110 L448 88" marker-end="url(#arrow-hub)"/>
+    <path class="line" d="M402 130 L448 158" marker-end="url(#arrow-hub)"/>
+  </svg>
+  <figcaption>괄호 안 숫자는 영상의 요령 번호예요. 입력이 무엇이든 한 곳에 모아 두면 웹에서도 Claude Code에서도 같은 스타일이 나와요.</figcaption>
+</figure>
 </section>
 
 <section id="s2">
   <a class="stamp" href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=165s" target="_blank" rel="noopener">02:45</a>
-  <h2>폰트·카피·조합으로 AI 티 지우기</h2>
-<h3>5. 폰트를 직접 고르기</h3>
-<p><span class="term" data-term="바이브 코딩" data-desc="코드를 꼼꼼히 설계하지 않고 AI에게 말로 시켜 결과물을 뽑는 방식이에요. 빠르지만 기본값이 그대로 남아 티가 나기 쉬워요.">바이브 코딩</span>으로 만든 디자인을 가장 빨리 알아보는 단서가 폰트예요. 초보자는 Claude가 준 기본 폰트를 그대로 두거든요. 발표자는 무료 폰트 사이트인 Fontshare나 Fontesk에서 브랜드에 맞는 폰트를 고르라고 해요. 제목과 본문 조합이 필요하면 Fontjoy가 짝을 자동으로 만들어 줘요.</p>
+  <h2>폰트·문구·조합으로 티를 지워요 (5–7)</h2>
+<p>디자인 시스템을 세웠다면 다음은 AI 티가 가장 잘 나는 곳 세 군데를 손볼 차례예요. 폰트, 문구, 그리고 남의 브랜드를 그대로 베낀 느낌이에요.</p>
+
+<h3>5. 폰트: 기본값을 버려요</h3>
+<p>발표자는 <span class="term" data-term="바이브 코딩" data-en="Vibe coding" data-desc="코드를 꼼꼼히 설계하지 않고 AI에게 말로 시켜 만드는 방식이에요. 기본값이 그대로 남아 결과물이 비슷비슷해지기 쉬워요." data-g="3">바이브 코딩</span>으로 만든 디자인을 알아보는 가장 빠른 방법이 폰트라고 해요. 초보자는 Claude가 준 기본 폰트를 그대로 두기 때문이에요. 아래 화면의 커피 브랜드 페이지가 그런 예예요. 기울인 세리프 제목, 연한 크림색 배경, 오렌지 버튼처럼 흔히 보는 조합이에요.</p>
 <figure>
-  <img src="assets/frame-0300.png" alt="커피 브랜드 hearth 랜딩 페이지에 Switzer 폰트를 적용한 화면">
-  <figcaption>기본 폰트 대신 Switzer를 입힌 예시예요. 같은 레이아웃인데 인상이 확 달라져요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=180s" target="_blank" rel="noopener">영상 03:00에서 보기</a></figcaption>
+  <img src="assets/frame-0250.png" alt="Hearth라는 커피 브랜드 랜딩 페이지 초안. Elevate Your Morning Ritual이라는 기울인 세리프 제목과 크림색 배경, 오렌지 버튼이 있어요">
+  <figcaption>
+    'Beginners leave the default'라는 제목처럼, 기본값 그대로 둔 화면이에요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=170s" target="_blank" rel="noopener">영상 02:50에서 보기</a>
+  </figcaption>
 </figure>
-<p>고른 폰트는 프롬프트에 이름을 적거나(예: 'Switzer를 제목과 본문에 써 줘'), 폰트 파일을 디자인 시스템에 올리면 돼요.</p>
-<h3>6. 카피에서 AI 말투 빼기</h3>
-<p>화면이 완벽해도 문구가 AI가 쓴 것처럼 들리면 독자는 이미 떠나요. 그래서 Claude에게 내 분야 상위 5곳을 조사해 카피의 공통 패턴을 찾고, 그걸 디자인 시스템에 넣으라고 해요. AI 말투가 아니라 모범 사례에서 출발하는 셈이에요.</p>
+<p>대신 Fontshare나 Fontesk에서 브랜드에 맞는 폰트를 골라요. 둘 다 무료예요. 화면 왼쪽 Fontshare 목록에 Satoshi, Clash Display가, 오른쪽 Fontesk에 Mirano 같은 폰트가 보여요.</p>
 <figure>
-  <img src="assets/frame-0352.png" alt="디자인 시스템 패널에 Clear headline, One clear button, No AI-speak 같은 카피 규칙이 있고 옆에 그 규칙을 적용한 LearnAI 페이지가 있는 화면">
-  <figcaption>카피 규칙을 디자인 시스템 안에 넣어 둔 모습이에요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=232s" target="_blank" rel="noopener">영상 03:52에서 보기</a></figcaption>
+  <img src="assets/frame-0255.png" alt="Fontshare 사이트의 Satoshi, Clash Display 폰트 목록과 Fontesk 사이트의 Mephisto, Mirano 폰트 화면">
+  <figcaption>
+    한 사이트에서 마음에 드는 게 없으면 다른 쪽도 둘러보면 돼요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=175s" target="_blank" rel="noopener">영상 02:55에서 보기</a>
+  </figcaption>
 </figure>
-<h3>7. 디자인 시스템 섞기</h3>
-<p>나만의 디자인을 만드는 한 가지 방법은 여러 시스템을 섞는 거예요. 작업 중인 시스템에 다른 시스템들을 함께 붙이고, 어느 쪽에서 무엇을 가져올지 정해 줘요. 예를 들어 글꼴은 1번에서, 색과 모션은 2번에서 가져오라고 하면 Claude가 합쳐요. 좋아하는 브랜드를 그대로 베낀 결과가 아니라 내 것처럼 보이는 조합이 나와요.</p>
+<p>제목과 본문 폰트를 짝지어야 한다면 Fontjoy를 써요. Generate를 누를 때마다 조합을 새로 만들어 줘요. 화면 아래에 Source Sans Pro, Cormorant Garamond, Oxygen 세 폰트로 된 조합이 보여요.</p>
 <figure>
-  <img src="assets/frame-0416.png" alt="Apple의 글꼴과 Duolingo의 색과 모션을 합친 습관 앱 화면 목업">
-  <figcaption>Apple 디자인 시스템의 글꼴과 Duolingo의 색·모션을 섞은 결과예요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=256s" target="_blank" rel="noopener">영상 04:16에서 보기</a></figcaption>
+  <img src="assets/frame-0305.png" alt="Fontjoy 사이트에서 Generate 버튼으로 만든 폰트 조합. Font pairing made simple 제목 아래에 Source Sans Pro, Cormorant Garamond, Oxygen이 적혀 있어요">
+  <figcaption>
+    짝 찾기를 감에 맡기지 않아도 돼요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=185s" target="_blank" rel="noopener">영상 03:05에서 보기</a>
+  </figcaption>
 </figure>
-<p>발표자는 여기까지만 해도 Claude와 AI 에이전트로 디자인하는 사람 대부분보다 앞서 있다고 말해요.</p>
+<p>고른 폰트는 두 가지 방법으로 넣어요. 위 입력창처럼 "Use Switzer for all headings and body text."라고 프롬프트에 이름을 적거나, 아래 창처럼 Switzer-Variable.ttf 파일을 디자인 시스템에 올리면 돼요.</p>
+<figure>
+  <img src="assets/frame-0310.png" alt="Switzer 폰트를 모든 제목과 본문에 쓰라는 프롬프트와, 디자인 시스템 만들기 화면에 Switzer-Variable.ttf 파일을 올린 모습">
+  <figcaption>
+    파일로 올려 두면 이후 모든 작업에 같은 폰트가 따라와요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=190s" target="_blank" rel="noopener">영상 03:10에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>6. 문구: 상위 다섯 곳에게 배워요</h3>
+<p>화면이 완벽해도 문구가 AI 말투면 사람들은 이미 떠난다고 해요. 아래 예시가 전형적이에요. 'Unlock the Power of AI'라는 제목 아래 'Revolutionize', 'seamless', 'empower' 같은 단어에 빨간 밑줄이 그어져 있어요. 다 AI가 즐겨 쓰는 표현이에요.</p>
+<figure>
+  <img src="assets/frame-0336.png" alt="LearnAI 랜딩 페이지 초안. Unlock the Power of AI 제목 아래 Revolutionize, seamless, empower 같은 단어에 빨간 밑줄이 쳐져 있어요">
+  <figcaption>
+    밑줄 친 단어들이 '이건 AI가 썼다'는 신호예요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=216s" target="_blank" rel="noopener">영상 03:36에서 보기</a>
+  </figcaption>
+</figure>
+<p>해결책은 Claude에게 내 분야 상위 다섯 곳의 문구를 분석시키는 거예요. 공통 패턴을 찾아 디자인 시스템에 넣으라고 해요. 아래 화면 왼쪽 디자인 시스템 카드에 'Copy rules'로 '분명한 제목 하나', '버튼 하나', 'AI 말투 금지' 세 규칙이 추가됐어요. 오른쪽 페이지 제목이 'Everyone uses AI. Almost nobody is good at it.'으로 바뀐 게 그 결과예요.</p>
+<figure>
+  <img src="assets/frame-0354.png" alt="Copy rules로 Clear headline, One clear button, No AI-speak 세 규칙이 들어간 디자인 시스템 카드와, 바뀐 LearnAI 페이지. 제목이 Everyone uses AI. Almost nobody is good at it.이에요">
+  <figcaption>
+    앞 화면과 비교하면 같은 서비스인데 제목 한 줄과 버튼 하나로 정리됐어요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=234s" target="_blank" rel="noopener">영상 03:54에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>7. 섞기: 내 것처럼 보이는 조합</h3>
+<p>마음에 드는 브랜드를 그대로 베끼면 티가 나요. 대신 디자인 시스템 여러 개를 한 대화에 넣고, 어디서 무엇을 가져올지 지정하면 돼요. 아래 화면은 Apple 디자인 시스템과 Duolingo 디자인 시스템을 함께 넣고 "첫 번째에서 서체를, 두 번째에서 색 팔레트와 모션을 가져와 하나로 합치라"고 한 장면이에요.</p>
+<figure>
+  <img src="assets/frame-0412.png" alt="Apple Design System과 Duolingo Design System 카드 두 개를 넣고, 첫 번째의 서체와 두 번째의 색과 모션을 합치라는 프롬프트">
+  <figcaption>
+    왼쪽 카드에서는 Aa 서체만, 오른쪽 카드에서는 초록·파랑·노랑 색 블록만 가져와요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=252s" target="_blank" rel="noopener">영상 04:12에서 보기</a>
+  </figcaption>
+</figure>
+<p>결과는 습관 관리 앱 화면이에요. 제목 'Today'와 목록 글씨는 Apple의 깔끔한 서체이고, 41일 연속 기록 배지와 초록 체크 표시는 Duolingo의 색감이에요.</p>
+<figure>
+  <img src="assets/frame-0418.png" alt="Apple 서체와 Duolingo 색상을 섞은 습관 관리 앱 화면. 41일 연속 기록을 보여 주는 초록 배지와 습관 체크 목록이 있어요">
+  <figcaption>
+    어느 한 브랜드의 복사본이 아니라, 둘을 섞은 새 결과물이에요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=258s" target="_blank" rel="noopener">영상 04:18에서 보기</a>
+  </figcaption>
+</figure>
 </section>
 
 <section id="s3">
-  <a class="stamp" href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=310s" target="_blank" rel="noopener">05:10</a>
-  <h2>이미지·레퍼런스·마감 스킬</h2>
-<p>중간 단계부터는 프런트엔드 디자인과 마케팅 자료를 더 전문가답게 다듬는 요령이에요.</p>
-<h3>8. 이미지·영상 생성기 연결하기</h3>
-<p>Claude Design은 이미지나 영상을 스스로 만들지 못해요. 대신 생성 서비스에 연결할 수 있어요. 발표자는 주요 이미지·영상 모델을 한곳에서 쓰고 생성한 만큼만 돈을 내는 Kie AI를 써요. 연결도 직접 하지 않아요. API 키 위치를 알려 주는 프롬프트를 Claude Code에 보내 설정을 맡겨요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=308s" target="_blank" rel="noopener">05:08</a>
+  <h2>이미지·참고 자료·글투 다듬기 (8–12)</h2>
+<p>여기서부터 영상은 중간 단계로 넘어가요. 앞 단계만 해도 대부분보다 앞선다고 하면서, 프런트엔드와 마케팅 자료를 더 전문가답게 만드는 요령을 이어 가요.</p>
+
+<h3>8. 이미지와 영상은 생성 서비스에 연결해요</h3>
+<p>Claude Design은 이미지나 영상을 직접 만들지 못해요. 대신 생성 서비스와 연결하면 돼요. 발표자는 Kie AI를 써요. 화면처럼 Kling, Nano Banana 같은 큰 이미지·영상 모델을 한곳에서 쓸 수 있고, 만든 만큼만 비용을 내요. 가장 저렴한 곳 중 하나라고도 해요.</p>
 <figure>
-  <img src="assets/frame-0530.png" alt="Claude Code에 'Connect yourself to Kie AI so you can generate images and videos for my designs'라는 프롬프트를 입력하는 화면">
-  <figcaption>생성기 연결도 Claude Code에 프롬프트 한 번으로 맡겨요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=330s" target="_blank" rel="noopener">영상 05:30에서 보기</a></figcaption>
+  <img src="assets/frame-0521.png" alt="Kie AI 마켓 화면에 Kling 2.5 Turbo, Nano Banana 같은 이미지·영상 모델 카드가 겹쳐 있어요">
+  <figcaption>
+    모델을 하나씩 따로 가입하지 않아도 되는 게 장점이에요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=321s" target="_blank" rel="noopener">영상 05:21에서 보기</a>
+  </figcaption>
 </figure>
-<h3>9. 이전 프로젝트를 출발점으로</h3>
-<p>새 작업을 시작할 때 이미 끝낸 Claude Design 프로젝트 URL을 붙여 넣고 '이 프로젝트의 디자인 시스템과 자산을 써 줘'라고 해요. Claude Code에서도 이전 세션 이름을 주거나 Claude에게 찾아 달라고 하면, 해 둔 작업이 새 작업의 출발점이 돼요.</p>
+<p>연결도 Claude Code에 맡겨요. 아래 프롬프트는 API(Application Programming Interface) 키가 있는 위치(.env 등)를 알려 주고, docs.kie.ai 문서나 커뮤니티 MCP(Model Context Protocol) 서버 중 빠른 쪽을 쓰라고 해요. 이미지 하나로 시험해 본 뒤 그 과정을 <code>/kie</code> 스킬로 저장하라는 게 마지막 줄이에요.</p>
 <figure>
-  <img src="assets/frame-0550.png" alt="Claude Design 입력창에 'Use this project's design system, assets and decisions for everything we build here: [URL]'을 입력한 화면">
-  <figcaption>이전 프로젝트 URL을 넘겨 디자인 결정을 그대로 이어 받아요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=350s" target="_blank" rel="noopener">영상 05:50에서 보기</a></figcaption>
+  <img src="assets/frame-0531.png" alt="Kie AI에 연결해 이미지와 영상을 만들 수 있게 하고, 시험한 뒤 /kie 스킬로 저장하라는 Claude Code 프롬프트">
+  <figcaption>
+    '시험해 보고 스킬로 저장'까지 시키면 다음부터는 <code>/kie</code> 한 번으로 끝나요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=331s" target="_blank" rel="noopener">영상 05:31에서 보기</a>
+  </figcaption>
 </figure>
-<h3>10. 레퍼런스 라이브러리 만들기</h3>
-<p>발표자는 좋은 디자인을 많이 볼수록 안목이 는다고 봐요. 그래서 Dribbble, Awwwards, X처럼 마음에 드는 디자인이 보이는 곳에서 꾸준히 모아 두라고 해요. 본인은 클릭 한 번에 지금 페이지의 스크린샷과 메모를 저장하는 크롬 확장 프로그램을 직접 만들어 써요. 모아 둔 자료는 영감을 얻을 때도 보고, 다음 작업 때 Claude에게 참고로 넘기기도 해요.</p>
+
+<h3>9. 끝낸 프로젝트를 다음 작업의 출발점으로</h3>
+<p>Claude Design에서 새 작업을 열 때, 이미 끝낸 프로젝트의 URL(Uniform Resource Locator)을 붙여 넣고 그 디자인 시스템과 자산을 쓰라고 하면 돼요. 화면의 입력창에 claude.ai/design 프로젝트 링크와 함께 "이 프로젝트의 디자인 시스템, 자산, 결정 사항을 쓰라"는 문장이 들어가 있어요. Claude Code에서도 이전 세션 이름을 알려 주거나 Claude에게 찾게 하면 같은 효과가 나요.</p>
 <figure>
-  <img src="assets/frame-0620.png" alt="웹에서 모은 디자인 스크린샷이 격자로 쌓인 레퍼런스 라이브러리 화면">
-  <figcaption>마음에 드는 디자인을 볼 때마다 한곳에 모아 둔 라이브러리예요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=380s" target="_blank" rel="noopener">영상 06:20에서 보기</a></figcaption>
+  <img src="assets/frame-0551.png" alt="Claude Design 새 작업 화면에 이전 프로젝트 URL을 붙이고, 그 디자인 시스템과 자산과 결정 사항을 쓰라고 입력한 모습">
+  <figcaption>
+    '결정 사항(decisions)'까지 넘기는 게 포인트예요. 색과 폰트만이 아니라 왜 그렇게 정했는지도 이어져요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=351s" target="_blank" rel="noopener">영상 05:51에서 보기</a>
+  </figcaption>
 </figure>
-<h3>11~12. 마감용 스킬 두 개</h3>
-<p>Impeccable은 웹사이트에서 AI 티를 걷어내 준다는 명령 묶음을 가진 디자인 스킬이에요. 돌리면 위계, 간격, 글꼴, 접근성, <span class="term" data-term="빈 상태" data-desc="목록이나 대시보드에 아직 데이터가 없을 때 보이는 화면이에요. 자주 잊히지만 첫 사용자가 가장 먼저 보는 화면이라 신경 써야 해요.">빈 상태</span>까지 점검하고 고쳐요. 괜찮은 초안을 전문가 수준으로 다듬는 데 좋다고 해요.</p>
+
+<h3>10. 나만의 참고 자료 라이브러리</h3>
+<p>발표자는 좋은 디자인을 많이 볼수록 취향이 좋아진다고 믿어요. 그래서 Dribbble, Awwwards, X처럼 마음에 드는 디자인을 본 곳이라면 어디서든 모아 두라고 해요. 그는 Rubric References라는 크롬 확장을 직접 만들었어요. 아래 화면처럼 Stripe 홈페이지에서 확장 아이콘을 한 번 누르면 스크린샷, 제목, 설명, 태그, 메모가 담긴 카드가 저장돼요.</p>
 <figure>
-  <img src="assets/frame-0650.png" alt="대시보드 화면 옆에 Hierarchy, Spacing, Type, Accessibility, Empty states 점검 항목이 체크된 모습">
-  <figcaption>Impeccable이 점검하는 다섯 가지 항목이에요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=410s" target="_blank" rel="noopener">영상 06:50에서 보기</a></figcaption>
+  <img src="assets/frame-0628.png" alt="Stripe 홈페이지 위에 Rubric References 크롬 확장 창이 열려 페이지 스크린샷과 제목, 설명 칸이 보여요">
+  <figcaption>
+    이렇게 모은 라이브러리는 직접 영감을 얻을 때도, Claude에게 참고하라고 넘길 때도 써요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=388s" target="_blank" rel="noopener">영상 06:28에서 보기</a>
+  </figcaption>
 </figure>
-<p>다른 하나는 tone of voice 스킬이에요. 금지어 목록, 내가 말하는 방식, 자주 쓰는 표현을 담아 Claude와 함께 만들어요. 이미 나와 있는 글쓰기 규칙을 넣어도 돼요. 발표자가 예로 든 건 ASD-STE100 간결한 기술 영어 표준, Google 개발자 문서 스타일 가이드, Apple의 글쓰기 스타일이에요.</p>
+
+<h3>11. Impeccable로 마무리 점검</h3>
+<p>Impeccable은 웹사이트를 <span class="term" data-term="디슬롭" data-en="Deslop" data-desc="AI가 만든 티 나는 흔한 결과물(slop)을 걷어 낸다는 뜻이에요. Impeccable은 이걸 점검 항목으로 만들어 자동으로 고쳐요." data-g="4">디슬롭</span>하겠다는 디자인 스킬이에요. 명령 여러 개가 함께 들어 있어요. 화면의 GitHub 저장소(github.com/pbakaus) 설명을 보면 Anthropic의 frontend-design 스킬에서 출발했다고 적혀 있고, 별이 70,000개 넘게 달렸어요.</p>
+<figure>
+  <img src="assets/frame-0643.png" alt="Impeccable GitHub 저장소의 Why Impeccable 설명. Anthropic의 frontend-design에서 출발했다는 문장과 70,000+ stars 표시가 있어요">
+  <figcaption>
+    설치는 저장소 안내대로 하고, 쓸 때는 명령을 골라 부르는 방식이에요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=403s" target="_blank" rel="noopener">영상 06:43에서 보기</a>
+  </figcaption>
+</figure>
+<p>돌리면 먼저 점검하고, 그다음 고쳐요. 아래 대시보드 화면 오른쪽에 점검 항목이 차례로 체크돼요. 위계(Hierarchy), 간격(Spacing), 서체(Type), 접근성(Accessibility), 그리고 데이터가 없을 때 보이는 <span class="term" data-term="빈 상태" data-en="Empty state" data-desc="데이터가 아직 없을 때 보이는 화면이에요. 대충 만들면 텅 빈 화면이 되기 쉬워서 점검 항목에 따로 들어가요." data-g="5">빈 상태</span>(Empty states)까지 봐요.</p>
+<figure>
+  <img src="assets/frame-0649.png" alt="Creator Hub 대시보드 화면 옆에 Hierarchy, Spacing, Type, Accessibility, Empty states 다섯 항목이 체크된 목록">
+  <figcaption>
+    빈 상태처럼 사람이 놓치기 쉬운 곳까지 점검하는 게 강점이에요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=409s" target="_blank" rel="noopener">영상 06:49에서 보기</a>
+  </figcaption>
+</figure>
+<p>마무리 손질에도 좋다고 해요. 화면처럼 "Make this bolder.", "Make this quieter." 같은 짧은 명령으로 페이지의 느낌을 조절해요. 괜찮은 초안을 전문가 수준으로 올려 주는 단계예요.</p>
+<figure>
+  <img src="assets/frame-0652.png" alt="Make this bolder와 Make this quieter 두 명령 입력창 옆에 Ship the launch plan by Friday라는 페이지 미리보기">
+  <figcaption>
+    '더 대담하게', '더 차분하게'처럼 방향만 말하면 돼요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=412s" target="_blank" rel="noopener">영상 06:52에서 보기</a>
+  </figcaption>
+</figure>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>ASD-STE100은 원래 항공·방위 산업의 기술 문서를 위해 만든 통제 언어예요. 1986년 지침으로 시작해 2005년 국제 규격, 2025년 국제 표준이 됐어요. 현재 판은 Issue 9이고, 공식 사이트에서 무료 사본을 신청할 수 있어요.</p>
-  <p class="cite">출처: <a href="https://www.asd-ste100.org/" target="_blank" rel="noopener">ASD-STE100 공식 사이트 (STEMG)</a></p>
+  <p>지금 Impeccable 저장소는 <code>npx impeccable install</code>로 설치한 뒤 AI 코딩 도구에서 <code>/impeccable init</code>을 실행하라고 안내해요. 영상의 점검과 다듬기는 각각 <code>/impeccable audit</code>(접근성·성능·반응형 점검), <code>/impeccable polish</code>(디자인 시스템에 맞춘 마지막 손질) 명령에 해당해요. 별 수도 영상의 70,000개보다 늘었어요.</p>
+  <p class="cite">출처: <a href="https://github.com/pbakaus/impeccable" target="_blank" rel="noopener">pbakaus/impeccable GitHub 저장소</a></p>
 </aside>
+
+<h3>12. 글투 스킬</h3>
+<p>AI가 쓴 글은 쉽게 티가 나요. 특히 내 글투로 다듬지 않으면요. 그래서 금지어 목록, 내가 말하는 방식, 내가 쓴 문장을 담은 글투 스킬을 만들라고 해요. 아래 프롬프트는 내 대본과 글 다섯 개, 금지어 목록을 붙여 <code>/my-tone</code> 스킬을 만들어요. 마지막 줄의 "내가 문장을 고칠 때마다 스킬을 갱신하라"는 지시 덕분에 쓸수록 내 말투에 가까워져요.</p>
+<figure>
+  <img src="assets/frame-0713.png" alt="내 글 다섯 개와 금지어 목록으로 /my-tone 스킬을 만들고, ASD-STE100과 Google 개발자 스타일 가이드, Apple 스타일 가이드를 규칙으로 더하라는 프롬프트">
+  <figcaption>
+    내가 고친 내용을 스킬에 다시 반영하게 하는 마지막 줄이 핵심이에요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=433s" target="_blank" rel="noopener">영상 07:13에서 보기</a>
+  </figcaption>
+</figure>
+<p>이미 나와 있는 규칙도 얹을 수 있어요. 화면의 세 문서가 영상이 꼽은 예예요. 왼쪽부터 짧은 문장과 쉬운 단어를 요구하는 ASD-STE100 단순 기술 영어 표준, 가운데 Google 개발자 문서 스타일 가이드, 오른쪽 Apple 스타일 가이드예요.</p>
+<figure>
+  <img src="assets/frame-0716.png" alt="ASD-STE100 Simplified Technical English, Google 개발자 문서 스타일 가이드, Apple Style Guide 세 문서 표지">
+  <figcaption>
+    처음부터 규칙을 만들 필요 없이 검증된 글쓰기 지침을 가져다 쓰는 거예요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=436s" target="_blank" rel="noopener">영상 07:16에서 보기</a>
+  </figcaption>
+</figure>
 </section>
 
 <section id="s4">
-  <a class="stamp" href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=432s" target="_blank" rel="noopener">07:12</a>
-  <h2>가져다 쓰는 컴포넌트·아이콘 자료실</h2>
-<p>이 구간은 Claude에게 그대로 넘길 수 있는 무료 자료실 소개예요. 공통된 요점은 하나예요. 컴포넌트나 아이콘을 처음부터 그리게 하지 말고, 검증된 걸 가져다 주는 편이 결과도 좋고 토큰도 아껴요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=437s" target="_blank" rel="noopener">07:17</a>
+  <h2>가져다 쓰는 컴포넌트와 아이콘 (13–19)</h2>
+<p>영상 중반은 바로 가져다 쓸 수 있는 자료 모음이에요. 공통점은 Claude가 처음부터 만들게 하지 않고, 이미 잘 만들어진 것을 넘겨준다는 점이에요. 먼저 영상이 소개한 일곱 가지를 한눈에 정리했어요.</p>
 <div class="table-scroll">
   <table>
-    <thead><tr><th>번호</th><th>자료실</th><th>무엇이 있나요</th><th>쓰는 법</th></tr></thead>
+    <thead><tr><th>번호</th><th>자료</th><th>무엇인가요</th><th>쓰는 법</th></tr></thead>
     <tbody>
-      <tr><td>13</td><td>21st.dev</td><td>오픈소스 커뮤니티가 공유한 UI 컴포넌트</td><td>복사해 붙이고 '이 컴포넌트를 써 줘'라고 해요</td></tr>
-      <tr><td>14</td><td>React Bits</td><td>애니메이션 텍스트, 유리 카드, 커서 효과</td><td>코드를 복사해 프런트엔드에 넣거나 디자인 시스템에 저장해요</td></tr>
-      <tr><td>15</td><td>Canvas UI</td><td>액체·유리·깨짐·파티클 효과 35가지</td><td>눈에 띄는 화면이 필요할 때 무료로 써요</td></tr>
-      <tr><td>16</td><td>Iconify · Flaticon</td><td>아이콘 팩</td><td>한 스타일의 팩을 통째로 받아 폴더째 넘겨요</td></tr>
-      <tr><td>18</td><td>Lordicon</td><td>애니메이션 아이콘, 수천 개 무료</td><td><span class="term" data-term="Lottie" data-desc="애니메이션을 JSON 데이터로 담은 파일 형식이에요. 영상보다 훨씬 가볍고 웹이나 앱에서 코드로 재생해요.">Lottie</span> 파일로 받아 Claude에 넣어요</td></tr>
-      <tr><td>19</td><td>Creators Toolbox</td><td>무료 디자인 자료 150여 개 모음</td><td>resources 섹션을 북마크해 둬요</td></tr>
+      <tr><td>13</td><td>21st.dev</td><td>에이전트에 넘기기 좋게 만든 UI 컴포넌트 모음</td><td>복사해서 Claude에 붙이고 이 컴포넌트를 쓰라고 해요</td></tr>
+      <tr><td>14</td><td>React Bits (reactbits.dev)</td><td>움직이는 글자, 유리 카드, 커서 효과 같은 좀 더 과감한 컴포넌트</td><td>코드를 Claude에 주거나 디자인 시스템에 저장해요</td></tr>
+      <tr><td>15</td><td>Canvas UI (canvasui.dev)</td><td>리퀴드 글래스, 깨지는 효과, 입자 효과 등 독특한 효과 35개, 무료</td><td>눈에 띄는 효과가 필요할 때 가져와요</td></tr>
+      <tr><td>16</td><td>Iconify, Flaticon</td><td>아이콘 팩</td><td>한 스타일의 팩을 통째로 받아 폴더째 넘겨요</td></tr>
+      <tr><td>17</td><td>SVG(Scalable Vector Graphics) 요청</td><td>새 아이콘·그림·도표를 받는 형식</td><td>Claude에게 처음부터 SVG로 달라고 해요</td></tr>
+      <tr><td>18</td><td>Lordicon (lordicon.com)</td><td>움직이는 아이콘, 수천 개 무료</td><td><span class="term" data-term="Lottie" data-en="Lottie file" data-desc="애니메이션을 JSON 코드로 적은 작은 파일이에요. 동영상보다 가볍고 크기를 바꿔도 깨지지 않아서 웹 아이콘 애니메이션에 많이 써요." data-g="6">Lottie</span> 파일로 받아 Claude에 넣어요</td></tr>
+      <tr><td>19</td><td>Creators Toolbox</td><td>무료 디자인 자료 150개 이상을 모은 목록</td><td>Resources 메뉴를 북마크해 두고 찾아 써요</td></tr>
     </tbody>
   </table>
 </div>
-<h3>13~15. 컴포넌트와 이펙트</h3>
-<p>21st.dev의 컴포넌트는 처음부터 에이전트에게 넘기기 좋게 만들어져 있어요. 하나를 골라 붙이면 Claude가 처음부터 디자인하는 대신 검증된 섹션을 페이지에 넣어요.</p>
+
+<h3>13. 21st.dev: 검증된 섹션을 통째로</h3>
+<p>21st.dev는 UI 컴포넌트 라이브러리예요. 상당수가 오픈소스 커뮤니티에서 공유한 것이고, 처음부터 에이전트에 넘기기 좋게 만들어졌어요. 아래 화면처럼 컴포넌트 페이지의 Copy prompt 메뉴를 열면 'AI가 바로 쓸 수 있는 프롬프트(전체 컴포넌트 맥락 포함)'와 'Copy code'(원본 코드) 두 가지가 나와요.</p>
 <figure>
-  <img src="assets/frame-0746.png" alt="21st.dev에서 가져온 'Launch Your Workflow Into Orbit' 히어로 섹션이 들어간 Halcyon 랜딩 페이지">
-  <figcaption>21st.dev 컴포넌트를 그대로 넣은 히어로 섹션이에요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=466s" target="_blank" rel="noopener">영상 07:46에서 보기</a></figcaption>
+  <img src="assets/frame-0737.png" alt="21st.dev 컴포넌트 페이지의 Copy prompt 드롭다운. AI-ready prompt with full component context와 Copy code 두 항목이 보여요">
+  <figcaption>
+    코드만이 아니라 맥락까지 담은 프롬프트를 주는 게 에이전트용이라는 뜻이에요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=457s" target="_blank" rel="noopener">영상 07:37에서 보기</a>
+  </figcaption>
 </figure>
-<p>React Bits는 같은 발상이지만 좀 더 과감한 컴포넌트가 많아요. 고급 사이트에서 보던 움직이는 글자나 커서 효과 같은 것들이에요. Canvas UI는 더 독특한 효과로 눈에 띄고 싶을 때 쓰는 무료 자료예요.</p>
+<p>그대로 붙이면 Claude가 검증된 섹션을 내 페이지에 넣어 줘요. 아래는 그렇게 들어간 히어로 섹션이에요. 'Launch Your Workflow Into Orbit' 제목과 주황빛 배경 아래로 기능 카드 세 개가 이어져요. 섹션을 처음부터 설계하지 않으니 토큰도 아낀다고 해요.</p>
 <figure>
-  <img src="assets/frame-0822.png" alt="Canvas UI의 Glass 효과 페이지. 사진 위에 유리 렌즈 효과가 적용된 데모">
-  <figcaption>Canvas UI의 액체 유리 효과 데모예요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=502s" target="_blank" rel="noopener">영상 08:22에서 보기</a></figcaption>
+  <img src="assets/frame-0746.png" alt="Halcyon이라는 서비스 페이지에 Launch Your Workflow Into Orbit 히어로 섹션과 Automations, Integrations, Insights 기능 카드가 들어간 모습">
+  <figcaption>
+    'Drops a proven section'이라는 제목처럼, 이미 검증된 섹션이 한 번에 들어가요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=466s" target="_blank" rel="noopener">영상 07:46에서 보기</a>
+  </figcaption>
 </figure>
-<h3>16~18. 아이콘은 받아 오고, 새로 그릴 땐 SVG로</h3>
-<p>Claude는 아이콘을 잘 못 그리는 편이에요. 그래서 Iconify나 Flaticon에서 한 가지 스타일로 된 팩을 통째로 받아 넘겨요. 아이콘을 바로 쓸 수 있을 뿐 아니라, 나중에 같은 스타일로 새 아이콘을 만들 때 좋은 참고 자료도 돼요.</p>
-<p>새 아이콘·일러스트·다이어그램을 그리게 할 때는 <span class="term" data-term="SVG" data-desc="도형과 선을 좌표로 기록한 벡터 이미지 형식이에요. 크기를 키워도 흐려지지 않고, 텍스트 파일이라 색이나 모양을 코드로 바로 고칠 수 있어요.">SVG</span>로 달라고 해요. 크기를 아무리 키워도 흐려지지 않아요. 파일을 열어 색을 손으로 고칠 수 있고, Claude에게 애니메이션을 붙여 달라고 할 수도 있어요.</p>
+
+<h3>14. React Bits: 고급 사이트 느낌의 효과</h3>
+<p>reactbits.dev도 컴포넌트 라이브러리지만 좀 더 과감해요. 아래 화면 위쪽은 글자 하나하나가 움직이며 'HELLO'가 나타나는 효과이고, 아래쪽은 이미지 위에 겹친 유리 카드와 마우스를 따라오는 효과예요.</p>
 <figure>
-  <img src="assets/frame-0910.png" alt="icon.svg 파일의 SVG 코드와 그 코드가 그린 주황색 전구 아이콘을 나란히 띄운 화면">
-  <figcaption>SVG는 코드라서 색과 모양을 직접 고칠 수 있어요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=550s" target="_blank" rel="noopener">영상 09:10에서 보기</a></figcaption>
+  <img src="assets/frame-0804.png" alt="reactbits.dev의 움직이는 HELLO 글자 효과와 React Bits 유리 카드, 이미지 호버 효과 미리보기">
+  <figcaption>
+    고급 사이트에서 볼 법한 움직임을 한 줄 설명 대신 코드로 받아 와요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=484s" target="_blank" rel="noopener">영상 08:04에서 보기</a>
+  </figcaption>
 </figure>
-<p>Lordicon은 애니메이션 아이콘 라이브러리예요. 마음에 드는 걸 Lottie 파일로 받아 넣으면 돼요. 애니메이션이 이미 들어 있어서, 발표자는 일반 SVG 아이콘의 업그레이드판이라고 표현해요.</p>
-<h3>19. 하나만 북마크한다면</h3>
-<p>발표자가 이 영상에서 하나만 북마크하라면 고르는 곳이 Creators Toolbox의 resources 섹션이에요. 애니메이션 컴포넌트, Three.js 효과, SVG 아이콘, 로고 갤러리, 목업 키트까지 무료 자료 150여 개가 모여 있어요. 앞에서 소개한 Refero Styles도 여기 들어 있어요.</p>
+<p>마음에 드는 걸 찾으면 코드를 복사해 프런트엔드에 넣으라고 하거나, 디자인 시스템의 일부로 저장해 둬요. 아래 화면 왼쪽 디자인 시스템 카드에 Pixel Card 컴포넌트가 추가돼 있고, 오른쪽 프롬프트는 "히어로에 넣고 내 디자인 시스템에 맞추라"고 해요.</p>
 <figure>
-  <img src="assets/frame-0946.png" alt="Creators Toolbox 사이트의 'The top viewed resources' 목록 화면">
-  <figcaption>무료 디자인 자료를 모아 둔 Creators Toolbox예요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=586s" target="_blank" rel="noopener">영상 09:46에서 보기</a></figcaption>
+  <img src="assets/frame-0810.png" alt="디자인 시스템 카드에 Hover Me라고 적힌 Pixel Card 컴포넌트가 추가돼 있고, 옆에 이 코드를 히어로에 넣고 디자인 시스템에 맞추라는 프롬프트">
+  <figcaption>
+    디자인 시스템에 저장해 두면 다음 작업에서도 같은 효과를 다시 쓸 수 있어요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=490s" target="_blank" rel="noopener">영상 08:10에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>15. Canvas UI: 무료 특수 효과</h3>
+<p>canvasui.dev에는 독특한 효과 35개가 있어요. 눈에 띄고 싶을 때 좋은 무료 자료라고 해요. 화면 왼쪽은 마우스를 따라 움직이며 아래 사진을 굴절시키는 리퀴드 글래스, 오른쪽은 페이지가 조각나 흩어지는 Shatter 효과예요.</p>
+<figure>
+  <img src="assets/frame-0823.png" alt="Canvas UI의 Liquid glass 효과와 Shatter 효과 데모 페이지. 꽃 사진 위에 유리 렌즈가 있고, 오른쪽은 페이지가 조각나 있어요">
+  <figcaption>
+    영상은 이 둘에 입자 효과까지 모두 무료라고 강조해요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=503s" target="_blank" rel="noopener">영상 08:23에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>16. 아이콘은 팩으로 넘겨요</h3>
+<p>Claude는 대개 아이콘을 잘 그리지 못해요. 그래서 Iconify나 Flaticon에서 한 스타일로 된 팩을 통째로 받으라고 해요. 화면은 Iconify에서 Lucide 아이콘 세트를 보고 있는 모습이에요.</p>
+<figure>
+  <img src="assets/frame-0833.png" alt="Iconify 사이트에서 Lucide 아이콘 세트 목록을 보고 있는 화면">
+  <figcaption>
+    '한 팩, 한 스타일'이 조건이에요. 그래야 화면 전체의 아이콘이 한 가족처럼 보여요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=513s" target="_blank" rel="noopener">영상 08:33에서 보기</a>
+  </figcaption>
+</figure>
+<p>받은 폴더를 Claude에 넘기며 "이 아이콘을 디자인 전체에 쓰고, 직접 아이콘을 만들지 말라"고 해요. 화면 아래 아이콘 열두 개가 같은 선 굵기로 맞춰진 게 보여요. 이렇게 하면 나중에 새 아이콘이 필요할 때도 Claude가 같은 스타일을 참고할 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0843.png" alt="이 아이콘들을 디자인 전체에 쓰고 직접 만들지 말라는 프롬프트와, 집, 검색, 종, 설정 등 같은 스타일 아이콘 열두 개">
+  <figcaption>
+    완성된 아이콘도 얻고, 앞으로 그릴 아이콘의 기준도 생겨요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=523s" target="_blank" rel="noopener">영상 08:43에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>17. 새 그림은 SVG로 받아요</h3>
+<p>Claude에게 아이콘, 일러스트, 도표를 새로 받을 때는 SVG 형식으로 달라고 해요. 화면은 같은 전구 아이콘을 icon.png와 icon.svg로 나란히 놓은 모습이에요. 크기를 키워도 SVG 쪽은 흐려지지 않아요. 파일을 열어 색을 손으로 바꿀 수 있고, Claude에게 애니메이션을 붙여 달라고 할 수도 있어요.</p>
+<figure>
+  <img src="assets/frame-0903.png" alt="같은 전구 아이콘을 icon.png와 icon.svg 두 창에 띄워 비교한 화면">
+  <figcaption>
+    SVG로 받으면 Claude가 주는 그림이 모두 고칠 수 있고 움직일 수 있는 상태가 돼요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=543s" target="_blank" rel="noopener">영상 09:03에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>18. Lordicon: 움직이는 아이콘</h3>
+<p>lordicon.com은 애니메이션 아이콘 라이브러리이고 수천 개가 무료예요. 하나를 골라 Lottie 파일로 받아 Claude에 넣으면 돼요. 애니메이션이 이미 들어 있으니 일반 SVG 아이콘보다 한 단계 위라고 해요. 화면 아래쪽에 작은 글씨로 '무료 아이콘은 출처 표기가 필요하다'는 안내가 붙어 있으니 함께 챙겨야 해요.</p>
+<figure>
+  <img src="assets/frame-0925.png" alt="lordicon.com의 Popular 아이콘 목록과 오른쪽 편집 패널. 아래에 Free icons need a credit line, lordicon.com/licenses 문구가 있어요">
+  <figcaption>
+    무료로 쓰려면 출처 한 줄을 남겨야 한다는 조건이 화면에 함께 나와요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=565s" target="_blank" rel="noopener">영상 09:25에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>19. Creators Toolbox: 하나만 북마크한다면</h3>
+<p>발표자는 이 영상에서 하나만 북마크한다면 creatorstoolbox.com의 Resources 메뉴를 고르라고 해요. 움직이는 컴포넌트, three.js 효과, SVG 아이콘, 로고 모음, 목업 키트까지 무료 디자인 자료 150개 이상이 한곳에 있어요. 화면 목록을 보면 앞에서 소개한 Refero Styles와 뒤에 나올 HyperFrames도 들어 있어요.</p>
+<figure>
+  <img src="assets/frame-1003.png" alt="creatorstoolbox.com의 Most Popular Design Resources 목록. Nothing to Watch, VHS & CRT Textures, Refero Styles, HyperFrames 등의 카드가 보여요">
+  <figcaption>
+    이 영상에서 다룬 자료 일부도 여기서 다시 찾을 수 있어요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=603s" target="_blank" rel="noopener">영상 10:03에서 보기</a>
+  </figcaption>
 </figure>
 </section>
 
 <section id="s5">
   <a class="stamp" href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=605s" target="_blank" rel="noopener">10:05</a>
-  <h2>고급: 규칙·모션·Claude Code 흐름</h2>
-<p>고급 단계는 규칙을 스킬로 만들고, 모션을 넣고, Claude Code 안에서 작업 흐름을 묶는 요령이에요.</p>
+  <h2>고급: 규칙·모션·작업 환경 (20–25)</h2>
+<p>마지막 단계는 고급 요령이에요. 규칙을 스킬로 박아 두고, 모션 라이브러리를 지정하고, Claude Code 안에서 디자인하는 방법까지 다뤄요.</p>
+
 <h3>20. Apple HIG를 스킬로</h3>
-<p>Apple은 Human Interface Guidelines를 무료로 공개해요. 레이아웃, 글자 크기, 터치 영역, 색에 대한 Apple의 규칙집이에요. 이걸 스킬로 만들어 두면 앱 화면이나 UI를 설계할 때 Claude가 추측하지 않고 Apple 규칙을 따라요.</p>
-<h3>21. 모션은 GSAP으로</h3>
-<p>사이트의 움직임과 상호작용을 최고 수준으로 만들고 싶다면 Claude에게 <span class="term" data-term="GSAP" data-desc="GreenSock Animation Platform의 줄임말인 자바스크립트 애니메이션 라이브러리예요. 스크롤에 맞춘 움직임 같은 복잡한 효과를 매끄럽게 처리해요.">GSAP</span>을 쓰라고 지시해요. 빠르고 안정적인 자바스크립트 애니메이션 라이브러리이고, 유명 에이전시들이 많이 써요. 스크롤에 맞춰 움직이는 섹션이나 보는 순간 드러나는 글자 효과를 맡길 수 있어요.</p>
+<p>Apple은 HIG를 무료로 공개해요. 레이아웃, 글자 크기, <span class="term" data-term="탭 타깃" data-en="Tap target" data-desc="손가락으로 누를 수 있는 영역의 크기예요. 너무 작으면 잘못 누르기 쉬워서 Apple은 최소 크기를 숫자로 정해 둬요." data-g="7">탭 타깃</span>, 색까지 정리한 Apple의 규칙집이에요. 이걸 "Turn Apple's Human Interface Guidelines into a skill called /apple. Keep every number…" 같은 프롬프트로 스킬로 만들어 두면, 앱 화면을 그릴 때 Claude가 짐작하지 않고 규칙을 따라요. 아래 화면 왼쪽 <code>/apple</code> 스킬 카드에 숫자가 그대로 남아 있어요. 탭 타깃 44×44pt, 글자 크기 34/17/13pt, 안전 영역, 명암비 4.5:1이에요. 오른쪽 여행 앱 화면에 그 숫자들이 어디에 적용됐는지 주황색으로 표시돼 있어요.</p>
 <figure>
-  <img src="assets/frame-1053.png" alt="'Tell Claude to use GSAP' 제목 아래 GSAP 로고와 GreenSock Animation Platform 풀네임">
-  <figcaption>GSAP은 GreenSock Animation Platform의 줄임말이에요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=653s" target="_blank" rel="noopener">영상 10:53에서 보기</a></figcaption>
+  <img src="assets/frame-1035.png" alt="/apple 스킬 카드에 탭 타깃 44x44pt, 글자 크기 34/17/13pt, safe areas, 명암비 4.5:1, Liquid Glass가 적혀 있고, 오른쪽 Trips 앱 화면에 각 값이 적용된 위치가 표시돼 있어요">
+  <figcaption>
+    '모든 숫자를 남기라'고 한 덕분에 스킬이 막연한 원칙이 아니라 측정값이 돼요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=635s" target="_blank" rel="noopener">영상 10:35에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>21. 모션은 GSAP</h3>
+<p>사이트의 움직임과 상호작용이 최고 수준으로 느껴지길 원한다면 Claude에게 GSAP(GreenSock Animation Platform)을 쓰라고 하면 돼요. GreenSock Animation Platform의 줄임말이에요. 웹 페이지 애니메이션을 빠르고 안정적으로 처리하는 JavaScript 라이브러리이고, 유명 에이전시들이 많이 쓴다고 해요. 스크롤에 따라 움직이는 섹션이나 보면서 드러나는 글자 같은 효과를 맡겨요.</p>
+<figure>
+  <img src="assets/frame-1053.png" alt="Claude 로고에서 화살표가 GSAP 로고로 이어지고, 아래에 GreenSock Animation Platform이라고 적힌 화면">
+  <figcaption>
+    프롬프트에 라이브러리 이름 하나만 넣어도 모션 품질이 달라진다는 요령이에요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=653s" target="_blank" rel="noopener">영상 10:53에서 보기</a>
+  </figcaption>
 </figure>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>GSAP 공식 사이트는 Webflow의 지원으로 GSAP을 모든 사람에게 무료로 풀었다고 안내해요. 예전에 유료 회원 전용이던 플러그인 이야기를 본 적이 있다면, 지금 조건은 공식 페이지에서 확인하는 게 좋아요.</p>
+  <p>GSAP 공식 사이트는 Webflow의 지원으로 GSAP 전체 라이브러리를 모든 사용자에게 무료로 제공한다고 밝혀요. 플러그인까지 포함한 전체 라이브러리예요.</p>
   <p class="cite">출처: <a href="https://gsap.com/pricing/" target="_blank" rel="noopener">GSAP 공식 사이트 — Pricing</a></p>
 </aside>
-<h3>22~23. Claude Code의 /design과 tweak 스킬</h3>
-<p>Claude Code에는 공식 /design 명령이 있다고 해요. 아이디어나 스크린샷을 주면 Figma처럼 편집할 수 있는 <span class="term" data-term="아트보드" data-desc="디자인 도구에서 화면 하나를 그리는 캔버스 단위예요. 여러 개를 나란히 놓고 화면별 시안을 비교할 수 있어요.">아트보드</span> 캔버스가 열려요. 차이는 Claude Code라서 워크스페이스 전체와 규칙, 메모리를 이미 안다는 점이에요. 그래서 고칠 때마다 내가 원하는 것과 싫어하는 것을 다시 설명하지 않아도 돼요.</p>
+
+<h3>22. Claude Code의 /design</h3>
+<p>Claude Code에는 이제 공식 <code>/design</code> 명령이 있다고 해요. 아이디어나 스크린샷을 주면 Figma처럼 고칠 수 있는 <span class="term" data-term="아트보드" data-en="Artboard" data-desc="캔버스 위에 놓인 화면 한 장 단위의 작업 영역이에요. 시안 여러 개를 나란히 놓고 비교하며 고칠 수 있어요." data-g="8">아트보드</span> 캔버스가 열려요. 아래 화면은 "/design a pricing page for [product], three tiers, in my design system"이라고 입력한 모습이에요.</p>
 <figure>
-  <img src="assets/frame-1129.png" alt="요금제 페이지 아트보드 옆에 my-app 폴더의 src, CLAUDE.md, MEMORY.md가 연결된 도식">
-  <figcaption>/design은 프로젝트 파일과 CLAUDE.md, 메모리를 알고 작업해요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=689s" target="_blank" rel="noopener">영상 11:29에서 보기</a></figcaption>
+  <img src="assets/frame-1117.png" alt="Claude Code 입력창에 /design a pricing page for [product], three tiers, in my design system이라고 입력한 화면">
+  <figcaption>
+    '내 디자인 시스템으로'라는 말만 붙여도 앞에서 만든 기준이 따라와요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=677s" target="_blank" rel="noopener">영상 11:17에서 보기</a>
+  </figcaption>
 </figure>
-<p>Claude Design에는 Tweaks 패널이 기본으로 있어요. 글꼴, 간격, 색 같은 값을 슬라이더로 손으로 조정하는 패널이에요. Claude Code에서는 비슷한 tweak 스킬을 직접 만들면 돼요. 어떤 HTML 페이지에든 슬라이더 패널을 붙여 다듬고 필요 없는 부분은 숨겨요. 다 끝나면 정한 값을 디자인 코드에 반영해요.</p>
+<p>웹판과의 차이는 Claude Code가 내 작업 공간 전체와 규칙, 메모리를 안다는 점이에요. 화면 오른쪽 my-app 폴더에 <code>src/</code>, <code>CLAUDE.md</code>, <code>MEMORY.md</code>가 보여요. 가격표 시안 세 개 중 하나를 고르고 "Implement this one into the app."이라고 하면 pricing.tsx 파일이 새로 생겨요. 이미 내가 원하는 것과 싫어하는 것을 알기 때문에 고칠 때마다 설명을 반복하지 않아도 돼요.</p>
 <figure>
-  <img src="assets/frame-1141.png" alt="Claude Design의 Launch week 화면 오른쪽에 type, spacing, accent 색을 조절하는 Tweaks 패널이 열린 모습">
-  <figcaption>Claude Design의 Tweaks 패널이에요. tweak 스킬은 이걸 Claude Code에서 흉내 내요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=701s" target="_blank" rel="noopener">영상 11:41에서 보기</a></figcaption>
+  <img src="assets/frame-1133.png" alt="가격표 시안 세 개 아래에 Implement this one into the app 입력, 오른쪽 my-app 폴더의 src, CLAUDE.md와 MEMORY.md 파일 옆에 pricing.tsx가 생성된 모습">
+  <figcaption>
+    시안에서 실제 코드 파일까지 한 흐름으로 이어지는 게 Claude Code에서 쓰는 이점이에요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=693s" target="_blank" rel="noopener">영상 11:33에서 보기</a>
+  </figcaption>
 </figure>
-<h3>24. 대본으로 모션 그래픽 만들기</h3>
-<p>발표자가 이 영상의 애니메이션을 만든 방법이에요. 먼저 무료 도구 Whisper로 방금 찍은 영상의 <span class="term" data-term="단어 단위 타임스탬프" data-desc="대본의 단어마다 영상 속 몇 초에 말했는지를 붙인 정보예요. 이게 있어야 특정 단어에 맞춰 그래픽을 정확히 띄울 수 있어요.">단어 단위 타임스탬프</span> 대본을 뽑아요. 그다음 Claude에게 애니메이션이 도움이 될 순간을 찾게 해요. Claude는 HyperFrames라는 도구로 그 순간에 맞춘 클립을 만들어 돌려줘요. 이미 탄탄한 디자인 시스템이 있다면 함께 쓰라고 해요. 그래야 결과물이 바이브 코딩한 AI 디자인처럼 보이지 않아요.</p>
+
+<h3>23. 슬라이더로 다듬는 /tweak</h3>
+<p>Claude Design에는 Tweaks 패널이 들어 있어요. 디자인 옆에 서체, 간격, 색을 조절하는 슬라이더와 버튼이 붙어요. 아래 화면에서 'Launch week' 페이지의 제목이 커지고, 강조색이 파랑에서 주황으로 바뀐 게 이 패널로 조절한 결과예요.</p>
 <figure>
-  <img src="assets/frame-1229.png" alt="HyperFrames가 HTML을 MP4 클립으로 바꾸고, 영상 편집 타임라인의 해당 대사 위치에 클립이 놓인 화면">
-  <figcaption>말한 순간에 맞춰 만들어진 클립이 타임라인에 들어가요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=749s" target="_blank" rel="noopener">영상 12:29에서 보기</a></figcaption>
+  <img src="assets/frame-1142.png" alt="Claude Design의 Tweaks 패널. Launch week 페이지 옆에 type, spacing 슬라이더와 Blue, Orange, Amber 색 버튼이 있고 Orange가 선택돼 있어요">
+  <figcaption>
+    프롬프트를 다시 쓰지 않고 손으로 값을 맞출 수 있어요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=702s" target="_blank" rel="noopener">영상 11:42에서 보기</a>
+  </figcaption>
 </figure>
-<h3>25. 나만의 디자인 OS</h3>
-<p>마지막은 앞의 모든 요령을 한데 묶는 거예요. Claude에게 작은 앱을 만들게 해서, 완성한 디자인과 생성한 이미지·영상을 전부 색인해 둬요. 그러면 시각 스타일과 레퍼런스를 나도 쉽게 찾고 Claude도 꺼내 쓸 수 있어요. 형태는 사람마다 달라요. 발표자 팀은 브랜드에 맞는 3D 자산, 모션 애니메이션, SVG 아이콘을 재사용하는 요소 라이브러리를 만들어 써요.</p>
+<p>Claude Code에는 이 패널이 없으니 직접 스킬로 만들면 돼요. 아래 프롬프트는 HTML(HyperText Markup Language) 파일에 실행하면 글자 크기, 간격, 색을 조절하는 슬라이더 패널을 붙이는 <code>/tweak</code> 스킬을 만들어요. 다듬으면서 필요 없는 부분을 숨길 수도 있고, 끝나면 조절한 값을 디자인에 다시 반영해요.</p>
 <figure>
-  <img src="assets/frame-1253.png" alt="RUBRIC Generations 화면에 생성한 3D 일러스트와 이미지가 격자로 정리된 모습">
-  <figcaption>생성한 이미지를 한곳에 색인해 둔 발표자 팀의 디자인 OS예요. <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=773s" target="_blank" rel="noopener">영상 12:53에서 보기</a></figcaption>
+  <img src="assets/frame-1148.png" alt="HTML 파일에 실행하면 글자 크기, 간격, 색 슬라이더 패널을 넣는 /tweak 스킬을 만들라는 프롬프트">
+  <figcaption>
+    '슬라이더로 맞추고, 값은 코드에 굽는다'는 순서가 이 스킬의 전부예요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=708s" target="_blank" rel="noopener">영상 11:48에서 보기</a>
+  </figcaption>
 </figure>
-<div class="table-scroll">
-  <table>
-    <thead><tr><th>번호</th><th>요령</th><th>어디서</th></tr></thead>
-    <tbody>
-      <tr><td>20</td><td>Apple HIG를 스킬로</td><td>Claude Code · 스킬</td></tr>
-      <tr><td>21</td><td>GSAP으로 모션</td><td>프롬프트 지시</td></tr>
-      <tr><td>22</td><td>/design 명령</td><td>Claude Code</td></tr>
-      <tr><td>23</td><td>tweak 스킬</td><td>Claude Code (Claude Design에는 Tweaks 패널 내장)</td></tr>
-      <tr><td>24</td><td>대본 → 모션 그래픽</td><td>Whisper + Claude + HyperFrames</td></tr>
-      <tr><td>25</td><td>디자인 OS</td><td>Claude가 만든 자체 앱</td></tr>
-    </tbody>
-  </table>
-</div>
+
+<h3>24. 대본을 모션 그래픽으로</h3>
+<p>발표자는 이 영상의 애니메이션도 이렇게 만들었다고 해요. 녹화한 영상의 대본을 <span class="term" data-term="단어 단위 타임스탬프" data-en="Word-level timestamps" data-desc="대본의 단어마다 몇 초에 말했는지 붙인 정보예요. 이게 있어야 그래픽을 특정 단어가 나오는 순간에 맞출 수 있어요." data-g="9">단어 단위 타임스탬프</span>와 함께 뽑는 게 첫 단계예요. Whisper로 무료로 할 수 있어요. 아래 화면에서 'Transcript to motion graphics' 네 단어 밑에 각각 00:01.02 같은 시각이 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-1217.png" alt="음성 파형 아래 Transcript, to, motion, graphics 네 단어에 각각 시각이 표시돼 있고, Whisper (free, open source)라고 적힌 화면">
+  <figcaption>
+    단어마다 시각이 붙어야 애니메이션을 말하는 순간에 정확히 맞출 수 있어요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=737s" target="_blank" rel="noopener">영상 12:17에서 보기</a>
+  </figcaption>
+</figure>
+<p>그다음 Claude에게 애니메이션이 도움이 될 순간을 고르게 하면, Hyperframes라는 도구로 그 순간에 맞춘 그래픽을 만들어요. 화면 위쪽은 HTML로 만든 '5-hour window' 그래픽이 HyperFrames를 거쳐 MP4(MPEG-4 Part 14) 클립이 되는 모습이고, 아래는 그 클립이 편집 타임라인의 해당 대사 위에 놓인 모습이에요.</p>
+<figure>
+  <img src="assets/frame-1229.png" alt="HTML 그래픽이 HyperFrames를 거쳐 moment-3.mp4 클립이 되고, 아래 편집 타임라인에 V2, V1, A1 트랙과 대사 자막이 맞춰져 있어요">
+  <figcaption>
+    결과는 말한 내용에 시간이 맞춰진 클립이에요. 편집기에 그대로 올리면 돼요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=749s" target="_blank" rel="noopener">영상 12:29에서 보기</a>
+  </figcaption>
+</figure>
+<p>흐름을 정리하면 아래와 같아요. 덧붙인 팁은 이미 탄탄한 디자인 시스템이 있다면 여기서도 쓰라는 거예요. 그래야 애니메이션이 바이브 코딩한 AI 디자인처럼 보이지 않아요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["녹화한 영상"] --> B["Whisper<br/>단어 단위 타임스탬프"]
+  B --> C["Claude<br/>애니메이션 넣을 순간 고르기"]
+  C --> D["Hyperframes<br/>그래픽 클립 제작"]
+  D --> E["대사에 맞춘 클립"]
+  S["디자인 시스템"] -.-> C
+</pre>
+  <figcaption>점선은 영상의 보너스 팁이에요. 디자인 시스템을 함께 넘겨야 결과물이 AI 티가 나지 않아요.</figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Whisper는 OpenAI가 공개한 음성 인식 모델이에요. 코드와 모델 가중치가 MIT(Massachusetts Institute of Technology) 라이선스예요. 단어별 시각은 기본으로 나오지 않고, <code>transcribe()</code>의 <code>word_timestamps</code> 옵션을 켜야 나와요(기본값은 꺼짐).</p>
+  <p class="cite">출처: <a href="https://github.com/openai/whisper" target="_blank" rel="noopener">openai/whisper GitHub 저장소</a> · <a href="https://github.com/openai/whisper/blob/main/whisper/transcribe.py" target="_blank" rel="noopener">transcribe.py</a></p>
+</aside>
+
+<h3>25. 나만의 디자인 운영체제</h3>
+<p>마지막 요령은 지금까지의 모든 것을 한데 모으는 거예요. Claude에게 작은 앱을 만들게 해서, 끝낸 디자인과 생성한 이미지·영상을 모두 색인해 두는 거예요. 그러면 내가 시각 스타일과 참고 자료를 쉽게 찾을 수 있고, Claude도 거기에 닿을 수 있어요. 아래는 발표자 팀의 Rubric Generations 화면이에요. 부엉이 캐릭터, 햄버거 사진, 체크리스트 아이콘처럼 생성한 이미지가 한 격자에 모여 있어요.</p>
+<figure>
+  <img src="assets/frame-1253.png" alt="Rubric Generations 앱에 생성한 이미지들이 격자로 모여 있어요. 초록 부엉이, 햄버거, 달력 아이콘, 체크리스트 아이콘 등이 보여요">
+  <figcaption>
+    생성물이 흩어지지 않고 한곳에 쌓이니, 다음 작업의 참고 자료가 돼요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=773s" target="_blank" rel="noopener">영상 12:53에서 보기</a>
+  </figcaption>
+</figure>
+<p>구성은 사람마다 다르다고 해요. 발표자 팀은 브랜드에 맞는 3D 자산, 모션 애니메이션, SVG 아이콘을 모은 요소 라이브러리(Rubric Elements)를 만들어 재사용해요. 화면 왼쪽 메뉴에서 Motion을 고르면 모션 요소들이 카드로 나와요.</p>
+<figure>
+  <img src="assets/frame-1305.png" alt="Rubric Elements 앱의 Motion 분류 화면. 왼쪽 메뉴와 모션 요소 카드 여섯 개가 있어요">
+  <figcaption>
+    1번의 디자인 시스템에서 시작한 흐름이 여기서 재사용 가능한 자산 창고로 끝나요.
+    <a href="https://www.youtube.com/watch?v=_SVU3oC4JX8&amp;t=785s" target="_blank" rel="noopener">영상 13:05에서 보기</a>
+  </figcaption>
+</figure>
 </section>
 
 <section id="corrections">
   <h2>자막 표기 바로잡기</h2>
 <aside class="note">
   <span class="tag">자막 관련 참고</span>
-  <p>자동생성 자막이라 사이트·도구 이름이 잘못 받아적힌 곳이 있어요. 화면에 나온 이름으로 바로잡았어요.</p>
+  <p>자동생성 영어 자막이라 사이트·도구 이름이 잘못 받아적힌 곳이 있어요. 화면에 나온 표기를 기준으로 바로잡았어요.</p>
   <div class="table-scroll"><table>
     <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
     <tbody>
-      <tr><td>styles.referral.design</td><td>styles.refero.design</td><td>01:06, 화면 표기</td></tr>
-      <tr><td>referral.styles</td><td>Refero Styles</td><td>09:58</td></tr>
-      <tr><td>Claude Co-work</td><td>Claude Cowork</td><td>02:12</td></tr>
-      <tr><td>Font Joy</td><td>Fontjoy</td><td>02:45, 화면 표기</td></tr>
-      <tr><td>Key AI</td><td>Kie AI</td><td>04:57, 화면 표기 kie.ai</td></tr>
-      <tr><td>from Awards</td><td>Awwwards</td><td>06:04 (추정)</td></tr>
-      <tr><td>Lord Icon</td><td>Lordicon</td><td>08:51, 화면 표기 lordicon.com</td></tr>
-      <tr><td>Creator&#x27;s Toolbox</td><td>Creators Toolbox</td><td>09:25, 화면 표기</td></tr>
-      <tr><td>3js</td><td>Three.js</td><td>09:25</td></tr>
-      <tr><td>Hyperframes</td><td>HyperFrames</td><td>12:10, 화면 표기</td></tr>
+      <tr><td>styles.referral.design</td><td>styles.refero.design</td><td>디자인 시스템 갤러리 (화면 주소창)</td></tr>
+      <tr><td>referral.styles</td><td>Refero Styles</td><td>Creators Toolbox 목록의 항목 이름</td></tr>
+      <tr><td>Key AI</td><td>Kie AI (kie.ai)</td><td>이미지·영상 생성 모델 모음</td></tr>
+      <tr><td>Font Joy</td><td>Fontjoy</td><td></td></tr>
+      <tr><td>Flat Icon</td><td>Flaticon</td><td></td></tr>
+      <tr><td>Lord Icon</td><td>Lordicon</td><td></td></tr>
+      <tr><td>from Awards</td><td>Awwwards</td><td>디자인 갤러리 사이트 (화면 탭 이름)</td></tr>
+      <tr><td>Cloud Code</td><td>Claude Code</td><td></td></tr>
+      <tr><td>Claude Co-work</td><td>Claude Cowork</td><td></td></tr>
+      <tr><td>3js</td><td>three.js (추정)</td><td>웹 3D 라이브러리</td></tr>
     </tbody>
   </table></div>
 </aside>
 </section>
 </main>
 
-<div class="tail">
+<div class="tail" id="glossary">
   <h2>이 글에 나온 용어</h2>
-  <div class="table-scroll">
-    <table>
-      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
-      <tbody>
-        <tr><td>디자인 시스템</td><td>색, 글꼴, 간격, 컴포넌트 규칙을 한데 모은 것이에요. 이게 있어야 화면이 여러 개여도 한 브랜드처럼 보여요.</td></tr>
-        <tr><td>커스텀 스킬</td><td>Claude Code나 Cowork에 직접 만들어 넣는 지침 묶음이에요. 이름으로 부르면 그 지침대로 작업해서, 같은 스타일을 매번 다시 설명하지 않아도 돼요.</td></tr>
-        <tr><td>바이브 코딩</td><td>코드를 꼼꼼히 설계하지 않고 AI에게 말로 시켜 결과물을 뽑는 방식이에요. 빠르지만 기본값이 그대로 남아 티가 나기 쉬워요.</td></tr>
-        <tr><td>빈 상태</td><td>목록이나 대시보드에 아직 데이터가 없을 때 보이는 화면이에요. 자주 잊히지만 첫 사용자가 가장 먼저 보는 화면이라 신경 써야 해요.</td></tr>
-        <tr><td>SVG</td><td>도형과 선을 좌표로 기록한 벡터 이미지 형식이에요. 크기를 키워도 흐려지지 않고, 텍스트 파일이라 색이나 모양을 코드로 바로 고칠 수 있어요.</td></tr>
-        <tr><td>Lottie</td><td>애니메이션을 JSON 데이터로 담은 파일 형식이에요. 영상보다 훨씬 가볍고 웹이나 앱에서 코드로 재생해요.</td></tr>
-        <tr><td>GSAP</td><td>GreenSock Animation Platform의 줄임말인 자바스크립트 애니메이션 라이브러리예요. 스크롤에 맞춘 움직임 같은 복잡한 효과를 매끄럽게 처리해요.</td></tr>
-        <tr><td>아트보드</td><td>디자인 도구에서 화면 하나를 그리는 캔버스 단위예요. 여러 개를 나란히 놓고 화면별 시안을 비교할 수 있어요.</td></tr>
-        <tr><td>단어 단위 타임스탬프</td><td>대본의 단어마다 영상 속 몇 초에 말했는지를 붙인 정보예요. 이게 있어야 특정 단어에 맞춰 그래픽을 정확히 띄울 수 있어요.</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-9"><dt>단어 단위 타임스탬프<span class="en">Word-level timestamps</span></dt><dd>대본의 단어마다 몇 초에 말했는지 붙인 정보예요. 이게 있어야 그래픽을 특정 단어가 나오는 순간에 맞출 수 있어요.</dd></div>
+    <div class="g" id="g-4"><dt>디슬롭<span class="en">Deslop</span></dt><dd>AI가 만든 티 나는 흔한 결과물(slop)을 걷어 낸다는 뜻이에요. Impeccable은 이걸 점검 항목으로 만들어 자동으로 고쳐요.</dd></div>
+    <div class="g" id="g-1"><dt>디자인 시스템<span class="en">Design system</span></dt><dd>색, 서체, 간격, 컴포넌트 규칙을 한데 묶은 기준서예요. 이게 있어야 AI가 매번 같은 스타일로 결과물을 내요.</dd></div>
+    <div class="g" id="g-3"><dt>바이브 코딩<span class="en">Vibe coding</span></dt><dd>코드를 꼼꼼히 설계하지 않고 AI에게 말로 시켜 만드는 방식이에요. 기본값이 그대로 남아 결과물이 비슷비슷해지기 쉬워요.</dd></div>
+    <div class="g" id="g-5"><dt>빈 상태<span class="en">Empty state</span></dt><dd>데이터가 아직 없을 때 보이는 화면이에요. 대충 만들면 텅 빈 화면이 되기 쉬워서 점검 항목에 따로 들어가요.</dd></div>
+    <div class="g" id="g-8"><dt>아트보드<span class="en">Artboard</span></dt><dd>캔버스 위에 놓인 화면 한 장 단위의 작업 영역이에요. 시안 여러 개를 나란히 놓고 비교하며 고칠 수 있어요.</dd></div>
+    <div class="g" id="g-2"><dt>커스텀 스킬<span class="en">Custom skill</span></dt><dd>Claude Code에서 지침과 파일을 묶어 이름으로 불러 쓰게 만든 꾸러미예요. /duolingo처럼 부르면 그 안의 규칙을 따라 작업해요.</dd></div>
+    <div class="g" id="g-7"><dt>탭 타깃<span class="en">Tap target</span></dt><dd>손가락으로 누를 수 있는 영역의 크기예요. 너무 작으면 잘못 누르기 쉬워서 Apple은 최소 크기를 숫자로 정해 둬요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>GSAP</dt><dd>GreenSock Animation Platform</dd></div>
+    <div class="g"><dt>HIG</dt><dd>Human Interface Guidelines</dd></div>
+    <div class="g"><dt>HTML</dt><dd>HyperText Markup Language</dd></div>
+    <div class="g" id="g-6"><dt>Lottie<span class="en">Lottie file</span></dt><dd>애니메이션을 JSON 코드로 적은 작은 파일이에요. 동영상보다 가볍고 크기를 바꿔도 깨지지 않아서 웹 아이콘 애니메이션에 많이 써요.</dd></div>
+    <div class="g"><dt>MCP</dt><dd>Model Context Protocol</dd></div>
+    <div class="g"><dt>MIT</dt><dd>Massachusetts Institute of Technology</dd></div>
+    <div class="g"><dt>MP4</dt><dd>MPEG-4 Part 14</dd></div>
+    <div class="g"><dt>PDF</dt><dd>Portable Document Format</dd></div>
+    <div class="g"><dt>SVG</dt><dd>Scalable Vector Graphics</dd></div>
+    <div class="g"><dt>UI</dt><dd>User Interface</dd></div>
+    <div class="g"><dt>URL</dt><dd>Uniform Resource Locator</dd></div>
+  </dl>
 </div>
 
-<div class="tail">
+<div class="tail" id="sources">
   <h2>참고한 곳</h2>
   <ol>
-    <li><a href="https://www.youtube.com/watch?v=_SVU3oC4JX8" target="_blank" rel="noopener">원본 영상 — Jay E | RoboNuggets</a></li>
-    <li><a href="https://www.anthropic.com/news/claude-design-anthropic-labs" target="_blank" rel="noopener">Anthropic — Introducing Claude Design by Anthropic Labs</a></li>
-    <li><a href="https://styles.refero.design" target="_blank" rel="noopener">Refero Styles</a></li>
-    <li><a href="https://www.asd-ste100.org/" target="_blank" rel="noopener">ASD-STE100 Simplified Technical English 공식 사이트</a></li>
-    <li><a href="https://developer.apple.com/design/human-interface-guidelines" target="_blank" rel="noopener">Apple Human Interface Guidelines</a></li>
-    <li><a href="https://gsap.com/pricing/" target="_blank" rel="noopener">GSAP 공식 사이트 — Pricing</a></li>
-    <li><a href="https://github.com/heygen-com/hyperframes" target="_blank" rel="noopener">HyperFrames — HeyGen 공식 GitHub</a></li>
-    <li><a href="https://github.com/openai/whisper" target="_blank" rel="noopener">Whisper — OpenAI 공식 GitHub</a></li>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=_SVU3oC4JX8" target="_blank" rel="noopener">원본 영상 — Jay E | RoboNuggets</a></li>
+    <li id="src-2"><a href="https://styles.refero.design" target="_blank" rel="noopener">Refero Styles — 디자인 시스템 갤러리</a></li>
+    <li id="src-3"><a href="https://github.com/pbakaus/impeccable" target="_blank" rel="noopener">pbakaus/impeccable — GitHub 저장소</a></li>
+    <li id="src-4"><a href="https://gsap.com/pricing/" target="_blank" rel="noopener">GSAP 공식 사이트 — Pricing</a></li>
+    <li id="src-5"><a href="https://github.com/openai/whisper" target="_blank" rel="noopener">openai/whisper — GitHub 저장소</a></li>
+    <li id="src-6"><a href="https://developer.apple.com/design/human-interface-guidelines/" target="_blank" rel="noopener">Apple — Human Interface Guidelines</a></li>
+    <li id="src-7"><a href="https://asd-ste100.org" target="_blank" rel="noopener">ASD-STE100 Simplified Technical English</a></li>
+    <li id="src-8"><a href="https://developers.google.com/style" target="_blank" rel="noopener">Google 개발자 문서 스타일 가이드</a></li>
+    <li id="src-9"><a href="https://support.apple.com/guide/applestyleguide/welcome/web" target="_blank" rel="noopener">Apple Style Guide</a></li>
   </ol>
 </div>
 
-<footer>2026년 10월 1일에 이 영상을 보고 정리했어요. 원본은 Jay E | RoboNuggets 채널에 있어요.</footer>
+<footer>2026년 10월 14일에 이 영상을 보고 정리했어요. 원본은 Jay E | RoboNuggets 채널에 있어요.</footer>
 
 </div>
 
-<div id="tip" role="tooltip"></div>
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
 <script>
 (function () {
-  // ── 용어 툴팁 ───────────────────────────────────────
-  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
-  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
-  var tip = document.getElementById('tip');
-  var open = null;
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
 
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
   function show(el) {
+    clearTimeout(hideTimer);
     var desc = el.getAttribute('data-desc');
     if (!desc) return;
-    var name = el.getAttribute('data-term') || el.textContent;
+    if (open && open !== el) open.classList.remove('open');
     tip.innerHTML = '';
-    var b = document.createElement('b');
-    b.textContent = name;
-    tip.appendChild(b);
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
     tip.appendChild(document.createTextNode(desc));
-    tip.classList.add('on');
-
-    var r = el.getBoundingClientRect();
-    var t = tip.getBoundingClientRect();
-    var pad = 12;
-    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
-    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
-    var top = r.top + window.scrollY - t.height - 10;
-    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
-    tip.style.left = left + 'px';
-    tip.style.top = top + 'px';
-    open = el;
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
   }
-
-  function hide() {
-    tip.classList.remove('on');
-    open = null;
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
   }
 
   document.querySelectorAll('.term').forEach(function (el) {
-    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
-    el.addEventListener('mouseenter', function () { show(el); });
-    el.addEventListener('mouseleave', hide);
-    el.addEventListener('focus', function () { show(el); });
-    el.addEventListener('blur', hide);
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
     el.addEventListener('click', function (e) {
-      e.preventDefault();
-      open === el ? hide() : show(el);
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
     });
   });
 
-  document.addEventListener('click', function (e) {
-    if (open && !e.target.closest('.term')) hide();
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
   });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') hide();
-  });
-  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
-  window.addEventListener('resize', hide);
 
-  // ── 목차 현재 위치 표시 ─────────────────────────────
-  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
-  var map = {};
-  links.forEach(function (a) {
-    var s = document.getElementById(a.getAttribute('href').slice(1));
-    if (s) map[s.id] = a;
-  });
-  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
-  if ('IntersectionObserver' in window && targets.length) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (!en.isIntersecting) return;
-        links.forEach(function (a) { a.classList.remove('active'); });
-        map[en.target.id].classList.add('active');
-      });
-    }, { rootMargin: '-10% 0px -75% 0px' });
-    targets.forEach(function (t) { io.observe(t); });
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
   }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
 })();
 </script>
+
 </body>
 </html>
