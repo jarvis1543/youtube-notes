@@ -1,0 +1,1451 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>디자인 시스템 처음부터 끝까지: Figma 변수, 컴포넌트, AI</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>디자인 시스템 처음부터 끝까지: Figma 변수, 컴포넌트, AI</h1>
+  <p class="lede">토큰 세 단계와 컴포넌트 20여 개를 직접 쌓는 4시간 강의를 정리했어요</p>
+  <div class="meta">
+    <span>UI Collective</span><span class="dot">·</span>
+    <span>영상 4:00:41</span><span class="dot">·</span>
+    <span>읽는 데 약 42분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=lsgVRCJ4fko" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li><span class="term" data-term="디자인 토큰" data-en="Design token" data-desc="색·글자 크기·간격 같은 값에 역할 이름을 붙여 여러 컴포넌트가 함께 쓰게 한 것이에요. 원본 값 하나를 바꾸면 쓰는 곳이 모두 바뀌어요." data-g="1">디자인 토큰</span>은 디자인에서 나와요. 마음에 드는 화면이 먼저 있어야 어떤 색과 크기를 토큰으로 만들지 정할 수 있어요.</li>
+    <li>컬러 스케일은 불투명도 단계로 직접 뽑고, 단계 크기에 맞춰 50·100·…·950 이름을 붙여요.</li>
+    <li><span class="term" data-term="컬렉션" data-en="Variable collection" data-desc="Figma에서 변수를 묶어 두는 단위예요. 컬렉션마다 모드를 따로 가질 수 있어서, 이 영상은 역할에 따라 컬렉션을 네 개로 나눠요." data-g="2">컬렉션</span>은 브랜드 → <span class="term" data-term="얼라이어스" data-en="Alias" data-desc="다른 변수를 값으로 가리키는 변수예요. 이 영상에서는 브랜드 색 스케일에 Primary·Error 같은 역할을 붙이는 두 번째 단계 컬렉션 이름이기도 해요." data-g="4">얼라이어스</span> → 맵드 세 단계로 나누고, 컴포넌트 이름이 붙은 토큰은 만들지 않아요.</li>
+    <li>컴포넌트는 <span class="term" data-term="오토 레이아웃" data-en="Auto layout" data-desc="Figma 프레임 안의 요소를 패딩과 간격 규칙대로 자동 배치하는 기능이에요. 내용이 길어지면 프레임이 따라 늘어나요." data-g="6">오토 레이아웃</span>·속성·<span class="term" data-term="베리언트" data-en="Variant" data-desc="한 컴포넌트의 여러 상태나 형태를 한 세트로 묶은 것이에요. Status=hover, Type=outline처럼 속성 값을 골라 바꿔 써요." data-g="7">베리언트</span>를 갖춘 작은 부품을 먼저 만들고 그걸 조립해요. 이게 <span class="term" data-term="아토믹 디자인" data-en="Atomic design" data-desc="작은 컴포넌트를 먼저 만들고 그걸 조립해 더 큰 컴포넌트를 만드는 방식이에요. 라벨과 필드를 합쳐 인풋을 만드는 식이에요." data-g="12">아토믹 디자인</span>이에요.</li>
+    <li>AI(Artificial Intelligence)는 디자인 시스템을 스스로 이해하지 못해요. 컴포넌트 그룹·변수·타입 스타일별로 스킬을 만들어 가르쳐도 80~85% 수준이에요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">디자인 토큰이 뭐고, AI에게 맡기면 안 되는 이유</a></li>
+    <li><a href="#s2">컬러 스케일은 직접, 숫자 규칙대로</a></li>
+    <li><a href="#s3">브랜드·얼라이어스 컬렉션과 컴포넌트 전용 토큰</a></li>
+    <li><a href="#s4">맵드 컬렉션: 네 그룹, 다크 모드, 두 번째 브랜드</a></li>
+    <li><a href="#s5">타입 스케일과 반응형 컬렉션</a></li>
+    <li><a href="#s6">버튼 하나로 배우는 컴포넌트 기본기</a></li>
+    <li><a href="#s7">폼·내비게이션 컴포넌트는 작은 부품을 조립해요</a></li>
+    <li><a href="#s8">데이터 표시 컴포넌트</a></li>
+    <li><a href="#s9">배포, 모바일, 레이아웃 변수, 컴포넌트 기준</a></li>
+    <li><a href="#s10">AI 연결과 개발자 핸드오프</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=60s" target="_blank" rel="noopener">01:00</a>
+  <h2>디자인 토큰이 뭐고, AI에게 맡기면 안 되는 이유</h2>
+<p>디자인 토큰은 컴포넌트에 입히는 시각 값이에요. 컴포넌트 자체가 아니라, 컴포넌트에 들어가는 색과 속성을 말해요. 발표자가 띄운 슬라이드에는 흔히 쓰는 토큰 여덟 가지가 있어요. 왼쪽 열의 Color, Typography, Shadow, Spacing과 오른쪽 열의 Radius, Borders, Animations, Grid예요.</p>
+<figure>
+  <img src="assets/frame-0220.png" alt="Common Design Tokens 슬라이드. Color, Typography, Shadow, Spacing, Radius, Borders, Animations, Grid 여덟 개가 아이콘과 함께 두 열로 놓여 있다">
+  <figcaption>
+    오른쪽 아래 Animations와 Grid는 아주 성숙한 기업 정도만 토큰으로 둬요. 처음에는 나머지 여섯 개면 돼요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=140s" target="_blank" rel="noopener">영상 02:20에서 보기</a>
+  </figcaption>
+</figure>
+<p>값 자체는 토큰이 아니에요. <code>#000000</code>은 그냥 헥스 코드이고, 여기에 '액션 텍스트'처럼 역할을 붙여 여러 컴포넌트가 같이 쓰게 될 때 토큰이 돼요. 숫자도 같아요. 8이라는 숫자 변수에 'radius medium'이라는 역할이 붙어야 토큰이에요.</p>
+<h3>Figma 변수와 디자인 토큰</h3>
+<p>발표자는 Figma 변수를 'Figma 전용 디자인 토큰'이라고 정리해요. 이론상 같은 것이기도 하고 다른 것이기도 하지만, Figma 안에서만 쓰이도록 만들어진 토큰으로 보면 된다는 거예요. 요즘은 AI 덕분에 Figma 밖으로 꺼내 쓰기도 쉬워지고 있다고 덧붙여요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Figma 밖에서 토큰을 주고받는 표준도 있어요. W3C(World Wide Web Consortium) 커뮤니티 그룹인 DTCG(Design Tokens Community Group)가 디자인 토큰을 정의하고 교환하는 형식을 만들고 있고, 2025년 10월에 첫 안정 버전(2025.10)을 냈어요. 디자인 도구와 코드 사이에서 토큰을 옮길 때 이 형식을 기준으로 삼을 수 있어요.</p>
+  <p class="cite">출처: <a href="https://www.designtokens.org/" target="_blank" rel="noopener">Design Tokens Community Group</a> · <a href="https://www.w3.org/community/design-tokens/2025/10/28/design-tokens-specification-reaches-first-stable-version/" target="_blank" rel="noopener">W3C 커뮤니티 그룹 발표</a></p>
+</aside>
+<p>토큰이 왜 필요한지는 데모 한 장면이 보여 줘요. 왼쪽 변수 패널의 <code>Action</code> 변수 하나에서 화살표 세 개가 아래 'Some text!' 세 개로 뻗어 있어요. 이 변수 색을 분홍으로 바꾸면 세 텍스트가 한 번에 바뀌어요. 토큰이 없으면 텍스트를 하나씩 골라 색을 바꿔야 해요.</p>
+<figure>
+  <img src="assets/frame-0340.png" alt="Figma 변수 패널의 Text 그룹에 Action 변수가 있고, 캔버스에서 Text/Action 색 견본 하나가 화살표로 Some text! 세 개에 연결된 데모">
+  <figcaption>
+    부모 토큰 하나가 바뀌면 그 값을 쓰는 곳이 전부 따라 바뀌어요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=220s" target="_blank" rel="noopener">영상 03:40에서 보기</a>
+  </figcaption>
+</figure>
+<h3>토큰은 디자인에서 나와요</h3>
+<p>처음 하는 사람이 가장 많이 묻는 건 '어떤 토큰을 만들어야 하나요'예요. 답은 디자인이에요. 버튼은 무슨 색이 좋은지, 본문은 몇 px인지, 브랜드 화면 전체에서 일관되게 쓰는 값이 뭔지가 곧 토큰 목록이 돼요. 슬라이드 위쪽 'In an ideal world'는 디자인이 먼저 있고 그걸로 토큰과 디자인 시스템을 만드는 순서예요. 아래 'Today'는 이 영상이 참고할 디자인 없이 토큰 라이브러리부터 만드는 순서예요.</p>
+<figure>
+  <img src="assets/frame-0500.png" alt="두 개의 타임라인 슬라이드. In an ideal world: Have initial designs, Build your tokens based on the designs, Build your design system based on the designs. Today: Build an initial token/variable library, Build an initial design system">
+  <figcaption>
+    디자인 없이 토큰부터 바로 짜는 건 전문가 수준에서나 가능하다고 해요. 따라 할 때는 마음에 드는 대시보드나 설정 화면 하나를 옆에 두세요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=300s" target="_blank" rel="noopener">영상 05:00에서 보기</a>
+  </figcaption>
+</figure>
+<h3>AI가 만든 토큰과 컴포넌트의 문제</h3>
+<p>'AI가 다 해 주면 되지 않나요'에 대한 발표자 답은 분명해요. 토큰은 내 브랜드와 제품 맥락을 아는 사람만 제대로 정할 수 있다는 거예요. Claude에게 만들게 한 토큰 세트를 보면 BACKGROUND 그룹에 <code>bg/canvas</code>, <code>bg/surface</code>, <code>bg/raised</code>, <code>bg/accent-soft</code>가 있어요. 그런데 canvas와 surface는 색 말고 무엇이 다른지, raised는 언제 쓰는지 알 수 없어요.</p>
+<figure>
+  <img src="assets/frame-0700.png" alt="Aurora Design Variables라는 AI 생성 토큰 페이지. Background 그룹에 bg/canvas, bg/surface, bg/raised, bg/accent-soft, Text 그룹에 text/primary, secondary, disabled, on-accent, Border 그룹에 border/subtle, strong, focus가 값과 함께 나열돼 있다">
+  <figcaption>
+    이름은 그럴듯해도 쓰임새가 정해져 있지 않아요. 결국 사람이 거꾸로 해석해야 해요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=420s" target="_blank" rel="noopener">영상 07:00에서 보기</a>
+  </figcaption>
+</figure>
+<p>컴포넌트도 마찬가지예요. Figma 에이전트에게 메뉴를 세 번 만들게 했는데, 가운데 Edit·Copy·Paste 메뉴는 보기엔 가장 좋지만 선택 상태 베리언트가 없어서 바꾸려면 컴포넌트를 분리해야 해요. 왼쪽 레이어 패널을 보면 다른 버전은 <code>Menu Divider</code>라는 구분선 컴포넌트를 따로 만들었어요. 발표자는 구분선 대신 테두리를 써야 한다고 봐요. 세 번째 버전은 속성은 있지만 제대로 짜였는지 알 수 없었어요.</p>
+<figure>
+  <img src="assets/frame-0820.png" alt="Figma 캔버스에 AI가 만든 메뉴 컴포넌트 두 개가 있고, 왼쪽 레이어 패널에 Menu Container 아래 Menu Header, Menu Item, Menu Divider가 보인다">
+  <figcaption>
+    AI는 컴포넌트를 만들 수는 있어도 매번 다르게, 구조가 틀린 채로 만들 수 있어요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=500s" target="_blank" rel="noopener">영상 08:20에서 보기</a>
+  </figcaption>
+</figure>
+<blockquote>
+  <p>You will spend more time 'reverse-engineering' what it gave you, than you would building it yourself or with a team</p>
+  <p>AI가 준 걸 거꾸로 뜯어보는 데, 직접 또는 팀과 만드는 것보다 더 많은 시간을 쓰게 돼요.</p>
+  <cite>— 영상 05:59 (화면 문구)</cite>
+</blockquote>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=580s" target="_blank" rel="noopener">09:40</a>
+  <h2>컬러 스케일은 직접, 숫자 규칙대로</h2>
+<p>토큰을 어떻게 나눌지는 정답이 없지만, 흔히 두 방식을 써요. 슬라이드 왼쪽 역삼각형이 Brand → Alias → Mapped 3단 방식이고, 오른쪽이 Primitive → Semantic 2단 방식이에요. 결국 하는 일은 같고, 발표자는 대기업 작업에서 확장하기 좋았던 3단 방식으로 진행해요.</p>
+<figure>
+  <img src="assets/frame-1030.png" alt="Three Tiered Approach 역삼각형에 Brand, Alias, Mapped, Two Tiered Approach 역삼각형에 Primitive, Semantic이 적힌 슬라이드">
+  <figcaption>
+    위에서 아래로 갈수록 원래 색에서 실제로 쓰이는 역할에 가까워져요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=630s" target="_blank" rel="noopener">영상 10:30에서 보기</a>
+  </figcaption>
+</figure>
+<h3>불투명도로 색을 뽑고, 불투명한 값으로 저장해요</h3>
+<p>발표자는 디자인 팀이 가장 많이 틀리는 곳이 컬러 스케일이라고 말해요. 그래서 플러그인이나 ChatGPT에 맡기지 않고 직접 만들어요. 기본 보라색 사각형을 흰 배경 위에 복제하고, 가운데 사각형의 불투명도를 80%로 낮춰요. 화면에서 선택된 가운데 칸이 위아래 칸보다 옅어진 게 그 결과예요. 이렇게 보이는 색을 스포이트로 다시 찍어 불투명한 헥스 값으로 저장해요.</p>
+<figure>
+  <img src="assets/frame-1300.png" alt="Figma 캔버스에 보라색 사각형 세 개가 세로로 놓여 있고, 선택된 가운데 사각형만 불투명도가 낮아 옅게 보인다. 오른쪽 패널 Fill에 A259F8 색이 있다">
+  <figcaption>
+    변수에 80% 같은 불투명도를 넣으면 배경색에 따라 실제 색이 달라져요. 그래서 보이는 색을 따로 찍어 둬요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=780s" target="_blank" rel="noopener">영상 13:00에서 보기</a>
+  </figcaption>
+</figure>
+<h3>이름은 단계 크기에서 나와요</h3>
+<p>밝은 쪽은 흰 배경 위에서 80·60·40·20%로 20씩 내리고, 마지막만 10%로 내려요. 어두운 쪽은 검은 배경 위에서 같은 일을 해요. 흔한 실수는 가장 밝은 색에 무조건 100을 주고 200, 300… 순서로 붙이는 거예요. 그러면 마지막 10% 단계도 20% 단계와 같은 100 간격처럼 보여요. 발표자는 20%씩 내린 단계를 100 단위로, 10%만 내린 단계를 50 단위로 이름 붙여요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 660 150" role="img" aria-label="불투명도 단계와 컬러 스케일 이름의 대응. 흰 배경 위 10, 20, 40, 50, 60, 80퍼센트가 50, 100, 200, 250, 300, 400이 되고, 기본색이 500, 검은 배경 위 80, 60, 40, 20, 10퍼센트가 600, 700, 800, 900, 950이 된다">
+    <g id="fig-scale"></g>
+  </svg>
+  <figcaption>20% 단계는 100씩, 10% 단계는 50씩 이름이 바뀌어요. 250은 나중에 200과 300 사이가 필요할 때 불투명도 50%로 끼워 넣은 색이에요.</figcaption>
+</figure>
+<p>완성된 화면을 보면 왼쪽 검은 박스 안이 어두운 쪽, 그 아래가 밝은 쪽 원본 사각형이에요. 오른쪽 열에는 불투명한 헥스 값으로 다시 칠한 스케일과 900·800·…·100·50 이름이 붙어 있어요. 이 원본 파일을 남겨 두면 접근성 검사 중에 중간 색이 필요할 때 같은 규칙으로 새 단계를 만들 수 있어요. 새 AI 채팅에서 '200과 300 사이 색'을 달라고 하면 이 규칙을 모르니 어긋난 값이 나와요.</p>
+<figure>
+  <img src="assets/frame-1850.png" alt="왼쪽에 불투명도를 달리한 보라색 사각형 원본, 오른쪽에 900부터 50까지 숫자가 붙은 보라색 스케일이 세로로 놓인 Figma 화면">
+  <figcaption>
+    원본(왼쪽)과 결과(오른쪽)를 한 파일에 두는 게 이 방식의 장점이에요. 숫자가 어디서 왔는지 언제든 확인할 수 있어요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=1130s" target="_blank" rel="noopener">영상 18:50에서 보기</a>
+  </figcaption>
+</figure>
+<p>이제 첫 컬렉션 'Brand / Primitive'를 열어요. 오른쪽 변수 창에는 아직 <code>Color</code> 변수 하나뿐이고, 왼쪽 캔버스에는 250까지 끼워 넣은 완성 스케일이 있어요. 여기서 Purple 그룹을 만들고 950부터 50까지 변수를 옮기는데, 250은 깔끔하게 하려고 변수에서 빼요. 1000까지 두는 곳도 흔하고 문제없다고 해요.</p>
+<figure>
+  <img src="assets/frame-1940.png" alt="왼쪽 캔버스에 950, 900, 800, 700, 600, 500, 400, 300, 250, 200, 100, 50 이름이 붙은 보라색 스케일이 있고, 오른쪽 Variables 창의 Brand / Primitive 컬렉션에는 Color 변수 하나만 있다">
+  <figcaption>
+    이 단계에서는 역할을 생각하지 않아요. 스케일 숫자와 색만 옮겨요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=1180s" target="_blank" rel="noopener">영상 19:40에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=1262s" target="_blank" rel="noopener">21:02</a>
+  <h2>브랜드·얼라이어스 컬렉션과 컴포넌트 전용 토큰</h2>
+<p>브랜드 컬렉션에는 역할 없이 색 스케일만 넣어요. 보라를 만든 방식 그대로 사각형 원본을 복사해 헥스만 바꾸면 15초 만에 새 스케일의 재료가 생겨요. 화면에는 보라 옆에 빨강, 초록, 회색, 주황, 파랑 스케일이 같은 단계로 놓여 있어요.</p>
+<figure>
+  <img src="assets/frame-2322.png" alt="Figma 캔버스에 빨강, 초록, 회색, 주황, 파랑 컬러 스케일이 각각 위쪽 검은 박스 안 어두운 단계와 아래 밝은 단계로 나란히 놓여 있다">
+  <figcaption>
+    시작할 때는 이 여섯 색이면 충분해요. 빨강은 에러, 초록은 성공, 주황은 경고, 파랑은 정보, 회색은 글자에 써요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=1402s" target="_blank" rel="noopener">영상 23:22에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자가 '논쟁거리'라며 짚는 점이 하나 있어요. 어느 스케일에도 순수한 검정과 흰색이 없어요. 그래서 Foundation 그룹을 따로 만들어 black과 white 두 변수를 넣어요. 회색 그룹에 넣어도 되지만, 어디엔가는 꼭 있어야 한다고 해요.</p>
+<h3>얼라이어스는 스케일에 역할을 붙여요</h3>
+<p>두 번째 컬렉션 Alias에서는 스케일 단위로 역할을 붙여요. Primary 그룹을 만들고 950부터 50까지 변수를 만든 뒤, 값을 브랜드 컬렉션의 Purple 변수에 하나씩 연결해요. 화면 오른쪽 Value 열에 <code>Purple/950</code>, <code>Purple/500 - default</code>처럼 브랜드 변수 이름이 보여요.</p>
+<figure>
+  <img src="assets/frame-3022.png" alt="Variables 창 Alias 컬렉션의 Primary 그룹. 950부터 50까지 변수의 값이 Purple/950, Purple/900, Purple/500 - default 등 브랜드 컬렉션 변수로 연결돼 있다">
+  <figcaption>
+    500 옆의 '- default'는 기본색이 어디인지 헷갈리지 않게 작업 중에만 붙여 두는 표시예요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=1822s" target="_blank" rel="noopener">영상 30:22에서 보기</a>
+  </figcaption>
+</figure>
+<p>나머지도 같은 방식이에요. 왼쪽 그룹 목록에 Primary, Error, Success, Information, Warning, Neutral이 생기고, 선택된 Neutral은 <code>Grey/950</code>부터 <code>Grey/50</code>까지 회색에 연결돼요. 회색을 'Text'라고 부르지 않는 이유는 텍스트가 요소 이름이라서예요. 요소 이름은 다음 단계인 맵드 컬렉션에서 써요. Foundation도 얼라이어스에 다시 만들어 브랜드 쪽 Foundation에 연결해요. 맵드가 브랜드를 직접 가리키지 않게 하려는 준비예요.</p>
+<figure>
+  <img src="assets/frame-3132.png" alt="Alias 컬렉션 그룹 목록에 Primary, Error, Success, Information, Warning, Neutral이 있고, Neutral 그룹 변수 950부터 50까지가 Grey/950부터 Grey/50에 연결돼 있다">
+  <figcaption>
+    두 그룹이 같은 스케일을 가리켜도 괜찮아요. 예를 들어 Primary를 빨강으로 바꾸면 Primary와 Error가 둘 다 Red를 가리켜요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=1892s" target="_blank" rel="noopener">영상 31:32에서 보기</a>
+  </figcaption>
+</figure>
+<p>세 단계를 한 줄로 이으면 이렇게 돼요. 브랜드는 순수한 색, 얼라이어스는 스케일 단위의 역할, 맵드는 요소 단위의 역할이에요. 컴포넌트는 맨 끝의 맵드 변수만 써요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 660 200" role="img" aria-label="Purple/500에서 Primary/500, surface/action을 거쳐 버튼 배경으로 이어지는 세 단계 연결. 2단 방식은 앞의 두 단계를 한 컬렉션에 합친다">
+    <defs><marker id="arrow-tier" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="c1 cell" x="10" y="40" width="140" height="70" rx="10"/>
+    <text x="80" y="68" text-anchor="middle">Brand</text>
+    <text x="80" y="92" text-anchor="middle" class="mono">Purple/500</text>
+    <rect class="c2 cell" x="180" y="40" width="140" height="70" rx="10"/>
+    <text x="250" y="68" text-anchor="middle">Alias</text>
+    <text x="250" y="92" text-anchor="middle" class="mono">Primary/500</text>
+    <rect class="c3 cell" x="350" y="40" width="140" height="70" rx="10"/>
+    <text x="420" y="68" text-anchor="middle">Mapped</text>
+    <text x="420" y="92" text-anchor="middle" class="mono">surface/action</text>
+    <rect class="box accent" x="520" y="40" width="130" height="70" rx="10"/>
+    <text x="585" y="68" text-anchor="middle">컴포넌트</text>
+    <text x="585" y="92" text-anchor="middle" class="sub">버튼 배경</text>
+    <path class="line" d="M152 75 h24" marker-end="url(#arrow-tier)"/>
+    <path class="line" d="M322 75 h24" marker-end="url(#arrow-tier)"/>
+    <path class="line" d="M492 75 h24" marker-end="url(#arrow-tier)"/>
+    <text x="80" y="30" text-anchor="middle" class="sub">순수한 색</text>
+    <text x="250" y="30" text-anchor="middle" class="sub">스케일의 역할</text>
+    <text x="420" y="30" text-anchor="middle" class="sub">요소의 역할</text>
+    <rect class="box dim" x="10" y="135" width="310" height="44" rx="10"/>
+    <text x="165" y="162" text-anchor="middle" class="sub">2단 방식: 이 둘을 Primitive 하나에</text>
+    <rect class="box dim" x="350" y="135" width="140" height="44" rx="10"/>
+    <text x="420" y="162" text-anchor="middle" class="sub">= Semantic</text>
+  </svg>
+  <figcaption>2단 방식은 얼라이어스에서 하는 일을 프리미티브 컬렉션 안에서 해요. 연결해야 하는 일의 양은 같고, 3단이 원래 색과 역할을 갈라 둬서 더 깔끔하다는 게 발표자 판단이에요.</figcaption>
+</figure>
+<p>2단 방식을 싫어하는 이유도 말해요. 금융 회사 한 곳은 브랜드와 하위 브랜드 때문에 컬러 스케일이 25개였는데, 이걸 한 컬렉션에서 관리하기는 어렵다는 거예요. 또 프리미티브 안에서 역할 변수를 같은 컬렉션의 색 변수에 연결하다가 실수가 생기는 경우를 자주 본다고 해요.</p>
+<h3>컴포넌트 전용 토큰은 만들지 마세요</h3>
+<p>발표자는 화이트보드에 두 그림을 나란히 그려요. 왼쪽은 보라색 하나에서 버튼, 메뉴, 링크, 확장 패널, 테이블이 모두 뻗어 나가는 구조예요. 오른쪽은 컴포넌트마다 보라색 토큰을 따로 둔 구조예요. 아래 그림은 그 두 구조를 옮긴 거예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 660 230" role="img" aria-label="왼쪽은 보라 토큰 하나가 버튼, 메뉴, 링크, 테이블 네 컴포넌트를 가리키는 구조, 오른쪽은 컴포넌트마다 보라 토큰이 따로 있는 구조">
+    <defs><marker id="arrow-share" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="160" y="20" text-anchor="middle">공유 토큰 하나</text>
+    <rect class="c1 cell ring" x="100" y="35" width="120" height="40" rx="8"/>
+    <text x="160" y="60" text-anchor="middle" class="mono">purple</text>
+    <path class="line" d="M130 77 L45 148" marker-end="url(#arrow-share)"/>
+    <path class="line" d="M150 77 L125 148" marker-end="url(#arrow-share)"/>
+    <path class="line" d="M170 77 L195 148" marker-end="url(#arrow-share)"/>
+    <path class="line" d="M190 77 L275 148" marker-end="url(#arrow-share)"/>
+    <rect class="box" x="10" y="150" width="70" height="36" rx="6"/><text x="45" y="173" text-anchor="middle" class="sub">버튼</text>
+    <rect class="box" x="90" y="150" width="70" height="36" rx="6"/><text x="125" y="173" text-anchor="middle" class="sub">메뉴</text>
+    <rect class="box" x="170" y="150" width="70" height="36" rx="6"/><text x="205" y="173" text-anchor="middle" class="sub">링크</text>
+    <rect class="box" x="250" y="150" width="70" height="36" rx="6"/><text x="285" y="173" text-anchor="middle" class="sub">테이블</text>
+    <text x="165" y="215" text-anchor="middle" class="sub ok">한 곳만 바꾸면 끝</text>
+    <text x="500" y="20" text-anchor="middle">컴포넌트 전용 토큰</text>
+    <g>
+      <rect class="c1 cell" x="350" y="70" width="70" height="36" rx="6"/><text x="385" y="93" text-anchor="middle" class="mono">purple</text>
+      <rect class="c1 cell" x="430" y="70" width="70" height="36" rx="6"/><text x="465" y="93" text-anchor="middle" class="mono">purple</text>
+      <rect class="c1 cell" x="510" y="70" width="70" height="36" rx="6"/><text x="545" y="93" text-anchor="middle" class="mono">purple</text>
+      <rect class="c1 cell" x="590" y="70" width="60" height="36" rx="6"/><text x="620" y="93" text-anchor="middle" class="mono">purple</text>
+      <path class="line" d="M385 108 v38" marker-end="url(#arrow-share)"/>
+      <path class="line" d="M465 108 v38" marker-end="url(#arrow-share)"/>
+      <path class="line" d="M545 108 v38" marker-end="url(#arrow-share)"/>
+      <path class="line" d="M620 108 v38" marker-end="url(#arrow-share)"/>
+      <rect class="box" x="350" y="150" width="70" height="36" rx="6"/><text x="385" y="173" text-anchor="middle" class="sub">버튼</text>
+      <rect class="box" x="430" y="150" width="70" height="36" rx="6"/><text x="465" y="173" text-anchor="middle" class="sub">메뉴</text>
+      <rect class="box" x="510" y="150" width="70" height="36" rx="6"/><text x="545" y="173" text-anchor="middle" class="sub">링크</text>
+      <rect class="box" x="590" y="150" width="60" height="36" rx="6"/><text x="620" y="173" text-anchor="middle" class="sub">테이블</text>
+    </g>
+    <text x="500" y="215" text-anchor="middle" class="sub bad">컴포넌트 수만큼 고쳐야 해요</text>
+  </svg>
+  <figcaption>컴포넌트가 다섯 개면 별일 아닌 것 같지만, 50~60개가 되면 색 하나 바꾸는 데 그룹을 전부 돌아야 해요. 변수 수도 불필요하게 늘어나요.</figcaption>
+</figure>
+<p>이 원리가 바로 다음 맵드 컬렉션의 바탕이에요. 맵드 변수도 컴포넌트 이름 대신 일반적인 역할 이름을 쓰고, 여러 컴포넌트가 함께 가리켜요. 발표자는 아주 드문 예외를 빼면 <span class="term" data-term="컴포넌트 전용 토큰" data-en="Component-specific token" data-desc="button-purple처럼 특정 컴포넌트 이름이 붙은 토큰이에요. 색 하나를 바꾸려면 컴포넌트 수만큼 고쳐야 해서 발표자는 쓰지 말라고 해요." data-g="5">컴포넌트 전용 토큰</span>은 늘 나쁜 생각이라고 정리해요.</p>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=2210s" target="_blank" rel="noopener">36:50</a>
+  <h2>맵드 컬렉션: 네 그룹, 다크 모드, 두 번째 브랜드</h2>
+<p>버튼 하나를 놓고 보면 필요한 색은 네 종류예요. 배경(surface), 테두리(border), 글자(text), 아이콘(icon)이요. 발표자는 이 네 가지가 모든 컴포넌트를 덮는다고 말해요. 그래서 세 번째 Mapped 컬렉션을 만들고, 왼쪽 그룹 목록에 Surface, Border, Icon, Text 네 그룹부터 만들어요. 오른쪽에는 아직 <code>placeholder</code> 변수 하나만 있어요.</p>
+<figure>
+  <img src="assets/frame-3816.png" alt="Variables 창에서 Mapped 컬렉션을 선택했고, 그룹 목록에 Surface, Border, Icon, Text가 있으며 변수는 placeholder 하나뿐이다">
+  <figcaption>
+    네 그룹만 있으면 그 안의 이름 짓는 방식은 얼마든지 달라질 수 있어요. 이 영상은 가장 단순한 버전으로 가요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=2296s" target="_blank" rel="noopener">영상 38:16에서 보기</a>
+  </figcaption>
+</figure>
+<p>맵드 변수 이름은 특정 컴포넌트가 아니라 일반적인 역할이에요. 버튼이든 링크든 테이블이든 같은 변수를 가져다 써요. 그리고 맵드는 반드시 얼라이어스만 가리키고 브랜드 컬렉션을 건너뛰어 가리키지 않아요.</p>
+<h3>Surface: 페이지와 카드부터</h3>
+<p>발표자는 화면 와이어프레임으로 surface를 설명해요. 회색 사각형들이 흰 Desktop 프레임 위에 놓여 있어요. 프레임 자체의 바탕이 <code>surface/page</code>이고, 그 위 카드·위젯·모달의 바탕이 <code>surface/default</code>예요. 오른쪽 아래 작은 상자처럼 화면 구석에 뜨는 알림도 surface 색이 따로 필요해요.</p>
+<figure>
+  <img src="assets/frame-4416.png" alt="Desktop 프레임 안에 회색 가로 막대 하나, 큰 사각형 하나, 작은 사각형 두 개가 있고 오른쪽 아래에 작은 알림 상자가 겹쳐 있는 와이어프레임">
+  <figcaption>
+    page는 화면 바탕, default는 그 위에 얹히는 카드 바탕이에요. 둘을 나눠야 다크 모드에서도 층이 구분돼요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=2656s" target="_blank" rel="noopener">영상 44:16에서 보기</a>
+  </figcaption>
+</figure>
+<p>네 그룹에 들어간 변수를 정리하면 아래와 같아요. 값은 영상의 라이트 <span class="term" data-term="모드" data-en="Mode" data-desc="같은 변수에 대해 다른 값 묶음을 두는 열이에요. 라이트·다크, 브랜드 A·B, 데스크톱·모바일처럼 상황마다 값을 바꿔 끼울 때 써요." data-g="3">모드</span> 기준이에요. border는 surface를 복제해 page만 지웠고, icon은 text를 복제해 heading을 지웠어요. 발표자는 짝이 되는 그룹끼리 변수 개수를 비슷하게 맞춰 두면 나중에 관리하기 쉽다고 해요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>그룹</th><th>변수</th><th>라이트 값</th><th>쓰는 곳</th></tr></thead>
+    <tbody>
+      <tr><td>surface</td><td>page / default</td><td>Foundation White / Neutral 50</td><td>화면 바탕 / 카드·모달 바탕</td></tr>
+      <tr><td>surface</td><td>action / action-hover</td><td>Primary 500 / Primary 600</td><td>버튼 같은 주요 컴포넌트</td></tr>
+      <tr><td>surface</td><td>success · error · warning · information</td><td>각 스케일 50</td><td>알림·스낵바·배너</td></tr>
+      <tr><td>surface</td><td>disabled</td><td>Neutral 50</td><td>비활성 상태</td></tr>
+      <tr><td>border</td><td>default, action, action-hover, 상태 4종, disabled</td><td>default는 Neutral 100, 나머지는 500대</td><td>surface와 짝을 맞춘 테두리</td></tr>
+      <tr><td>text</td><td>heading / body / caption / placeholder</td><td>Neutral 900 / 700 / 500 / —</td><td>일반 글자</td></tr>
+      <tr><td>text</td><td>on-action / on-action-hover</td><td>Foundation White</td><td>액션 배경 위에 얹힌 글자</td></tr>
+      <tr><td>text</td><td>action / action-hover</td><td>Primary 500 / 600</td><td>'Learn more' 같은 링크</td></tr>
+      <tr><td>text</td><td>상태 4종 / disabled</td><td>각 스케일 500 / Neutral 400</td><td>알림 글자 / 비활성 글자</td></tr>
+      <tr><td>icon</td><td>default, on-action, action, placeholder, 상태 4종, disabled</td><td>text와 같은 값</td><td>글자 옆 아이콘</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>on-action이라는 생각</h3>
+<p>가장 헷갈리는 이름이 <code>text/on-action</code>이에요. 액션 색 배경 '위에' 얹히는 글자 색이라는 뜻이에요. 화면 캔버스의 보라 'Button' 안 흰 글자가 on-action이고, 그 아래 'Learn more'처럼 흰 바탕에 놓인 링크 글자는 <code>text/action</code>이에요. 오른쪽 Text 그룹에 두 변수가 따로 있는 이유예요.</p>
+<figure>
+  <img src="assets/frame-5016.png" alt="캔버스에 보라색 Button과 그 아래 Learn more 텍스트가 있고, Mapped 컬렉션 Text 그룹에 heading, caption, placeholder, on-action, on-action-hover, action, action-hover, success, error, warning, information, disabled 변수가 값과 함께 나열돼 있다">
+  <figcaption>
+    같은 보라 계열이라도 배경 위 글자와 링크 글자는 역할이 달라서 변수를 나눠요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=3016s" target="_blank" rel="noopener">영상 50:16에서 보기</a>
+  </figcaption>
+</figure>
+<h3>다크 모드는 라이트 모드를 끝낸 다음에</h3>
+<p>라이트·다크는 맵드 컬렉션의 모드로 둬요. 발표자가 강조하는 순서가 있어요. 라이트 모드로 컴포넌트까지 만들고 색 대비 같은 접근성 검사를 마친 뒤에 다크 모드를 만들어요. 둘을 동시에 만들면 라이트에서 실수를 발견할 때마다 다크까지 같이 고쳐야 해요.</p>
+<p>시작점은 값을 뒤집는 거예요. 화면은 막 뒤집기 시작한 순간이에요. 맨 위 <code>page</code>는 Dark 열에서 이미 <code>Foundation/Black</code>으로 바뀌었고, 나머지는 아직 Light 열과 같아요. 50은 950, 600은 400처럼 하나씩 바꿔 가요. 단, <code>Primary/500</code>은 브랜드를 대표하는 색이라 다크에서도 그대로 둬요. 뒤집어 보니 너무 어두운 정보·에러 배경은 950 대신 800으로 조정해요.</p>
+<figure>
+  <img src="assets/frame-5316.png" alt="Mapped 컬렉션의 Light와 Dark 두 열. Surface 그룹 page는 Light Foundation/White, Dark Foundation/Black이고, default Neutral/50, action Primary/500, action-hover Primary/600, success, error, warning, information은 각 50, disabled Neutral/50이 두 열에 똑같이 들어가 있다">
+  <figcaption>
+    뒤집기는 출발점일 뿐이에요. 컴포넌트에 입혀 보고 접근성 검사를 하며 다듬어야 해요. 화면의 'succes'는 영상 속 오타 그대로예요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=3196s" target="_blank" rel="noopener">영상 53:16에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상이 말하는 '접근성 검사'의 대표 기준은 WCAG(Web Content Accessibility Guidelines)의 색 대비예요. WCAG 2.2의 1.4.3은 일반 텍스트와 배경의 대비가 최소 4.5:1이어야 한다고 정해요. 다크 모드로 값을 뒤집은 뒤에도 글자 변수와 surface 변수 조합마다 이 비율을 다시 확인해야 해요.</p>
+  <p class="cite">출처: <a href="https://www.w3.org/TR/WCAG22/" target="_blank" rel="noopener">W3C WCAG 2.2</a></p>
+</aside>
+<h3>두 번째 브랜드는 얼라이어스의 모드로</h3>
+<p>브랜드가 둘이면 얼라이어스 컬렉션에 Brand A, Brand B 모드를 둬요. 화면의 Primary 그룹은 아직 두 열 모두 Purple이지만, 브랜드 B의 기본색이 초록이라면 B 열만 Green으로 바꾸면 돼요. 맵드는 얼라이어스만 가리키니, 컴포넌트는 손대지 않아도 브랜드가 바뀌어요.</p>
+<figure>
+  <img src="assets/frame-5616.png" alt="Alias 컬렉션에 Brand A와 Brand B 두 모드 열이 있고, Primary 그룹 950부터 50까지 두 열 모두 Purple 변수에 연결돼 있다">
+  <figcaption>
+    색만이 아니에요. 브랜드마다 다른 border radius나 폰트도 얼라이어스에 두면 같이 바뀌어요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=3376s" target="_blank" rel="noopener">영상 56:16에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 폰트 패밀리도 예로 들어요. 얼라이어스에 heading·body 문자열 변수를 만들고, Brand A는 제목 Inter·본문 Roboto, Brand B는 그 반대로 줘요. 브랜드 컬렉션에도 폰트 값을 두고 얼라이어스가 그걸 가리키게 하는 게 더 모범적이지만, 이 영상에서는 단순하게 얼라이어스에 바로 적어요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Figma에는 여러 브랜드를 위한 '확장 컬렉션(extended collection)' 기능도 있어요. 부모 컬렉션을 브랜드마다 확장하면 변수와 모드를 물려받고 필요한 값만 덮어쓸 수 있어요. 다만 Enterprise 요금제에서만 쓸 수 있어서, 영상처럼 모드로 브랜드를 나누는 방식이 더 많은 사람에게 열려 있어요.</p>
+  <p class="cite">출처: <a href="https://help.figma.com/hc/en-us/articles/36346281624471-Extend-a-variable-collection" target="_blank" rel="noopener">Figma Help Center — Extend a variable collection</a></p>
+</aside>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=3389s" target="_blank" rel="noopener">56:29</a>
+  <h2>타입 스케일과 반응형 컬렉션</h2>
+<p>글자 크기는 데스크톱과 모바일에서 달라야 해요. 그런데 이 모드를 기존 색 컬렉션에 넣으면 기기마다 바뀔 일 없는 색 변수까지 모드 열이 생겨요. 발표자는 한 번 넣어 보고 바로 지운 뒤, 네 번째 컬렉션 Responsive를 따로 만들어요. 3단·2단 구분은 색에만 해당하고, 크기처럼 다른 축으로 바뀌는 값은 별도 컬렉션에 둔다는 거예요.</p>
+<h3>타입 스케일은 비율로 정해요</h3>
+<p>발표자는 typescale.com으로 비율을 눈으로 확인해요. 화면 왼쪽에서 Font-size 16, Scale을 고르면 h1부터 small까지 크기가 계산돼 오른쪽에 미리보기가 나와요. 발표자는 <span class="term" data-term="메이저 서드" data-en="Major third" data-desc="타입 스케일 비율의 하나로, 한 단계 오를 때마다 글자 크기를 1.25배 키워요. 단계 사이 간격이 일정해 크기가 들쭉날쭉하지 않아요." data-g="13">메이저 서드</span>(1.25)를 골라요. 단계 사이 비율이 일정해야 크기가 들쭉날쭉하게 뛰지 않아요.</p>
+<figure>
+  <img src="assets/frame-010014.png" alt="typescale.com 화면. 왼쪽에 Font-size 16, Scale 선택 상자, 가운데에 h1부터 small까지 The quick brown fox 견본 문장이 크기별로 나열되고 오른쪽에 Zephtor라는 예시 랜딩 페이지 미리보기가 있다">
+  <figcaption>
+    본문 기본 크기는 16px로 둬요. 발표자는 16px이면 접근성 걱정이 거의 없고, 14px부터는 글꼴과 굵기에 따라 위험할 수 있다고 봐요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=3614s" target="_blank" rel="noopener">영상 1:00:14에서 보기</a>
+  </figcaption>
+</figure>
+<p>비율대로 계산하면 31.25나 39.06 같은 소수가 나와요. 발표자는 소수를 쓰지 않고 가장 가까운 4의 배수로 반올림해요. 줄 높이도 감으로 정하지 않고 글자 크기에 1.2를 곱한 뒤 똑같이 반올림해요.</p>
+<h3>계산은 AI에게, 지시는 구체적으로</h3>
+<p>이 계산은 AI가 잘하는 일이에요. 발표자는 Claude Code에 이렇게 지시해요. 본문 대·중·소, 캡션, H1~H6을 포함하고, 메이저 서드 1.25 비율, 줄 높이는 글자 크기의 1.2배, 모든 값은 4의 배수로 반올림하라고요. 결과 화면 오른쪽에 단계마다 'DESKTOP'과 'MOBILE' 크기/줄 높이가 붙어 있어요. 예를 들어 H2는 데스크톱 60/72, 모바일 48/56이에요.</p>
+<figure>
+  <img src="assets/frame-010359.png" alt="왼쪽은 Claude 대화, 오른쪽은 localhost:8520에 띄운 타입 스케일 견본. H1부터 Paragraph Medium까지 Good type carries the reader 문장이 크기별로 있고, 각 줄 오른쪽에 DESKTOP 60/72, MOBILE 48/56 같은 값과 16 × 1.25의 거듭제곱 표시가 있다">
+  <figcaption>
+    마음에 안 들면 AI와 대화하며 고쳐요. Figma에 넣기 전에 눈으로 확인하는 단계예요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=3839s" target="_blank" rel="noopener">영상 1:03:59에서 보기</a>
+  </figcaption>
+</figure>
+<p>값이 마음에 들면 Figma MCP(Model Context Protocol)로 Responsive 컬렉션에 바로 밀어 넣어요. 'H1, H2… 그룹으로 묶고 각각 font size, line height, paragraph spacing을 넣어라'는 지시와 Figma 파일 링크를 줘요. 화면처럼 그룹마다 세 변수가 Desktop·Mobile 두 열로 채워져요. paragraph spacing은 정답이 없는 값인데, 글자 크기의 절반을 4의 배수로 반올림하는 방식을 많이 쓴다고 해요.</p>
+<figure>
+  <img src="assets/frame-010444.png" alt="Responsive 컬렉션 화면. 그룹 목록에 H1부터 H6, Paragraph Large, Medium, Small, Caption이 있고, H1은 Font size 76/56, Line height 92/68, Paragraph spacing 40/28, H2는 60/48, 72/56, 32/24, H3은 48/40, 56/48, 24/20이 Desktop/Mobile 열에 들어 있다">
+  <figcaption>
+    30개 변수를 손으로 넣지 않아도 돼요. 이 작업에는 Figma MCP 연결이 필요해요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=3884s" target="_blank" rel="noopener">영상 1:04:44에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상 화면에 나온 최종 값을 모으면 아래와 같아요. 데스크톱 값은 기본 16px에 1.25를 거듭 곱해 4의 배수로 반올림한 결과와 맞아요. H1은 16×1.25⁷≈76.3이라 76이고, 줄 높이는 76×1.2=91.2라 92예요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>스타일</th><th>데스크톱 크기/줄 높이</th><th>모바일 크기/줄 높이</th></tr></thead>
+    <tbody>
+      <tr><td>H1</td><td>76 / 92</td><td>56 / 68</td></tr>
+      <tr><td>H2</td><td>60 / 72</td><td>48 / 56</td></tr>
+      <tr><td>H3</td><td>48 / 56</td><td>40 / 48</td></tr>
+      <tr><td>H4</td><td>40 / 48</td><td>32 / 40</td></tr>
+      <tr><td>H5</td><td>32 / 40</td><td>28 / 32</td></tr>
+      <tr><td>H6</td><td>24 / 28</td><td>24 / 28</td></tr>
+      <tr><td>Paragraph Large</td><td>20 / 24</td><td>20 / 24</td></tr>
+      <tr><td>Paragraph Medium</td><td>16 / 20</td><td>16 / 20</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>마지막으로 Figma 에이전트에게 'Responsive 컬렉션 변수와 얼라이어스의 폰트 패밀리 변수로 텍스트 스타일을 만들어라'라고 시켜요. 손으로 하면 한참 걸릴 연결을 30초쯤에 끝내요. 글자 간격(letter spacing)과 굵기(font weight) 변수도 만드는 게 모범이지만, 이 영상에서는 단순하게 넘어가요.</p>
+<h3>숫자는 하나의 마스터 스케일에서</h3>
+<p>발표자가 '고급 주제'라며 소개하는 생각이 있어요. 숫자 변수를 쓸 때마다 브랜드 컬렉션의 Scale 그룹 하나에서 가져오는 거예요. 화면의 Scale 그룹은 이름 0, 25, 50, 100…700에 값 0, 1, 2, 4, 8, 12, 16, 20, 24, 32가 들어 있어요. 4 단위로 오르다가 24 다음은 8을 건너뛰어 32가 돼요.</p>
+<figure>
+  <img src="assets/frame-010744.png" alt="Brand 컬렉션 Scale 그룹. 이름 0, 25, 50, 100, 200, 300, 400, 500, 600, 700에 값 0, 1, 2, 4, 8, 12, 16, 20, 24, 32가 들어 있다">
+  <figcaption>
+    이름은 색 스케일처럼 100 단위, 값은 4의 배수가 기본이에요. 커질수록 간격을 넓혀요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=4064s" target="_blank" rel="noopener">영상 1:07:44에서 보기</a>
+  </figcaption>
+</figure>
+<p>그래도 이 영상에서는 스케일에 연결하지 않아요. 예전에 가르쳤을 때 연결된 값이 숫자로 안 보여 헷갈려하는 사람이 많았다고 해요. 대신 얼라이어스에 Border width(none 0, sm 1, md 2, lg 4)와 Border radius(none 0, sm 1, md 2, lg 4, xl 8)를 직접 숫자로 넣어요. 브랜드마다 radius가 다를 수 있으니 얼라이어스에 둬요. 발표자는 테두리 두께가 네 가지를 넘을 일은 거의 없다고 봐요.</p>
+<p>이제 컬렉션 네 개(Brand, Alias, Mapped, Responsive)가 갖춰졌어요. 컴포넌트를 담을 파일은 페이지를 Tokens, Sandbox, Icons 아래 Form Elements, Navigation, Data Display 묶음으로 나눠 둬요. 오른쪽 Text styles에는 방금 만든 H1 76/92부터 Caption 12/16까지 보여요. 이 묶음은 나중에 AI 스킬을 만들 때 그대로 쓰여요.</p>
+<figure>
+  <img src="assets/frame-011014.png" alt="Design System Build 파일의 Pages 목록에 Tokens, Sandbox, Icons, Form Elements, Navigation, Button, Data Display가 있고 오른쪽 Text styles에 H1 76/92부터 Caption 12/16까지 나열돼 있다">
+  <figcaption>
+    아이콘도 컴포넌트여야 해요. 발표자는 Material 아이콘을 쓰지만, 더 단순한 Iconists의 Central Icon System을 추천해요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=4214s" target="_blank" rel="noopener">영상 1:10:14에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=4354s" target="_blank" rel="noopener">1:12:34</a>
+  <h2>버튼 하나로 배우는 컴포넌트 기본기</h2>
+<p>첫 컴포넌트인 버튼은 일부러 천천히 만들어요. 여기서 익힌 순서가 이후 모든 컴포넌트에 그대로 반복돼요.</p>
+<h3>오토 레이아웃과 변수 입히기</h3>
+<p>'Button' 텍스트를 body medium 스타일로 두고 Shift+A로 오토 레이아웃을 걸어요. 그러면 텍스트를 감싼 프레임이 생기고, 패딩 12로 크기를 정해요. 너비를 고정하면 라벨이 길어질 때 글자가 프레임 밖으로 넘치니 고정하지 않아요. 화면은 배경 칠에 <code>surface/action</code>을 고르는 순간이에요. 오른쪽 아래 변수 목록에 Text 그룹의 heading, body, caption, placeholder, on-action 같은 이름이 보여요.</p>
+<figure>
+  <img src="assets/frame-011424.png" alt="보라색 Button 프레임이 선택돼 있고, 오른쪽 아래 변수 선택 창에 Text 그룹 heading, body, caption, placeholder, on-action, on-action-hover, action, action-hover가 나열되며 Fill에 Surface/action 툴팁이 떠 있다">
+  <figcaption>
+    배경은 surface/action, 글자는 text/on-action, 테두리는 border/action 1px이에요. surface와 border 변수를 짝지어 둔 게 여기서 쓰여요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=4464s" target="_blank" rel="noopener">영상 1:14:24에서 보기</a>
+  </figcaption>
+</figure>
+<h3>스코핑으로 고를 수 있는 변수를 좁혀요</h3>
+<p>테두리 두께를 고르려는데 모든 숫자 변수가 다 떠요. 그래서 변수 편집 창의 Scope 탭에서 쓸 곳을 정해요. 화면은 Alias의 Border width 변수를 고른 상태이고, Number scope 목록에서 Stroke만 체크돼 있어요. radius 변수는 Corner radius만 체크해요. 브랜드 컬렉션의 Scale과 색 변수는 체크를 모두 풀어, 컴포넌트를 만들 때 아예 안 보이게 해요.</p>
+<figure>
+  <img src="assets/frame-011535.png" alt="Alias 컬렉션의 Border width 변수 none, sm, md, lg가 선택돼 있고 Scope 창 Number scope 목록 중 Stroke 항목만 체크돼 있다. Typography 아래 Font weight, Font size 등은 체크가 없다">
+  <figcaption>
+    <span class="term" data-term="스코핑" data-en="Variable scoping" data-desc="변수가 어떤 속성에만 보이게 할지 정하는 설정이에요. radius 변수가 모서리 둥글기에만 보이면 엉뚱한 곳에 잘못 넣을 일이 줄어요." data-g="10">스코핑</span>을 하면 radius를 고를 때 radius 변수만 보여요. 컴포넌트를 만드는 속도와 정확도가 같이 올라가요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=4535s" target="_blank" rel="noopener">영상 1:15:35에서 보기</a>
+  </figcaption>
+</figure>
+<p>브랜드 색을 숨길 때 예외도 있다고 해요. 금융 회사처럼 그래프 색이 많으면 맵드에 모두 두기 어렵고, 오래된 두 시스템이 같은 색을 다른 의미로 쓰기도 해요. 그럴 때는 브랜드 색을 바로 쓰는 경우가 생겨요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Figma 문서에 따르면 스코핑은 숫자·색·문자열 변수에 모두 쓸 수 있어요. 숫자는 간격·모서리 둥글기·불투명도, 색은 채우기·테두리·효과, 문자열은 폰트 패밀리·굵기·텍스트 내용처럼 고를 수 있어요. 변수 여러 개를 골라 오른쪽 클릭 → Edit variables로 한꺼번에 정할 수도 있어요.</p>
+  <p class="cite">출처: <a href="https://help.figma.com/hc/en-us/articles/15145852043927-Create-and-manage-variables-and-collections" target="_blank" rel="noopener">Figma Help Center — Create and manage variables and collections</a></p>
+</aside>
+<h3>아이콘과 컴포넌트 속성</h3>
+<p>아이콘은 벡터만 넣지 말고 바운딩 박스가 있는 아이콘 컴포넌트를 써요. 하트 벡터는 20×18.35이지만 박스는 24×24라서 아이콘끼리 크기가 맞아요. 그런데 아이콘을 켜고 끌 때 버튼 높이가 50과 46으로 바뀌는 걸 발견하고, 아이콘을 20×20으로 맞춰 높이가 변하지 않게 해요. 발표자는 이렇게 만들면서 QA(Quality Assurance)를 계속하라고 강조해요.</p>
+<p>속성은 세 종류를 써요. 라벨에는 텍스트 속성을 둬서 인스턴스에서 바로 글자를 바꿔요. 왼쪽·오른쪽 아이콘에는 켜고 끄는 레이어 속성과, 다른 아이콘으로 바꿔 끼우는 <span class="term" data-term="인스턴스 스왑" data-en="Instance swap property" data-desc="컴포넌트 안의 아이콘 같은 하위 컴포넌트를 다른 것으로 바꿔 끼울 수 있게 하는 속성이에요. 컴포넌트를 분리하지 않고도 아이콘을 바꿀 수 있어요." data-g="8">인스턴스 스왑</span> 속성을 함께 둬요. 화면 오른쪽 위 작은 창 'Properties in Button'에 icon left, icon right가 보여요.</p>
+<figure>
+  <img src="assets/frame-012144.png" alt="하트 아이콘 두 개가 양쪽에 붙은 보라색 Button 컴포넌트가 선택돼 있고, 오른쪽 패널의 Properties in Button 창에 icon left와 icon right 항목이 있다">
+  <figcaption>
+    같은 이름의 속성은 둘 수 없어서, 인스턴스 스왑 쪽 이름 앞에 ↳ 기호를 붙여요. 패널에서 부모(켜기/끄기)와 자식(바꾸기) 관계가 한눈에 보여요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=4904s" target="_blank" rel="noopener">영상 1:21:44에서 보기</a>
+  </figcaption>
+</figure>
+<h3>포커스 상태 만들기</h3>
+<p>베리언트는 Status(default, hover, focus, disabled)부터 만들어요. hover는 변수만 hover 쪽으로 바꾸면 끝이에요. 까다로운 건 focus, 즉 <span class="term" data-term="포커스 상태" data-en="Focus state" data-desc="키보드 Tab으로 이동할 때 지금 선택된 요소에 보이는 표시예요. 마우스를 못 쓰는 사용자가 위치를 알 수 있게 하는 접근성 상태예요." data-g="9">포커스 상태</span>예요. 발표자는 은행 사이트에서 Tab 키로 이동하며 보여 줘요. 화면에서 아래쪽 WebBroker Online Trading의 초록 Login 버튼에만 바깥 테두리가 한 겹 더 둘러져 있어요. 지금 키보드가 가리키는 버튼이라는 표시예요.</p>
+<figure>
+  <img src="assets/frame-012424.png" alt="TD 은행 개인 뱅킹 홈페이지. 오른쪽에 EasyWeb Online Banking과 WebBroker Online Trading 두 영역의 초록 Login 버튼이 있고, 아래쪽 Login 버튼에만 포커스 테두리가 둘러져 있다">
+  <figcaption>
+    포커스는 스크린 리더와 키보드 사용자를 위한 접근성 상태라서 꼭 있어야 해요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=5064s" target="_blank" rel="noopener">영상 1:24:24에서 보기</a>
+  </figcaption>
+</figure>
+<p>버튼에서는 2px 테두리 사각형을 만들어 버튼 프레임 안에 붙이고, '오토 레이아웃 무시'(예전 이름은 절대 위치) 버튼으로 바깥 2px 자리에 띄워요. 그리고 제약을 좌우·상하로 걸어야 해요. 그래야 라벨을 'Learn more'처럼 길게 바꿔도 포커스 테두리가 버튼 너비를 따라가요. 화면의 굵은 검은 테두리가 아직 색을 입히기 전의 포커스 테두리예요.</p>
+<figure>
+  <img src="assets/frame-012714.png" alt="하트 아이콘이 양쪽에 있는 보라색 Button 바깥을 굵은 검은 사각형 테두리가 2px 간격을 두고 감싸고 있다. 왼쪽 레이어 패널에 Focus 레이어가 보인다">
+  <figcaption>
+    색은 border/action을 재사용하지 않고 border/focus라는 변수를 새로 만들어 입혀요. 지금은 Primary 500을 가리켜요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=5234s" target="_blank" rel="noopener">영상 1:27:14에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>포커스 표시는 WCAG에도 있는 요구예요. WCAG 2.2의 2.4.7 Focus Visible은 키보드로 조작할 수 있는 화면이라면 키보드 포커스 표시가 보여야 한다고 정해요. 2.4.11은 포커스를 받은 요소가 다른 콘텐츠에 완전히 가려지면 안 된다고 해요. 뒤에 나오는 버튼 그룹에서 포커스가 겹친 레이어에 가려지는 문제가 바로 이 지점이에요.</p>
+  <p class="cite">출처: <a href="https://www.w3.org/TR/WCAG22/" target="_blank" rel="noopener">W3C WCAG 2.2</a></p>
+</aside>
+<h3>Type 베리언트와 새 변수 하나</h3>
+<p>두 번째 베리언트 축 Type에 default, outline, transparent를 둬요. 'default default'처럼 같은 단어가 두 축에 겹치면 AI가 헷갈리기 쉬우니 피하라는 팁도 줘요. 상태마다 바뀌는 변수를 정리하면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>상태</th><th>배경</th><th>테두리</th><th>글자·아이콘</th></tr></thead>
+    <tbody>
+      <tr><td>default</td><td>surface/action</td><td>border/action</td><td>text·icon/on-action</td></tr>
+      <tr><td>hover</td><td>surface/action-hover</td><td>border/action-hover</td><td>text·icon/on-action-hover</td></tr>
+      <tr><td>focus</td><td>default와 같음</td><td>default + 바깥 border/focus 2px</td><td>default와 같음</td></tr>
+      <tr><td>disabled</td><td>surface/disabled</td><td>border/disabled</td><td>text·icon/disabled</td></tr>
+      <tr><td>outline (default)</td><td>surface/default-secondary (흰색)</td><td>border/action</td><td>text·icon/action</td></tr>
+      <tr><td>outline (hover)</td><td>surface/action-hover-light (Primary 200)</td><td>border/action-hover</td><td>text·icon/action-hover</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>outline 버튼에 흰 배경이 필요해지자, surface/page(페이지용)나 surface/default(회색 카드용)를 억지로 쓰지 않고 <code>surface/default-secondary</code>를 새로 만들어요. 'button-outline'이라고 짓지 않은 게 핵심이에요. 그렇게 지으면 컴포넌트 전용 토큰이 되니까요. 변수는 정말 필요할 때만, 일반적인 이름으로 늘려요. 발표자는 처음부터 완벽한 변수 라이브러리를 짜려다 컴포넌트를 만들며 어긋나는 일이 흔하다고 말해요.</p>
+<p>transparent 버튼에서 테두리를 지우자 높이가 46에서 44로 줄었어요. 테두리가 inside로 들어가 있었기 때문이에요. 그래서 모든 버튼 테두리를 outside로 바꾸고, 포커스 테두리와의 간격도 다시 2px로 맞춰요. 이후 모든 컴포넌트에 outside를 써요.</p>
+<figure>
+  <img src="assets/frame-013624.png" alt="Button 컴포넌트 세트. Default, Outline, Transparent 세 줄과 각 줄의 기본, hover, focus, disabled 네 버튼이 있고, 오른쪽 Properties에 Status, Type, Label, icon left, ↳ icon left, icon right, ↳ icon right가 있다">
+  <figcaption>
+    3×4 베리언트에 라벨·아이콘 속성까지 갖춘 완성본이에요. 오른쪽 속성 목록의 ↳ 표시가 앞서 만든 부모-자식 속성이에요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=5784s" target="_blank" rel="noopener">영상 1:36:24에서 보기</a>
+  </figcaption>
+</figure>
+<p>아이콘만 있는 버튼(button icon)은 처음부터 만들지 않아요. 버튼 세트를 복사해 라벨과 오른쪽 아이콘을 지우고, 쓸 일 없는 속성도 지워요. 아이콘을 숨기는 속성도 필요 없으니 지우고, 바꿔 끼우는 icon 속성 하나만 남겨요.</p>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=5865s" target="_blank" rel="noopener">1:37:45</a>
+  <h2>폼·내비게이션 컴포넌트는 작은 부품을 조립해요</h2>
+<p>이 구간의 주제는 아토믹 디자인이에요. 라벨, 필드처럼 작은 컴포넌트를 먼저 만들고, 그걸 넣어 인풋을, 다시 인풋과 메뉴를 합쳐 드롭다운을 만들어요. 아래 그림은 영상에서 조립한 관계를 한 장에 모은 거예요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  L["라벨"] --> I["인풋"]
+  F["필드"] --> I
+  H["힌트 문구"] --> I
+  MI[".menu item (내부 부품)"] --> M["메뉴"]
+  I --> D["드롭다운"]
+  M --> D
+  LK["링크"] --> B["브레드크럼"]
+  CI[".checkbox item"] --> CL["체크박스 라벨"]
+  L --> T["텍스트 영역"]
+  TI[".textarea item"] --> T
+</pre>
+  <figcaption>점(.)으로 시작하는 부품은 조립용이라 라이브러리에 배포하지 않아요. 디자이너가 실제로 끌어다 쓰는 건 오른쪽 끝의 완성 컴포넌트예요.</figcaption>
+</figure>
+<h3>라벨과 필드</h3>
+<p>라벨은 텍스트와 도움말 아이콘이에요. 화면 왼쪽 위가 default, 아래가 required 베리언트예요. required의 빨간 별표는 오토 레이아웃 안에 넣지 않고 절대 위치로 라벨 앞에 붙여요. 별표가 오토 레이아웃 안에 있으면 필수 필드의 라벨만 오른쪽으로 밀려, 여러 필드를 나란히 놓을 때 라벨 위치가 들쭉날쭉해져요.</p>
+<figure>
+  <img src="assets/frame-014015.png" alt="Label 컴포넌트 세트에 Label과 물음표 아이콘이 있는 default와, 앞에 별표가 붙은 required 베리언트가 위아래로 있고, 오른쪽에 별표를 붙이는 중인 라벨이 있다">
+  <figcaption>
+    별표 색은 icon/error 변수를 써요. 텍스트도 아이콘처럼 다뤄 별도 변수를 만들지 않았어요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=6015s" target="_blank" rel="noopener">영상 1:40:15에서 보기</a>
+  </figcaption>
+</figure>
+<p>필드는 메일 아이콘, 플레이스홀더, 도움말 아이콘을 오토 레이아웃으로 묶어요. 플레이스홀더를 fill로 두는 게 요령이에요. 'First name'이든 'Last name'이든 글자 길이와 상관없이 오른쪽 아이콘이 늘 끝에 붙어요. 화면의 'Last name' 필드 네 줄이 default, hover, focus, disabled 상태예요. 세 번째 줄에만 바깥 포커스 테두리가 있어요.</p>
+<figure>
+  <img src="assets/frame-014515.png" alt="Field 컴포넌트 세트에 메일 아이콘, Last name 플레이스홀더, 물음표 아이콘이 있는 필드 네 개가 세로로 놓여 있다. 두 번째는 연보라 배경, 세 번째는 바깥 포커스 테두리, 네 번째는 회색 비활성 상태다">
+  <figcaption>
+    hover 배경은 버튼 outline에서 만든 action-hover-light를 다시 써요. Type 축에는 default, filled(입력 후 진한 글자), error를 둬요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=6315s" target="_blank" rel="noopener">영상 1:45:15에서 보기</a>
+  </figcaption>
+</figure>
+<h3>인풋: 조립한 뒤 중첩 인스턴스를 켜요</h3>
+<p>인풋은 라벨 + 필드 + 힌트 문구를 간격 12로 묶은 컴포넌트예요. 힌트 문구는 늘 필요하지 않아서 레이어 속성으로 켜고 끄게 하고, 기본은 숨겨 둬요. Type 베리언트로 default와 email 같은 미리 짜 둔 조합을 줄 수도 있어요. 화면 오른쪽 패널에 Status, Type, Label, Icon left 같은 안쪽 필드의 속성까지 다 보이는 건 <span class="term" data-term="중첩 인스턴스" data-en="Nested instances" data-desc="컴포넌트 안에 들어간 다른 컴포넌트의 속성을 바깥 컴포넌트 패널에 함께 보여 주는 설정이에요. 켜지 않으면 안쪽까지 클릭해 들어가야 해요." data-g="11">중첩 인스턴스</span>를 켰기 때문이에요.</p>
+<figure>
+  <img src="assets/frame-014745.png" alt="캔버스에 Label 아래 Last name 필드가 붙은 인풋 컴포넌트가 있고, 오른쪽 속성 패널에 Status default, Type default, Label Last name, Icon left 같은 안쪽 필드 속성이 보인다">
+  <figcaption>
+    중첩 인스턴스를 켜지 않으면 디자이너가 필드 안까지 클릭해 들어가야 속성을 바꿀 수 있어요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=6465s" target="_blank" rel="noopener">영상 1:47:45에서 보기</a>
+  </figcaption>
+</figure>
+<h3>메뉴와 드롭다운</h3>
+<p>메뉴 항목은 <code>.menu item</code>이라는 내부 부품으로 만들어요. 이름 앞의 점은 '배포하지 않을 컴포넌트'라는 표시예요. 항목 사이 구분선은 별도 선 레이어 대신 각 항목의 아래 테두리 1px로 그려요. AI가 만든 메뉴에서 divider 컴포넌트를 지적한 이유가 이거예요. 화면은 항목 여섯 개를 묶은 메뉴이고, 두 번째 항목이 selected 상태라 보라 배경에 흰 글자예요.</p>
+<figure>
+  <img src="assets/frame-015515.png" alt="Menu 텍스트와 오른쪽 화살표 아이콘이 있는 메뉴 항목 여섯 개가 세로로 쌓인 메뉴 컴포넌트. 두 번째 항목만 보라 배경에 흰 글자로 선택된 상태다">
+  <figcaption>
+    발표자는 메뉴를 기본 6개까지 보이게 둬요. 더 많으면 스크롤바를 레이어 속성으로 켜고, 추가 항목은 레이어에서 켜게 해요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=6915s" target="_blank" rel="noopener">영상 1:55:15에서 보기</a>
+  </figcaption>
+</figure>
+<p>드롭다운은 발표자 말로 '가장 쉬운 컴포넌트'예요. 인풋과 메뉴를 가져와 간격 4로 붙이면 돼요. 화면에서 왼쪽 레이어를 보면 Dropdown 아래 Input과 Label이 들어 있어요. 마지막으로 Command를 누른 채 부모 프레임을 끌어 올려 메뉴를 컴포넌트 프레임 밖으로 빼요. 그래야 프로토타입에서 드롭다운이 열릴 때 아래 요소를 밀어내지 않고 그 위에 덮여요.</p>
+<figure>
+  <img src="assets/frame-020015.png" alt="Dropdown 컴포넌트 두 개. Label과 Placeholder 필드 아래에 Menu 항목 여섯 개가 붙어 있고 두 번째 항목이 보라색으로 선택돼 있다. 왼쪽 레이어에 Dropdown, Input, Label이 중첩돼 있다">
+  <figcaption>
+    오른쪽 아이콘은 열린 상태를 보여 주도록 위쪽 화살표(arrow drop up)로 바꿔요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=7215s" target="_blank" rel="noopener">영상 2:00:15에서 보기</a>
+  </figcaption>
+</figure>
+<h3>링크와 브레드크럼</h3>
+<p>링크는 카드 안의 'Learn more'처럼 버튼이 아닌 이동 요소예요. 속성 구조는 버튼과 똑같고, disabled에는 배경을 하나 깔아 일반 글자와 헷갈리지 않게 해요. 브레드크럼은 링크 인스턴스를 복사해 오른쪽 아이콘을 꺾쇠(›)로 고정하고 왼쪽 아이콘을 지워 만들어요. 화면 위쪽이 맨 앞에 집 아이콘을 붙인 변형이고, 아래쪽이 항목 세 개(default, hover, focus)예요.</p>
+<figure>
+  <img src="assets/frame-020745.png" alt="위쪽에 집 아이콘 뒤로 Link › Link › Link ›가 이어진 브레드크럼, 아래쪽에 Link › 항목 세 개가 세로로 있고 세 번째에 포커스 테두리가 있다. 왼쪽 Assets 패널에서 home 아이콘을 검색 중이다">
+  <figcaption>
+    브레드크럼은 최대 6개로 두고, 마지막 항목은 꺾쇠를 숨겨요. 집 아이콘 시작은 흔하지만 발표자 취향은 아니라고 해요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=7665s" target="_blank" rel="noopener">영상 2:07:45에서 보기</a>
+  </figcaption>
+</figure>
+<h3>체크박스·라디오·스위치는 라벨까지 컴포넌트로</h3>
+<p>체크박스는 체크 아이콘을 오토 레이아웃으로 감싼 상자예요. 클릭 영역을 키우려고 아이콘을 24×24로 둬서 42×42가 돼요. 화면 왼쪽 열이 선택 안 됨, 오른쪽 열이 선택됨이고, 위에서부터 default, hover, focus, disabled예요. 선택된 쪽은 surface/action 배경에 흰 체크(icon/on-action)예요.</p>
+<figure>
+  <img src="assets/frame-021245.png" alt="Checkbox 컴포넌트 세트. 왼쪽 열은 흰 상자에 회색 체크, 오른쪽 열은 보라 상자에 흰 체크이며 위에서부터 기본, hover, focus, disabled 네 상태가 있다. 오른쪽 아래 변수 목록에서 on-action을 고르고 있다">
+  <figcaption>
+    상태(Status)와 선택 여부(Type)를 두 축으로 나눠 2×4 베리언트가 돼요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=7965s" target="_blank" rel="noopener">영상 2:12:45에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자가 자주 보는 실수는 체크박스 옆 라벨을 디자이너가 각자 붙이는 거예요. 누구는 body medium에 간격 28, 누구는 body large에 간격 14를 쓰면 일관성이 깨져요. 그래서 체크박스를 <code>.checkbox item</code>으로 두고, 라벨까지 붙인 <code>checkbox label</code>을 공개 컴포넌트로 만들어요. 라벨 텍스트 속성 이름을 Label이 아니라 Content로 지은 건 나중에 보조 문구를 붙일 여지를 남기려는 거예요. 라디오 버튼도 같은 구조로 40×40에 radius 999를 줘요.</p>
+<p>스위치는 둥근 knob을 오토 레이아웃으로 감싸 radius 999로 만들어요. 선택되면 knob이 오른쪽으로 가고 배경이 액션 색이 돼요. 화면 왼쪽이 off, 오른쪽이 on 상태 네 줄이고, 오른쪽에 'Hello' 라벨이 붙은 switch label이 있어요.</p>
+<figure>
+  <img src="assets/frame-022321.png" alt="Switch 컴포넌트 세트. 왼쪽 열은 흰 배경에 knob이 왼쪽, 오른쪽 열은 보라 배경에 knob이 오른쪽이며 위에서부터 default, hover, focus, disabled. 오른쪽에 Hello 라벨이 붙은 스위치가 따로 있다">
+  <figcaption>
+    knob 색은 surface 변수 대신 text/on-action을 써도 된다고 해요. 액션 배경 위에 얹힌 '보조 요소'라 on-action의 뜻에 맞아요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=8601s" target="_blank" rel="noopener">영상 2:23:21에서 보기</a>
+  </figcaption>
+</figure>
+<h3>텍스트 영역</h3>
+<p>긴 답을 받는 텍스트 영역은 라벨 + 입력 칸 + 문구로 조립해요. 이번에는 힌트 문구를 라벨 바로 아래 위쪽에 두고, 입력 칸 오른쪽 아래에 'Character count 7/120' 같은 글자 수를 붙여요. 화면은 글자 수에 레이어 속성을 만드는 순간이에요. 오른쪽 아래 'Properties in Text Area'에 이미 Hint copy가 있어요.</p>
+<figure>
+  <img src="assets/frame-023141.png" alt="Text Area 컴포넌트. 위에서부터 Label, Hint copy, Text area 입력 칸, 오른쪽 아래 Character count 7/120 문구가 있다. Create property or variable 창에서 새 속성 이름을 입력하는 중이고 기존 속성으로 Hint copy가 보인다">
+  <figcaption>
+    입력 전 글자는 placeholder·caption 색, 입력 후(filled)는 더 진한 색으로 Type 베리언트를 나눠요. 힌트 문구는 여러 컴포넌트에 쓰이니 컴포넌트로 빼는 것도 고려하래요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=9101s" target="_blank" rel="noopener">영상 2:31:41에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s8">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=9303s" target="_blank" rel="noopener">2:35:03</a>
+  <h2>데이터 표시 컴포넌트</h2>
+<p>데이터 표시 묶음에서는 새 기법보다 '이미 만든 걸 어떻게 재사용하나'가 자주 나와요. 버튼 세트를 복사해 탭으로 고치고, 캐러셀 부품으로 진행 바를 만들고, 진행 바를 스낵바에 넣는 식이에요.</p>
+<h3>배지와 태그</h3>
+<p>배지는 장바구니 아이콘 위 숫자처럼 개수를 알려 주는 작은 원이에요. 화면 가운데 세트의 왼쪽 열이 숫자 배지, 오른쪽 열이 숫자 없는 점(dot) 배지이고, 위에서부터 default(보라), error(빨강), success(초록), information(파랑)이에요. 숫자 배지는 크기를 고정해 숫자가 커져도 너비가 변하지 않게 해요.</p>
+<figure>
+  <img src="assets/frame-024003.png" alt="왼쪽에 빨간 점이 붙은 장바구니 아이콘, 가운데 Badge 세트에 99가 적힌 보라·빨강·초록·파랑 원과 각 색의 작은 점이 두 열로 있다. 오른쪽 패널 드롭다운에 default, error, success, information이 보인다">
+  <figcaption>
+    error 배지에는 연한 surface/error 대신 진한 border/error를 빌려 써요. 작은 컴포넌트에서 가끔 하는 건 괜찮지만, 문서에 남기거나 error-dark 같은 변수를 따로 두는 게 좋다고 해요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=9603s" target="_blank" rel="noopener">영상 2:40:03에서 보기</a>
+  </figcaption>
+</figure>
+<p>태그는 필터처럼 눌러서 켜고 끄는 요소예요. 화면 위 줄이 선택 전으로, 점선 테두리와 더하기 아이콘이 '누를 수 있음'을 알려요. 아래 줄이 선택 후로, 액션 배경에 닫기(✕) 아이콘이 붙어요. 두 번째 칸(hover)은 이 순간 글자와 아이콘이 배경에 묻혀 안 보이는데, 바로 뒤에 on-action-hover 변수로 바꿔요.</p>
+<figure>
+  <img src="assets/frame-024503.png" alt="Tag 컴포넌트 세트. 위 줄은 점선 테두리에 더하기 아이콘이 있는 Tag 네 개, 아래 줄은 보라 배경에 X 아이콘이 있는 Tag, 글자 없는 보라 칸, 포커스 테두리가 있는 Tag, 회색 비활성 Tag다">
+  <figcaption>
+    radius를 키우고 싶어서 얼라이어스 Border radius에 2xl(12)을 하나 더 추가해요. 필요할 때 변수를 늘리는 원칙 그대로예요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=9903s" target="_blank" rel="noopener">영상 2:45:03에서 보기</a>
+  </figcaption>
+</figure>
+<h3>탭 바는 버튼을 고쳐 만들어요</h3>
+<p>탭 항목은 버튼 세트를 복사해 시작해요. 배경과 테두리를 지우고, 위아래 패딩을 8로 줄이고, 오른쪽 아이콘을 지워요. 선택된 탭은 아래쪽에만 테두리를 그어 표시해요. 화면 위 줄이 선택 안 됨, 아래 줄이 선택됨이에요. 아래 줄 항목마다 밑줄이 있는 게 보여요. 모서리 radius는 0으로 둬서 밑줄 끝이 휘지 않게 해요.</p>
+<figure>
+  <img src="assets/frame-025130.png" alt=".tab-item 컴포넌트 세트. 위 줄은 하트 아이콘과 Button 글자의 탭 항목 default, hover(연보라 배경), focus(보라 테두리), disabled(회색), 아래 줄은 같은 상태에 보라 밑줄이 그어진 선택된 탭이다">
+  <figcaption>
+    버튼에서 속성과 베리언트를 통째로 가져왔기 때문에 처음부터 만들 필요가 없어요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=10290s" target="_blank" rel="noopener">영상 2:51:30에서 보기</a>
+  </figcaption>
+</figure>
+<p>탭 바는 탭 항목을 8개 이어 붙이고 전체 아래에 회색 1px 선을 그어요. 탭이 네 개뿐이어도 이 선이 '여기까지 한 덩어리'라는 걸 알려 줘요. 항목은 늘 왼쪽 정렬이고, 기본은 4개만 보이게 하고 나머지는 레이어에서 켜게 해요.</p>
+<h3>캐러셀과 진행 바</h3>
+<p>캐러셀 버튼은 둥근 테두리 안의 꺾쇠 아이콘이에요. 많은 사람이 오른쪽 꺾쇠를 180도 돌려 왼쪽 버튼을 만드는데, 그러면 레이어 이름은 'chevron right'인데 왼쪽을 가리켜 개발자가 헷갈려요. 그래서 chevron left 아이콘으로 바꿔 끼워요. 두 버튼 사이 막대는 안쪽 막대의 제약을 scale로 둬서, 바깥 너비가 바뀌면 비율대로 늘어나요.</p>
+<p>진행 바는 이 캐러셀 막대를 그대로 가져와 이름만 바꾸고, 위에 '완료율 10%' 같은 라벨을 얹어요. 화면의 progress bar 세트에서 위 막대가 전체, 아래 짧은 막대가 진행분이에요.</p>
+<figure>
+  <img src="assets/frame-030003.png" alt="progress bar 컴포넌트 세트 안에 연보라 긴 막대와 진한 보라 짧은 막대가 있다. 오른쪽 패널 Properties에 10% 값이 보인다">
+  <figcaption>
+    10%, 20%처럼 진행률별 베리언트를 둘 수도 있지만, 영상에서는 단순하게 하나로 둬요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=10803s" target="_blank" rel="noopener">영상 3:00:03에서 보기</a>
+  </figcaption>
+</figure>
+<h3>버튼 그룹</h3>
+<p>버튼 그룹은 그래프·표 보기를 전환하는 토글 같은 컴포넌트예요. 화면 왼쪽 세트가 그룹 항목으로, 라벨+아이콘형과 아이콘형이 있고 위에서부터 default, hover, selected, focus, disabled예요. 오른쪽이 항목 세 개를 붙인 버튼 그룹이에요. 항목 사이 경계선을 보이게 하려고 간격 1px을 두고, 바깥 radius 8에 내용 자르기(clip content)를 켜요.</p>
+<figure>
+  <img src="assets/frame-030733.png" alt="왼쪽 button group item 세트에 하트 아이콘과 Button 글자가 있는 항목과 아이콘만 있는 항목이 다섯 상태로 세로 배열돼 있고, 오른쪽 Button Group 두 개는 가운데 항목이 보라색으로 선택돼 있다">
+  <figcaption>
+    selected를 Status에 합친 이유는, 이미 선택된 항목은 다시 hover하거나 누를 수 없게 하는 게 보통이라서예요. 포커스는 옆 항목에 가려져 그룹 안에서 잘 안 보여서 보통 빼요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=11253s" target="_blank" rel="noopener">영상 3:07:33에서 보기</a>
+  </figcaption>
+</figure>
+<h3>스낵바</h3>
+<p>스낵바는 화면 오른쪽 아래에 떠서 '무언가 잘못됐어요' 같은 알림을 주는 컴포넌트예요. 정보 아이콘, 제목, Lorem Ipsum 설명, 앞에서 만든 링크 컴포넌트, 닫기 아이콘으로 조립해요. 정보 아이콘과 닫기 아이콘은 바꿔 끼울 일이 없어서 인스턴스 스왑 없이 켜고 끄는 속성만 줘요.</p>
+<figure>
+  <img src="assets/frame-031003.png" alt="회색 배경 위 흰 스낵바. 왼쪽에 정보 아이콘, Snackbar title 제목, 그 아래 Lorem Ipsum 설명 두 줄, 보라색 Link, 오른쪽 위에 닫기 X 아이콘이 있다">
+  <figcaption>
+    아래쪽에 진행 바를 붙이면 사용자가 아무것도 안 해도 알림이 사라지기까지 남은 시간을 보여 줄 수 있어요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=11403s" target="_blank" rel="noopener">영상 3:10:03에서 보기</a>
+  </figcaption>
+</figure>
+<h3>테이블은 셀부터 쌓아요</h3>
+<p>발표자는 Figma의 새 기본 그리드 기능이 있어도 테이블은 손으로 짓는 편이 낫다고 봐요. 텍스트 하나를 <code>.cell item</code>으로, 그걸 감싼 셀에 heading·content 베리언트를 두고, 셀 12개로 열(column)과 행(row)을 만들고, 그걸 다시 12개 묶어 테이블을 만들어요. 화면은 'Copy' 셀이 12×12로 채워진 열 기반 테이블에 이름을 붙이는 중이에요.</p>
+<figure>
+  <img src="assets/frame-031733.png" alt="Copy라는 글자가 든 셀이 가로 12칸, 세로 12줄로 채워진 테이블 프레임이 선택돼 있고 위에 Table COl까지 입력된 이름 상자가 있다. 왼쪽 레이어에 .Column, .Cells가 보인다">
+  <figcaption>
+    열 테이블과 행 테이블을 한 컴포넌트 세트로 묶고, 슬롯으로 감싸면 인스턴스에서도 행·열 순서를 옮길 수 있어요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=11853s" target="_blank" rel="noopener">영상 3:17:33에서 보기</a>
+  </figcaption>
+</figure>
+<p>셀 안에 배지 같은 다른 요소가 필요하면 원래 셀 부품에 베리언트를 추가해 바꿔 끼워요. 슬롯 안에서 오토 레이아웃이 유지되려면 '슬롯 → 오토 레이아웃 프레임 → 열들' 순서로 감싸야 한다는 점도 뒤늦게 덧붙여요. 발표자는 테이블이 가장 다루기 어려운 고급 컴포넌트라고 말해요.</p>
+<h3>아바타</h3>
+<p>마지막은 아바타예요. 화면 왼쪽부터 이니셜 'CP' 아바타 하나, 간격을 −16으로 줘서 겹쳐 놓은 아바타 그룹, 이름 'Cole Palmer'가 붙은 아바타 라벨이에요. 아바타 라벨의 이름은 켜고 끌 수 있어서, 이름 없이 아바타만 필요할 때도 이 컴포넌트 하나로 돼요.</p>
+<figure>
+  <img src="assets/frame-032438.png" alt="회색 캔버스에 CP 이니셜 원형 아바타 하나, CP 아바타 여러 개가 겹쳐 이어진 아바타 그룹, CP 아바타 옆에 Cole Palmer 이름이 붙은 아바타 라벨이 나란히 있다">
+  <figcaption>
+    이미지·아이콘 아바타나 크기 베리언트는 각자 쓰임에 맞게 더하라고 남겨 둬요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=12278s" target="_blank" rel="noopener">영상 3:24:38에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s9">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=12278s" target="_blank" rel="noopener">3:24:38</a>
+  <h2>배포, 모바일, 레이아웃 변수, 컴포넌트 기준</h2>
+<h3>라이브러리로 배포하기</h3>
+<p>지금까지 만든 컴포넌트는 이 파일 안에서만 쓸 수 있어요. 다른 파일의 Assets 패널에서 꺼내 쓰려면 라이브러리로 배포해야 해요. 파일 이름 옆 메뉴를 열면 'Publish library…' 항목이 있어요.</p>
+<figure>
+  <img src="assets/frame-032502.png" alt="Design System Build 파일 이름 옆 드롭다운 메뉴가 열려 Show version history, Publish library, Export, Add to sidebar, Create branch 등이 보이고 Publish library에 커서가 있다">
+  <figcaption>
+    배포는 Figma 유료 워크스페이스 기능이에요. 배포 창에서는 .checkbox item 같은 내부 부품은 끄고, checkbox label 같은 공개 컴포넌트만 켜요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=12302s" target="_blank" rel="noopener">영상 3:25:02에서 보기</a>
+  </figcaption>
+</figure>
+<p>컴포넌트와 아이콘이 많으면 배포에 10~15분쯤 걸린다고 해요. 같은 워크스페이스의 다른 파일에서 Assets 패널 → 라이브러리 추가로 이 라이브러리를 켜면, 'button'을 검색해 이 파일의 버튼을 끌어다 쓸 수 있어요.</p>
+<h3>모바일 디자인 시스템은 따로 필요 없어요</h3>
+<p>'모바일 디자인 시스템을 따로 만들어야 하나요'라는 질문에 발표자는 멈추라고 해요. 예시로 Anthropic 웹사이트를 보여 줘요. 데스크톱에서는 로고, 메뉴 항목, CTA(Call To Action) 버튼이 한 줄로 펼쳐진 상단 내비게이션이 있어요. 창을 좁히면 화면처럼 메뉴가 오른쪽 위 햄버거 아이콘 하나로 접혀요.</p>
+<figure>
+  <img src="assets/frame-032654.png" alt="브라우저 창을 모바일 폭으로 좁힌 anthropic.com. 상단에 로고와 오른쪽 햄버거 메뉴 아이콘만 있고, 아래에 Anthropic is built on hard questions 문구가 보인다">
+  <figcaption>
+    이렇게 화면 크기에 따라 모양 자체가 달라지는 컴포넌트만 모바일 버전이 필요해요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=12414s" target="_blank" rel="noopener">영상 3:26:54에서 보기</a>
+  </figcaption>
+</figure>
+<p>이걸 Figma에서 만들 때 흔한 실수는 Navigation 옆에 Mobile Navigation이라는 컴포넌트를 하나 더 만드는 거예요. 대신 Navigation 컴포넌트에 Type 베리언트를 두고 desktop·mobile 값을 줘요. 화면 위쪽이 가로로 펼친 desktop, 왼쪽 아래가 세로로 쌓고 Login·Signup 버튼을 맨 아래 둔 mobile 베리언트예요. 오른쪽 패널 Current variant에 Type: mobile이 보여요.</p>
+<figure>
+  <img src="assets/frame-032938.png" alt="Navigation 컴포넌트 세트. 위쪽은 원형 로고 옆에 Navigation item이 가로로 늘어선 desktop 베리언트, 아래쪽은 로고 아래 Navigation item 여섯 개가 세로로 쌓이고 맨 아래 Login, Signup 버튼이 있는 mobile 베리언트다. 오른쪽 패널에 Type mobile이 선택돼 있다">
+  <figcaption>
+    모바일 버전은 별도 컴포넌트가 아니라 같은 컴포넌트의 베리언트로 살아요. 발표자는 이걸 '모바일 최적화 베리언트'라고 불러요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=12578s" target="_blank" rel="noopener">영상 3:29:38에서 보기</a>
+  </figcaption>
+</figure>
+<h3>레이아웃 변수(jumper variables)</h3>
+<p>발표자가 '아주 고급 주제'라고 미리 경고하는 부분이에요. 레이아웃 변수는 패딩과 간격처럼 기기마다 달라지는 값이에요. 예전에는 jumper variables라고 불렀는데, 다른 사람들이 그 이름을 자기 개념처럼 쓰기 시작해서 이름을 바꿨다고 해요. 데스크톱 페이지 여백이 24라면 모바일에서는 16쯤으로 줄이고 싶을 때 써요. 데스크톱·모바일 값이 갈리니 Responsive 컬렉션에 둬요.</p>
+<p>여기서도 쓰임새 이름은 피해요. 'page margin'이라고 지으면 카드 사이 간격도 24에서 16으로 바뀔 때 'card spacing'이라는 똑같은 값의 변수가 또 생겨요. 그래서 먼저 xxsm 12, xsm 14, sm 16, md 20, lg 24, xl 28 같은 작은 티셔츠 사이즈 스케일을 정하고, '데스크톱 크기 → 모바일 크기' 조합으로 이름을 지어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 220" role="img" aria-label="데스크톱과 모바일 두 줄에 xxsm 12부터 xl 28까지 같은 스케일이 있고, 데스크톱 lg 24에서 모바일 sm 16과 모바일 md 20으로 화살표가 내려간다. 각각 lg-sm, lg-md 변수다">
+    <defs><marker id="arrow-jump" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-jump"></g>
+  </svg>
+  <figcaption>화면에 만든 변수는 lg-sm(24→16)과 lg-md(24→20) 두 개예요. 필요한 조합만 만들면 되고, 실제 데스크톱·모바일 디자인이 있어야 어떤 조합이 필요한지 알 수 있어요.</figcaption>
+</figure>
+<p>화면 위쪽 캔버스에 그 스케일이 적혀 있고, 아래 Responsive 컬렉션에 <code>lg-sm</code>(Desktop 24, Mobile 16)과 <code>lg-md</code>(24, 20)가 있어요. 이 변수를 패딩에 걸어 두면 프레임 모드를 모바일로 바꿀 때 값이 알아서 바뀌어요.</p>
+<figure>
+  <img src="assets/frame-033538.png" alt="캔버스에 xxsm 12, xsm 14, sm 16, md 20, lg 24, xl 28이 적혀 있고, 아래 Variables 창 Responsive 컬렉션에 lg-sm 변수 Desktop 24 Mobile 16, lg-md 변수 Desktop 24 Mobile 20이 있다">
+  <figcaption>
+    이 값들도 이상적으로는 앞에서 본 마스터 Scale에 연결해요. 영상에서는 이해하기 쉽게 숫자를 직접 넣었어요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=12938s" target="_blank" rel="noopener">영상 3:35:38에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 대기업과 일할 때도 필요한 레이아웃 변수를 파악하는 데 시간이 오래 걸린다며, 처음에 바로 맞히지 못해도 괜찮다고 해요. 디자인 시스템에 꼭 넣어야 하는 것도 아니에요.</p>
+<h3>무엇을 컴포넌트로 만들까</h3>
+<p>기준은 단순해요. 두 번 이상 쓰이면 컴포넌트로 만들어요. 다만 '디자인 시스템에 넣을지'는 다른 문제예요. 화면은 온보딩 흐름 초안이에요. 오른쪽 휴대폰 화면 네 개 위쪽에 같은 카드가 반복되고, 왼쪽에 그 카드를 컴포넌트(Rectangle 1)로 만들어 둔 모습이에요. 카드 색을 바꾸면 네 화면이 한꺼번에 바뀌어요.</p>
+<figure>
+  <img src="assets/frame-033738.png" alt="Onboarding Flow 파일. 오른쪽 Draft 1 프레임에 휴대폰 화면 네 개가 있고 각 화면 위쪽에 같은 흰 카드가 있다. 왼쪽에 Rectangle 1 컴포넌트가 따로 있고 색 선택 창이 열려 있다">
+  <figcaption>
+    이 카드는 온보딩에서만 쓰이니 이 파일 안의 로컬 컴포넌트로 두고, 디자인 시스템에 새 페이지를 만들지 않아요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=13058s" target="_blank" rel="noopener">영상 3:37:38에서 보기</a>
+  </figcaption>
+</figure>
+<p>디자인 시스템에 넣을 것은 여러 페이지, 여러 팀, 여러 제품에 걸쳐 두루 쓰이는 것이에요. 한두 곳에서만 쓰는 컴포넌트까지 넣다 보면 시스템 파일이 쓸모없는 컴포넌트로 가득 차요.</p>
+</section>
+
+<section id="s10">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=13108s" target="_blank" rel="noopener">3:38:28</a>
+  <h2>AI 연결과 개발자 핸드오프</h2>
+<p>발표자는 이 주제를 '말 많은 주제'라고 소개해요. AI는 레이아웃과 시안 반복을 위해 만들어졌지 디자인 시스템을 다루도록 만들어지지 않았다는 게 출발점이에요. 회사마다 컴포넌트 규칙이 다 달라서 AI가 일반화하기 어렵다는 거예요.</p>
+<p>그래서 Claude 등이 내세우는 '디자인 시스템 동기화'를 조심하라고 해요. 발표자 경험으로는 일부 컴포넌트만 잡고 나머지를 놓쳐서, 결과 화면이 엉망이 되기 쉽대요. 그가 쓰는 우회로는 디자인 시스템을 가르치는 스킬을 여러 개 만드는 거예요. 이렇게 해도 80~85% 정도 맞고, 나머지 15%는 사람이 다듬어야 한다고 해요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart TB
+  DS["디자인 시스템 파일"] --> C1["폼 요소 스킬"]
+  DS --> C2["내비게이션 스킬"]
+  DS --> C3["데이터 표시 스킬"]
+  DS --> V["변수 스킬 (맵드만)"]
+  DS --> T["타입 스타일 스킬"]
+  R["규칙·기술 부채 설명"] --> RD["규칙·기술 부채 스킬"]
+  C1 --> AI["AI의 화면 생성"]
+  C2 --> AI
+  C3 --> AI
+  V --> AI
+  T --> AI
+  RD --> AI
+</pre>
+  <figcaption>컴포넌트는 페이지 묶음마다 스킬을 하나씩 만들어요. 순서는 상관없지만, 한꺼번에 '전부 공부해'라고 하지 않는 게 핵심이에요.</figcaption>
+</figure>
+<h3>컴포넌트 스킬은 그룹마다 하나씩</h3>
+<p>파일 링크를 주고 '이 파일의 모든 컴포넌트로 스킬을 만들어'라고 하면 안 돼요. 대기업 시스템은 컴포넌트가 이 영상의 두 배쯤 되고, AI가 한 번에 베리언트와 속성을 다 훑다 보면 빠뜨려요. 대신 앞에서 나눠 둔 Form Elements, Navigation, Data Display 묶음마다 스킬을 하나씩 만들어요. 발표자가 쓰는 지시는 이런 식이에요. '이 디자인 시스템의 Form Elements 그룹만으로 스킬을 만들어라. 어떤 컴포넌트가 있는지, 컴포넌트별 베리언트와 속성, 그 관계를 가르쳐라. 다른 그룹 컴포넌트는 넣지 마라.'</p>
+<p>결과 화면을 보면 왼쪽 설명에 '내부 부품(.menu item, .checkbox-item…)은 따로 표시했다', '인풋 = 라벨 + 필드 + 힌트 문구, 드롭다운 = 인풋 + 메뉴처럼 조합을 적었다'는 내용이 있어요. 오른쪽 <code>SKILL.md</code>에는 Menu 컴포넌트의 Scrollbar 속성과, 내부 부품 .menu item의 Status·State·Label·Icon 속성이 표로 정리돼 있어요.</p>
+<figure>
+  <img src="assets/frame-034348.png" alt="왼쪽은 Form elements design system skill 대화로, 내부 부품을 따로 표시하고 Input = Label + Field, Dropdown = Input + Menu 같은 조합을 정리했다는 설명이 있다. 오른쪽 스킬 파일에는 Menu의 Scrollbar 속성 표와 .menu item의 Status, State, Label, Icon, ↳ Icon 속성 표가 있다">
+  <figcaption>
+    AI는 Checkbox label의 토글 이름이 Label인데 Switch label은 Content인 것 같은 이름 불일치까지 짚어 줘요. 스킬을 만들다 보면 시스템의 빈틈도 드러나요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=13428s" target="_blank" rel="noopener">영상 3:43:48에서 보기</a>
+  </figcaption>
+</figure>
+<h3>변수 스킬에는 '언제 쓰는지'가 필요해요</h3>
+<p>변수는 표 하나로 정리해 넘겨요. 화면의 템플릿은 맨 왼쪽부터 변수 이름, 라이트 값, 다크 값, 설명 네 열이에요. 예를 들어 Primary의 default는 라이트 primary/1000, 다크 neutral light/100이고, 설명에 '주요 인터랙티브 배경(예: 버튼)'이라고 적혀 있어요. 이 설명이 AI에게 언제 이 변수를 쓰고 언제 쓰지 않을지 알려 줘요.</p>
+<figure>
+  <img src="assets/frame-034508.png" alt="Design System Sample 2.0 파일의 변수 표. Primary, Secondary, Disabled, Error, Success, Information, Warning 그룹마다 default, default-hover, default-subtle 같은 변수가 있고, 라이트 값 열, 검은 배경의 다크 값 열, 오른쪽 설명 열이 있다">
+  <figcaption>
+    맵드 변수만 넣어요. 브랜드·얼라이어스 변수는 컴포넌트에 직접 쓰면 안 되는 값이라 AI가 알 필요가 없어요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=13508s" target="_blank" rel="noopener">영상 3:45:08에서 보기</a>
+  </figcaption>
+</figure>
+<p>이 템플릿은 발표자 아카데미의 다른 디자인 시스템이에요. 표는 Figma 에이전트에게 변수를 읽어 채우게 하고, 사람은 설명만 쓰면 된다고 해요. 프롬프트에는 '없는 변수를 지어내거나 추론하지 마라, 기존 구조와 관계를 유지하라'는 문장을 넣어요.</p>
+<p>타입 스타일 스킬도 같은 방식이지만 용도 규칙은 일부러 넣지 않아요. H2 자리에 H3를 써도 되는 것처럼 글자 스타일은 엄격하게 묶지 않는 게 좋고, 어차피 결과를 보고 사람이 조정하게 된다는 이유예요. 색은 쓰임이 분명해야 하지만 글자는 AI를 틀에 가두지 않겠다는 거예요.</p>
+<h3>규칙과 기술 부채</h3>
+<p>마지막 스킬은 디자인 시스템 규칙과 <span class="term" data-term="기술 부채" data-en="Technical debt" data-desc="고쳐야 하는 걸 알지만 비용이나 사정 때문에 미뤄 둔 부분이에요. AI에게 알려 두지 않으면 그 부분을 &#x27;고치려고&#x27; 들 수 있어요." data-g="14">기술 부채</span>를 함께 담아요. 대기업이 아니면 꼭 필요하지 않은 고급 주제라고 먼저 말해요. 규칙은 새로 들어온 디자이너에게 알려 줄 '이럴 땐 이 컴포넌트' 같은 사용 규칙이에요. 화면의 두 예시는 '선택지가 4개를 넘으면 체크박스, 4개보다 적으면 라디오 버튼'과 '아바타 그룹에는 아바타를 5개 넘게 넣지 않는다'예요. 발표자는 어디서나 통하는 규칙이 아니라 설명을 위한 예시라고 덧붙여요.</p>
+<figure>
+  <img src="assets/frame-034908.png" alt="The rules designers who use the design system needs to follow are… 제목 아래 두 항목. If over four options, use a checkbox. If under four options, use radio buttons. Can never have more than 5 avatar items in an avatar group">
+  <figcaption>
+    규칙은 회사마다 달라요. 남의 규칙을 찾을 필요 없이 내 규칙을 그대로 적어 스킬로 만들면 돼요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=13748s" target="_blank" rel="noopener">영상 3:49:08에서 보기</a>
+  </figcaption>
+</figure>
+<p>기술 부채는 바꾸고 싶어도 못 바꾸는 것들이에요. 능력이 없어서가 아니라 개발 인력이 없거나, 임원이 고집하거나, 이미 모든 제품에 들어가 바꾸는 비용이 너무 큰 경우예요. 발표자의 예시는 흰 배경 outline 버튼의 글자 대비가 부족한 것, 라디오 버튼 라벨이 12px라 접근성 기준에 못 미치는 것이에요. 이걸 알려 두지 않으면 AI가 화면을 만들면서 '고치려고' 들어요.</p>
+<h3>개발자 핸드오프</h3>
+<p>Dev Mode는 개발자에게 컴포넌트 정보를 보여 주는 화면이에요. 화면 오른쪽 Inspect 패널에 버튼의 Status·Type·Label 속성, 테두리 1·2와 패딩 12가 그려진 박스, 그리고 <code>padding: 12px</code>, <code>gap: 12px</code>, <code>border-radius: var(--Border-radius-md)</code> 같은 CSS(Cascading Style Sheets)가 나와요. 변수 이름이 CSS 변수로 그대로 이어지는 게 보여요.</p>
+<figure>
+  <img src="assets/frame-035130.png" alt="Dev Mode의 Button 컴포넌트 세트. 오른쪽 Inspect 패널에 Status default, Type default, Label Button 속성과 Border 1·2, Padding 12, 크기 110×18이 표시된 박스, 그리고 display inline-flex, padding 12px, gap 12px, border-radius var(--Border-radius-md), background var(--Surface-action) 같은 CSS가 있다">
+  <figcaption>
+    발표자는 회사가 Dev Mode 비용을 아까워하면 디자인 시스템을 처음 구축하는 한두 달만이라도 쓰라고 권해요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=13890s" target="_blank" rel="noopener">영상 3:51:30에서 보기</a>
+  </figcaption>
+</figure>
+<p>그래도 Dev Mode가 전부는 아니에요. 개발자마다 원하는 정보가 달라서, 어떤 팀은 더 자세한 설명이 필요하고 어떤 팀은 Dev Mode로 충분해요. 문서화도 같아요. 'Dev Mode에 없는 것 중 무엇을 문서로 남겨 줄까요'를 개발자에게 직접 묻는 게 발표자의 답이에요. 핸드오프와 문서화에 정해진 방식은 없어요.</p>
+<h3>프레임워크를 쓴다면 이름부터 맞춰요</h3>
+<p>회사가 Radix 같은 미리 만들어진 오픈소스 컴포넌트 키트를 쓰기로 할 때도 있어요. 발표자는 두 가지를 경고해요. 개발자용으로 만든 키트는 디자인 쪽 Figma 파일이 부실하거나 오래돼 있기 쉽고, 디자이너용으로 만든 키트는 그 반대예요. 또 '지금 바로 앱 만들기'라는 문구와 달리 고쳐 쓰는 데 시간이 많이 들어요.</p>
+<p>핵심은 Figma의 속성·베리언트 이름과 기본값을 프레임워크 문서와 1:1로 맞추는 거예요. Radix 체크박스 문서의 'API Reference' 표를 보면 size는 "1"|"2"|"3", variant는 "classic"|"surface"|"soft"예요. 이 영상에서 만든 체크박스의 Status·Type과는 이름부터 달라요. 개발자가 Dev Mode와 Radix 문서를 나란히 볼 때 이름이 다르면 헷갈리고, 그게 기술 부채가 돼요.</p>
+<figure>
+  <img src="assets/frame-035548.png" alt="radix-ui.com Checkbox 문서의 API Reference 표. size 타입 Responsive 1|2|3 기본값 2, variant 타입 classic|surface|soft 기본값 surface, color enum, highContrast boolean이 있고 아래 Size 예시 코드가 있다">
+  <figcaption>
+    기본값까지 맞춰야 해요. Radix의 size 기본값이 2라면 Figma에서도 2가 기본 베리언트여야 해요.
+    <a href="https://www.youtube.com/watch?v=lsgVRCJ4fko&amp;t=14148s" target="_blank" rel="noopener">영상 3:55:48에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>지금 Radix Themes 체크박스 문서를 확인하면 size는 "1" | "2" | "3"에 기본값 "2", variant는 "classic" | "surface" | "soft"에 기본값 "surface"예요. 이 밖에 color와 highContrast 속성도 있어요. Figma 체크박스를 이 문서에 맞춘다면 Size(1·2·3, 기본 2)와 Variant(classic·surface·soft, 기본 surface) 베리언트가 필요해요.</p>
+  <p class="cite">출처: <a href="https://www.radix-ui.com/themes/docs/components/checkbox" target="_blank" rel="noopener">Radix Themes — Checkbox</a></p>
+</aside>
+<p>처음이라면 개발자와 앉아 컴포넌트마다 베리언트, 속성, 이름, 기본값을 하나씩 맞춰 보라고 해요. 수십 시간이 걸릴 수 있는 일이에요.</p>
+<h3>남의 디자인 시스템을 베끼지 마세요</h3>
+<p>영상 끝에 덧붙인 당부예요. IBM(International Business Machines) Carbon이나 Shopify의 디자인 시스템을 그대로 따라 하려는 디자이너가 많은데, 발표자는 절대 그러지 말라고 해요. 그 회사가 어떤 과정을 거쳐 그렇게 정했는지 모르고, 오래된 제품 때문에 어쩔 수 없이 남긴 기술 부채까지 함께 들여올 수 있기 때문이에요. 공개된 문서는 컴포넌트 모양과 느낌을 참고하는 정도로만 쓰라고 해요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 영어 자막이라 용어와 이름이 잘못 받아적힌 곳이 있어요. 화면과 문맥으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>variance</td><td>variants</td><td>Figma 컴포넌트 베리언트. 자막 거의 전부에서 이렇게 적혔어요</td></tr>
+      <tr><td>air (icon air, text air, border air)</td><td>error</td><td>에러 변수 이름</td></tr>
+      <tr><td>service and border</td><td>surface and border</td><td>맵드 컬렉션 그룹 이름</td></tr>
+      <tr><td>chat GBT / cla / Codeex</td><td>ChatGPT / Claude / Codex</td><td></td></tr>
+      <tr><td>enter / robboto</td><td>Inter / Roboto</td><td>폰트 패밀리 이름</td></tr>
+      <tr><td>fulfilled</td><td>filled</td><td>필드 Type 베리언트 이름</td></tr>
+      <tr><td>Lauren Nipsum / Lauram Ipsum</td><td>Lorem Ipsum</td><td>더미 텍스트</td></tr>
+      <tr><td>technical depth</td><td>technical debt</td><td></td></tr>
+      <tr><td>radics</td><td>Radix</td><td>화면 주소 radix-ui.com</td></tr>
+      <tr><td>get them devote</td><td>get them Dev Mode (추정)</td><td>개발자용 Dev Mode 좌석 이야기</td></tr>
+      <tr><td>Mob and</td><td>Mobbin (추정)</td><td>UI 참고 사이트</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-14"><dt>기술 부채<span class="en">Technical debt</span></dt><dd>고쳐야 하는 걸 알지만 비용이나 사정 때문에 미뤄 둔 부분이에요. AI에게 알려 두지 않으면 그 부분을 &#x27;고치려고&#x27; 들 수 있어요.</dd></div>
+    <div class="g" id="g-1"><dt>디자인 토큰<span class="en">Design token</span></dt><dd>색·글자 크기·간격 같은 값에 역할 이름을 붙여 여러 컴포넌트가 함께 쓰게 한 것이에요. 원본 값 하나를 바꾸면 쓰는 곳이 모두 바뀌어요.</dd></div>
+    <div class="g" id="g-13"><dt>메이저 서드<span class="en">Major third</span></dt><dd>타입 스케일 비율의 하나로, 한 단계 오를 때마다 글자 크기를 1.25배 키워요. 단계 사이 간격이 일정해 크기가 들쭉날쭉하지 않아요.</dd></div>
+    <div class="g" id="g-3"><dt>모드<span class="en">Mode</span></dt><dd>같은 변수에 대해 다른 값 묶음을 두는 열이에요. 라이트·다크, 브랜드 A·B, 데스크톱·모바일처럼 상황마다 값을 바꿔 끼울 때 써요.</dd></div>
+    <div class="g" id="g-7"><dt>베리언트<span class="en">Variant</span></dt><dd>한 컴포넌트의 여러 상태나 형태를 한 세트로 묶은 것이에요. Status=hover, Type=outline처럼 속성 값을 골라 바꿔 써요.</dd></div>
+    <div class="g" id="g-10"><dt>스코핑<span class="en">Variable scoping</span></dt><dd>변수가 어떤 속성에만 보이게 할지 정하는 설정이에요. radius 변수가 모서리 둥글기에만 보이면 엉뚱한 곳에 잘못 넣을 일이 줄어요.</dd></div>
+    <div class="g" id="g-12"><dt>아토믹 디자인<span class="en">Atomic design</span></dt><dd>작은 컴포넌트를 먼저 만들고 그걸 조립해 더 큰 컴포넌트를 만드는 방식이에요. 라벨과 필드를 합쳐 인풋을 만드는 식이에요.</dd></div>
+    <div class="g" id="g-4"><dt>얼라이어스<span class="en">Alias</span></dt><dd>다른 변수를 값으로 가리키는 변수예요. 이 영상에서는 브랜드 색 스케일에 Primary·Error 같은 역할을 붙이는 두 번째 단계 컬렉션 이름이기도 해요.</dd></div>
+    <div class="g" id="g-6"><dt>오토 레이아웃<span class="en">Auto layout</span></dt><dd>Figma 프레임 안의 요소를 패딩과 간격 규칙대로 자동 배치하는 기능이에요. 내용이 길어지면 프레임이 따라 늘어나요.</dd></div>
+    <div class="g" id="g-8"><dt>인스턴스 스왑<span class="en">Instance swap property</span></dt><dd>컴포넌트 안의 아이콘 같은 하위 컴포넌트를 다른 것으로 바꿔 끼울 수 있게 하는 속성이에요. 컴포넌트를 분리하지 않고도 아이콘을 바꿀 수 있어요.</dd></div>
+    <div class="g" id="g-11"><dt>중첩 인스턴스<span class="en">Nested instances</span></dt><dd>컴포넌트 안에 들어간 다른 컴포넌트의 속성을 바깥 컴포넌트 패널에 함께 보여 주는 설정이에요. 켜지 않으면 안쪽까지 클릭해 들어가야 해요.</dd></div>
+    <div class="g" id="g-2"><dt>컬렉션<span class="en">Variable collection</span></dt><dd>Figma에서 변수를 묶어 두는 단위예요. 컬렉션마다 모드를 따로 가질 수 있어서, 이 영상은 역할에 따라 컬렉션을 네 개로 나눠요.</dd></div>
+    <div class="g" id="g-5"><dt>컴포넌트 전용 토큰<span class="en">Component-specific token</span></dt><dd>button-purple처럼 특정 컴포넌트 이름이 붙은 토큰이에요. 색 하나를 바꾸려면 컴포넌트 수만큼 고쳐야 해서 발표자는 쓰지 말라고 해요.</dd></div>
+    <div class="g" id="g-9"><dt>포커스 상태<span class="en">Focus state</span></dt><dd>키보드 Tab으로 이동할 때 지금 선택된 요소에 보이는 표시예요. 마우스를 못 쓰는 사용자가 위치를 알 수 있게 하는 접근성 상태예요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>CSS</dt><dd>Cascading Style Sheets</dd></div>
+    <div class="g"><dt>CTA</dt><dd>Call To Action</dd></div>
+    <div class="g"><dt>DTCG</dt><dd>Design Tokens Community Group</dd></div>
+    <div class="g"><dt>IBM</dt><dd>International Business Machines</dd></div>
+    <div class="g"><dt>MCP</dt><dd>Model Context Protocol</dd></div>
+    <div class="g"><dt>QA</dt><dd>Quality Assurance</dd></div>
+    <div class="g"><dt>W3C</dt><dd>World Wide Web Consortium</dd></div>
+    <div class="g"><dt>WCAG</dt><dd>Web Content Accessibility Guidelines</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=lsgVRCJ4fko" target="_blank" rel="noopener">원본 영상 — UI Collective, Learn Design Systems: Figma Variables, Components, AI, and More</a></li>
+    <li id="src-2"><a href="https://www.designtokens.org/" target="_blank" rel="noopener">Design Tokens Community Group — 공식 사이트</a></li>
+    <li id="src-3"><a href="https://www.w3.org/community/design-tokens/2025/10/28/design-tokens-specification-reaches-first-stable-version/" target="_blank" rel="noopener">W3C Community Group — Design Tokens specification reaches first stable version</a></li>
+    <li id="src-4"><a href="https://help.figma.com/hc/en-us/articles/15145852043927-Create-and-manage-variables-and-collections" target="_blank" rel="noopener">Figma Help Center — Create and manage variables and collections</a></li>
+    <li id="src-5"><a href="https://help.figma.com/hc/en-us/articles/36346281624471-Extend-a-variable-collection" target="_blank" rel="noopener">Figma Help Center — Extend a variable collection</a></li>
+    <li id="src-6"><a href="https://www.w3.org/TR/WCAG22/" target="_blank" rel="noopener">W3C — Web Content Accessibility Guidelines (WCAG) 2.2</a></li>
+    <li id="src-7"><a href="https://www.radix-ui.com/themes/docs/components/checkbox" target="_blank" rel="noopener">Radix Themes — Checkbox</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 14일에 이 영상을 보고 정리했어요. 원본은 UI Collective 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+// Drawn figures built by loops. Values all come from the video.
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+
+// Section 2: opacity steps -> scale names
+(() => {
+  const g = document.getElementById('fig-scale');
+  if (!g) return;
+  const cells = [
+    ['50', '10%', 'c1'], ['100', '20%', 'c1'], ['200', '40%', 'c1'], ['250', '50%', 'c1 ring'],
+    ['300', '60%', 'c1'], ['400', '80%', 'c1'], ['500', '기본색', 'accent'],
+    ['600', '80%', 'c2'], ['700', '60%', 'c2'], ['800', '40%', 'c2'], ['900', '20%', 'c2'], ['950', '10%', 'c2'],
+  ];
+  const w = 50, gap = 4, x0 = 6, y = 70;
+  cells.forEach(([name, op, cls], i) => {
+    const x = x0 + i * (w + gap);
+    g.append(el('rect', { x, y, width: w, height: 44, rx: 6, class: `${cls} cell` }));
+    g.append(el('text', { x: x + w / 2, y: y + 27, 'text-anchor': 'middle', class: 'mono' }, name));
+    g.append(el('text', { x: x + w / 2, y: y + 66, 'text-anchor': 'middle', class: 'sub' }, op));
+  });
+  const span = (from, to, label) => {
+    const xa = x0 + from * (w + gap), xb = x0 + to * (w + gap) + w;
+    g.append(el('path', { d: `M${xa} 52 v-8 H${xb} v8`, class: 'line' }));
+    g.append(el('text', { x: (xa + xb) / 2, y: 32, 'text-anchor': 'middle', class: 'sub' }, label));
+  };
+  span(0, 5, '흰 배경 위에서 낮춘 불투명도');
+  span(7, 11, '검은 배경 위에서 낮춘 불투명도');
+})();
+
+// Section 9: layout (jumper) variables
+(() => {
+  const g = document.getElementById('fig-jump');
+  if (!g) return;
+  const scale = [['xxsm', 12], ['xsm', 14], ['sm', 16], ['md', 20], ['lg', 24], ['xl', 28]];
+  const w = 90, step = 100, x0 = 30;
+  const row = (y, label, pick) => {
+    g.append(el('text', { x: x0, y: y - 10, class: 'sub' }, label));
+    scale.forEach(([n, v], i) => {
+      const x = x0 + i * step;
+      const cls = pick(i);
+      g.append(el('rect', { x, y, width: w, height: 44, rx: 8, class: cls }));
+      g.append(el('text', { x: x + w / 2, y: y + 27, 'text-anchor': 'middle', class: 'mono' }, `${n} ${v}`));
+    });
+  };
+  row(40, '데스크톱', (i) => (i === 4 ? 'accent cell' : 'box dim'));
+  row(150, '모바일', (i) => (i === 2 || i === 3 ? 'c3 cell' : 'box dim'));
+  const fromX = x0 + 4 * step + w / 2;
+  const to = (i) => x0 + i * step + w / 2;
+  g.append(el('path', { d: `M${fromX - 10} 86 L${to(2) + 10} 146`, class: 'line', 'marker-end': 'url(#arrow-jump)' }));
+  g.append(el('path', { d: `M${fromX} 86 L${to(3) + 15} 146`, class: 'line', 'marker-end': 'url(#arrow-jump)' }));
+  g.append(el('text', { x: 345, y: 112, 'text-anchor': 'end', class: 'mono' }, 'lg-sm'));
+  g.append(el('text', { x: 452, y: 122, 'text-anchor': 'start', class: 'mono' }, 'lg-md'));
+})();
+</script>
+</body>
+</html>

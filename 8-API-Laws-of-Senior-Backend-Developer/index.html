@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>시니어 백엔드 개발자의 API 설계 원칙 8가지</title>
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --radius:16px; --maxw:760px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:6px 0; font-size:15px}
+  nav.toc a{color:var(--text-sub)}
+  nav.toc a.active{color:var(--brand); font-weight:600}
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  td code{font-size:13.5px}
+
+  /* ── 용어 툴팁 ─────────────────────────────────────── */
+  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
+    font-weight:600; background:none}
+  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
+  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
+    background:var(--text); color:var(--bg); border-radius:12px;
+    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
+    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease; pointer-events:none}
+  #tip.on{opacity:1; visibility:visible}
+  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>시니어 백엔드 개발자의 API 설계 원칙 8가지</h1>
+  <p class="lede">문서를 덜 봐도 쓸 수 있는 REST API를 만드는 규칙을 짚어요</p>
+  <div class="meta">
+    <span>Cloud X Berry</span><span class="dot">·</span>
+    <span>09:19</span><span class="dot">·</span>
+    <span>유튜브 영상 정리</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=-40xErgJIBg" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>URL은 리소스를 가리키고, 동작은 HTTP 메서드가 말해요. <code>/getUsers</code> 대신 <code>GET /users</code>예요.</li>
+    <li>메서드는 표준 뜻대로 골라요. GET·PUT·DELETE는 반복해도 효과가 같고, POST는 그렇지 않아요.</li>
+    <li>실패를 <code>200 OK</code>로 감싸지 말고 상태 코드로 알려요. 에러 본문은 code·message·status 같은 일정한 구조로 줘요.</li>
+    <li>경로는 리소스, 쿼리 파라미터는 결과 좁히기를 맡아요. 기존 클라이언트를 깨는 변경은 버전과 이전 계획을 세워서 해요.</li>
+    <li>필드 이름, 날짜, 페이지네이션 형식을 모든 엔드포인트에서 맞추고, 엔드포인트보다 패턴을 먼저 정해요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">리소스 중심 설계와 예측 가능한 URL</a></li>
+    <li><a href="#s2">HTTP 메서드는 정해진 뜻대로</a></li>
+    <li><a href="#s3">상태 코드와 에러 응답이 결과를 말하게</a></li>
+    <li><a href="#s4">경로와 쿼리의 역할, 그리고 API 변경</a></li>
+    <li><a href="#s5">형식을 맞추고, 패턴부터 정하기</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>리소스 중심 설계와 예측 가능한 URL</h2>
+<p>영상은 API를 이해하기 쉽고, 붙이기 쉽고, 유지보수하기 쉽게 만드는 REST 패턴 여덟 가지를 차례로 소개해요. 처음 두 가지는 URL을 어떻게 짓느냐에 관한 거예요.</p>
+<h3>1. 동작이 아니라 리소스를 중심으로</h3>
+<p>흔한 실수는 <code>/getUsers</code>, <code>/createOrder</code>, <code>/deleteProduct</code>처럼 URL에 동작을 적는 거예요. 얼핏 보면 알아보기 쉬워요. 그런데 HTTP 메서드가 이미 동작을 말하고 있어서, <code>POST /createOrder</code>는 '만든다'를 두 번 말하는 셈이에요.</p>
+<p>URL에는 <code>users</code>, <code>orders</code>, <code>products</code> 같은 리소스만 두고, 무엇을 할지는 GET·POST·DELETE에 맡기면 돼요. 그러면 리소스 세 개와 메서드 세 개가 표처럼 깔끔하게 맞물려요.</p>
+<figure>
+  <img src="assets/frame-0036.png" alt="/users, /orders, /products 세 리소스를 행으로, GET, POST, DELETE를 열로 둔 표. 칸마다 READ, CREATE, REMOVE가 적혀 있어요">
+  <figcaption>리소스는 URL이, 동작은 메서드가 맡으면 조합이 표 한 장으로 정리돼요. <a href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=36s" target="_blank" rel="noopener">영상 00:36에서 보기</a></figcaption>
+</figure>
+<p>API가 커질수록 이 차이가 커져요. 주문 하나를 조회하든 교체하든 삭제하든 URL은 <code>/orders/{id}</code> 하나로 충분하거든요. 동작마다 <code>/getOrder</code>, <code>/updateOrder</code>, <code>/cancelOrder</code>를 새로 만들 필요가 없어요.</p>
+<blockquote>
+  <p>Let the URL identify the resource and let the HTTP method describe the operation.</p>
+  <p>URL은 리소스를 가리키고, HTTP 메서드는 동작을 설명하게 하세요.</p>
+  <cite>— 영상 00:32</cite>
+</blockquote>
+<h3>2. URL을 예측할 수 있게</h3>
+<p>사소해 보여도 차이가 큰 게 이름의 일관성이에요. 한쪽은 <code>/user/4821</code>, 다른 쪽은 <code>/customers/4821</code>, 또 다른 쪽은 <code>/customerProfiles/4821</code>을 쓰면 각각은 잘 동작해요. 하지만 개발자는 '여긴 단수, 저긴 customers'라는 규칙을 외워야 해요.</p>
+<p>컬렉션은 <code>users</code>, <code>orders</code>, <code>products</code>처럼 같은 방식으로 이름 붙이고, 개별 리소스는 그 뒤에 식별자를 붙여요. 여러 단어로 된 이름도 규칙 하나를 골라 어디서나 써요. 영상 화면은 <code>order-items</code>, <code>order_items</code>, <code>orderItems</code> 가운데 <span class="term" data-term="스네이크 케이스" data-desc="단어 사이를 밑줄로 잇는 표기예요(order_items). 어떤 표기를 쓰든 API 전체에서 하나로 맞추는 게 중요해요.">스네이크 케이스</span> 하나를 골라 모든 경로에 적용하는 모습을 보여 줘요.</p>
+<figure>
+  <img src="assets/frame-0139.png" alt="order-items, order_items, orderItems 세 표기 중 order_items가 선택되고 SNAKE_CASE 규칙이 /order_items, /order_items/7f3a91, /order_items/7f3a91/refunds에 적용된 그림">
+  <figcaption>어떤 표기를 고르느냐보다 하나로 통일하는 게 중요해요. <a href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=99s" target="_blank" rel="noopener">영상 01:39에서 보기</a></figcaption>
+</figure>
+<p>영상의 말대로, 예측할 수 있는 API는 설명이 덜 필요해요.</p>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=107s" target="_blank" rel="noopener">01:47</a>
+  <h2>HTTP 메서드는 정해진 뜻대로</h2>
+<p>사용자 정보를 고치는 API가 어떤 곳은 POST, 어떤 곳은 PUT, 또 어떤 곳은 PATCH를 쓴다고 해 볼게요. 셋 다 기술적으로는 동작해요. 하지만 클라이언트는 표준 HTTP의 <span class="term" data-term="시맨틱" data-desc="HTTP 메서드나 상태 코드에 표준이 정해 둔 의미예요. 이걸 따르면 클라이언트가 API마다 규칙을 새로 배울 필요가 없어요.">시맨틱</span> 대신 API마다 다른 규칙 세 개를 배워야 해요. 표준대로 쓰면 배울 규칙이 0개예요.</p>
+<figure>
+  <img src="assets/frame-0208.png" alt="왼쪽은 API마다 POST, PUT, PATCH로 다르게 만드는 경우로 배울 규칙 3개, 오른쪽은 HTTP 표준 시맨틱으로 배울 규칙 0개라고 비교한 화면">
+  <figcaption>제멋대로 고른 메서드는 클라이언트가 외울 규칙을 늘려요. <a href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=128s" target="_blank" rel="noopener">영상 02:08에서 보기</a></figcaption>
+</figure>
+<p>영상이 정리한 메서드별 역할은 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>메서드</th><th>하는 일</th><th>같은 요청을 반복하면</th></tr></thead>
+    <tbody>
+      <tr><td>GET</td><td>리소스를 바꾸지 않고 읽어요</td><td>효과가 한 번 보낸 것과 같아요</td></tr>
+      <tr><td>POST</td><td>새 리소스를 만들거나, 단순 수정으로 표현하기 어려운 처리를 시작해요</td><td>리소스가 또 생길 수 있어요</td></tr>
+      <tr><td>PUT</td><td>리소스 표현을 통째로 바꿔요</td><td>효과가 한 번 보낸 것과 같아요</td></tr>
+      <tr><td>PATCH</td><td>일부만 고쳐요</td><td>영상에서 따로 다루지 않아요</td></tr>
+      <tr><td>DELETE</td><td>리소스를 지워요</td><td>효과가 한 번 보낸 것과 같아요</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>멱등성이 왜 중요할까요</h3>
+<p>표의 마지막 열이 <span class="term" data-term="멱등성" data-desc="같은 요청을 여러 번 보내도 결과가 한 번 보낸 것과 같은 성질이에요. 네트워크가 불안해서 재시도할 때 중복 처리를 막아 줘요.">멱등성</span>이에요. GET을 다섯 번 보내도 레코드는 그대로예요. PUT으로 같은 값을 두 번 넣어도, DELETE를 두 번 보내도 결과는 한 번 했을 때와 같아요. 반면 POST로 같은 주문 생성 요청을 두 번 보내면 주문이 두 건 생길 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0241.png" alt="요청 로그에 PUT /users/4821 두 번과 DELETE /users/4821 두 번이 있고, 결과는 각각 plan enterprise 하나와 record gone 하나로 묶인 그림">
+  <figcaption>PUT과 DELETE는 두 번 보내도 결과가 하나로 모여요. <a href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=161s" target="_blank" rel="noopener">영상 02:41에서 보기</a></figcaption>
+</figure>
+<p>이게 실무에서 문제가 되는 이유는 네트워크가 끊기고, 클라이언트가 재시도하고, 타임아웃이 생기기 때문이에요. 요청이 반복돼도 API가 예측대로 움직여야 해요. 그래서 영상은 엔드포인트가 동작한다는 이유로 메서드를 고르지 말고, 메서드가 원래 뜻하는 바에 맞춰 고르라고 해요.</p>
+<figure>
+  <img src="assets/frame-0304.png" alt="POST, PUT, PATCH 모두 '동작하나요'는 YES지만 '무슨 뜻인가요'는 각각 CREATES, REPLACES, UPDATES PART로 다르다고 정리한 표">
+  <figcaption>세 메서드 모두 '동작'은 해요. 다른 건 뜻이에요. <a href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=184s" target="_blank" rel="noopener">영상 03:04에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>HTTP 표준(RFC 9110)은 멱등 메서드를 '같은 요청을 여러 번 보냈을 때 서버에 의도한 효과가 한 번 보낸 것과 같은 메서드'로 정의해요. 표준이 정의한 메서드 중 PUT, DELETE, 그리고 GET 같은 안전한 메서드가 여기에 들어가요. 서버가 요청마다 로그를 남기는 건 상관없어요.</p>
+  <p>PATCH는 따로 정의돼 있어요. RFC 5789는 PATCH가 안전하지도 멱등하지도 않다고 적어요. 다만 요청을 멱등하게 설계할 수는 있다고 덧붙여요. 그래서 PATCH를 재시도할 땐 같은 변경이 두 번 들어가도 괜찮은지 따로 확인해야 해요.</p>
+  <p class="cite">출처: <a href="https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2" target="_blank" rel="noopener">RFC 9110 — 9.2.2 Idempotent Methods</a> · <a href="https://www.rfc-editor.org/rfc/rfc5789" target="_blank" rel="noopener">RFC 5789 — PATCH Method for HTTP</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=184s" target="_blank" rel="noopener">03:04</a>
+  <h2>상태 코드와 에러 응답이 결과를 말하게</h2>
+<h3>4. 상태 코드가 결과를 말하게</h3>
+<p>상품이 없어서 실패했는데 <code>200 OK</code>를 돌려주고, 본문에 '실패'라고 적는 API가 있어요. 상태 줄은 성공이라고, 본문은 실패라고 말해요. 클라이언트는 어느 쪽이 맞는지 두 군데를 다 확인해야 해요. 그럴 필요가 없게, 큰 결과는 상태 코드 하나로 전하라는 거예요.</p>
+<figure>
+  <img src="assets/frame-0322.png" alt="응답 하나에서 상태 줄은 IT WORKED, 응답 본문은 IT DID NOT이라고 말해 어느 쪽이 맞는지 묻는 그림">
+  <figcaption>상태 줄과 본문이 서로 다른 말을 하면 클라이언트가 헷갈려요. <a href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=202s" target="_blank" rel="noopener">영상 03:22에서 보기</a></figcaption>
+</figure>
+<p>영상이 예로 든 상태 코드를 표로 정리했어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>코드</th><th>언제 쓰나요</th></tr></thead>
+    <tbody>
+      <tr><td>200</td><td>읽기에 성공했을 때</td></tr>
+      <tr><td>201</td><td>리소스를 만들었을 때</td></tr>
+      <tr><td>202</td><td>요청을 받았고, 처리는 비동기로 나중에 끝날 때</td></tr>
+      <tr><td>204</td><td>성공했지만 돌려줄 본문이 없을 때</td></tr>
+      <tr><td>400</td><td>요청 자체가 잘못됐을 때</td></tr>
+      <tr><td>401</td><td>인증 정보가 없거나 잘못됐을 때</td></tr>
+      <tr><td>403</td><td>인증은 됐지만 권한이 없을 때</td></tr>
+      <tr><td>404</td><td>요청한 리소스가 없을 때</td></tr>
+      <tr><td>409</td><td>요청이 리소스의 현재 상태와 충돌할 때</td></tr>
+      <tr><td>422</td><td>비즈니스 검증에 실패했을 때</td></tr>
+      <tr><td>429</td><td>클라이언트가 요청을 너무 많이 보낼 때</td></tr>
+    </tbody>
+  </table>
+</div>
+<figure>
+  <img src="assets/frame-0407.png" alt="실패 유형별 상태 코드 목록. 400 IS INVALID, 401 CARRIES NO VALID AUTHENTICATION, 403 IS AUTHENTICATED WITHOUT PERMISSION, 404 NAMES A RESOURCE THAT DOES NOT EXIST, 409 CONFLICTS WITH THE CURRENT STATE, 422">
+  <figcaption>실패마다 그에 맞는 코드가 하나씩 있어요. <a href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=247s" target="_blank" rel="noopener">영상 04:07에서 보기</a></figcaption>
+</figure>
+<p>코드를 전부 외우라는 말은 아니에요. HTTP가 이미 정해 둔 코드를 두고 그 위에 나만의 에러 규약을 새로 만들지 말라는 거예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>422는 지금 HTTP 표준(RFC 9110)에 'Unprocessable Content'라는 이름으로 올라 있어요. 표준의 설명은 '요청 형식과 문법은 맞는데 그 안의 지시를 처리할 수 없을 때'예요. 영상이 말한 '비즈니스 검증 실패'가 이 경우에 해당해요. 예전 문서에서는 'Unprocessable Entity'라는 이름으로 보일 수 있어요.</p>
+  <p>429 Too Many Requests는 RFC 9110이 아니라 RFC 6585에서 정의해요. 정해진 시간 안에 요청을 너무 많이 보냈을 때, 곧 <span class="term" data-term="레이트 리밋" data-desc="정해진 시간 안에 받을 수 있는 요청 수를 제한하는 장치예요. 한도를 넘으면 서버가 429로 거절해요.">레이트 리밋</span>에 걸렸을 때 쓰는 코드예요.</p>
+  <p class="cite">출처: <a href="https://www.rfc-editor.org/rfc/rfc9110#section-15.5.21" target="_blank" rel="noopener">RFC 9110 — 15.5.21 422 Unprocessable Content</a> · <a href="https://www.rfc-editor.org/rfc/rfc6585#section-4" target="_blank" rel="noopener">RFC 6585 — 4. 429 Too Many Requests</a></p>
+</aside>
+<h3>5. 에러 응답은 한 가지 구조로</h3>
+<p>상태 코드는 실패의 종류만 알려 줘요. 클라이언트는 보통 그보다 많은 정보가 필요해요. '문제가 생겼어요' 한 줄짜리 에러와, 에러 코드·읽을 만한 메시지·상태가 들어 있는 구조화된 응답을 비교하면 뒤쪽이 사람과 프로그램 모두에게 훨씬 쓰기 좋아요.</p>
+<pre><code>{
+  "code": "PRODUCT_NOT_FOUND",
+  "message": "No product with id 2048"
+}</code></pre>
+<p>구조가 있으면 쓰는 쪽마다 필요한 필드만 골라 써요. 화면은 <code>message</code>를 보여 주고, 애플리케이션은 <code>code</code>에 따라 분기하고, 개발자는 <code>status</code>로 원인을 추적해요. 입력 검증에 실패했다면 '잘못된 요청'이라고만 하지 말고 어떤 필드를 고쳐야 하는지도 알려 주면 좋아요.</p>
+<figure>
+  <img src="assets/frame-0452.png" alt="THE CLIENT는 message를 보여 주고, THE APPLICATION은 code로 분기하고, THE DEVELOPER는 status를 추적한다는 세 줄 그림">
+  <figcaption>필드마다 쓰는 사람이 달라요. <a href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=292s" target="_blank" rel="noopener">영상 04:52에서 보기</a></figcaption>
+</figure>
+<p>정확한 형식은 시스템마다 달라도 돼요. 중요한 건 에러가 구조를 갖추고 늘 같은 모양이어서, 클라이언트가 무엇이 잘못됐는지 추측할 필요가 없게 하는 거예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>에러 구조를 처음부터 정하기 부담스럽다면 표준 형식이 있어요. RFC 9457 'Problem Details for HTTP APIs'는 <code>type</code>, <code>title</code>, <code>status</code>, <code>detail</code>, <code>instance</code> 필드로 에러를 표현하고, 미디어 타입으로 <code>application/problem+json</code>을 써요. 이전 표준이던 RFC 7807을 대체해요.</p>
+  <p class="cite">출처: <a href="https://www.rfc-editor.org/rfc/rfc9457" target="_blank" rel="noopener">RFC 9457 — Problem Details for HTTP APIs</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=310s" target="_blank" rel="noopener">05:10</a>
+  <h2>경로와 쿼리의 역할, 그리고 API 변경</h2>
+<h3>6. 모든 걸 경로에 넣지 않기</h3>
+<p><code>/products</code>로 시작해서 카테고리를 경로에 붙이고, 그다음 재고 상태, 가격, 검색어, 정렬까지 붙이다 보면 URL이 점점 감당하기 어려워져요. 필터나 선택 조건은 쿼리 파라미터가 더 잘 맞아요. 경로는 어떤 리소스인지 가리키고, 쿼리 파라미터는 그 리소스를 어떤 모습으로 받을지 좁혀요.</p>
+<figure>
+  <img src="assets/frame-0537.png" alt="/products/2048?fields=price&amp;sort=name 주소를 경로 부분(IDENTIFIES, 어떤 리소스인지)과 쿼리 부분(REFINES, 어떤 모습으로 받을지)으로 나눈 그림">
+  <figcaption>경로는 '무엇', 쿼리는 '어떻게 보여 줄지'를 맡아요. <a href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=337s" target="_blank" rel="noopener">영상 05:37에서 보기</a></figcaption>
+</figure>
+<p>그렇다고 쿼리로 동작을 만들어 내면 안 돼요. <code>GET /products/2048?action=delete</code>는 메서드는 읽기라고 하는데 쿼리는 삭제라고 해요. 요청 하나가 두 가지 말을 하니 무슨 일이 일어날지 알 수 없어요.</p>
+<figure>
+  <img src="assets/frame-0546.png" alt="GET /products/2048?action=delete 요청에서 메서드는 READ, 쿼리는 DELETE라고 서로 다르게 말하는 그림">
+  <figcaption>메서드와 쿼리가 서로 다른 동작을 말하는 나쁜 예예요. <a href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=346s" target="_blank" rel="noopener">영상 05:46에서 보기</a></figcaption>
+</figure>
+<p>역할을 정리하면 세 줄이에요. 경로는 리소스를 가리키고, 쿼리 파라미터는 결과를 좁히고, HTTP 메서드는 동작을 말해요.</p>
+<h3>7. API 변경은 조심스럽게</h3>
+<p>API는 영원히 그대로 있지 않아요. 지금 완벽해 보이는 응답도 6개월 뒤엔 필드를 더하거나 구조를 바꾸거나 잘못된 의미를 고쳐야 할 수 있어요. 위험한 건 기존 클라이언트를 생각하지 않고 <span class="term" data-term="브레이킹 체인지" data-desc="기존 클라이언트 코드가 그대로는 동작하지 않게 되는 변경이에요. 필드를 없애거나 타입·구조를 바꾸는 경우가 대표적이에요.">브레이킹 체인지</span>를 내는 거예요.</p>
+<p>영상의 예는 이래요. 예전 버전은 <code>"price": 49.00</code>처럼 숫자 하나를 돌려줬어요. 나중에 이걸 <code>pricing.amount</code>가 든 더 풍부한 구조로 바꾸고 싶어졌어요. 이건 필드 하나 추가가 아니라 구조 변경이라 기존 클라이언트가 깨질 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0640.png" alt="ADD A FIELD(currency: USD 추가)는 CLIENTS KEEP WORKING, CHANGE OR REMOVE ONE(price 제거)은 CLIENTS MAY BREAK라고 비교한 그림">
+  <figcaption>더하는 건 대체로 안전하고, 바꾸거나 빼는 건 깨질 수 있어요. <a href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=400s" target="_blank" rel="noopener">영상 06:40에서 보기</a></figcaption>
+</figure>
+<p>그래서 먼저 새 버전이 정말 필요한지 따져요. 필수가 아닌 필드를 추가하는 건 보통 기존 클라이언트를 깨지 않아요. 기존 동작을 바꾸거나 없애면 깰 수 있어요.</p>
+<p>버전이 필요하다면 방식을 분명하고 일관되게 정해요. URL에 버전을 넣을 수도 있고, 요청 헤더로 고를 수도 있고, 다른 잘 알려진 방법을 써도 돼요. 어떤 방식이냐보다 예측 가능한 한 가지를 쓰고, 사용자가 옮겨 갈 길을 열어 주는 게 중요해요.</p>
+<figure>
+  <img src="assets/frame-0701.png" alt="버전을 지정하는 방법 세 가지. URL에 넣기(GET /v2/products/2048), 요청 헤더에 넣기(Accept: application/vnd.cxb.v2+json), 그 밖의 잘 알려진 방식">
+  <figcaption>URL이든 헤더든 하나로 정해서 일관되게 써요. <a href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=421s" target="_blank" rel="noopener">영상 07:01에서 보기</a></figcaption>
+</figure>
+<p>화면에는 이전 계획의 예도 나와요. 2026-09-01에 v2를 공개하고, 2027-03-01에 v1을 지원 중단으로 바꿔 모든 응답에 경고를 담고, 2027-09-01에 v1을 없애요. 12개월의 예고 기간을 두는 거예요.</p>
+<figure>
+  <img src="assets/frame-0706.png" alt="MIGRATION PLAN 표. 2026-09-01 v2 AVAILABLE, 2027-03-01 v1 DEPRECATED, 2027-09-01 v1 REMOVED, 옆에 12 MONTHS OF NOTICE">
+  <figcaption>새 버전 공개부터 옛 버전 제거까지 일정을 미리 알려 줘요. <a href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=426s" target="_blank" rel="noopener">영상 07:06에서 보기</a></figcaption>
+</figure>
+<blockquote>
+  <p>Good API evolution means existing clients don't become collateral damage.</p>
+  <p>좋은 API 진화란 기존 클라이언트가 덩달아 피해를 입지 않는 거예요.</p>
+  <cite>— 영상 06:40</cite>
+</blockquote>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=431s" target="_blank" rel="noopener">07:11</a>
+  <h2>형식을 맞추고, 패턴부터 정하기</h2>
+<h3>8. 요청과 응답 형식을 맞추기</h3>
+<p>개발자들이 쉽게 얕보는 부분이에요. 한 엔드포인트는 <code>createdAt</code>, 다른 곳은 <code>CreatedAt</code>, 또 다른 곳은 <code>created_at</code>을 돌려준다고 해 볼게요. 셋 다 틀린 건 아니에요. 하지만 클라이언트 코드에는 URL마다 다른 키를 고르는 분기가 세 개 생겨요.</p>
+<figure>
+  <img src="assets/frame-0729.png" alt="client.js 코드에서 /users면 createdAt, /orders면 CreatedAt, /products면 created_at을 쓰도록 분기하는 세 줄과, 클라이언트가 안고 가는 분기 3개라는 숫자">
+  <figcaption>필드 이름이 제각각이면 그 비용은 클라이언트 코드의 분기로 돌아와요. <a href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=449s" target="_blank" rel="noopener">영상 07:29에서 보기</a></figcaption>
+</figure>
+<p>날짜, <span class="term" data-term="페이지네이션" data-desc="목록을 한 번에 다 주지 않고 페이지 단위로 나눠 주는 방식이에요. ?page=2&amp;per_page=50처럼 쿼리로 요청해요.">페이지네이션</span>, 에러 응답, 필드 이름, 응답 구조에서도 똑같은 일이 생겨요. 그래서 규칙을 정하고 지켜요. JSON을 일관되게 쓰고, JSON 필드 이름 규칙을 하나로 정하고, 에러 응답을 표준화하고, 페이지네이션과 필터링이 어디서나 같은 방식으로 동작하게 해요. 화면의 예시는 형식은 JSON, 필드 이름은 <span class="term" data-term="카멜 케이스" data-desc="첫 단어 뒤의 단어를 대문자로 시작해 붙이는 표기예요(createdAt). JSON 필드 이름에 흔히 써요.">카멜 케이스</span>, 에러는 <code>code</code>·<code>message</code>·<code>status</code>로 정했어요.</p>
+<figure>
+  <img src="assets/frame-0747.png" alt="OUR CONVENTIONS 표. FORMAT은 JSON, everywhere, PROPERTY NAMES는 camelCase, ERRORS는 code, message, status">
+  <figcaption>규칙은 이 정도로 짧아도 충분해요. <a href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=467s" target="_blank" rel="noopener">영상 07:47에서 보기</a></figcaption>
+</figure>
+<p>목표는 거대한 규칙집이 아니에요. 다음 엔드포인트가 낯설지 않게 하는 거예요. 엔드포인트 하나를 익히면 나머지도 어떻게 동작할지 짐작할 수 있어야 해요.</p>
+<blockquote>
+  <p>Consistency is one of the best features an API can have.</p>
+  <p>일관성은 API가 가질 수 있는 가장 좋은 기능 중 하나예요.</p>
+  <cite>— 영상 07:45</cite>
+</blockquote>
+<h3>REST를 따르는 것보다 중요한 것</h3>
+<p>영상은 마지막에 한 가지를 덧붙여요. 많은 개발자가 API가 기술적으로 REST를 따르는지에 집중하는데, 그게 가장 중요한 목표는 아니라는 거예요. GET·POST·PUT·DELETE를 쓴다고 좋은 API가 되진 않아요. 좋은 API는 문서를 계속 확인하지 않아도 클라이언트가 이해할 수 있는 API예요.</p>
+<p>영상이 꼽은 조건을 다시 모으면 여섯 가지예요. 리소스 이름이 말이 되고, 메서드가 예측대로 동작하고, 상태 코드에 뜻이 있고, 에러 구조가 같고, 필터가 엔드포인트마다 같은 방식으로 동작하고, 변경이 기존 사용자를 갑자기 깨지 않아요.</p>
+<figure>
+  <img src="assets/frame-0841.png" alt="좋은 API가 하는 일 여섯 카드. RESOURCE NAMES make sense, METHODS behave predictably, STATUS CODES mean something, ERRORS have one structure, FILTERS work the same way, CHANGES do not break you">
+  <figcaption>앞의 여덟 원칙이 이 여섯 가지 결과로 모여요. <a href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=521s" target="_blank" rel="noopener">영상 08:41에서 보기</a></figcaption>
+</figure>
+<h3>엔드포인트보다 패턴을 먼저</h3>
+<p>그래서 다음 REST API를 설계할 땐 엔드포인트를 하나씩 만들지 말고, 패턴부터 정하라고 해요. 먼저 답할 질문은 여덟 개예요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>번호</th><th>먼저 정할 질문</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>리소스 이름을 어떻게 지을까요?</td></tr>
+      <tr><td>2</td><td>컬렉션을 어떻게 표현할까요?</td></tr>
+      <tr><td>3</td><td>필터링은 어떻게 동작할까요?</td></tr>
+      <tr><td>4</td><td>어떤 HTTP 메서드를 쓸까요?</td></tr>
+      <tr><td>5</td><td>에러는 어떤 모양일까요?</td></tr>
+      <tr><td>6</td><td>상태 코드는 어떻게 다룰까요?</td></tr>
+      <tr><td>7</td><td>API는 어떻게 바뀌어 갈까요?</td></tr>
+      <tr><td>8</td><td>모든 엔드포인트가 따를 규칙은 뭘까요?</td></tr>
+    </tbody>
+  </table>
+</div>
+<figure>
+  <img src="assets/frame-0908.png" alt="EIGHT QUESTIONS TO ANSWER FIRST라는 제목 아래 01부터 08까지 여덟 질문 카드가 두 줄로 놓인 화면">
+  <figcaption>규칙이 정해지면 API를 만드는 일이 훨씬 쉬워져요. <a href="https://www.youtube.com/watch?v=-40xErgJIBg&amp;t=548s" target="_blank" rel="noopener">영상 09:08에서 보기</a></figcaption>
+</figure>
+<blockquote>
+  <p>A good REST API doesn't just return the right data. It makes the right way to use it obvious.</p>
+  <p>좋은 REST API는 맞는 데이터를 돌려주는 데서 그치지 않아요. 올바른 사용법을 뻔히 보이게 만들어요.</p>
+  <cite>— 영상 08:51</cite>
+</blockquote>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 화면과 다르게 받아적힌 곳이 있어요. 화면을 기준으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>created_at, created_at, created_at</td><td>createdAt, CreatedAt, created_at</td><td>07:13 부근. 화면의 client.js 코드 기준이에요. 세 표기가 달라야 말이 돼요</td></tr>
+      <tr><td>replacing the representation of a Patch is for partial updates</td><td>replacing the representation of a resource. PATCH is for partial updates</td><td>02:10 부근. &#x27;resource&#x27; 한 단어가 빠진 것으로 보여요 (추정)</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail">
+  <h2>이 글에 나온 용어</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
+      <tbody>
+        <tr><td>스네이크 케이스</td><td>단어 사이를 밑줄로 잇는 표기예요(order_items). 어떤 표기를 쓰든 API 전체에서 하나로 맞추는 게 중요해요.</td></tr>
+        <tr><td>시맨틱</td><td>HTTP 메서드나 상태 코드에 표준이 정해 둔 의미예요. 이걸 따르면 클라이언트가 API마다 규칙을 새로 배울 필요가 없어요.</td></tr>
+        <tr><td>멱등성</td><td>같은 요청을 여러 번 보내도 결과가 한 번 보낸 것과 같은 성질이에요. 네트워크가 불안해서 재시도할 때 중복 처리를 막아 줘요.</td></tr>
+        <tr><td>레이트 리밋</td><td>정해진 시간 안에 받을 수 있는 요청 수를 제한하는 장치예요. 한도를 넘으면 서버가 429로 거절해요.</td></tr>
+        <tr><td>브레이킹 체인지</td><td>기존 클라이언트 코드가 그대로는 동작하지 않게 되는 변경이에요. 필드를 없애거나 타입·구조를 바꾸는 경우가 대표적이에요.</td></tr>
+        <tr><td>페이지네이션</td><td>목록을 한 번에 다 주지 않고 페이지 단위로 나눠 주는 방식이에요. ?page=2&amp;per_page=50처럼 쿼리로 요청해요.</td></tr>
+        <tr><td>카멜 케이스</td><td>첫 단어 뒤의 단어를 대문자로 시작해 붙이는 표기예요(createdAt). JSON 필드 이름에 흔히 써요.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="tail">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li><a href="https://www.youtube.com/watch?v=-40xErgJIBg" target="_blank" rel="noopener">원본 영상 — Cloud X Berry, 8 API Laws of Senior Backend Developer</a></li>
+    <li><a href="https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2" target="_blank" rel="noopener">RFC 9110 — HTTP Semantics, 9.2.2 Idempotent Methods</a></li>
+    <li><a href="https://www.rfc-editor.org/rfc/rfc5789" target="_blank" rel="noopener">RFC 5789 — PATCH Method for HTTP</a></li>
+    <li><a href="https://www.rfc-editor.org/rfc/rfc9110#section-15.5.21" target="_blank" rel="noopener">RFC 9110 — HTTP Semantics, 15.5.21 422 Unprocessable Content</a></li>
+    <li><a href="https://www.rfc-editor.org/rfc/rfc6585#section-4" target="_blank" rel="noopener">RFC 6585 — Additional HTTP Status Codes (429 Too Many Requests)</a></li>
+    <li><a href="https://www.rfc-editor.org/rfc/rfc9457" target="_blank" rel="noopener">RFC 9457 — Problem Details for HTTP APIs</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 1일에 이 영상을 보고 정리했어요. 원본은 Cloud X Berry 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="tooltip"></div>
+
+<script>
+(function () {
+  // ── 용어 툴팁 ───────────────────────────────────────
+  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
+  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
+  var tip = document.getElementById('tip');
+  var open = null;
+
+  function show(el) {
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    var name = el.getAttribute('data-term') || el.textContent;
+    tip.innerHTML = '';
+    var b = document.createElement('b');
+    b.textContent = name;
+    tip.appendChild(b);
+    tip.appendChild(document.createTextNode(desc));
+    tip.classList.add('on');
+
+    var r = el.getBoundingClientRect();
+    var t = tip.getBoundingClientRect();
+    var pad = 12;
+    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
+    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
+    var top = r.top + window.scrollY - t.height - 10;
+    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+    open = el;
+  }
+
+  function hide() {
+    tip.classList.remove('on');
+    open = null;
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    el.addEventListener('mouseenter', function () { show(el); });
+    el.addEventListener('mouseleave', hide);
+    el.addEventListener('focus', function () { show(el); });
+    el.addEventListener('blur', hide);
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      open === el ? hide() : show(el);
+    });
+  });
+
+  document.addEventListener('click', function (e) {
+    if (open && !e.target.closest('.term')) hide();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') hide();
+  });
+  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
+  window.addEventListener('resize', hide);
+
+  // ── 목차 현재 위치 표시 ─────────────────────────────
+  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
+  var map = {};
+  links.forEach(function (a) {
+    var s = document.getElementById(a.getAttribute('href').slice(1));
+    if (s) map[s.id] = a;
+  });
+  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
+  if ('IntersectionObserver' in window && targets.length) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        links.forEach(function (a) { a.classList.remove('active'); });
+        map[en.target.id].classList.add('active');
+      });
+    }, { rootMargin: '-10% 0px -75% 0px' });
+    targets.forEach(function (t) { io.observe(t); });
+  }
+})();
+</script>
+</body>
+</html>

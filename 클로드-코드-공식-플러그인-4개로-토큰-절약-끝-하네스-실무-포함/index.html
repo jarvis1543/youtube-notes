@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>클로드 코드 공식 플러그인 4개로 토큰 절약하기</title>
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --radius:16px; --maxw:760px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:6px 0; font-size:15px}
+  nav.toc a{color:var(--text-sub)}
+  nav.toc a.active{color:var(--brand); font-weight:600}
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  td code{font-size:13.5px}
+
+  /* ── 용어 툴팁 ─────────────────────────────────────── */
+  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
+    font-weight:600; background:none}
+  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
+  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
+    background:var(--text); color:var(--bg); border-radius:12px;
+    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
+    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease; pointer-events:none}
+  #tip.on{opacity:1; visibility:visible}
+  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>클로드 코드 공식 플러그인 4개로 토큰 절약하기</h1>
+  <p class="lede">토큰이 새는 네 구멍과, 그걸 막는 공식 플러그인 네 개를 짚어요</p>
+  <div class="meta">
+    <span>짐코딩</span><span class="dot">·</span>
+    <span>15:31</span><span class="dot">·</span>
+    <span>유튜브 영상 정리</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=L94yAQR9VvA" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li><code>session-report</code>는 토큰 명세서예요. 프로젝트·스킬·프롬프트별 사용량과 캐시 비율을 HTML 리포트로 보여 줘요.</li>
+    <li><code>claude-md-management</code>는 매 요청에 붙는 CLAUDE.md를 날씬하게 지켜요. 세션 끝 회의록 도구와 6가지 기준 채점 도구가 들어 있어요.</li>
+    <li><code>serena</code>는 IDE처럼 코드의 의미로 찾아요. 처음 탐색이 짧아지면 대화 내내 쌓이는 토큰이 줄어요.</li>
+    <li><code>hookify</code>는 Claude의 반복 실수를 규칙 파일로 미리 막아요. 실수를 다시 안 나오게 환경을 고치는 하네스 엔지니어링의 실전 도구예요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">공식 마켓플레이스와 플러그인 설치</a></li>
+    <li><a href="#s2">session-report: 토큰 명세서</a></li>
+    <li><a href="#s3">claude-md-management: 매 요청 세금 줄이기</a></li>
+    <li><a href="#s4">Serena: 글자가 아니라 의미로 찾기</a></li>
+    <li><a href="#s5">Hookify와 하네스 엔지니어링</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=51s" target="_blank" rel="noopener">00:51</a>
+  <h2>공식 마켓플레이스와 플러그인 설치</h2>
+<p>Anthropic 공식 마켓플레이스 <code>claude-plugins-official</code>에는 플러그인이 171개 있어요. 발표자는 그중 토큰 절약과 바로 이어지는 네 개를 골랐어요. 각각 토큰이 새는 서로 다른 구멍을 막아요.</p>
+<figure>
+  <img src="assets/frame-0106.png" alt="오늘의 4가지 무기 슬라이드: session-report 어디서 새는지 측정, claude-md-management 매 요청 세금 깎기, serena 코드 검색 의미 기반으로, hookify 재시도 사이클 차단">
+  <figcaption>네 플러그인이 각각 맡는 역할이에요. 측정, 고정 비용 줄이기, 탐색 줄이기, 재시도 막기 순서예요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=66s" target="_blank" rel="noopener">영상 01:06에서 보기</a></figcaption>
+</figure>
+<h3>설치하는 법</h3>
+<p>설치는 Claude Code 안에서 해요. <code>/plugin</code>을 열면 Discover(찾기), Installed(설치됨), Marketplaces(마켓플레이스 관리) 탭이 보여요. 공식 마켓플레이스는 처음부터 등록돼 있어요.</p>
+<p>마켓플레이스에 들어가 플러그인을 검색하고, 원하는 스코프를 골라 설치하면 돼요. 목록이 너무 길면 Esc로 한 단계 나와서 검색창에 이름을 바로 치는 게 빨라요. 설치가 끝나면 <code>/reload-plugins</code>로 다시 불러와야 바로 쓸 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0055.png" alt="Claude Code의 /plugin 화면 Marketplaces 탭. claude-plugins-official 항목에 171 available, 12 installed가 표시돼 있어요">
+  <figcaption>공식 마켓플레이스에 171개가 올라와 있고, 발표자는 그중 12개를 설치해 둔 상태예요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=55s" target="_blank" rel="noopener">영상 00:55에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=132s" target="_blank" rel="noopener">02:12</a>
+  <h2>session-report: 토큰 명세서</h2>
+<p>이 플러그인은 Claude Code의 카드 명세서예요. 카드 명세서가 카페, 주유소, 배달앱에 각각 얼마 썼는지 보여 주듯, 토큰을 프로젝트별·스킬별·<span class="term" data-term="서브에이전트" data-desc="메인 대화가 일을 나눠 맡기는 별도의 Claude 인스턴스예요. 자기 컨텍스트에서 작업하고 결과만 돌려줘요.">서브에이전트</span>별·프롬프트별로 나눠 한 화면에 보여 줘요.</p>
+<figure>
+  <img src="assets/frame-0225.png" alt="카드 명세서처럼 프로젝트별·스킬별·프롬프트별 토큰을 한 화면에 보여 준다는 설명 슬라이드">
+  <figcaption>발표자가 쓴 비유예요. 어디에 얼마를 썼는지 항목별로 나눠 보는 게 핵심이에요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=145s" target="_blank" rel="noopener">영상 02:25에서 보기</a></figcaption>
+</figure>
+<p>특히 쓸모 있는 상황은 두 가지예요. 한 달 비용이 많이 나왔는데 어디가 문제인지 모를 때, 그리고 캐시가 잘 작동하는지 확인하고 싶을 때예요. 작업 전후를 비교할 때도 써요.</p>
+<h3>캐시가 왜 중요할까요</h3>
+<p>Claude Code는 <span class="term" data-term="프롬프트 캐싱" data-desc="매번 똑같이 보내는 프롬프트 앞부분을 저장해 두고 다음 요청에서 다시 쓰는 기능이에요. 그 부분은 훨씬 싼 값에 처리돼서 비용이 크게 줄어요.">프롬프트 캐싱</span>을 자동으로 써요. 시스템 프롬프트나 <span class="term" data-term="CLAUDE.md" data-desc="프로젝트 규칙과 명령어를 적어 두는 파일이에요. Claude Code가 매 요청에 자동으로 붙여 보내서, 길어질수록 모든 요청이 무거워져요.">CLAUDE.md</span>처럼 매번 반복되는 앞부분을 한 번 처리해 캐시에 넣어 두고, 다음 요청부터는 그 부분을 10분의 1 가격에 처리해요. 캐시가 토큰 비용을 깎아 주는 핵심 장치인 셈이에요. 그래서 캐시가 자꾸 깨지면 할인이 사라져요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상의 '10분의 1'은 대부분 모델의 캐시 읽기 가격이에요. 지금 공식 문서 기준으로 캐시 읽기는 기본 입력 가격의 10%인데, Claude Opus 5.5는 5%, Claude Fable 5.1과 Mythos 5.1은 2.5%예요. 반대로 캐시에 처음 쓸 때는 5분 캐시 기준으로 기본 입력보다 25% 비싸요. 캐시가 깨지면 할인만 사라지는 게 아니라 다시 쓰는 비용까지 붙는 거예요.</p>
+  <p class="cite">출처: <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching" target="_blank" rel="noopener">Claude API 공식 문서 — Prompt caching</a></p>
+</aside>
+<h3>실행하고 읽기</h3>
+<p>자연어로 '지난 30일 세션 리포트 만들어 줘'라고 해도 되고, 직접 부를 수도 있어요. 발표자는 직접 부르는 쪽을 좋아해요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>부르는 법</th><th>기간</th></tr></thead>
+    <tbody>
+      <tr><td><code>/session-report:session-report</code></td><td>기본값 7일</td></tr>
+      <tr><td><code>... --since 30d</code></td><td>30일</td></tr>
+      <tr><td><code>... --since 24h</code></td><td>24시간</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>결과는 HTML 파일로 나와요. 맨 위에는 분석 기간, 입력·출력 토큰, 그중 캐시로 처리된 비율, 프로젝트별 사용량이 있어요. 데모 리포트는 7일 동안 1.01B 토큰을 썼고 그중 96.9%가 캐시 읽기였어요. 캐시가 깨진 횟수(cache breaks)도 따로 세어 줘요.</p>
+<figure>
+  <img src="assets/frame-0409.png" alt="session-report HTML 리포트 상단. 1.01B tokens, 96.9% cache-read, 세션 80, API 호출 5836, cache breaks 40, 프로젝트별 토큰 막대그래프">
+  <figcaption>한눈에 캐시 비율과 가장 많이 쓴 프로젝트가 보여요. 이 프로젝트 하나가 7일 토큰의 78%를 썼다는 findings도 나와요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=249s" target="_blank" rel="noopener">영상 04:09에서 보기</a></figcaption>
+</figure>
+<p>발표자가 가장 중요하다고 꼽은 건 '가장 비싼 프롬프트' 섹션이에요. 프롬프트를 누르면 그 프롬프트가 어떤 작업 사이클을 거쳤는지 펼쳐 볼 수 있어요. 7일 동안의 날짜별 사용 비율도 볼 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0422.png" alt="리포트의 날짜별 타임라인과 most expensive prompts 목록">
+  <figcaption>비싼 프롬프트 순서대로 늘어서 있어요. 어디부터 손볼지 정할 때 여기서 시작하면 돼요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=262s" target="_blank" rel="noopener">영상 04:22에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=288s" target="_blank" rel="noopener">04:48</a>
+  <h2>claude-md-management: 매 요청 세금 줄이기</h2>
+<p>CLAUDE.md는 프로젝트에서 Claude가 지켜야 할 규칙을 적는 파일이에요. 이 파일은 매 요청에 자동으로 따라붙어요. 프로젝트가 길어지면 규칙이 늘고, 규칙이 늘면 파일이 커지고, 결국 모든 요청이 그만큼 무거워져요. 발표자가 '매 요청 세금'이라고 부른 이유예요.</p>
+<p>이 플러그인은 그 파일을 날씬하게 지켜 줘요. 도구가 두 개 들어 있어요.</p>
+<figure>
+  <img src="assets/frame-0649.png" alt="두 가지 도구 슬라이드: 도구 A /revise-claude-md 세션 끝에 한 번 회의록, 도구 B claude-md-improver 주기적 분기별 감사. Anthropic의 Isabella He가 만든 공식 플러그인">
+  <figcaption>하나는 세션이 끝날 때마다, 하나는 가끔 한 번씩 돌리는 도구예요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=409s" target="_blank" rel="noopener">영상 06:49에서 보기</a></figcaption>
+</figure>
+<h3>/revise-claude-md: 회의 끝나고 쓰는 회의록</h3>
+<p>개발을 한참 하고 나면 'CLAUDE.md에 적어 둘걸' 싶은 게 생겨요. 그때 부르면 돼요. 데모에서는 설치 실습만 한 세션이라 추가할 게 없다고 답했어요. 이유도 같이 알려 주는데, 이번 세션에서 코드베이스 파일을 하나도 건드리지 않았다는 거예요.</p>
+<figure>
+  <img src="assets/frame-0616.png" alt="revise-claude-md 실행 결과. Step 2 추출 가능한 학습 없음, Step 3-5 CLAUDE.md 업데이트를 권하지 않는 이유와 대안 세 가지">
+  <figcaption>억지로 줄을 채우지 않고 '추가할 게 없다'고 답하는 점이 눈에 띄어요. 파일이 불어나는 걸 막는 게 이 도구의 목적이니까요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=376s" target="_blank" rel="noopener">영상 06:16에서 보기</a></figcaption>
+</figure>
+<h3>claude-md-improver: 6가지 기준 채점</h3>
+<p>주기적으로 CLAUDE.md를 검사할 때 써요. 각 파일을 아래 기준으로 채점해서 등급을 매겨요. 거의 안 쓰이는 명령어, 빠진 의존성, 누락된 환경 설정 같은 문제도 함께 짚어 줘요.</p>
+<figure>
+  <img src="assets/frame-0638.png" alt="6개 평가 기준 100점 만점 슬라이드: Commands/workflows 20, Architecture clarity 20, Non-obvious patterns 15, Conciseness 15, Currency 15, Actionability 15">
+  <figcaption>명령어·워크플로와 아키텍처 명확성이 20점씩으로 가장 무거워요. 나머지 넷이 15점씩이에요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=398s" target="_blank" rel="noopener">영상 06:38에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=413s" target="_blank" rel="noopener">06:53</a>
+  <h2>Serena: 글자가 아니라 의미로 찾기</h2>
+<p>Claude에게 '로그인 기능 확인해 줘'라고 하면, Claude는 <code>login</code>이라는 글자로 프로젝트를 뒤져요. 변수명이든 주석이든 문자열이든 글자만 맞으면 다 읽어요. 반면 IDE에서 Ctrl+클릭하면 정의로 바로 가요. IDE는 코드의 의미를 이해하기 때문이에요. Serena는 이 IDE식 검색을 Claude에게 붙여 주는 <span class="term" data-term="MCP" data-desc="Model Context Protocol. AI 앱에 외부 도구나 데이터를 붙이는 표준 규격이에요. 서버 하나를 붙이면 그 서버의 도구를 Claude가 바로 불러 쓸 수 있어요.">MCP</span> 서버예요.</p>
+<figure>
+  <img src="assets/frame-0753.png" alt="GREP vs SERENA 비교 슬라이드: GREP은 글자만, login 들어간 모든 줄을 다 잡아요. SERENA는 의미만, 그 함수가 진짜 정의된 곳과 호출되는 곳만">
+  <figcaption>두 방식의 차이를 한 장에 담았어요. 덜 읽는 만큼 토큰이 덜 들어요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=473s" target="_blank" rel="noopener">영상 07:53에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>상황</th><th><span class="term" data-term="grep" data-desc="파일에서 특정 글자가 들어간 줄을 찾는 검색 방식이에요. 빠르지만 코드의 의미는 몰라서 관계없는 줄까지 잡아요.">grep</span> (글자 검색)</th><th>Serena (의미 검색)</th></tr></thead>
+    <tbody>
+      <tr><td>'로그인 기능 어디 있어?'</td><td>login이 들어간 줄을 전부 읽어요</td><td>정의된 곳으로 바로 가요</td></tr>
+      <tr><td>'이 함수 어디서 쓰여?'</td><td>비슷한 글자까지 걸려서 결과가 불어나요</td><td>실제로 호출하는 곳만 돌려줘요</td></tr>
+      <tr><td><code>AuthContext</code> → <code>SessionContext</code> 이름 바꾸기</td><td>30개 파일을 하나씩 고쳐야 해요</td><td>rename 한 번이면 끝나요</td></tr>
+    </tbody>
+  </table>
+</div>
+<figure>
+  <img src="assets/frame-0823.png" alt="리팩토링할 때 rename 한 번이면 끝 슬라이드. AuthContext를 SessionContext로 바꾸는 예시">
+  <figcaption>리팩토링에서도 차이가 커요. 이름 하나를 바꾸는 데 grep은 파일을 일일이 열지만, Serena는 심볼 단위로 한 번에 바꿔요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=503s" target="_blank" rel="noopener">영상 08:23에서 보기</a></figcaption>
+</figure>
+<h3>왜 '1등 도구'일까요</h3>
+<p>발표자가 가장 강조한 건 누적 비용이에요. 글자 검색에 1만 토큰을 썼다고 해 볼게요. 그 검색 결과는 대화가 이어지는 내내 컨텍스트에 남아서, 매 요청마다 다시 들어가요. 대화가 길어질수록 처음 검색 비용이 계속 쌓이는 거예요. 그래서 처음 탐색을 짧게 끝내는 게 대화 전체 비용을 줄여요. 발표자가 Serena를 토큰 절약 1등 도구로 꼽은 이유예요.</p>
+<p>Serena는 Anthropic이 만든 게 아닌 외부 도구인데도, 공식 마켓플레이스와 Claude 공식 페이지에 소개돼 있어요.</p>
+<h3>설치와 연결</h3>
+<p>플러그인 설치는 앞에서 본 방법 그대로 <code>serena</code>를 검색하면 돼요. 다만 Serena MCP가 제대로 붙으려면 파이썬 패키지 매니저 <code>uv</code>가 시스템에 깔려 있어야 해요. 데모에서도 플러그인을 설치했는데 <code>/mcp</code>를 열어 보니 Serena가 failed 상태였어요.</p>
+<figure>
+  <img src="assets/frame-1030.png" alt="설치 2단계 전제 조건 슬라이드: uv 패키지 매니저가 시스템에 깔려있어야 함. 없으면 uv not found 에러로 MCP가 failed로 뜸">
+  <figcaption>failed가 뜨는 가장 흔한 이유예요. uv 설치 페이지에서 OS에 맞는 명령을 복사해 실행하면 돼요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=630s" target="_blank" rel="noopener">영상 10:30에서 보기</a></figcaption>
+</figure>
+<p><span class="term" data-term="uv" data-desc="파이썬 패키지와 도구를 설치하고 실행하는 관리 도구예요. pip보다 빠르고, Serena도 이걸로 설치하고 실행해요.">uv</span>를 설치한 뒤 <code>/mcp</code>에서 Serena를 골라 Reconnect하면 연결되고, 로컬에서 대시보드가 열려요. 데모의 대시보드에는 활성 도구가 26개로 나왔어요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Serena 공식 README는 지금 'MCP나 플러그인 마켓플레이스로 설치하지 말라'고 적고 있어요. 마켓플레이스의 설치 명령이 낡았다는 이유예요. 대신 <code>uv tool install -p 3.13 serena-agent</code>로 설치하고 <code>serena init</code>으로 초기화한 다음, 공식 문서의 클라이언트별 안내대로 Claude Code에 연결하라고 해요. 영상의 마켓플레이스 방식이 안 되면 이 방법을 따르는 게 좋아요.</p>
+  <p class="cite">출처: <a href="https://github.com/oraios/serena#quick-start" target="_blank" rel="noopener">oraios/serena README — Quick Start</a>, <a href="https://docs.astral.sh/uv/getting-started/installation/" target="_blank" rel="noopener">uv 공식 문서 — Installation</a></p>
+</aside>
+<h3>실제 프로젝트에서 써 보기</h3>
+<p>'구글 로그인 버튼이 어디에 쓰이냐'고 물었더니, Serena의 <code>find_referencing_symbols</code>가 위치 세 곳을 표로 돌려줬어요. re-export 한 곳, import 한 곳, 실제로 JSX에서 쓰는 한 곳이에요. 덤으로 import 경로가 프로젝트 규칙(barrel 경유 필수)을 어긴 곳도 짚어 줬어요.</p>
+<figure>
+  <img src="assets/frame-1118.png" alt="Serena find_referencing_symbols 결과 표. src/features/auth/index.ts re-export, src/app/login/page.tsx import, src/app/login/page.tsx JSX 사용 세 줄">
+  <figcaption>GoogleLoginButton을 참조하는 곳만 정확히 세 곳 나왔어요. 글자 검색이었다면 login이 들어간 다른 줄까지 다 읽었을 거예요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=678s" target="_blank" rel="noopener">영상 11:18에서 보기</a></figcaption>
+</figure>
+<p>대시보드에는 어떤 도구를 몇 번 썼는지가 찍혀요. 자연어로 요청했는데 원하는 MCP가 안 움직이면, 대화에서 MCP 이름을 직접 언급하라고 조언해요. 데모에서도 'use serena mcp'라고 적으니 프로젝트가 활성화되고 도구가 제대로 돌았어요.</p>
+<figure>
+  <img src="assets/frame-1126.png" alt="Serena 대시보드의 Tool Usage. activate_project, check_onboarding_performed, find_referencing_symbols, find_symbol, initial_instructions가 각각 1회">
+  <figcaption>질문 하나에 어떤 도구가 쓰였는지 보여요. 프로젝트 활성화부터 심볼 검색까지 다섯 단계를 거쳤어요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=686s" target="_blank" rel="noopener">영상 11:26에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=708s" target="_blank" rel="noopener">11:48</a>
+  <h2>Hookify와 하네스 엔지니어링</h2>
+<p>마지막은 Hookify예요. 한마디로 Claude가 자주 하는 실수를 미리 막아 주는 도구예요. 발표자는 이 도구가 <span class="term" data-term="하네스 엔지니어링" data-desc="에이전트가 실수할 때마다 그 실수가 다시 안 나오도록 지침 파일이나 도구를 고치는 일이에요. 모델을 탓하지 않고 작업 환경을 다듬는다는 생각이에요.">하네스 엔지니어링</span>의 핵심과 맞닿아 있다고 봐요.</p>
+<h3>하네스 엔지니어링이란</h3>
+<p>이 말을 처음 쓴 Mitchell Hashimoto는 자기 블로그에서 이렇게 정의했어요.</p>
+<blockquote>
+  <p>anytime you find an agent makes a mistake, you take the time to engineer a solution such that the agent never makes that mistake again.</p>
+  <p>에이전트가 실수하는 걸 볼 때마다, 그 실수를 다시는 하지 않도록 해결책을 엔지니어링하는 것.</p>
+  <cite>— Mitchell Hashimoto, 'My AI Adoption Journey' (영상 12:10 부근)</cite>
+</blockquote>
+<p>AI를 탓하는 대신, 실수가 다시 안 나오도록 환경을 고치는 거예요. Hookify는 이걸 돕는 Anthropic 공식 플러그인이에요.</p>
+<figure>
+  <img src="assets/frame-1214.png" alt="Mitchell Hashimoto 블로그 'My AI Adoption Journey'의 harness engineering 정의 부분. AGENTS.md 개선과 프로그램 도구 두 가지 형태를 설명">
+  <figcaption>원문은 두 가지 방법을 들어요. AGENTS.md 같은 지침 파일을 고치는 것과, 실수를 잡아 주는 도구를 만드는 것이에요. Hookify는 둘을 합친 쪽에 가까워요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=734s" target="_blank" rel="noopener">영상 12:14에서 보기</a></figcaption>
+</figure>
+<h3>토큰은 어디서 새나요</h3>
+<p>Claude가 잘못 작업하면, '왜 거기 썼어요?'라고 지적하고, Claude가 사과하고 정리하고, 다시 시도해요. 이 사이클 한 번에 수천 토큰이 사라져요. Hookify는 실수가 일어나기 전에 막아서 사이클 자체를 없애요. 토큰도 아끼고, 작업이 엉뚱한 데로 흘러갈 확률도 줄여요.</p>
+<figure>
+  <img src="assets/frame-1253.png" alt="토큰이 진짜로 새는 지점 슬라이드: 클로드가 잘못 씀, 여러분이 왜 거기 썼어요 지적, 클로드가 사과하고 정리, 다시 시도. 사이클 한 번 수천 토큰 사라짐(추정)">
+  <figcaption>실수 한 번이 네 단계 사이클로 번지는 구조예요. 슬라이드의 '수천 토큰'은 발표자도 추정이라고 적어 뒀어요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=773s" target="_blank" rel="noopener">영상 12:53에서 보기</a></figcaption>
+</figure>
+<h3>규칙 만들기</h3>
+<p><code>/hookify</code> 뒤에 막고 싶은 실수를 자연어로 적으면 돼요. 데모는 '프로덕션 코드에 console.log 쓰지 마'였어요. 스킬이 발동해서 몇 가지 질문을 하고, 답하고 제출하면 <code>.claude/</code> 아래에 마크다운 규칙 파일이 하나 생겨요.</p>
+<p>파일 위쪽 <span class="term" data-term="프런트매터" data-desc="마크다운 파일 맨 위에 --- 사이에 넣는 설정 블록이에요. Hookify는 여기에 규칙이 언제 발동할지를 적어요.">프런트매터</span>에는 언제 발동할지가, 아래 본문에는 Claude에게 보여 줄 지침이 들어가요. 데모 규칙은 이렇게 생겼어요.</p>
+<ul>
+  <li>파일 경로가 <code>src/</code> 아래의 <code>.ts</code>·<code>.tsx</code>이고</li>
+  <li>테스트 파일(<code>.test.</code>)이 아니며</li>
+  <li>새로 쓰는 코드에 <code>console.log(</code>가 있으면 경고해요</li>
+</ul>
+<figure>
+  <img src="assets/frame-1332.png" alt="생성된 .claude/hookify.warn-console-log.local.md 파일. name warn-console-log, event file, action warn, conditions에 file_path·new_text 정규식 조건, 아래 본문에 console.log 대신 console.error/warn 사용 등 지침">
+  <figcaption>규칙 파일 하나에 '언제'와 '뭐라고 말할지'가 다 들어 있어요. 사람이 읽고 고치기도 쉬워요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=812s" target="_blank" rel="noopener">영상 13:32에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>데모 규칙은 <code>action: warn</code>이라 경고만 띄우고 작업은 진행돼요. 공식 README에 따르면 <code>action: block</code>으로 바꾸면 도구 실행 자체를 막아요. <code>event</code>는 <code>bash</code>, <code>file</code>, <code>stop</code>, <code>all</code> 등을 고를 수 있어요. 규칙은 다시 시작하지 않아도 다음 도구 사용부터 바로 적용돼요.</p>
+  <p class="cite">출처: <a href="https://github.com/anthropics/claude-plugins-official/tree/main/plugins/hookify" target="_blank" rel="noopener">anthropics/claude-plugins-official — hookify README</a></p>
+</aside>
+<h3>Hookify 명령 모음</h3>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>명령</th><th>하는 일</th></tr></thead>
+    <tbody>
+      <tr><td><code>/hookify &lt;자연어&gt;</code></td><td>설명대로 규칙 파일 자동 생성</td></tr>
+      <tr><td><code>/hookify</code></td><td>최근 대화에서 짜증났던 패턴 자동 추출</td></tr>
+      <tr><td><code>/hookify:list</code></td><td>등록된 규칙 보기</td></tr>
+      <tr><td><code>/hookify:configure</code></td><td>규칙 켜고 끄기</td></tr>
+      <tr><td><code>/hookify:help</code></td><td>사용법 도움말</td></tr>
+      <tr><td><code>writing-rules</code></td><td>규칙 문법·정규식 가이드</td></tr>
+    </tbody>
+  </table>
+</div>
+<figure>
+  <img src="assets/frame-1358.png" alt="hookify 6개 sub-skill·command 슬라이드. 인자 없는 /hookify의 '최근 짜증난 패턴 자동 추출'에 동그라미 표시">
+  <figcaption>발표자가 따로 표시한 건 인자 없는 <code>/hookify</code>예요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=838s" target="_blank" rel="noopener">영상 13:58에서 보기</a></figcaption>
+</figure>
+<p>발표자의 팁은 간단해요. 같은 실수를 세 번 봤다 싶으면 인자 없이 <code>/hookify</code>를 한 번 실행해 보세요. 최근 대화를 훑어서 그 실수를 막는 하네스 규칙을 알아서 추가해 줘요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 이름과 용어가 잘못 받아적힌 곳이 많아요. 화면과 문맥으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>파네스 / 한스 / 한네스 엔지니어링</td><td>하네스 엔지니어링 (harness engineering)</td><td></td></tr>
+      <tr><td>엔스로픽 / 엔스로피 / 엔스로</td><td>Anthropic</td><td></td></tr>
+      <tr><td>클러드 플러그인 오피셜</td><td>claude-plugins-official</td><td>공식 마켓플레이스 이름</td></tr>
+      <tr><td>세레나</td><td>Serena</td><td></td></tr>
+      <tr><td>후키파이 / 푸키파이 / 쿠키파이</td><td>Hookify</td><td></td></tr>
+      <tr><td>미첼 해시모터</td><td>Mitchell Hashimoto</td><td></td></tr>
+      <tr><td>그랩</td><td>grep</td><td></td></tr>
+      <tr><td>아이디</td><td>IDE</td><td></td></tr>
+      <tr><td>어스 컨텍스트 / 세션 컨텍스트</td><td>AuthContext / SessionContext</td><td></td></tr>
+      <tr><td>스틸별, 서브에트별</td><td>스킬별, 서브에이전트별</td><td></td></tr>
+      <tr><td>분석 기관</td><td>분석 기간</td><td></td></tr>
+      <tr><td>10분로</td><td>10분의 1</td><td></td></tr>
+      <tr><td>큰 절약</td><td>토큰 절약</td><td></td></tr>
+      <tr><td>UV임스토</td><td>uv install</td><td>검색어</td></tr>
+      <tr><td>점클로드 디렉터리</td><td>.claude 디렉터리</td><td></td></tr>
+      <tr><td>프론트 메터</td><td>frontmatter (프런트매터)</td><td></td></tr>
+      <tr><td>페일</td><td>failed</td><td>/mcp 화면의 연결 상태</td></tr>
+      <tr><td>절략</td><td>절약</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail">
+  <h2>이 글에 나온 용어</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
+      <tbody>
+        <tr><td>프롬프트 캐싱</td><td>매번 똑같이 보내는 프롬프트 앞부분을 저장해 두고 다음 요청에서 다시 쓰는 기능이에요. 그 부분은 훨씬 싼 값에 처리돼서 비용이 크게 줄어요.</td></tr>
+        <tr><td>CLAUDE.md</td><td>프로젝트 규칙과 명령어를 적어 두는 파일이에요. Claude Code가 매 요청에 자동으로 붙여 보내서, 길어질수록 모든 요청이 무거워져요.</td></tr>
+        <tr><td>서브에이전트</td><td>메인 대화가 일을 나눠 맡기는 별도의 Claude 인스턴스예요. 자기 컨텍스트에서 작업하고 결과만 돌려줘요.</td></tr>
+        <tr><td>MCP</td><td>Model Context Protocol. AI 앱에 외부 도구나 데이터를 붙이는 표준 규격이에요. 서버 하나를 붙이면 그 서버의 도구를 Claude가 바로 불러 쓸 수 있어요.</td></tr>
+        <tr><td>grep</td><td>파일에서 특정 글자가 들어간 줄을 찾는 검색 방식이에요. 빠르지만 코드의 의미는 몰라서 관계없는 줄까지 잡아요.</td></tr>
+        <tr><td>uv</td><td>파이썬 패키지와 도구를 설치하고 실행하는 관리 도구예요. pip보다 빠르고, Serena도 이걸로 설치하고 실행해요.</td></tr>
+        <tr><td>하네스 엔지니어링</td><td>에이전트가 실수할 때마다 그 실수가 다시 안 나오도록 지침 파일이나 도구를 고치는 일이에요. 모델을 탓하지 않고 작업 환경을 다듬는다는 생각이에요.</td></tr>
+        <tr><td>프런트매터</td><td>마크다운 파일 맨 위에 --- 사이에 넣는 설정 블록이에요. Hookify는 여기에 규칙이 언제 발동할지를 적어요.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="tail">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li><a href="https://www.youtube.com/watch?v=L94yAQR9VvA" target="_blank" rel="noopener">원본 영상 — 짐코딩</a></li>
+    <li><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching" target="_blank" rel="noopener">Claude API 공식 문서 — Prompt caching</a></li>
+    <li><a href="https://github.com/oraios/serena" target="_blank" rel="noopener">oraios/serena 공식 GitHub 저장소</a></li>
+    <li><a href="https://docs.astral.sh/uv/getting-started/installation/" target="_blank" rel="noopener">uv 공식 문서 — Installation</a></li>
+    <li><a href="https://github.com/anthropics/claude-plugins-official/tree/main/plugins/hookify" target="_blank" rel="noopener">anthropics/claude-plugins-official — hookify README</a></li>
+    <li><a href="https://mitchellh.com/writing/my-ai-adoption-journey" target="_blank" rel="noopener">Mitchell Hashimoto — My AI Adoption Journey</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 1일에 이 영상을 보고 정리했어요. 원본은 짐코딩 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="tooltip"></div>
+
+<script>
+(function () {
+  // ── 용어 툴팁 ───────────────────────────────────────
+  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
+  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
+  var tip = document.getElementById('tip');
+  var open = null;
+
+  function show(el) {
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    var name = el.getAttribute('data-term') || el.textContent;
+    tip.innerHTML = '';
+    var b = document.createElement('b');
+    b.textContent = name;
+    tip.appendChild(b);
+    tip.appendChild(document.createTextNode(desc));
+    tip.classList.add('on');
+
+    var r = el.getBoundingClientRect();
+    var t = tip.getBoundingClientRect();
+    var pad = 12;
+    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
+    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
+    var top = r.top + window.scrollY - t.height - 10;
+    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+    open = el;
+  }
+
+  function hide() {
+    tip.classList.remove('on');
+    open = null;
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    el.addEventListener('mouseenter', function () { show(el); });
+    el.addEventListener('mouseleave', hide);
+    el.addEventListener('focus', function () { show(el); });
+    el.addEventListener('blur', hide);
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      open === el ? hide() : show(el);
+    });
+  });
+
+  document.addEventListener('click', function (e) {
+    if (open && !e.target.closest('.term')) hide();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') hide();
+  });
+  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
+  window.addEventListener('resize', hide);
+
+  // ── 목차 현재 위치 표시 ─────────────────────────────
+  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
+  var map = {};
+  links.forEach(function (a) {
+    var s = document.getElementById(a.getAttribute('href').slice(1));
+    if (s) map[s.id] = a;
+  });
+  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
+  if ('IntersectionObserver' in window && targets.length) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        links.forEach(function (a) { a.classList.remove('active'); });
+        map[en.target.id].classList.add('active');
+      });
+    }, { rootMargin: '-10% 0px -75% 0px' });
+    targets.forEach(function (t) { io.observe(t); });
+  }
+})();
+</script>
+</body>
+</html>

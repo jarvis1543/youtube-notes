@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>클로드로 모션 그래픽 영상 만들기</title>
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --radius:16px; --maxw:760px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:6px 0; font-size:15px}
+  nav.toc a{color:var(--text-sub)}
+  nav.toc a.active{color:var(--brand); font-weight:600}
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  td code{font-size:13.5px}
+
+  /* ── 용어 툴팁 ─────────────────────────────────────── */
+  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
+    font-weight:600; background:none}
+  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
+  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
+    background:var(--text); color:var(--bg); border-radius:12px;
+    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
+    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease; pointer-events:none}
+  #tip.on{opacity:1; visibility:visible}
+  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>클로드로 모션 그래픽 영상 만들기</h1>
+  <p class="lede">한 문장 프롬프트와 구조화된 프롬프트가 어떻게 다른지 짚어요</p>
+  <div class="meta">
+    <span>Jay Choi | 인디해커 라이프</span><span class="dot">·</span>
+    <span>08:10</span><span class="dot">·</span>
+    <span>유튜브 영상 정리</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=_kc0riDpxOY" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>한 문장 프롬프트로도 그럴듯한 영상과 배경 음악이 나와요. 하지만 결과가 매번 다르고 내가 원한 영상은 아니에요.</li>
+    <li>디자인 방향을 안 주면 Opus는 기본 스타일로 돌아가요. 원하는 스타일과 금지할 것을 구체적으로 적어야 해요.</li>
+    <li>잘 짠 프롬프트는 재료, 연출 방향(금지 목록), 장면 구조, 구현 네 칸으로 나뉘어요. 클로드는 재료를 묻고 계획을 보여 준 뒤 만들어요.</li>
+    <li>구조는 두고 재료만 바꾸면 애플 스타일 영상도, 내 채널 브랜드 영상도 만들 수 있어요.</li>
+    <li>장면과 금지 효과를 정하는 판단은 여전히 사람 몫이에요. 클로드는 도구의 문턱을 낮춰 줄 뿐이에요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">한 문장 프롬프트로 시작해요</a></li>
+    <li><a href="#s2">길고 구체적인 프롬프트는 뭐가 다를까요?</a></li>
+    <li><a href="#s3">같은 구조로 애플 스타일 영상 만들기</a></li>
+    <li><a href="#s4">재료만 바꿔 내 채널 영상 만들기</a></li>
+    <li><a href="#s5">모션 디자인을 대체할까요?</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>한 문장 프롬프트로 시작해요</h2>
+<p>요즘 도형과 글자가 화려하게 움직이는 <span class="term" data-term="모션 그래픽" data-desc="도형, 글자, 아이콘 같은 그래픽 요소를 움직여서 만드는 영상이에요. 실사 촬영 없이 디자인 요소만으로 정보나 분위기를 전해요.">모션 그래픽</span> 영상이 자주 보여요. 별도의 편집 툴이나 전문 기술로 만든 게 아니에요. 클로드한테 말로 부탁해서 코드로만 만든 영상이에요.</p>
+<p>시작은 아주 단순한 한 문장이에요. 멋진 모션 디자이너라는 걸 보여 주는 15초짜리 <span class="term" data-term="쇼릴" data-desc="디자이너나 영상 제작자가 자기 작업 중 좋은 장면만 짧게 엮은 포트폴리오 영상이에요. 지원서나 소개용으로 써요.">쇼릴</span>을 만들어 달라는 내용이죠. 발표자는 Claude Code에서 <code>/effort</code>로 <span class="term" data-term="effort" data-desc="Claude가 답하기 전에 얼마나 깊이 생각할지 정하는 설정이에요. 높일수록 품질이 오를 수 있지만 시간과 토큰을 더 써요.">effort</span>를 Max까지 올린 뒤 이 문장을 그대로 넣었어요. 영어 원문 그대로 넣어도 되고, 한국어로 옮겨 넣어도 괜찮다고 해요.</p>
+<figure>
+  <img src="assets/frame-0050.png" alt="Claude Code 입력창에 'make a dynamic 15-second motion graphics video…' 한 문장 프롬프트를 넣은 화면">
+  <figcaption>영상에 쓰인 한 문장 프롬프트예요. 이 문장 하나가 많은 사람이 따라 한 출발점이에요. <a href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=50s" target="_blank" rel="noopener">영상 00:50에서 보기</a></figcaption>
+</figure>
+<blockquote>
+  <p>make a dynamic 15-second motion graphics video that shows what an incredible motion designer you are, like it's your showreel for a résumé. go all out</p>
+  <p>네가 얼마나 대단한 모션 디자이너인지 보여 주는 15초짜리 역동적인 모션 그래픽 영상을 만들어 줘. 이력서에 붙일 쇼릴처럼, 있는 힘껏.</p>
+  <cite>— 영상 00:34 (화면에 띄운 프롬프트)</cite>
+</blockquote>
+<p>결과는 꽤 그럴듯했어요. 여러 도형이 리듬에 맞춰 움직이고, 배경 음악까지 알아서 붙었어요. 발표자는 원래 이런 영상을 <span class="term" data-term="Remotion" data-desc="React 코드로 영상을 만드는 오픈소스 프레임워크예요. 데이터에 맞춰 영상을 자동으로 찍어 낼 때 많이 써요.">Remotion</span>이나 <span class="term" data-term="HyperFrames" data-desc="HeyGen이 공개한 오픈소스 프레임워크예요. HTML과 CSS로 쓴 장면을 MP4 영상으로 렌더링하고, AI 에이전트가 쓰기 쉽게 만들었어요.">HyperFrames</span> 같은 외부 툴을 깔고 여러 스킬을 붙여서 만들었어요. 이제는 그런 준비 없이 클로드 하나로 된다는 점을 짚어요.</p>
+<figure>
+  <img src="assets/frame-0130.png" alt="한 문장 프롬프트로 만든 결과 영상. 검은 배경에 색색의 도형이 격자로 배열돼 있어요">
+  <figcaption>한 문장으로 나온 결과물이에요. 화려하지만 무엇을 보여 줄지는 클로드가 정했어요. <a href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=90s" target="_blank" rel="noopener">영상 01:30에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상에 이름만 나온 두 툴은 둘 다 코드로 영상을 만드는 오픈소스 프레임워크예요. Remotion은 React 코드로 영상을 만들고, HyperFrames는 HeyGen이 공개한 도구로 HTML·CSS로 쓴 장면을 MP4로 렌더링해요. HyperFrames는 스스로를 '에이전트를 위해 만든' 도구라고 소개해요.</p>
+  <p class="cite">출처: <a href="https://github.com/remotion-dev/remotion" target="_blank" rel="noopener">Remotion GitHub</a> · <a href="https://github.com/heygen-com/hyperframes" target="_blank" rel="noopener">HyperFrames GitHub</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=113s" target="_blank" rel="noopener">01:53</a>
+  <h2>길고 구체적인 프롬프트는 뭐가 다를까요?</h2>
+<p>한 문장 프롬프트에는 분명한 한계가 있어요. 돌릴 때마다 결과가 달라지고, 보여 주기용으로는 멋지지만 내가 원한 영상은 아니에요. 발표자는 Anthropic이 Opus 5.5 사용법을 정리하면서 직접 밝힌 내용을 근거로 들어요. 디자인 방향을 따로 주지 않으면 Opus는 늘 쓰던 기본 스타일로 돌아간다는 거예요.</p>
+<figure>
+  <img src="assets/frame-0213.png" alt="Claude Platform Docs의 'Claude Opus 5.5 프롬프팅' 한국어 문서 화면">
+  <figcaption>발표자가 근거로 띄운 공식 문서예요. 원하는 스타일과 금지할 것을 직접 적어야 하는 이유가 여기 있어요. <a href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=133s" target="_blank" rel="noopener">영상 02:13에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>문서 원문은 이렇게 말해요. 디자인 방향 없이 프론트엔드 작업을 맡기면 Opus 5.5는 몇 가지 기본 스타일로 돌아가요. '뻔한 AI 느낌을 피해 줘' 같은 막연한 지시는 기본 스타일 하나를 다른 기본 스타일로 바꿀 뿐이에요. 대신 피할 패턴을 구체적으로 이름 붙여 적으면 잘 따르고, 첫 결과에서 어떤 스타일이 나왔는지 보고 목록을 늘려 가라고 권해요. 영상 속 금지 목록이 바로 이 방식이에요.</p>
+  <p class="cite">출처: <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5" target="_blank" rel="noopener">Claude Platform Docs — Prompting Claude Opus 5.5 (Frontend design defaults)</a></p>
+</aside>
+<h3>프롬프트를 네 칸으로 나눠요</h3>
+<p>두 번째 프롬프트는 한 문장이 아니라 훨씬 길어요. 화면에 보인 프롬프트는 태그로 칸을 나눠 두었어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>칸</th><th>담는 내용</th><th>영상 속 예</th></tr></thead>
+    <tbody>
+      <tr><td><code>&lt;inputs&gt;</code> 재료</td><td>어떤 화면·색·음악을 쓸지. 클로드가 사용자에게 먼저 물어요</td><td>버튼, 슬라이더, 토글 같은 UI 상태 8~12개, 120 <span class="term" data-term="BPM" data-desc="1분에 박자가 몇 번 오는지 나타내는 음악 속도 단위예요. 영상에서는 박자에 맞춰 장면을 바꾸는 기준이 돼요.">BPM</span> 무료 음원</td></tr>
+      <tr><td><code>&lt;direction&gt;</code> 연출 방향</td><td>영상의 느낌, 화면이 이어지는 방식, 금지 목록</td><td>도형 하나가 끊기지 않고 <span class="term" data-term="모핑" data-desc="한 모양이 끊기지 않고 다른 모양으로 서서히 바뀌는 효과예요. 컷 없이 이어져서 화면 전환이 매끄러워 보여요.">모핑</span>, 웜그레이 배경, 흑백 컴포넌트</td></tr>
+      <tr><td><code>&lt;structure&gt;</code> 장면 구조</td><td>박자별로 무엇이 일어나는지</td><td>120 BPM, 7마디. 버튼 → 로더 → 체크 → 음악 플레이어 → … → 다시 버튼</td></tr>
+      <tr><td><code>&lt;build&gt;</code> 구현</td><td>어떻게 만들지에 대한 기술 지시</td><td>HTML 파일 하나, 시간 함수로 스타일 계산, <span class="term" data-term="Playwright" data-desc="브라우저를 코드로 조종하는 자동화 도구예요. 여기서는 HTML 애니메이션을 프레임마다 캡처해 영상으로 만드는 데 써요.">Playwright</span>로 렌더링</td></tr>
+    </tbody>
+  </table>
+</div>
+<figure>
+  <img src="assets/frame-0240.png" alt="'01 재료' 다이어그램. inputs 칸에서 화살표가 나와 클로드가 장면, 색, 음악을 묻는 그림">
+  <figcaption>재료 칸은 클로드가 먼저 물어볼 질문 목록이 돼요. 장면, 색, 음악을 정해 달라고 하죠. <a href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=160s" target="_blank" rel="noopener">영상 02:40에서 보기</a></figcaption>
+</figure>
+<p>가장 중요한 칸은 연출 방향 안의 금지 목록이에요. 템플릿처럼 보이는 건 전부 쓰지 말라고 못 박아 둬요. 그 아래 구현 칸은 클로드가 읽을 부분이라 사람이 자세히 몰라도 괜찮아요.</p>
+<figure>
+  <img src="assets/frame-0253.png" alt="프롬프트 원문의 direction과 structure 칸. 'Banned: bouncy easing, particle bursts, glows…'라는 금지 목록이 보여요">
+  <figcaption>금지 목록에는 통통 튀는 이징, 파티클 폭발, 글로우, UI에 들어간 그라데이션, 템플릿 같은 느낌이 들어 있어요. <a href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=173s" target="_blank" rel="noopener">영상 02:53에서 보기</a></figcaption>
+</figure>
+<figure>
+  <img src="assets/frame-0237.png" alt="프롬프트의 build 칸. HTML 파일 하나, 스프링, Playwright 렌더링, ffmpeg 등 7개 구현 지시가 적혀 있어요">
+  <figcaption>구현 칸은 렌더링 방법까지 정해 둬요. 사람은 훑어만 봐도 되는 부분이에요. <a href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=157s" target="_blank" rel="noopener">영상 02:37에서 보기</a></figcaption>
+</figure>
+<p>정리하면 한 문장 프롬프트는 클로드한테 알아서 해 보라고 맡기는 거예요. 이 프롬프트는 내가 원하는 걸 하나부터 열까지 알려 주는 거고요. 입맛에 맞게 고쳐서 다른 영상을 만들 수도 있어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th></th><th>한 문장 프롬프트</th><th>구조화된 프롬프트</th></tr></thead>
+    <tbody>
+      <tr><td>맡기는 범위</td><td>장면, 색, 음악 전부 클로드가 정해요</td><td>사람이 정하고 클로드는 옮겨요</td></tr>
+      <tr><td>진행 방식</td><td>바로 만들어요</td><td>재료를 묻고, 계획을 보여 준 뒤 만들어요</td></tr>
+      <tr><td>결과</td><td>돌릴 때마다 달라요</td><td>정한 화면이 정한 순서대로 움직여요</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>묻고, 계획을 보여 주고, 만들어요</h3>
+<p>발표자는 시간 관계상 effort를 Medium으로 돌렸어요. 그래도 되도록 Max로 돌리라고 권해요. 프롬프트를 넣자 클로드는 바로 만들지 않고 재료부터 물었어요. 화면은 예시 그대로, 색은 최소한으로, 음악은 알아서 골라 달라고 답했어요.</p>
+<p>그다음에도 바로 코드를 짜지 않고 박자별 계획표를 먼저 보여 줬어요. 마음에 안 드는 장면은 이 단계에서 순서를 바꾸거나 빼면 돼요.</p>
+<figure>
+  <img src="assets/frame-0403.png" alt="Claude Code가 보여 준 박자별 계획표. 버튼, 로더, 체크, 다이내믹 아일랜드, 음악 플레이어 순으로 커서 동작이 적혀 있어요">
+  <figcaption>코드를 짜기 전에 나온 계획표예요. 박자마다 어떤 화면이 되고 커서가 무엇을 하는지 적혀 있어요. <a href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=243s" target="_blank" rel="noopener">영상 04:03에서 보기</a></figcaption>
+</figure>
+<p>결과를 한 문장 버전과 비교하면 차이가 분명해요. 버튼, 음악 플레이어, 검색창이 정해 둔 순서대로 자연스럽게 이어져요.</p>
+<figure>
+  <img src="assets/frame-0443.png" alt="결과 영상의 한 장면. 밝은 배경 위에 검색창 팔레트가 열리고 Share track, Shuffle 항목이 보여요">
+  <figcaption>도형 하나가 계속 모핑되며 검색 팔레트까지 이어지는 장면이에요. <a href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=283s" target="_blank" rel="noopener">영상 04:43에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 문서는 effort 설정을 영상과 조금 다르게 안내해요. Opus 5.5의 기본값은 medium이고, xhigh와 max는 품질이 실제로 좋아지는 걸 확인한 작업에만 쓰라고 해요. 같은 단계라도 Opus 5.5는 이전 모델보다 더 많이 생각해서 시간과 토큰이 늘어나요. Max 권장은 발표자의 경험에서 나온 조언으로 보면 돼요.</p>
+  <p class="cite">출처: <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5" target="_blank" rel="noopener">Claude Platform Docs — Prompting Claude Opus 5.5 (Calibrate effort)</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=286s" target="_blank" rel="noopener">04:46</a>
+  <h2>같은 구조로 애플 스타일 영상 만들기</h2>
+<p>한 단계 더 나아가 애플 스타일 영상을 만들어요. 전체 구조는 앞의 프롬프트와 같고, 요구 사항이 더 많아요. 장면 설명을 보면 원 하나가 사각형이 되고, 그리드로 펼쳐지고, 잠금 화면과 휴대폰과 Mac 창으로 계속 모핑돼요.</p>
+<figure>
+  <img src="assets/frame-0456.png" alt="애플 스타일 프롬프트의 장면 설명. Glass, Stage, Order, Wall 단계별로 모핑 순서가 적혀 있어요">
+  <figcaption>장면마다 무엇이 무엇으로 바뀌는지 문장으로 적어 둔 부분이에요. 마지막 프레임이 첫 프레임과 같아서 반복 재생돼요. <a href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=296s" target="_blank" rel="noopener">영상 04:56에서 보기</a></figcaption>
+</figure>
+<p>이번에도 클로드가 먼저 요청 사항을 물었어요. 브랜드 이름은 Slowlife로 정하고, 사진과 음악은 알아서 써 달라고 답했어요. 다른 툴을 연결하지 않았는데도 코드로 만들었다고는 믿기 어려운 품질이 나왔다는 게 발표자의 평가예요.</p>
+<figure>
+  <img src="assets/frame-0531.png" alt="결과 영상 속 Slowlife 액자 상품 페이지. 액자 사진과 Morning 상품명, 가격 €89, 프레임 색 선택 버튼이 보여요">
+  <figcaption>사진이 액자 상품 페이지로 모핑된 장면이에요. 브랜드 이름만 알려 줬는데 상품 페이지까지 그럴듯하게 채웠어요. <a href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=331s" target="_blank" rel="noopener">영상 05:31에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=352s" target="_blank" rel="noopener">05:52</a>
+  <h2>재료만 바꿔 내 채널 영상 만들기</h2>
+<p>마지막으로 앞의 프롬프트를 응용해 발표자 채널의 브랜드 영상을 만들어요. 프롬프트 구조는 그대로 두고 내용만 채널 이야기로 바꿨어요. 이름은 채널 이름인 Jay Choi로, 사진은 작업하는 모습으로, 배경 영상은 책상에서 일하는 클립으로 채웠어요.</p>
+<figure>
+  <img src="assets/frame-0608.png" alt="inputs 칸을 바꾼 다이어그램. 이름 Jay Choi, 작업 사진 여러 장, 책상 영상 클립이 각 줄에 연결돼 있어요">
+  <figcaption>바뀐 건 재료 칸뿐이에요. 이름, 사진, 영상 세 가지만 내 것으로 갈아 끼웠어요. <a href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=368s" target="_blank" rel="noopener">영상 06:08에서 보기</a></figcaption>
+</figure>
+<p>결과 영상은 작업 사진 그리드, 유리 질감의 터미널 창을 거쳐 휴대폰 속 유튜브 채널 화면으로 이어져요. 구조만 잘 잡혀 있으면 재료와 내용만 바꿔서 나만의 영상을 얼마든지 만들 수 있다는 게 이 구간의 요점이에요.</p>
+<figure>
+  <img src="assets/frame-0628.png" alt="결과 영상 속 휴대폰 화면. Jay Choi 인디해커 라이프 유튜브 채널 페이지가 보여요">
+  <figcaption>앞의 애플 스타일 장면처럼 휴대폰으로 모핑되는데, 이번엔 화면이 발표자의 채널 페이지예요. <a href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=388s" target="_blank" rel="noopener">영상 06:28에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=396s" target="_blank" rel="noopener">06:36</a>
+  <h2>모션 디자인을 대체할까요?</h2>
+<p>네 가지 영상 모두 프롬프트를 붙여 넣어서 만들었어요. 그래도 어떤 장면을 넣을지, 박자마다 무엇이 일어날지, 어떤 효과를 금지할지는 모션 디자인을 알아야 내릴 수 있는 판단이에요. 클로드는 그 판단을 화면으로 옮겨 줄 뿐이에요.</p>
+<blockquote>
+  <p>저는 이게 모션 디자인을 대체한다기보다 도구를 다루는 문턱이 낮아진 것일 뿐이라 생각합니다.</p>
+  <cite>— 영상 07:08</cite>
+</blockquote>
+<p>예전에는 머릿속에 좋은 그림이 있어도 만들 줄 몰라서 포기했어요. 이제는 그 그림을 하나씩 설명할 수만 있으면 돼요. 발표자는 한 문장 프롬프트로 가볍게 시작하고, 제대로 된 영상이 필요하면 구조화된 프롬프트를 고쳐 가며 원하는 방향으로 만들어 보라고 권해요.</p>
+<figure>
+  <img src="assets/frame-0740.png" alt="inputs, direction, structure, build 네 칸에 각각 수정 표시가 붙고 화살표가 과녁(원하는 방향)을 향하는 다이어그램">
+  <figcaption>네 칸을 하나씩 내 상황에 맞게 고치면 원하는 방향으로 다가가요. <a href="https://www.youtube.com/watch?v=_kc0riDpxOY&amp;t=460s" target="_blank" rel="noopener">영상 07:40에서 보기</a></figcaption>
+</figure>
+<p>영상에 쓴 프롬프트는 모두 X에 공개된 오픈소스 템플릿이고, 발표자가 영상 설명란에 링크를 걸어 두겠다고 했어요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 이름과 몇몇 단어가 잘못 받아적혔어요. 화면과 문맥으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>오버스</td><td>Opus</td><td>Claude Opus 5.5</td></tr>
+      <tr><td>트론값</td><td>effort 값</td><td>화면에 /effort 명령과 Max가 보여요 (추정)</td></tr>
+      <tr><td>별개 트</td><td>별도 툴 (추정)</td><td>편집 툴 이름일 수 있어요. 문맥상 &#x27;전문 툴을 쓴 게 아니다&#x27;라는 뜻이에요</td></tr>
+      <tr><td>리모션</td><td>Remotion</td><td></td></tr>
+      <tr><td>하이퍼프레임</td><td>HyperFrames</td><td></td></tr>
+      <tr><td>제로부터 요구</td><td>재료부터 요구</td><td>화면 자막에 &#x27;재료&#x27;로 나와요</td></tr>
+      <tr><td>한재 작업</td><td>현재 작업</td><td></td></tr>
+      <tr><td>슬로우라이플</td><td>Slowlife</td><td>화면의 브랜드 이름</td></tr>
+      <tr><td>세워줬습니다</td><td>채워줬습니다</td><td>화면 자막 기준</td></tr>
+      <tr><td>대치한다</td><td>대체한다</td><td></td></tr>
+      <tr><td>이걸 용한</td><td>이걸 응용한</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail">
+  <h2>이 글에 나온 용어</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
+      <tbody>
+        <tr><td>모션 그래픽</td><td>도형, 글자, 아이콘 같은 그래픽 요소를 움직여서 만드는 영상이에요. 실사 촬영 없이 디자인 요소만으로 정보나 분위기를 전해요.</td></tr>
+        <tr><td>effort</td><td>Claude가 답하기 전에 얼마나 깊이 생각할지 정하는 설정이에요. 높일수록 품질이 오를 수 있지만 시간과 토큰을 더 써요.</td></tr>
+        <tr><td>쇼릴</td><td>디자이너나 영상 제작자가 자기 작업 중 좋은 장면만 짧게 엮은 포트폴리오 영상이에요. 지원서나 소개용으로 써요.</td></tr>
+        <tr><td>Remotion</td><td>React 코드로 영상을 만드는 오픈소스 프레임워크예요. 데이터에 맞춰 영상을 자동으로 찍어 낼 때 많이 써요.</td></tr>
+        <tr><td>HyperFrames</td><td>HeyGen이 공개한 오픈소스 프레임워크예요. HTML과 CSS로 쓴 장면을 MP4 영상으로 렌더링하고, AI 에이전트가 쓰기 쉽게 만들었어요.</td></tr>
+        <tr><td>BPM</td><td>1분에 박자가 몇 번 오는지 나타내는 음악 속도 단위예요. 영상에서는 박자에 맞춰 장면을 바꾸는 기준이 돼요.</td></tr>
+        <tr><td>모핑</td><td>한 모양이 끊기지 않고 다른 모양으로 서서히 바뀌는 효과예요. 컷 없이 이어져서 화면 전환이 매끄러워 보여요.</td></tr>
+        <tr><td>Playwright</td><td>브라우저를 코드로 조종하는 자동화 도구예요. 여기서는 HTML 애니메이션을 프레임마다 캡처해 영상으로 만드는 데 써요.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="tail">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li><a href="https://www.youtube.com/watch?v=_kc0riDpxOY" target="_blank" rel="noopener">원본 영상 — Jay Choi | 인디해커 라이프</a></li>
+    <li><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5" target="_blank" rel="noopener">Claude Platform Docs — Prompting Claude Opus 5.5</a></li>
+    <li><a href="https://github.com/remotion-dev/remotion" target="_blank" rel="noopener">Remotion — GitHub 저장소</a></li>
+    <li><a href="https://github.com/heygen-com/hyperframes" target="_blank" rel="noopener">HyperFrames (HeyGen) — GitHub 저장소</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 6일에 이 영상을 보고 정리했어요. 원본은 Jay Choi | 인디해커 라이프 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="tooltip"></div>
+
+<script>
+(function () {
+  // ── 용어 툴팁 ───────────────────────────────────────
+  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
+  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
+  var tip = document.getElementById('tip');
+  var open = null;
+
+  function show(el) {
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    var name = el.getAttribute('data-term') || el.textContent;
+    tip.innerHTML = '';
+    var b = document.createElement('b');
+    b.textContent = name;
+    tip.appendChild(b);
+    tip.appendChild(document.createTextNode(desc));
+    tip.classList.add('on');
+
+    var r = el.getBoundingClientRect();
+    var t = tip.getBoundingClientRect();
+    var pad = 12;
+    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
+    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
+    var top = r.top + window.scrollY - t.height - 10;
+    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+    open = el;
+  }
+
+  function hide() {
+    tip.classList.remove('on');
+    open = null;
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    el.addEventListener('mouseenter', function () { show(el); });
+    el.addEventListener('mouseleave', hide);
+    el.addEventListener('focus', function () { show(el); });
+    el.addEventListener('blur', hide);
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      open === el ? hide() : show(el);
+    });
+  });
+
+  document.addEventListener('click', function (e) {
+    if (open && !e.target.closest('.term')) hide();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') hide();
+  });
+  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
+  window.addEventListener('resize', hide);
+
+  // ── 목차 현재 위치 표시 ─────────────────────────────
+  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
+  var map = {};
+  links.forEach(function (a) {
+    var s = document.getElementById(a.getAttribute('href').slice(1));
+    if (s) map[s.id] = a;
+  });
+  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
+  if ('IntersectionObserver' in window && targets.length) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        links.forEach(function (a) { a.classList.remove('active'); });
+        map[en.target.id].classList.add('active');
+      });
+    }, { rootMargin: '-10% 0px -75% 0px' });
+    targets.forEach(function (t) { io.observe(t); });
+  }
+})();
+</script>
+</body>
+</html>

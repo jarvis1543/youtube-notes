@@ -1,0 +1,1532 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI로 디자인하기 — 도구, 워크플로, 디자인 시스템</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>AI로 디자인하기 — 도구, 워크플로, 디자인 시스템</h1>
+  <p class="lede">도구마다 맡길 일과, 디자인 시스템을 AI에 가르치는 법을 정리해요</p>
+  <div class="meta">
+    <span>UI Collective</span><span class="dot">·</span>
+    <span>영상 01:51:39</span><span class="dot">·</span>
+    <span>읽는 데 약 39분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=r-MPiu0E4W4" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>모든 걸 한 번에 해 주는 AI(Artificial Intelligence) 디자인 도구는 없어요. 여러 도구를 오가며 강점을 나눠 써야 해요.</li>
+    <li>플랫폼과 모델은 달라요. 같은 Grok 모델도 Grok 플랫폼과 Cursor에서 결과가 크게 갈렸어요.</li>
+    <li>발표자의 기본 흐름은 ChatGPT·Grok으로 반복, Google Antigravity로 프로토타입과 자체 QA(Quality Assurance), Claude와 <span class="term" data-term="스킬" data-en="Skill" data-desc="AI에게 줄 지시와 참고 자료를 SKILL.md 파일로 묶어 둔 꾸러미예요. 매번 프롬프트로 설명할 내용을 한 번 적어 두고 필요할 때 불러 써요." data-g="3">스킬</span>로 디자인 시스템 연결이에요.</li>
+    <li>스킬은 마음에 드는 방향을 담는 지향 스킬과, 반드시 지킬 디자인 시스템 스킬로 나눠요. 디자인 시스템 스킬은 변수, 컴포넌트, 타입, 간격과 모양, 규칙과 <span class="term" data-term="기술 부채" data-en="Technical debt" data-desc="문제인 걸 알지만 고치는 비용이 너무 커서 안고 가는 부분이에요. 스킬에 적어 두지 않으면 AI가 감사하다가 그걸 고치려 들어요." data-g="11">기술 부채</span>로 쪼개요.</li>
+    <li>AI는 디자인 시스템을 대신 만들어 주지 못해요. 타입 스케일은 맡겨도 되지만 변수 구조와 복잡한 컴포넌트는 직접 이해해야 해요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">디자이너에게 이제 무엇을 기대하나요?</a></li>
+    <li><a href="#s2">같은 프롬프트로 도구를 비교해 보니</a></li>
+    <li><a href="#s3">아이디어 넓히기와 레퍼런스 찾기</a></li>
+    <li><a href="#s4">스킬로 디자인 방향을 붙잡아 두기</a></li>
+    <li><a href="#s5">기본 워크플로: 반복, 프로토타입, 디자인 시스템</a></li>
+    <li><a href="#s6">문서화와 감사도 스킬에 맡기기</a></li>
+    <li><a href="#s7">디자인 시스템을 AI에 연결하는 다섯 가지 스킬</a></li>
+    <li><a href="#s8">AI가 디자인 시스템을 만들어 줄 수 있을까요?</a></li>
+    <li><a href="#s9">스크롤로 움직이는 인터랙션 만들기</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=60s" target="_blank" rel="noopener">01:00</a>
+  <h2>디자이너에게 이제 무엇을 기대하나요?</h2>
+<p>발표자 Kirk는 디자이너가 평범한 프로덕트 디자이너에서 <span class="term" data-term="디자인 엔지니어" data-en="Design engineer" data-desc="디자인뿐 아니라 코드와 AI 도구로 아이디어를 동작하는 형태까지 만드는 역할이에요. 영상은 디자이너 역할이 이쪽으로 옮겨 가고 있다고 봐요." data-g="1">디자인 엔지니어</span> 쪽으로 옮겨 가고 있다고 봐요. 완벽한 코드를 쓰라는 뜻은 아니에요. Figma 화면 한 장보다 더 많은 걸, 그러니까 실제로 동작하는 모습을 만들어 보여 줄 수 있어야 한다는 뜻이에요.</p>
+<p>그 자신도 요즘 Figma는 디자인 시스템 작업에만 써요. <span class="term" data-term="와이어프레임" data-en="Wireframe" data-desc="색과 세부 디자인 없이 레이아웃과 요소 배치만 보여 주는 로우파이 화면이에요. 방향을 정하기 전에 구조부터 고를 때 써요." data-g="4">와이어프레임</span>이나 실제 화면 디자인에 Figma를 마지막으로 쓴 게 언제인지 기억나지 않는다고 해요. 그래서 이제 기준은 "Figma를 안다"가 아니라 "디자인 쪽 AI 도구를 대부분 알고, 각각 언제 쓰는지 안다"예요.</p>
+
+<h3>도구 하나만 파면 안 되는 이유</h3>
+<p>"나는 이 도구 두 개만 쓸래"라는 태도를 경계해요. 이 분야는 일주일 사이에도 다른 도구가 더 좋은 기능을 내놓아요. 발표자도 다 만들어 둔 Claude Code 튜토리얼을 업데이트 때문에 다시 찍었다고 해요. 회사마다 쓰는 도구가 달라서, 면접관이 어떤 도구를 물을지도 알 수 없어요.</p>
+<p>아래 슬라이드가 최근 실제 작업 흐름이에요. 왼쪽부터 Grok, Claude, ChatGPT, 다시 Grok을 거쳐 마지막에 Figma로 들어가요. 화면 몇 장을 만드는 데 도구 네 개를 오갔어요.</p>
+<figure>
+  <img src="assets/frame-0400.png" alt="'A recent workflow I ran' 제목 아래 Grok, Claude, ChatGPT, Grok, Figma 로고가 화살표로 이어진 슬라이드">
+  <figcaption>
+    도구 사이를 오가는 게 예외가 아니라 일상이에요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=240s" target="_blank" rel="noopener">영상 04:00에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>"다 해 주는 도구를 찾아 와"라는 요청</h3>
+<p>발표자가 운영하는 커뮤니티에는 상사에게 이런 요청을 받았다는 질문이 자주 와요. 아래 슬라이드의 문장 그대로예요. 한 번의 프롬프트로 세계 최고 수준 UI(User Interface)를 만들고, 디자인 시스템에 연결되고, 완벽한 코드까지 내놓는 도구를 찾으라는 거예요.</p>
+<figure>
+  <img src="assets/frame-0430.png" alt="'My boss asked me to find a tool that produces world class UI's in one prompt, and connects to our design system, and produces perfect code'라는 인용문 슬라이드">
+  <figcaption>
+    이런 도구는 지금 없어요. 영상은 이 장면을 상사에게 보여 주라고 해요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=270s" target="_blank" rel="noopener">영상 04:30에서 보기</a>
+  </figcaption>
+</figure>
+<p>대신 여러 도구를 오가면 "꽤 좋은 UI를 몇 번의 프롬프트로, 디자인 시스템에 어느 정도 연결해서, 꽤 괜찮은 코드로" 만드는 데까지는 갈 수 있어요. 한 줄 프롬프트로 사용자 흐름 전체를 뽑았다는 영상도 믿지 말라고 해요. 그런 결과는 대개 뒤에서 한두 시간 준비한 거예요.</p>
+
+<h3>직급별로 기대하는 AI 지식</h3>
+<p>디자이너가 코딩을 제대로 배워야 하냐는 질문에는 "아니요"라고 답해요. 핵심은 개발자 없이 아이디어를 살려 보여 주고, 그 작업 공간을 개발자에게 넘겨 다듬게 하는 거예요. 면접에서는 직급과 상관없이 AI 이야기가 반드시 나온다고 해요. 슬라이드는 직급별 기대치를 세 줄로 정리해요.</p>
+<figure>
+  <img src="assets/frame-0800.png" alt="'Role types and required AI Knowledge' 슬라이드. Junior designer, Senior designer, Design leader 세 항목과 각각의 설명">
+  <figcaption>
+    Junior는 이 영상 내용, Senior는 더 고급 AI 워크플로, Design leader는 개발자 워크플로에 대한 깊은 지식이에요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=480s" target="_blank" rel="noopener">영상 08:00에서 보기</a>
+  </figcaption>
+</figure>
+<p>디자인 리더 쪽 변화가 가장 커요. 2년 전 리더는 디자인 경력이 긴 사람이었는데, 요즘은 개발자 워크플로에 밝은 사람이 많아졌다고 해요. 그래도 Figma 실력은 AI 실력만큼 갖춰야 해요. 프로젝트에 따라 손으로 픽셀을 옮겨야 하고, 큰 회사 중에도 AI 도구를 아직 못 쓰는 곳이 많기 때문이에요.</p>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=591s" target="_blank" rel="noopener">09:51</a>
+  <h2>같은 프롬프트로 도구를 비교해 보니</h2>
+<p>본격적인 실습 전에 실험을 하나 해요. 같은 프롬프트를 여러 도구에 넣고 걸린 시간, 쓴 토큰, 디자인 품질을 비교하는 거예요. 프롬프트는 아래 슬라이드 그대로예요. 뉴욕, 보스턴, 토론토 같은 북미 대도시의 고액 자산가를 상대하는 자산관리 회사 'UI Investments'의 대시보드를 만들라는 내용이에요. 흰 배경, 선명한 타이포그래피, 프리미엄 스타일을 요구하고, 고객이 큰 구매 목표에 맞게 가고 있는지 보여 줘야 해요.</p>
+<figure>
+  <img src="assets/frame-1051.png" alt="'The prompt' 제목 아래 UI Investments 대시보드 디자인 프롬프트 두 문단이 적힌 슬라이드">
+  <figcaption>
+    모든 도구에 같은 문장을 넣었어요. 코드를 만드는 도구에는 끝에 '다 되면 로컬에서 실행해 줘'만 덧붙였어요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=651s" target="_blank" rel="noopener">영상 10:51에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>도구별 결과</h3>
+<p>비교한 도구와 결과를 한 표로 모았어요. 시간과 토큰은 영상의 비교 슬라이드와 화면에 나온 값이에요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>도구 (모델)</th><th>시간</th><th>토큰</th><th>발표자 평가</th></tr></thead>
+    <tbody>
+      <tr><td>Grok</td><td>약 2분</td><td>47k</td><td>좋음. 순자산을 사이드바에 넣은 독특한 구성</td></tr>
+      <tr><td>Claude Code (Fable 5)</td><td>17분</td><td>128.6k</td><td>좋음. 가장 깔끔하지만 시간과 토큰을 많이 씀</td></tr>
+      <tr><td>Claude Code (Opus 4.8)</td><td>8분</td><td>75.5k</td><td>보통. AI가 만든 티가 남</td></tr>
+      <tr><td>Codex (5.6 Sol)</td><td>12분</td><td>표시 안 됨</td><td>보통. 시간에 비해 아쉬움</td></tr>
+      <tr><td>Codex (GPT-6 Astra)</td><td>—</td><td>—</td><td>괜찮지만 '한 줄로 세계 최고 디자인'은 아님</td></tr>
+      <tr><td>Cursor (Grok 4.5)</td><td>—</td><td>—</td><td>Grok 플랫폼보다 훨씬 AI스러움</td></tr>
+      <tr><td>Claude Design</td><td>—</td><td>—</td><td>평소보다 크게 못함</td></tr>
+      <tr><td>Figma AI, Google Stitch</td><td>—</td><td>—</td><td>가장 나쁨. 텍스트가 어긋나고 여백이 이상함</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>Grok 결과는 큰 순자산 숫자 대신 왼쪽 사이드바에 자산 구성(유동자산, 투자, 부동산, 현금 여력)을 넣었어요. 가운데에는 구매 목표 카드가 있고, 카드마다 목표보다 앞서는지, 위험한지, 뒤처졌는지를 표시해요. 2분짜리 결과로는 아주 좋다고 평가해요.</p>
+<figure>
+  <img src="assets/frame-1351.png" alt="Grok이 만든 UI Investments 대시보드. 왼쪽 사이드바에 순자산 18.42M 달러와 자산 구성, 가운데에 Purchasing goal pace 카드들">
+  <figcaption>
+    목표 카드 오른쪽 위의 Ahead, On pace 같은 꼬리표가 '목표에 맞게 가고 있는지'라는 요구를 그대로 화면에 옮긴 부분이에요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=831s" target="_blank" rel="noopener">영상 13:51에서 보기</a>
+  </figcaption>
+</figure>
+<p>Claude Fable 5 결과는 반대로 큰 순자산 숫자를 맨 위에 두고, 아래에 수익률과 유동자산 위젯, 순자산 그래프, 오른쪽에 자산 배분 막대를 놓았어요. 위젯끼리 은근하게 어울리고 글자 처리도 좋아요. 대신 그만한 시간과 토큰을 썼으니 이 정도는 나와야 한다는 평이에요.</p>
+<figure>
+  <img src="assets/frame-1521.png" alt="Claude Fable 5가 만든 대시보드. 큰 글씨의 총 순자산 24,318,000 달러, 아래에 순자산 추이 그래프, 오른쪽에 Asset allocation 막대">
+  <figcaption>
+    품질은 가장 좋았지만 17분과 128.6k 토큰이 들었어요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=921s" target="_blank" rel="noopener">영상 15:21에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>교훈 1: 플랫폼은 모델이 아니에요</h3>
+<p>가장 중요한 교훈이에요. 아래 슬라이드 왼쪽은 Grok 플랫폼에서, 오른쪽은 Cursor에서 Grok 모델로 만든 결과예요. 같은 모델인데 오른쪽이 훨씬 AI가 만든 티가 나요. 왼쪽은 조금만 손보면 고객에게 넘겨도 알아채지 못할 수준이라고 해요.</p>
+<figure>
+  <img src="assets/frame-1721.png" alt="'Platform is not the same as model' 슬라이드. 왼쪽 Grok Platform 결과와 오른쪽 Grok Model 결과 대시보드를 나란히 놓음">
+  <figcaption>
+    Cursor는 모든 모델을 쓸 수 있게 해 주지만, 모델이 만들어진 원래 플랫폼만큼의 결과를 보장하진 않아요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=1041s" target="_blank" rel="noopener">영상 17:21에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자에게 "Claude Code에서 당신만큼 결과가 안 나온다"고 묻는 디자이너들에게 무엇을 쓰냐고 되물으면, 대부분 Cursor라고 답한대요.</p>
+
+<h3>교훈 2: Figma AI와 Stitch는 쓰는 방법이 따로 있어요</h3>
+<p>Figma AI에 화면 하나를 설명하는 프롬프트를 주면 결과가 나빠요. 하지만 Figma가 제안하는 프롬프트, 예를 들어 '모바일 장바구니 화면 세 가지 변형을 새 프레임에 만들어 줘'를 쓰면 꽤 좋은 결과가 나와요. 온라인에서 Figma AI를 칭찬하는 사례도 대부분 이런 추천 프롬프트에서 나온 거래요.</p>
+<figure>
+  <img src="assets/frame-1851.png" alt="Figma 캔버스에 AI가 만든 모바일 장바구니 화면 세 가지. 왼쪽 패널에 '장바구니 화면 세 가지 변형' 추천 프롬프트">
+  <figcaption>
+    가운데 두 화면은 꽤 수준이 높다고 해요. 개별 화면보다 큰 흐름이나 추천 프롬프트로 써야 해요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=1131s" target="_blank" rel="noopener">영상 18:51에서 보기</a>
+  </figcaption>
+</figure>
+<p>Google Stitch도 같아요. 자체 프롬프트로 전체 흐름을 요청하면 괜찮지만, 직접 쓴 화면 프롬프트에는 약해요. 그래도 기능만 보면 이상에 가장 가까운 디자인 도구라고 해요. Figma 같은 캔버스에서 변형을 만들고, 다시 생성하고, 모바일 버전을 추가하는 일이 쉬워요. 아래 화면 위쪽의 Generate, Modify, Preview 메뉴가 그 기능이에요.</p>
+<figure>
+  <img src="assets/frame-1951.png" alt="Google Stitch 캔버스에 분재 가게 웹 페이지 디자인이 놓여 있고 위쪽에 Generate, Modify, Preview 메뉴, 아래에 프롬프트 입력창">
+  <figcaption>
+    형식과 기능은 좋은데, 프롬프트로 얻는 결과가 아직 기대에 못 미쳐요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=1191s" target="_blank" rel="noopener">영상 19:51에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>교훈 3: 가장 효율적인 도구 하나에 기대지 마세요</h3>
+<p>시간과 토큰을 모은 슬라이드예요. 위에서부터 Grok, Claude Fable, Claude Opus, Codex 순서예요. 숫자만 보면 Grok 하나만 쓰고 싶어져요.</p>
+<figure>
+  <img src="assets/frame-2051.png" alt="'Token Costs and Time' 표. Grok 2mins 47k Great, Fable 17 mins 128.6k Great, Opus 8 min 75.5k Average, Codex 12 min Not shown Average">
+  <figcaption>
+    Grok은 가장 빠르고 싸면서 품질도 좋았어요. 그래도 Grok만 쓰라는 결론은 아니에요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=1251s" target="_blank" rel="noopener">영상 20:51에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 반대로 말해요. Grok은 새 도구라 회사가 쓰지 않을 수 있고, 나중에 비싸질 수도 있어요. 대부분의 기업은 Claude를 쓰니, 혼자 일하는 프리랜서가 아니라면 Grok만 익히는 건 위험해요. 회사가 Claude를 쓴다고 Fable만 쓰는 것도 위험해요. Anthropic이 Fable 접근을 제한할 수 있다는 소문이 있고, 회사가 막을 수도 있어요. 다음 달 AI가 어떤 모습일지 아무도 모른다는 게 요지예요.</p>
+
+<h3>캔버스에서 AI로 디자인하기: Paper</h3>
+<p>Figma처럼 캔버스 위에서 AI가 디자인하는 도구도 있어요. 대표적인 게 Paper와 pen.dev(옛 이름 Pencil)예요. 다만 Stitch처럼 아래쪽에 프롬프트 입력창이 있는 게 아니에요. SVG(Scalable Vector Graphics)나 이미지 생성 같은 일부 기능 말고는, Claude Code 같은 에이전트를 <span class="term" data-term="MCP" data-en="Model Context Protocol" data-desc="AI 에이전트가 외부 도구나 데이터에 연결되는 표준 방식이에요. 영상에서는 Claude Code를 Paper, Mobbin, Figma에 붙이는 데 써요." data-g="2">MCP(Model Context Protocol)</span>로 연결해서 캔버스에 그리게 해야 해요. 연결 방법은 Paper 문서의 MCP 페이지에 도구별로 나와 있어요.</p>
+<figure>
+  <img src="assets/frame-2551.png" alt="paper.design 문서의 'Paper MCP Server' 페이지. What is an MCP server? 설명과 MCP Servers에서 Design file로 이어지는 그림">
+  <figcaption>
+    발표자는 데스크톱 앱을 받고 문서대로 Claude Code를 연결하는 데 10초쯤 걸렸다고 해요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=1551s" target="_blank" rel="noopener">영상 25:51에서 보기</a>
+  </figcaption>
+</figure>
+<p>'재무 관리 앱 대시보드를 Paper 안에 만들어 줘'라고 하자, 캔버스 위에 사이드바, 인사말, 순자산 그래프, 현금 흐름, 카테고리별 지출, 최근 활동이 있는 대시보드가 그려졌어요. 결과는 괜찮았어요. 문제는 비용이에요. Opus 5로 대시보드 한 장을 만드는 데 155.4k 토큰이 들었어요.</p>
+<figure>
+  <img src="assets/frame-2651.png" alt="Paper 캔버스에 AI가 그린 재무 대시보드. 'Good morning, Maya' 인사말과 482,940 달러 순자산, 그래프와 지출 표">
+  <figcaption>
+    아직 수정도 안 한 첫 시안 한 장 값이 155.4k 토큰이에요. 반복 수정까지 하면 주간·월간 토큰 한도를 금방 써 버려요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=1611s" target="_blank" rel="noopener">영상 26:51에서 보기</a>
+  </figcaption>
+</figure>
+<p>그래서 Paper나 pen.dev를 쓰지 말라는 건 아니에요. 좋은 결과를 낼 수 있지만, 토큰 비용이 결과보다 큰 경우가 많으니 조심해서 쓰라는 거예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Paper 공식 문서는 Paper가 HTML(HyperText Markup Language)과 CSS(Cascading Style Sheets) 위에 만들어져서 다른 디자인 도구를 에이전트로 다룰 때보다 대체로 더 정확하고 빠르며 토큰 효율적이라고 설명해요. 발표자가 본 155.4k 토큰은 한 번의 실험 결과이고, Paper의 이 주장은 제조사 설명이에요. 두 쪽 모두 같은 조건에서 비교한 수치는 아니라서, 직접 써 보며 확인하는 게 좋아요. 문서에는 Claude, Codex, Cursor, Antigravity 등 에이전트별 연결 방법도 있어요.</p>
+  <p class="cite">출처: <a href="https://paper.design/docs/mcp" target="_blank" rel="noopener">Paper 공식 문서 — Paper MCP Server</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=1701s" target="_blank" rel="noopener">28:21</a>
+  <h2>아이디어 넓히기와 레퍼런스 찾기</h2>
+<p>이제 실제 디자인 과정의 단계별로 도구를 써 봐요. 첫 단계는 아이디어를 넓히는 반복과 탐색이에요.</p>
+
+<h3>ChatGPT 이미지로 빠른 첫 시안</h3>
+<p>ChatGPT는 디자인에 무엇을 넣을지 묻는 용도가 아니에요. 이미지 생성으로 시안을 뽑는 용도예요. 회사나 개인 구독이 있다면 싸고 쉬워요. 앞의 UI Investments 프롬프트를 그대로 넣자 2분쯤 뒤 아래 시안이 나왔어요. 상단 카드 네 개, 순자산 그래프, 원형 자산 배분 차트까지 갖춘 그럴듯한 첫 안이에요.</p>
+<figure>
+  <img src="assets/frame-2925.png" alt="ChatGPT가 이미지로 생성한 UI Investments 대시보드 시안. 'Good morning, Alex' 인사말, 24,750,000 달러 카드, 그래프와 도넛 차트">
+  <figcaption>
+    경쟁사가 적은 분야라 참고할 화면이 없을 때 특히 좋아요. 단, 레이어가 없는 그림 한 장이에요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=1765s" target="_blank" rel="noopener">영상 29:25에서 보기</a>
+  </figcaption>
+</figure>
+<p>그림이라 바로 쓸 수는 없어요. Grok, Claude Code, Codex, Claude Design 같은 도구에 이 이미지를 주고 다시 만들게 해야 해요. 그래서 ChatGPT의 자리는 대략적인 반복 단계까지예요.</p>
+
+<h3>Claude Design으로 와이어프레임</h3>
+<p>Claude Design은 반복과 탐색에도 좋아요. 고품질 시안은 시간과 크레딧이 많이 들지만, 모델을 Fable 5에서 Opus 4.8로 바꾸고 와이어프레임 템플릿을 고르면 레이아웃만 보는 로우파이 시안이 나와요. 이번에 같은 프롬프트로 받은 결과가 아래 화면이에요.</p>
+<figure>
+  <img src="assets/frame-3045.png" alt="Claude Design이 만든 UI Investments 와이어프레임 여러 장. 회색 상자와 원형 차트 자리, 48.2M 같은 숫자만 있는 로우파이 화면">
+  <figcaption>
+    발표자도 지금까지 받은 와이어프레임 중 최악이라고 해요. 숨기지 않고 그대로 보여 줬어요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=1845s" target="_blank" rel="noopener">영상 30:45에서 보기</a>
+  </figcaption>
+</figure>
+<p>평소 결과는 이쪽이라고 해요. 예전 튜토리얼에서 받은 와이어프레임으로, 세 가지 레이아웃이 나란히 있고 각 안이 무엇을 강조하는지 왼쪽에 설명이 붙어 있어요. 고객에게 "어느 쪽이 좋으세요?"라고 바로 물어볼 수 있는 수준이에요.</p>
+<figure>
+  <img src="assets/frame-3125.png" alt="예전 작업에서 Claude Design이 만든 Ampersand &amp; Co. 와이어프레임 세 안. 왼쪽에 각 안의 특징 설명">
+  <figcaption>
+    고객용으로 바로 써도 될 만큼 정돈된 와이어프레임이에요. 같은 도구라도 결과는 날마다 달라요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=1885s" target="_blank" rel="noopener">영상 31:25에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>Mobbin MCP로 레퍼런스 찾기</h3>
+<p>Mobbin은 실제 앱과 웹의 화면과 흐름을 모아 둔 저장소예요. 설정의 MCP 메뉴에서 여러 AI 도구를 연결할 수 있어요. 연결하면 Mobbin 전체를 AI가 대신 뒤져 줘요. 아래 화면에서 위쪽이 이미 연결된 Claude, 아래 'Connect more tools'가 Claude Code, Cursor, Codex, v0 같은 다른 도구예요.</p>
+<figure>
+  <img src="assets/frame-3205.png" alt="Mobbin 설정의 MCP 페이지. Connected 아래 Claude, Connect more tools 아래 Claude Code, Cursor, Codex, v0, Other 버튼">
+  <figcaption>
+    Claude에서는 커넥터 찾아보기에서 Mobbin을 검색해 연결하고 인증하면 끝이에요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=1925s" target="_blank" rel="noopener">영상 32:05에서 보기</a>
+  </figcaption>
+</figure>
+<p>연결한 뒤 '여백이 많은 대시보드 디자인을 Mobbin에서 찾아 줘'라고 하자, 여백이 넉넉한 웹 대시보드 8개를 골라 왔어요. 아래 답변에는 Plausible Analytics가 가장 순수한 예라는 설명과 함께 Vercel, Graphite, Coda, Whop이 이유와 함께 정리돼 있고, 각 이름은 Mobbin 화면으로 바로 이어져요.</p>
+<figure>
+  <img src="assets/frame-3345.png" alt="Claude 답변. 'Here are eight web dashboard screens that lean on airy layouts' 아래 Plausible Analytics, Vercel, Graphite, Coda and Whop 항목과 설명">
+  <figcaption>
+    화면 전체가 아니라 '여백'이라는 조건으로 고른 이유까지 함께 받는 게 직접 검색과 다른 점이에요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=2025s" target="_blank" rel="noopener">영상 33:45에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>무드보드에서 디자인 방향 문서까지</h3>
+<p>결과물을 만들 때는 Claude Code를 써요. 고객용 산출물이나 처음부터 만드는 앱의 방향을 잡을 때예요. '대시보드 디자인 <span class="term" data-term="무드보드" data-en="Mood board" data-desc="원하는 분위기와 스타일을 보여 주는 레퍼런스 화면을 한곳에 모은 판이에요. 영상에서는 Mobbin 화면 28개를 네 방향으로 묶었어요." data-g="5">무드보드</span>를 Mobbin에서 만들어 줘'라는 짧은 프롬프트에 Opus 4.8은 28개 레퍼런스를 네 가지 스타일로 묶은 페이지를 만들었어요. 카드를 누르면 Mobbin의 원래 화면이 열려요.</p>
+<figure>
+  <img src="assets/frame-3545.png" alt="어두운 배경의 무드보드 페이지 'Dashboard design directions — 28 references, four styles.' 아래 Bright analytics 항목과 썸네일">
+  <figcaption>
+    Mobbin을 한참 뒤지는 대신, 화면 종류와 상관없이 '어떤 느낌'을 탐색하는 일을 AI에 맡긴 결과예요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=2145s" target="_blank" rel="noopener">영상 35:45에서 보기</a>
+  </figcaption>
+</figure>
+<p>왼쪽 대화 창에는 네 가지 방향이 표로 정리돼 있어요. 방향마다 해당 앱과 특징적인 처리 방식이 붙어 있어요. 아래 입력창에는 다음 프롬프트인 'Bright analytics의 시각적 방향을 핵심 테마로 쪼개 줘'가 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-3625.png" alt="Claude 대화 창의 네 방향 표. 01 Bright analytics, 02 Dark &amp; data-dense, 03 Financial &amp; portfolio, 04 Workspace &amp; project와 앱 이름, Signature moves">
+  <figcaption>
+    Bright analytics에는 Mixpanel, Navattic, Zoho, Whop, Base44, Steep, Contra가 들어 있어요. 이 이름들이 다음 섹션의 스킬에 그대로 쓰여요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=2185s" target="_blank" rel="noopener">영상 36:25에서 보기</a>
+  </figcaption>
+</figure>
+<p>그 결과가 아래 페이지예요. Bright analytics를 여섯 가지 결정으로 풀었어요. 위쪽 'Shared DNA' 상자에는 일곱 레퍼런스가 공통으로 가진 특징(밝은 캔버스, 카드 중심 구성, 강조색 하나, 고정된 왼쪽 내비게이션 등)이 있고, 아래로 표면과 온기, 레이아웃 원형, 색과 강조 전략, 데이터 시각화 어휘, 숫자와 증감 표시, 밀도와 리듬이 이어져요.</p>
+<figure>
+  <img src="assets/frame-3725.png" alt="'Bright analytics, unpacked into six decisions.' 페이지. SHARED DNA 상자와 그 아래 Surface &amp; warmth 테마">
+  <figcaption>
+    각 테마에는 Mobbin 화면에서 잘라 온 예시가 붙어 있어요. 디자인 시스템이 없을 때 AI에게 줄 방향이 돼요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=2245s" target="_blank" rel="noopener">영상 37:25에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 이 문서를 Claude Code로 PDF(Portable Document Format)로도 뽑아 뒀어요. 디자인 시스템은 없지만 마음에 드는 거친 방향이 있을 때, 이 PDF로 스킬을 만들어 AI의 디자인을 이끌 수 있어요. 그게 Mobbin MCP의 진짜 가치라고 해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Mobbin 공식 문서의 지원 클라이언트 목록에는 영상에 나온 Claude Code, Claude Desktop과 웹, Codex, Cursor 외에도 Claude Design, Antigravity, ChatGPT, Figma 에이전트와 Figma Make, pen.dev, v0 등이 올라 있어요. 클라이언트마다 연결 절차가 달라서 문서에서 자기 도구 페이지를 먼저 보는 게 빨라요.</p>
+  <p class="cite">출처: <a href="https://docs.mobbin.com/mcp/clients/overview" target="_blank" rel="noopener">Mobbin MCP 문서 — Supported Clients</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=2324s" target="_blank" rel="noopener">38:44</a>
+  <h2>스킬로 디자인 방향을 붙잡아 두기</h2>
+<p>이제 일관성을 지키는 이야기로 넘어가요. 열쇠는 스킬이에요. 그런데 '스킬'이라는 말이 두 군데에서 다른 뜻으로 쓰여서 헷갈리기 쉬워요. 하나는 AI가 Figma 캔버스를 다루게 해 주는 Figma 커뮤니티 스킬이고, 다른 하나는 내 디자인 작업 방식을 담은 나만의 스킬이에요. 발표자는 뒤쪽에서 훨씬 큰 가치를 얻는다고 해요.</p>
+
+<h3>Figma 커뮤니티 스킬: 설치와 연결은 따로</h3>
+<p>Codex나 Claude Code, Grok에서 만든 디자인을 이미지가 아니라 <span class="term" data-term="오토 레이아웃" data-en="Auto layout" data-desc="Figma에서 요소 사이 간격과 정렬을 규칙으로 정해 두면 내용이 바뀌어도 자동으로 다시 배치되는 기능이에요. AI 결과를 Figma로 보낼 때 이게 살아 있어야 편집하기 쉬워요." data-g="9">오토 레이아웃</span>과 제대로 된 레이어를 갖춘 Figma 디자인으로 보내려면 이 스킬이 필요해요. 아래가 Figma 커뮤니티의 스킬 페이지예요. 맨 위 '/figma-use'가 토큰, 변수, 컴포넌트를 캔버스에서 다루는 법을 알려 주는 기초 스킬이고, 그 아래로 디자인 생성, 라이브러리 생성 같은 스킬이 이어져요.</p>
+<figure>
+  <img src="assets/frame-3904.png" alt="figma.com/community/skills 페이지의 Explore skills. Required skill인 /figma-use와 /figma-generate-design, /figma-generate-library 등 카드">
+  <figcaption>
+    몇 달 전만 해도 이 스킬들을 손으로 올려야 했어요. 지금은 대부분 플랫폼의 플러그인에 묶여 있어요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=2344s" target="_blank" rel="noopener">영상 39:04에서 보기</a>
+  </figcaption>
+</figure>
+<p>Claude Code에서는 플러그인의 파트너 목록에서 Figma를 찾아 설치하면 돼요. 아래 화면의 Skills 칸에 '/figma-code-connect', '/figma-generate-design' 같은 스킬 12개가 보이고, 그 아래 Connectors 칸에 figma가 따로 있어요.</p>
+<figure>
+  <img src="assets/frame-3944.png" alt="Claude의 Directory 창에서 Figma 플러그인 상세 화면. Skills 12개 목록과 Connectors 1개(figma)">
+  <figcaption>
+    플러그인을 설치해도 MCP 연결은 자동이 아닐 수 있어요. 커넥터에서 Figma를 따로 연결하고 인증해야 해요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=2384s" target="_blank" rel="noopener">영상 39:44에서 보기</a>
+  </figcaption>
+</figure>
+<p>커넥터까지 연결하면 AI가 Figma 캔버스와 직접 주고받을 수 있어요. 컴포넌트, 토큰, 오토 레이아웃, 그리고 정해 둔 규칙을 지키며 디자인을 Figma로 보낼 수 있게 돼요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Figma 개발자 문서도 같은 구분을 해요. Figma MCP 서버는 연결만으로 프레임을 코드로 바꾸거나 캔버스에 쓰는 도구를 제공하고, 캔버스에 쓰는 작업을 하려면 Figma 스킬도 함께 설치하라고 권해요. 스킬이 있어야 에이전트가 쓰기 도구를 더 안정적으로 쓴다는 설명이에요. 연결 방식은 데스크톱 앱이 필요 없는 원격(Remote) 서버를 권장해요.</p>
+  <p class="cite">출처: <a href="https://developers.figma.com/docs/figma-mcp-server/" target="_blank" rel="noopener">Figma Developer Docs — Figma MCP Server</a></p>
+</aside>
+
+<h3>두 종류의 나만의 스킬</h3>
+<p>발표자는 디자인 작업을 돕는 스킬을 두 가지로 나눠요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th></th><th>지향 스킬</th><th>디자인 시스템 스킬</th></tr></thead>
+    <tbody>
+      <tr><td>담는 것</td><td>마음에 드는 디자인 처리와 느낌</td><td>브랜드 가이드라인과 디자인 시스템 규칙</td></tr>
+      <tr><td>지키는 정도</td><td>벗어나도 괜찮은 대략적 방향</td><td>반드시 지켜야 함</td></tr>
+      <tr><td>쓰는 때</td><td>Figma 파일도 디자인 시스템도 없이 처음 시작할 때</td><td>회사에 디자인 시스템이 있을 때</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>디자인 시스템 스킬은 뒤에서 자세히 다뤄요. 여기서는 지향 스킬을 만들어 봐요.</p>
+
+<h3>지향 스킬 만들기</h3>
+<p>앞에서 만든 Bright analytics PDF를 첨부하고, 이 방향을 담은 스킬을 만들어 달라고 해요. 같은 방향에 맞는 경쟁사 화면도 넣으라고 하면서 Mobbin이 찾아 준 회사 이름을 그대로 붙였어요. 아래 프롬프트에서 파란색으로 선택된 부분이 그 목록이에요.</p>
+<figure>
+  <img src="assets/frame-4224.png" alt="Claude 입력창. PDF 첨부와 함께 'Build a Skill around the design direction based in this PDF, include competitor screenshots...' 프롬프트, 끝에 Mixpanel, Navattic, Zoho CRM, Base 44, Steep, Whop, Contra">
+  <figcaption>
+    테마 문서와 경쟁사 사례를 함께 주면, 매번 프롬프트로 방향을 설명할 필요가 줄어요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=2544s" target="_blank" rel="noopener">영상 42:24에서 보기</a>
+  </figcaption>
+</figure>
+<p>나온 스킬이 아래 화면이에요. 오른쪽 <code>SKILL.md</code> 설명에는 이 스킬을 언제 써야 하는지(대시보드, 관리자 패널, 지표 화면 등)가 길게 적혀 있고, 왼쪽 목록에는 레퍼런스 라이브러리, 컴포넌트 구조, 실패 패턴 같은 참고 파일이 함께 들어 있어요. 핵심은 '여섯 가지 결정을 기본값에 맡기지 말고 의도적으로 내려라'예요.</p>
+<figure>
+  <img src="assets/frame-4244.png" alt="bright-analytics/SKILL.md 미리보기. 왼쪽에 assets와 references 폴더의 파일들, 오른쪽에 Description과 'Bright Analytics' 본문">
+  <figcaption>
+    원래는 스킬 내용을 꼼꼼히 감사해야 해요. 영상에서는 시간 관계상 바로 저장했어요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=2564s" target="_blank" rel="noopener">영상 42:44에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>스킬로 가격표 섹션 만들기</h3>
+<p>'bright analytics 스킬로 가격표 섹션을 만들어 줘'라는 짧은 프롬프트를 Fable 5로 돌렸어요. 왼쪽 대화를 보면 AI가 스킬에 따라 여섯 가지 결정(표면, 레이아웃, 강조색, 데이터 시각화, 숫자 단위 등)을 먼저 적고 나서 디자인했어요. 오른쪽 결과는 Starter, Growth, Scale 세 요금제 카드인데, 가운데 Growth만 보라색 강조색을 써요.</p>
+<figure>
+  <img src="assets/frame-4404.png" alt="'Metrics for every stage' 가격표 섹션. 24달러, 65달러, 166달러 세 요금제 카드와 가운데 Most popular 강조. 왼쪽에 스킬에 따른 여섯 가지 결정 목록">
+  <figcaption>
+    자잘하게 손볼 곳은 있지만, 레퍼런스로 준 화면들과 꽤 비슷한 느낌이 첫 시안부터 나와요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=2644s" target="_blank" rel="noopener">영상 44:04에서 보기</a>
+  </figcaption>
+</figure>
+<p>여러 고객이나 프로젝트를 동시에 다룬다면 스킬을 켜고 끄는 데 신경 써야 해요. 한 고객의 브랜드 가이드가 다른 프로젝트에 섞여 들어가지 않게 하려는 거예요. 필요 없는 스킬을 꺼 두면 스킬 이름을 매번 부르지 않아도 AI가 알아서 해당 스킬을 불러요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Claude Code 공식 문서에 따르면 스킬은 지시문을 담은 <code>SKILL.md</code> 파일이에요. Claude가 관련 있을 때 스스로 불러 쓰거나, 사용자가 '/스킬이름'으로 직접 부를 수 있어요. 스킬 본문은 실제로 쓸 때만 읽히기 때문에, 긴 참고 자료를 넣어 둬도 평소에는 비용이 거의 들지 않아요. Claude Code의 스킬은 여러 AI 도구에서 쓰는 Agent Skills 공개 표준을 따라요. 영상에서 같은 스킬을 Codex나 Grok에서도 쓸 수 있다고 말하는 배경이에요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code 공식 문서 — Skills</a></p>
+</aside>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=2744s" target="_blank" rel="noopener">45:44</a>
+  <h2>기본 워크플로: 반복, 프로토타입, 디자인 시스템</h2>
+<p>여기서부터는 발표자가 평소 가장 자주 쓰는 AI 디자인 흐름이에요. 원래 영상 순서로는 디자인 시스템 스킬이 먼저였지만, 편집하면서 뒤로 옮겼다고 해요. 이 흐름이 정답은 아니고, 도구가 바뀌면 흐름도 바뀌어요. 핵심은 "도구를 잘하는 일 기준으로 섞어 쓴다"예요.</p>
+<p>아래 슬라이드처럼 세 단계로 나눠요. 아직 디자인을 시작하기 전 아이디어를 넓히는 반복, 고른 안을 여러 페이지로 키우는 프로토타입, 그리고 회사 디자인 시스템에 맞추는 작업이에요.</p>
+<figure>
+  <img src="assets/frame-4724.png" alt="'The different stages we'll look at today' 슬라이드. 깔때기 모양으로 Iteration, Prototyping, Design System Work 세 단계">
+  <figcaption>
+    깔때기 모양처럼 아래로 갈수록 선택지는 줄고 정확도는 높아져요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=2844s" target="_blank" rel="noopener">영상 47:24에서 보기</a>
+  </figcaption>
+</figure>
+<p>단계마다 어떤 도구를 왜 쓰는지는 영상 곳곳에 흩어져 나와요. 한 그림으로 모으면 이래요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 680 210" role="img" aria-label="반복은 ChatGPT와 Grok, 프로토타입은 Google Antigravity, 디자인 시스템 작업은 Claude Code와 스킬을 쓰는 세 단계 흐름">
+    <defs><marker id="arrow-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect x="10" y="20" width="200" height="120" rx="12" class="c1 cell"/>
+    <text x="110" y="52" text-anchor="middle">① 반복</text>
+    <text x="110" y="80" text-anchor="middle" class="mono">ChatGPT · Grok</text>
+    <text x="110" y="106" text-anchor="middle" class="sub">정확도보다 선택지</text>
+    <text x="110" y="124" text-anchor="middle" class="sub">빠르고 토큰이 적음</text>
+    <path d="M214 80 h22" class="line" marker-end="url(#arrow-flow)"/>
+    <rect x="240" y="20" width="200" height="120" rx="12" class="c2 cell"/>
+    <text x="340" y="52" text-anchor="middle">② 프로토타입</text>
+    <text x="340" y="80" text-anchor="middle" class="mono">Google Antigravity</text>
+    <text x="340" y="106" text-anchor="middle" class="sub">만들고 → 보고 → 고치기</text>
+    <text x="340" y="124" text-anchor="middle" class="sub">브라우저로 자체 QA</text>
+    <path d="M444 80 h22" class="line" marker-end="url(#arrow-flow)"/>
+    <rect x="470" y="20" width="200" height="120" rx="12" class="c3 cell"/>
+    <text x="570" y="52" text-anchor="middle">③ 디자인 시스템</text>
+    <text x="570" y="80" text-anchor="middle" class="mono">Claude Code + 스킬</text>
+    <text x="570" y="106" text-anchor="middle" class="sub">큰 맥락을 가장 정확히</text>
+    <text x="570" y="124" text-anchor="middle" class="sub">브랜드에 맞게 바꾸기</text>
+    <text x="110" y="172" text-anchor="middle" class="sub">이미지 시안, 클릭되는 시안</text>
+    <text x="340" y="172" text-anchor="middle" class="sub">새 페이지와 반응형 점검</text>
+    <text x="570" y="172" text-anchor="middle" class="sub">실제 컴포넌트를 쓴 화면</text>
+    <text x="340" y="198" text-anchor="middle" class="sub">같은 코드 폴더를 다음 도구에서 열어 이어 가요</text>
+  </svg>
+  <figcaption>아래 줄은 단계마다 나오는 결과물이에요. 도구를 바꿀 때 새로 시작하지 않고 같은 폴더를 넘겨 이어 가요.</figcaption>
+</figure>
+
+<h3>① 반복: ChatGPT로 데이터 밀도별 시안</h3>
+<p>이 단계는 정확도가 아니라 선택지의 질이 중요해요. AI가 글자를 기호로 망쳐도 상관없어요. 촘촘한 안, 여백이 많은 안처럼 레이아웃 선택지가 다양하면 돼요. Mobbin은 시간과 토큰이 드니 나중에 '다른 회사는 어떻게 하나' 리서치할 때 쓰고, 여기서는 쓰지 않아요.</p>
+<p>ChatGPT에 '<span class="term" data-term="데이터 밀도" data-en="Data density" data-desc="한 화면에 정보를 얼마나 촘촘히 담는지를 말해요. 같은 대시보드도 여백 많은 안부터 파워 유저용 빽빽한 안까지 나뉘어요." data-g="6">데이터 밀도</span>가 다른 대시보드 디자인 네 개를 만들어 줘. 제품은 재무 관리 앱이야'라고 하자, 20초쯤 만에 아래 이미지가 나왔어요. 왼쪽 위부터 저밀도, 중간 밀도, 고밀도, 파워 유저용 고밀도 순이에요.</p>
+<figure>
+  <img src="assets/frame-5019.png" alt="ChatGPT가 만든 'Financial dashboard UI density comparison' 이미지. 밝은 화면 두 개와 어두운 화면 두 개, 네 가지 밀도의 대시보드">
+  <figcaption>
+    이 한 장을 들고 이해관계자에게 "어느 쪽이 끌리세요?"라고 물어볼 수 있어요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=3019s" target="_blank" rel="noopener">영상 50:19에서 보기</a>
+  </figcaption>
+</figure>
+<p>그다음은 대화로 다듬어요. 세 안 모두 원형 차트를 쓰고 있으니 원형 차트 없는 안을 달라고 하는 식이에요. 한 시간쯤 써도 좋은 예시가 쌓여요. 발표자는 4번 안을 라이트 모드로 바꿔 따로 이미지로 받아 뒀어요. 뒤에서 Grok에 넘길 이미지예요.</p>
+
+<h3>① 반복: Grok Build로 클릭되는 시안</h3>
+<p>Grok에는 아직 Claude Code나 Codex 같은 화면 앱이 없어서, grok.com/build의 설치 명령을 터미널에 붙여 넣어 써요. 아래 페이지 가운데의 'curl' 명령이 그것이에요. 페이지 설명대로 Grok Build는 터미널에서 도는 코딩 에이전트예요.</p>
+<figure>
+  <img src="assets/frame-5159.png" alt="grok.com/build 페이지. 'Grok Build' 제목과 'The coding agent that runs from your terminal, now powered by Grok 4.5' 설명, 설치용 curl 명령">
+  <figcaption>
+    ChatGPT와 달리 결과가 이미지가 아니라 실제로 돌아가는 화면이에요. Vercel에 올려 팀에 공유할 수도 있어요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=3119s" target="_blank" rel="noopener">영상 51:59에서 보기</a>
+  </figcaption>
+</figure>
+<p>같은 요청에 '다른 모양으로, 이전에 만든 대시보드에 영향받지 말고'를 붙여 돌리자, 네 가지 방향을 고를 수 있는 시작 페이지가 나왔어요. 아래 표의 밀도 열을 보면 Atelier가 Low, Fieldbook이 Medium, Meridian이 Medium-high, SignalDesk가 High예요. 이름을 누르면 각 대시보드가 열려요.</p>
+<figure>
+  <img src="assets/frame-5404.png" alt="'Financial management - dashboard directions' 페이지. 01 Atelier, 02 Fieldbook, 03 Meridian, 04 SignalDesk 네 디자인과 밀도, 역할과 구조 설명 표">
+  <figcaption>
+    Claude로 네 개를 만들었다면 열 배쯤 시간과 비용이 들었을 거라고 해요. 그래서 반복은 Grok이에요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=3244s" target="_blank" rel="noopener">영상 54:04에서 보기</a>
+  </figcaption>
+</figure>
+<p>한 가지 주의할 점이 있어요. Grok은 네 개를 한꺼번에 만드는 데는 약해요. 영상은 시간 때문에 한 번에 시켰지만, 실제로는 저밀도 하나를 먼저 만들고, 다음에 중간 밀도를 만들고, 마지막에 둘을 모아 띄우는 시작 페이지를 만들라고 권해요.</p>
+<p>ChatGPT 이미지를 살리는 것도 돼요. 앞에서 받아 둔 라이트 모드 이미지를 주고 '이걸 살려서 로컬에서 띄워 줘'라고 하자 아래 'WealthView' 대시보드가 나왔어요. 왼쪽 메뉴의 Accounts, Transactions는 아직 비어 있어요.</p>
+<figure>
+  <img src="assets/frame-5519.png" alt="Grok이 ChatGPT 이미지를 바탕으로 만든 WealthView 대시보드. 상단 지표 카드 여섯 개, Net Worth Over Time 그래프, Cash Flow, Spending by Category 도넛 차트">
+  <figcaption>
+    이 화면이 이후 프로토타입과 디자인 시스템 단계의 출발점이에요. 디자인 시스템을 입힌 뒤의 모습과 비교해 보세요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=3319s" target="_blank" rel="noopener">영상 55:19에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>② 프로토타입: Antigravity의 '만들고, 보고, 고치기'</h3>
+<p>빈 페이지를 채우는 단계예요. Fable 5만 아니면 어떤 도구로도 할 수 있지만, 발표자는 Google Antigravity를 써요. Google판 Claude Code나 Codex라고 보면 돼요. 이유는 이래요. 디자이너는 만들고, 보고, 고쳐요. AI는 만들기만 잘해서, 무엇을 보고 고칠지 사람이 말해 줘야 해요. Antigravity는 브라우저를 잘 다뤄서 이 세 단계를 스스로 해요. 결과를 띄우고, 화면을 캡처하고, 창을 줄였다 늘려 반응형을 확인하고, 본 것을 바탕으로 고쳐요.</p>
+<p>Grok이 만든 폴더를 Antigravity에서 열고 '로컬에서 띄우고 지금 디자인 패턴과 처리 방식을 파악해 줘'라고 했어요. 아래 답변의 'Responsive Breakdown'을 보면, 묻지 않았는데도 미디어 쿼리 <span class="term" data-term="브레이크포인트" data-en="Breakpoint" data-desc="화면 폭이 특정 값보다 좁아질 때 레이아웃을 바꾸는 기준점이에요. 영상의 Antigravity는 1400px, 1100px, 768px 세 지점을 스스로 확인했어요." data-g="7">브레이크포인트</span> 세 개(1400px, 1100px, 768px)에서 레이아웃이 어떻게 바뀌는지까지 확인했어요.</p>
+<figure>
+  <img src="assets/frame-5929.png" alt="Antigravity 답변의 '6. Responsive Breakdown'. 1400px, 1100px, 768px 이하에서 지표 줄과 그리드 열 수가 줄어드는 설명. 아래 입력창에 계좌 페이지 프롬프트">
+  <figcaption>
+    아래 입력창이 다음 프롬프트예요. 계좌 페이지를 만들면서 브라우저에서 직접 QA하고, 개요 페이지 수준에 맞는지 스트레스 테스트하라는 내용이에요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=3569s" target="_blank" rel="noopener">영상 59:29에서 보기</a>
+  </figcaption>
+</figure>
+<p>프롬프트를 돌리자 'Chrome이 자동 테스트 소프트웨어에 의해 제어되고 있다'는 막대가 뜬 브라우저가 열리고, 사람이 아무것도 누르지 않는데 화면이 바뀌어요. 아래는 은행 계좌 연결 흐름을 스스로 눌러 보는 장면이에요.</p>
+<figure>
+  <img src="assets/frame-010044.png" alt="자동 테스트 중인 Chrome 창. 상단에 'Chrome is being controlled by automated test software' 막대, 가운데 'Connecting to Bank of America...' 대화상자">
+  <figcaption>
+    에이전트가 직접 클릭하며 연결 흐름까지 확인하고 있어요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=3644s" target="_blank" rel="noopener">영상 01:00:44에서 보기</a>
+  </figcaption>
+</figure>
+<p>끝나고 나면 무엇을 확인했는지 정리해 줘요. 아래 화면 위쪽의 '/browser http://localhost:5174'가 발표자가 쓴 명령이에요. 그 아래에 브라우저 하위 에이전트가 확인한 항목(대시보드 이동, 계좌 선택, Plaid 인증 실패 흉내, 계좌 추가 후 순자산 갱신)과, 세션 녹화를 작업 폴더에 저장했다는 내용이 있어요.</p>
+<figure>
+  <img src="assets/frame-010109.png" alt="Antigravity 답변. /browser 명령과 로컬 URL, 브라우저 하위 에이전트의 QA 결과 네 항목, 세션 녹화 저장 안내">
+  <figcaption>
+    QA를 알아서 하지 않을 때는 이처럼 /browser 명령에 띄워 둔 URL(Uniform Resource Locator)을 직접 넘기면 돼요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=3669s" target="_blank" rel="noopener">영상 01:01:09에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 여기서 주사위 비유를 들어요. 같은 주사위를 굴려도 매번 같은 숫자가 나오지 않듯, 같은 프롬프트를 써도 Antigravity가 늘 같은 수준으로 QA하지는 않아요. 설정이나 Chrome 상태에 따라 알아서 하기도, 안 하기도 해요.</p>
+
+<h3>③ 디자인 시스템: Claude로 브랜드 입히기</h3>
+<p>이해관계자에게 방향은 인정받았어도, 경영진에게 보이면 바로 "브랜드와 안 맞는다"는 말이 나와요. 지금 화면은 Figma의 변수, 토큰, 컴포넌트 어디에도 연결돼 있지 않아요. 이 단계는 Claude로 해요. 큰 디자인 시스템 맥락을 다룰 때 Claude가 가장 정확했다는 게 발표자의 경험이에요. 반대 의견도 있을 수 있다고 덧붙여요.</p>
+<p>같은 폴더를 Claude Code에서 열고, 뒤에서 만들 타입 스타일·변수 규칙·컴포넌트 스킬 세 개를 부른 뒤 '우리 디자인 시스템에 맞춰 줘. 아직 Figma에는 올리지 마'라고 해요. 모델은 Opus 5예요.</p>
+<figure>
+  <img src="assets/frame-010339.png" alt="Claude Code 입력창. /anthropic-skills:Demo-Type-Styles, /anthropic-skills:Demo-Variable-Rules, /anthropic-skills:demo-components-skill 세 스킬과 'Make this design on-brand with our design system. Do not yet push to Figma'">
+  <figcaption>
+    스킬 세 개를 이름으로 불러 붙였어요. 스킬이 디자인 시스템 지식을 대신 들고 와요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=3819s" target="_blank" rel="noopener">영상 01:03:39에서 보기</a>
+  </figcaption>
+</figure>
+<p>첫 결과예요. 위의 Grok 화면과 비교하면 로고가 검은 사각형으로 바뀌고, 지표 카드가 흰 카드와 얇은 테두리로 정리됐어요. 스타일이 완전히 디자인 시스템 쪽으로 넘어왔고, 실제 컴포넌트도 썼어요.</p>
+<figure>
+  <img src="assets/frame-010404.png" alt="디자인 시스템을 입힌 WealthView 대시보드. 검은 로고, 흰 카드에 Net Worth, Cash Balance, Total Assets 등 지표, 아래 그래프와 차트">
+  <figcaption>
+    다듬을 곳도 보여요. 3열 그리드가 어긋나고, 오른쪽 여백이 크고, 제목이 너무 커요. 타입 스타일 사용 가이드를 안 줬기 때문이라고 해요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=3844s" target="_blank" rel="noopener">영상 01:04:04에서 보기</a>
+  </figcaption>
+</figure>
+<p>일부러 다듬지 않은 첫 결과를 보여 줬다고 해요. AI로 아이디어를 내고, Antigravity로 프로토타입과 QA를 하고, 디자인 시스템을 연결하기까지 몇 시간이면 돼요. 이 흐름을 면접에서 설명하면 도구를 넘나들며 디자인 시스템까지 연결하는 시니어급 워크플로로 보인다고 해요.</p>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=3934s" target="_blank" rel="noopener">01:05:34</a>
+  <h2>문서화와 감사도 스킬에 맡기기</h2>
+<p>디자인 바깥의 디자인 일, 예를 들면 컴포넌트 문서화와 감사에도 AI를 쓸 수 있어요. 여기에도 맞는 방법과 틀린 방법이 있어요.</p>
+
+<h3>문서화의 핵심은 일관성</h3>
+<p>컴포넌트 문서라면 모든 컴포넌트가 같은 구조와 정보를 가져야 해요. 어떤 컴포넌트에는 사용 가이드가 있고 어떤 컴포넌트에는 없으면 개발자가 헷갈려요. 흔한 실수는 Figma 링크를 붙이고 "이거 문서 만들어 줘"라고만 하는 거예요. 그러면 매번 다른 구조의 문서가 나와요.</p>
+<p>그래서 먼저 문서 구조를 정한 스킬을 만들어요. 아래 프롬프트가 그 요청이에요. 사용자가 컴포넌트 묶음 링크를 주면, 속성·변형·특성을 살핀 뒤 사용 가이드, 변형과 쓰는 때, 속성, 해야 할 것과 하지 말 것, 접근성 고려 사항을 담은 문서를 만들라고 해요.</p>
+<figure>
+  <img src="assets/frame-010814.png" alt="Claude 입력창의 프롬프트. 'Build me a skill that generates designer-specific documentation for design system components...'와 마지막 줄 'DO NOT push to Figma until the user is happy with the documentation'">
+  <figcaption>
+    마지막 줄이 중요해요. 마음에 들기 전에 Figma로 올라가 버리면 고치느라 토큰을 더 써요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=4094s" target="_blank" rel="noopener">영상 01:08:14에서 보기</a>
+  </figcaption>
+</figure>
+<p>스킬을 저장하고 버튼 컴포넌트로 시험했어요. 아래 문서 페이지에는 개요, 구조, 사용 가이드, 상태별 변형, 미리보기, 속성, 해야 할 것과 하지 말 것, 접근성이 차례로 있어요. 가운데 노란 상자 'Before you use this set'은 크기가 다른 버튼 세트와 헷갈리지 말라는 안내예요.</p>
+<figure>
+  <img src="assets/frame-010834.png" alt="localhost에서 열린 Button 문서 페이지. 16 variants 등 꼬리표, 컴포넌트 정보 줄, 노란 안내 상자, Overview 문단">
+  <figcaption>
+    디자인 시스템을 오래 만든 발표자 기준으로도, AI 이전에는 컴포넌트 몇 개에 몇 주 걸리던 수준의 문서예요. 물론 검토는 꼭 해야 해요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=4114s" target="_blank" rel="noopener">영상 01:08:34에서 보기</a>
+  </figcaption>
+</figure>
+<p>내용을 확인한 뒤 'Figma에 올려 줘'라고 하면, 디자인 시스템 파일 안에 문서 페이지가 생겨요. 아래 화면 왼쪽 페이지 목록에서 Button이 선택돼 있고, 캔버스에 Overview, Anatomy, Usage가 이어지는 문서가 보여요.</p>
+<figure>
+  <img src="assets/frame-010934.png" alt="Figma 디자인 시스템 파일. 왼쪽 페이지 목록에서 Button 선택, 캔버스에 Button 제목과 Overview, Anatomy, Usage 섹션">
+  <figcaption>
+    디자이너가 컴포넌트를 언제 쓰고 언제 쓰지 말지, 구조가 어떤지를 Figma 안에서 바로 볼 수 있어요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=4174s" target="_blank" rel="noopener">영상 01:09:34에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>Anthropic 디자인 플러그인: 접근성 검토만 골라 쓰기</h3>
+<p>Claude의 플러그인 목록에는 Anthropic이 만든 Design 플러그인이 있어요. 아래 화면의 설명처럼 디자인 비평, 디자인 시스템 관리, UX(User Experience) 문구, <span class="term" data-term="접근성 감사" data-en="Accessibility audit" data-desc="화면이 시각·운동 장애가 있는 사용자도 쓸 수 있는지 WCAG 같은 기준으로 점검하는 일이에요. 색 대비, 키보드 조작, 스크린 리더 지원 등을 봐요." data-g="10">접근성 감사</span>, 리서치 종합, <span class="term" data-term="개발자 핸드오프" data-en="Developer handoff" data-desc="완성한 디자인을 개발자가 구현할 수 있게 치수, 토큰, 상태 같은 사양과 함께 넘기는 일이에요." data-g="8">개발자 핸드오프</span>를 다뤄요.</p>
+<figure>
+  <img src="assets/frame-011014.png" alt="Claude Directory의 Design 플러그인(by Anthropic) 화면. 설명과 'Try asking' 아래 Run a WCAG accessibility audit 등 예시">
+  <figcaption>
+    'Try asking' 목록의 세 번째, WCAG(Web Content Accessibility Guidelines) 접근성 감사가 발표자가 실제로 쓰는 기능이에요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=4214s" target="_blank" rel="noopener">영상 01:10:14에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자의 평가는 분명해요. 디자인 시스템 관리 스킬은 믿지 않아요. 디자인 시스템은 사람이 전부 들여다봐야 하는 일이기 때문이에요. UX 문구는 쓸 만할 수도 있지만 큰 가치를 못 느꼈고, 리서치 종합과 개발자 핸드오프는 정해진 방식이 따로 있다고 봐요. 가치를 찾은 건 접근성 검토 스킬 하나예요.</p>
+<p>Figma 에이전트가 예전에 만든 화면 하나의 링크를 주고 접근성 검토 스킬을 부르자, 아래 결과가 나왔어요. 맨 위 요약에 22건(심각 3, 주요 13, 경미 6)이라고 적혀 있어요. 아래 표는 이슈마다 WCAG 기준 번호, 심각도, 고칠 방법을 적어요. 1번은 약관 문구의 대비가 2.74:1밖에 안 된다는 심각 이슈예요.</p>
+<figure>
+  <img src="assets/frame-011134.png" alt="접근성 감사 결과. 'Issues found: 22 | Critical: 3 | Major: 13 | Minor: 6' 요약과 Perceivable 표. 이슈, WCAG Criterion(1.4.3 Contrast 등), Severity, Recommendation 열">
+  <figcaption>
+    다른 모델이라면 경미한 이슈는 빼고 몇 개만 알려 줬을 거라고 해요. 이 스킬은 인지, 운용, 이해, 견고성 원칙별로 나누고 색 대비, 키보드, 스크린 리더까지 확인해요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=4294s" target="_blank" rel="noopener">영상 01:11:34에서 보기</a>
+  </figcaption>
+</figure>
+<p>이 정도로 자세하니, 접근성 감사용 스킬을 따로 만들 필요는 없다고 봐요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>이 플러그인은 Anthropic의 knowledge-work-plugins 저장소에 있는 'design' 플러그인이에요. README는 Cowork용으로 만들었지만 Claude Code에서도 동작한다고 설명하고, skills 폴더에 accessibility-review, design-critique, design-system, design-handoff, ux-copy 등이 들어 있어요.</p>
+  <p>표에 나온 '1.4.3 Contrast'는 WCAG 2.2의 대비(최소) 기준이에요. 일반 텍스트는 4.5:1, 큰 텍스트는 3:1 이상의 대비가 필요해요. 1번 이슈의 2.74:1이 왜 심각인지 여기서 알 수 있어요.</p>
+  <p class="cite">출처: <a href="https://github.com/anthropics/knowledge-work-plugins/tree/main/design" target="_blank" rel="noopener">GitHub anthropics/knowledge-work-plugins — design</a> · <a href="https://www.w3.org/TR/WCAG22/" target="_blank" rel="noopener">W3C — WCAG 2.2</a></p>
+</aside>
+
+<h3>디자인 시스템 연결 상태를 감사하는 스킬</h3>
+<p>Figma 커뮤니티 스킬 중에 따로 설치해야 하는 유용한 스킬이 하나 있어요. 'audit-design-system'이에요. Figma가 만든 스킬이 아니라서 Figma 플러그인을 설치해도 함께 들어오지 않아요. 스킬 카드를 누르면 아래처럼 GitHub의 <code>SKILL.md</code>로 가요. 이 파일을 내려받아 Claude의 스킬 설정에서 '스킬 올리기'로 끌어다 놓으면 설치돼요.</p>
+<figure>
+  <img src="assets/frame-011314.png" alt="GitHub edenspiekermann/Skills 저장소의 audit-design-system/SKILL.md. name과 description 표, 'Audit Design System' 제목과 설명">
+  <figcaption>
+    설명란에 공유 컴포넌트 누락, 로컬 덮어쓰기, 연결되지 않은 토큰처럼 디자인 시스템에서 어긋난 곳을 찾는다고 적혀 있어요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=4394s" target="_blank" rel="noopener">영상 01:13:14에서 보기</a>
+  </figcaption>
+</figure>
+<p>디자인 시스템에 거의 연결되지 않은 Figma 프레임 링크를 주고 이 스킬을 불렀어요. 아래 Findings 표는 심각도 순으로 문제를 늘어놓고 Figma 노드 번호를 붙여요. 1번 심각 항목은 '표 세 개를 Table 컴포넌트 대신 78개의 cell 프레임으로 손수 만들었다'예요. 그 아래에는 근거와, 왜 문제인지, 대신 쓸 컴포넌트가 이어져요.</p>
+<figure>
+  <img src="assets/frame-011354.png" alt="디자인 시스템 감사 결과. Summary와 Findings 표(Critical 1, High 3, Medium 2), 'Replace the three hand-built tables with the Table component' 상세 설명">
+  <figcaption>
+    복잡한 대시보드를 주면 감사 결과가 훨씬 길어진다고 해요. 그냥 프롬프트로 만든 감사 스킬보다 낫다는 평가예요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=4434s" target="_blank" rel="noopener">영상 01:13:54에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>이 스킬이 있는 edenspiekermann/Skills 저장소는 Figma 디자인 시스템 작업을 이식 가능한 스킬로 묶어 둔 곳이에요. README에 따르면 감사 스킬 외에 디자인을 디자인 시스템 컴포넌트에 연결하는 apply-design-system, 감사에서 나온 항목 하나를 고치는 fix-design-system-finding이 함께 들어 있고, Codex와 Claude Code에서 같은 체크아웃을 쓸 수 있게 구성돼 있어요.</p>
+  <p class="cite">출처: <a href="https://github.com/edenspiekermann/Skills" target="_blank" rel="noopener">GitHub edenspiekermann/Skills</a></p>
+</aside>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=4474s" target="_blank" rel="noopener">01:14:34</a>
+  <h2>디자인 시스템을 AI에 연결하는 다섯 가지 스킬</h2>
+<p>이제 디자인 시스템 스킬이에요. AI가 만든 디자인을 회사 디자인 시스템에 가깝게 붙잡아 두는 스킬들이고, Codex든 Claude든 Figma 안에서든 똑같이 동작해요. 완벽해지지는 않는다는 전제는 깔고 가요.</p>
+<p>아래 슬라이드가 발표자가 만드는 스킬 묶음이에요. 위에서부터 토큰, 컴포넌트, 간격과 모양, 규칙과 기술 부채예요. 실습에서는 여기에 타입 스타일 스킬이 하나 더 붙어요.</p>
+<figure>
+  <img src="assets/frame-011514.png" alt="깔때기 모양 슬라이드. 위에서부터 Tokens, Components, Spacing + Shape, Rules + Debt">
+  <figcaption>
+    토큰, 컴포넌트, 간격은 익숙한 내용이에요. 발표자가 강조하는 건 맨 아래 규칙과 기술 부채예요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=4514s" target="_blank" rel="noopener">영상 01:15:14에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>규칙과 기술 부채: 사람이 써야 하는 스킬</h3>
+<p>규칙은 조직마다 다른 사용 원칙이에요. 체크박스 선택과 선택형 메뉴 중 언제 무엇을 쓰는지, 라디오 버튼과 체크박스 중 무엇을 쓰는지 같은 거예요. 둘은 기능이 다르지만, 어떤 회사는 '선택지가 넷을 넘으면 체크박스, 그보다 적으면 라디오 버튼'처럼 자체 규칙을 두기도 해요.</p>
+<p>기술 부채는 알지만 어쩔 수 없는 문제예요. 모든 제품에 퍼져 있어서 고치는 데 개발비 200만 달러가 든다는 식이에요. 예를 들어 기본 버튼의 색 조합이 접근성 기준에 못 미치는데 바꿀 수 없는 경우예요. 이걸 적어 두지 않으면 AI가 감사하다가 그걸 고치려 들어요.</p>
+<p>이 스킬은 조직마다 달라서 영상에서 직접 만들지 않아요. 대신 아래 슬라이드의 두 질문에 답을 적어 Claude에 주면 된다고 해요.</p>
+<figure>
+  <img src="assets/frame-011754.png" alt="두 열 슬라이드. 왼쪽 Rules: 'When onboarding a junior designer, what do I tell them?', 오른쪽 Technical Debt: 'What is it we have to accept as a design team or company?'">
+  <figcaption>
+    규칙은 '주니어를 온보딩할 때 무엇을 말해 주나', 기술 부채는 '팀이나 회사가 받아들여야 하는 건 무엇인가'예요. 항목별로 적으면 그게 스킬 내용이에요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=4674s" target="_blank" rel="noopener">영상 01:17:54에서 보기</a>
+  </figcaption>
+</figure>
+<p>디자인 시스템을 잘 아는 사람이 따로 있다면 그 사람과 함께 써야 해요.</p>
+
+<h3>변수 스킬: 설명이 가장 중요해요</h3>
+<p>Figma 변수는 곧 <span class="term" data-term="디자인 토큰" data-en="Design token" data-desc="색, 간격, 글자 크기 같은 디자인 값을 이름 붙여 저장한 거예요. Figma에서는 변수로 만들어요. 이름만 있고 쓰임 설명이 없으면 AI가 잘못 골라요." data-g="12">디자인 토큰</span>이에요. 먼저 실제로 쓰이는 변수만 골라요. 값이 붙지 않은 원시 스케일은 빼고, 컴포넌트나 디자인에 실제로 적용될 수 있는 변수만 남겨요. 보통 표면(배경), 텍스트, 아이콘, 테두리 변수로 묶여요. 아래가 발표자의 변수 라이브러리예요. 'mapped' 컬렉션에 라이트와 다크 두 열이 있고, 표면 그룹 아래 default, secondary, page, page-secondary가 보여요.</p>
+<figure>
+  <img src="assets/frame-012014.png" alt="Figma 변수 창. 왼쪽 컬렉션 목록에서 mapped 선택, 가운데 surface 그룹 변수들과 Light, Dark 두 열의 값">
+  <figcaption>
+    많은 디자이너가 이 창만 보여 주고 "이 변수들을 공부해"라고 해요. 그러면 default와 secondary, page와 page-secondary를 언제 쓰는지 AI가 알 길이 없어요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=4814s" target="_blank" rel="noopener">영상 01:20:14에서 보기</a>
+  </figcaption>
+</figure>
+<p>그래서 표를 하나 따로 만들어 둬요. 아래처럼 변수 이름, 라이트 모드 값, 다크 모드 값, 그리고 맨 오른쪽 Description 열에 언제 쓰는지를 적어요. 예를 들어 'default'는 대부분의 UI 화면에 쓰는 기본 배경, 'secondary'는 묶거나 층을 나눌 때 쓰는 더 밝은 배경이에요.</p>
+<figure>
+  <img src="assets/frame-012114.png" alt="Figma의 변수 표. Token, Light Mode, Dark Mode, Description 열과 Primary, Secondary, Disabled, Error, Success 그룹별 변수 행">
+  <figcaption>
+    이 표에서 가장 중요한 건 Description 열이에요. Figma 에이전트에게 비슷한 틀을 만들게 하고 내용은 직접 채워도 돼요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=4874s" target="_blank" rel="noopener">영상 01:21:14에서 보기</a>
+  </figcaption>
+</figure>
+<p>이 표가 있는 영역의 링크를 복사해서 '이 프레임의 변수를 살펴보고 어떤 변수를 언제 쓰는지에 대한 스킬을 만들어 줘'라고 해요. 앞에서 연결한 Figma 스킬과 MCP로 프레임을 읽고, 아래 같은 스킬을 만들어요. 오른쪽 token-inventory.md에 변수마다 'Use for' 설명이 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-012214.png" alt="Demo-Variable-Rules 스킬의 references/token-inventory.md 미리보기. On-color, Primary/Secondary 그룹별 Variable과 Use for 표">
+  <figcaption>
+    이제 AI는 'text/on-color/heading은 색이 칠해진 표면 위의 제목'처럼 변수의 쓰임을 알고 적용해요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=4934s" target="_blank" rel="noopener">영상 01:22:14에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>컴포넌트 스킬: 그룹별로 나눠 보게 하기</h3>
+<p>디자인 시스템 링크 하나를 주고 "컴포넌트 규칙을 만들어"라고 하면, AI가 컴포넌트 사이를 이리저리 오가다 실수해요. 그래서 카테고리별로 쪼개요. 아래 Figma 페이지 목록에서 별표가 붙은 Navigation 아래에 Button, Link, Breadcrumb, Tabs 같은 컴포넌트가 있고, 그 아래 Data Display 그룹이 또 있어요.</p>
+<figure>
+  <img src="assets/frame-012314.png" alt="Figma 페이지 목록. 별표 붙은 Navigation 그룹 아래 Button, Link, Breadcrumb, Tabs, Menu, Pagination 등, 아래 Data Display 그룹">
+  <figcaption>
+    'Navigation 그룹을 살펴봐'라고 하면 그 제목 아래 컴포넌트만 하나씩 분석해요. 어디를 봐야 할지 알려 주는 게 정확도를 올려요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=4994s" target="_blank" rel="noopener">영상 01:23:14에서 보기</a>
+  </figcaption>
+</figure>
+<p>이상적으로는 카테고리마다 스킬을 하나씩 두지만, 영상에서는 폼, 내비게이션, 데이터 표시 세 그룹을 한 스킬로 묶었어요. 사용 가이드 문서가 있다면 같이 주면 좋아요. 아래 결과 오른쪽의 navigation.md에는 컴포넌트마다 Status, Type, Size 같은 속성 값과, 언제 쓰는지('Use when') 설명이 있어요.</p>
+<figure>
+  <img src="assets/frame-012454.png" alt="demo-components-skill의 references/navigation.md. Prop과 Values 표, 'Use when the icon alone is unambiguous'와 Close 컴포넌트의 속성 표">
+  <figcaption>
+    결과를 받으면 한 번에 끝내지 말고 컴포넌트별로 빠진 게 없는지 확인하며 대화하라고 해요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=5094s" target="_blank" rel="noopener">영상 01:24:54에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>타입 스타일, 그리고 간격과 모양</h3>
+<p>타입 스타일도 같은 방식이에요. 타입 스케일이 정리된 곳의 링크를 주거나, 오른쪽 패널의 스타일을 읽게 하면 돼요. 아래 결과는 제목 단계마다 크기, 줄 높이, 문단 간격, 쓰는 곳을 표로 정리했어요. Hero는 96에 112, H1은 72에 88처럼요.</p>
+<figure>
+  <img src="assets/frame-012534.png" alt="타입 스타일 스킬의 SKILL.md 미리보기. '2. The heading scale' 표에 Hero, H1~H6의 Size, Line height, Paragraph spacing, Use it for 열">
+  <figcaption>
+    'Use it for' 열 덕분에 AI가 H1을 페이지 제목에, H6를 위젯 제목에 쓰는 식으로 구분해요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=5134s" target="_blank" rel="noopener">영상 01:25:34에서 보기</a>
+  </figcaption>
+</figure>
+<p>마지막은 '간격과 모양'이라는, 나머지를 담는 스킬이에요. 모서리 반경이 네 종류뿐이라면 그것만으로 스킬을 따로 만들 필요는 없어요. 패딩과 갭 변수, 모서리 반경, 테두리 두께, 그림자 같은 작은 값을 한 스킬에 모아요. 디자인 시스템이 복잡하면 패딩과 갭만으로 스킬을 따로 둬도 돼요.</p>
+<p>정리하면 이렇게 다섯 개예요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>스킬</th><th>AI에 주는 것</th><th>요령</th></tr></thead>
+    <tbody>
+      <tr><td>규칙과 기술 부채</td><td>직접 적은 규칙과, 바꿀 수 없는 문제 목록</td><td>조직마다 달라서 사람이 써야 해요</td></tr>
+      <tr><td>변수(토큰)</td><td>이름, 라이트·다크 값, 설명이 있는 표</td><td>설명 열이 핵심이에요</td></tr>
+      <tr><td>컴포넌트</td><td>그룹별 Figma 페이지, 사용 가이드</td><td>카테고리별로 나눠 분석시켜요</td></tr>
+      <tr><td>타입 스타일</td><td>타입 스케일이나 텍스트 스타일</td><td>단계별 쓰는 곳을 붙여요</td></tr>
+      <tr><td>간격과 모양</td><td>간격, 모서리 반경, 테두리 두께 변수</td><td>작은 값을 한데 모아요</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3>스킬이 있을 때와 없을 때</h3>
+<p>스킬을 붙여 화면 하나를 만들고 Figma로 보냈어요. 'Wealth that stays in focus'라는 금융 앱 가입 화면이에요. 디자인이 훌륭하진 않지만 요점은 디자인 시스템을 지키느냐예요. 오른쪽 Selection colors를 보면 text/default/heading, surface/primary/default, icon/success/default처럼 모든 색이 디자인 시스템 변수예요.</p>
+<figure>
+  <img src="assets/frame-012714.png" alt="Figma의 'Meridian — Welcome' 모바일 화면. 'Wealth that stays in focus.' 제목과 총 순자산 카드 두 개, 오른쪽 Selection colors에 디자인 시스템 변수 목록">
+  <figcaption>
+    프레임은 간격 변수와 surface/page를, 제목은 H3를, 버튼은 실제 버튼 컴포넌트를 써요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=5234s" target="_blank" rel="noopener">영상 01:27:14에서 보기</a>
+  </figcaption>
+</figure>
+<p>비교를 위해 스킬 없이 Figma 에이전트에게 만들게 한 화면이에요. 겉보기엔 멀쩡하지만, 아래에서 선택된 'Get Started' 버튼은 컴포넌트가 아니라 도형이에요. 오른쪽 패널을 보면 버튼 글자의 채우기가 surface/page예요. 텍스트에 표면 변수를 쓴 거라 말이 안 돼요. 모서리 반경도 적용되지 않았어요.</p>
+<figure>
+  <img src="assets/frame-012814.png" alt="스킬 없이 Figma 에이전트가 만든 'WELCOME HOME' 온보딩 화면. Get Started 글자가 선택돼 있고 오른쪽 패널에 body-sm/semibold와 Fill surface/page">
+  <figcaption>
+    매번 이런 결과가 나온다면 차라리 직접 만드는 게 빠르다는 게 발표자의 말이에요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=5294s" target="_blank" rel="noopener">영상 01:28:14에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s8">
+  <a class="stamp" href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=5309s" target="_blank" rel="noopener">01:28:29</a>
+  <h2>AI가 디자인 시스템을 만들어 줄 수 있을까요?</h2>
+<p>자주 받는 질문이에요. AI가 디자인 시스템을 만들어 줄 수 있을까요? 발표자의 답은 "아니요"예요. 'AI가 내 디자인 시스템을 만들었다'는 영상은 대개 스타일 몇 개, 변수 몇 개, 버튼 컴포넌트 하나를 만든 거예요. 그건 실제 디자인 시스템의 1000분의 1이라고 해요. 컴포넌트를 만들어 줘도 제대로 만들어졌는지, 구조가 어떤지, 브랜드에 맞는지는 보장되지 않아요.</p>
+
+<h3>맡겨도 되는 일: 타입 스케일</h3>
+<p>그래도 AI가 잘하는 일은 있어요. Claude에 '타입 스케일을 만들어 줘. 제목은 Inter, 본문은 Roboto, Apple 느낌으로. H1부터 H6, 캡션부터 큰 문단까지'라고 했어요. 모바일 모드도 추가하라고 하자 아래처럼 데스크톱과 모바일 두 모드에 걸쳐 크기, 줄 높이, 문단 간격 변수를 만들고, 그 변수를 텍스트 스타일 안에 묶었어요.</p>
+<figure>
+  <img src="assets/frame-013049.png" alt="Figma 'Type styles' 파일. 데스크톱과 모바일 타입 스케일 견본 두 개, 가운데 'Rag 123' 텍스트 스타일 편집 창, 오른쪽에 H1부터 Caption까지 스타일 목록">
+  <figcaption>
+    스타일을 만들고 변수를 하나하나 묶는 건 길고 지루한 일이라 맡기기 좋아요. 자간은 요청하지 않아서 변수로 묶지 않았어요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=5449s" target="_blank" rel="noopener">영상 01:30:49에서 보기</a>
+  </figcaption>
+</figure>
+<p>조건은 하나예요. 타입 스케일의 수학을 알고, 숫자들이 서로 맞물리는지 판단할 수 있어야 해요.</p>
+
+<h3>맡기면 안 되는 일: 변수(디자인 토큰)</h3>
+<p>발표자는 변수를 AI에 맡기는 걸 부엌 시공에 비유해요. "어두운 부엌이 좋아요"라고만 하면, 시공자는 마호가니 바닥과 갈색 의자를 들고 올 수 있어요. 정작 원한 건 아래 사진처럼 검은 수납장, 흰 의자, 금색 손잡이였는데요. 그래서 부엌을 지을 때는 가전, 수납장, 의자, 싱크대를 하나하나 고르죠.</p>
+<figure>
+  <img src="assets/frame-013229.png" alt="'No I wanted it like this!!' 슬라이드. 검은 수납장과 흰 의자, 금색 조명이 있는 부엌 사진">
+  <figcaption>
+    AI도 제품, 회사, 사양을 모두 알지 못하면 '어두운 부엌'을 엉뚱하게 지어요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=5549s" target="_blank" rel="noopener">영상 01:32:29에서 보기</a>
+  </figcaption>
+</figure>
+<p>그래서 "AI가 이걸 줬는데 맞나요?"라는 질문에는 답하지 않는다고 해요. 디자인 시스템을 업으로 하는 자신도 남의 제품과 대화 맥락을 모르면 판단할 수 없어요. 그걸 물어야 한다는 것 자체가 변수 구조의 기초가 빠져 있다는 뜻이라고 봐요.</p>
+<p>직접 시험해 봤어요. '두 브랜드를 지원하는 변수 라이브러리를 만들어 줘. 주 색은 진회색, 보조 색은 보라색'. 아래 결과에는 <span class="term" data-term="원시값" data-en="Primitive" data-desc="gray-100처럼 쓰임과 상관없이 색 값 자체에 이름을 붙인 가장 아래층 변수예요. 실제 화면에는 이걸 가리키는 매핑 변수를 써요." data-g="13">원시값</span>(Primitives)과 테마(Theme) 컬렉션이 생겼고, 테마에 Brand A, Brand B 두 열과 표면, 텍스트, 테두리, 아이콘, 간격, 반경 변수가 있어요.</p>
+<figure>
+  <img src="assets/frame-013409.png" alt="Figma 변수 창의 '2. Theme' 컬렉션. Brand A, Brand B 두 열과 surface-page, surface-subtle, surface-sunken, surface-raised 등 표면 변수 목록">
+  <figcaption>
+    on-primary, on-secondary 같은 이름은 좋다고 해요. 문제는 surface-subtle, surface-sunken, surface-raised를 각각 언제 쓰는지 알 수 없다는 거예요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=5649s" target="_blank" rel="noopener">영상 01:34:09에서 보기</a>
+  </figcaption>
+</figure>
+<p>더 큰 문제는 다크 모드예요. 원시값 컬렉션에는 모드가 하나뿐이에요. 테마 컬렉션은 이미 Brand A와 Brand B를 모드로 쓰고 있으니, 다크 모드를 원시값에 넣고 싶어져요. 아래 화면이 그렇게 Light와 Dark 두 열을 추가한 상태예요.</p>
+<figure>
+  <img src="assets/frame-013609.png" alt="Figma 변수 창의 '1. Primitives' 컬렉션. Light와 Dark 두 열에 grey-50부터 grey-950, purple 값들">
+  <figcaption>
+    이렇게 하면 grey-100의 다크 값이 쓰이는 곳과 상관없이 하나로 고정돼요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=5769s" target="_blank" rel="noopener">영상 01:36:09에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자의 설명을 그림으로 옮기면 이래요. 같은 회색이라도 어떤 컴포넌트에, 어떤 조합으로 쓰이느냐에 따라 다크 모드에서 필요한 값이 달라요. 그런데 원시값에 다크 모드를 넣으면 모든 쓰임이 같은 값을 받아요. 오른쪽은 발표자가 앞에서 보여 준 자기 라이브러리 방식이에요. 매핑된 변수마다 라이트와 다크 값을 따로 골라요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 760 250" role="img" aria-label="다크 모드를 원시값에 넣으면 gray-100이 모든 쓰임에서 같은 다크 값이 되고, 매핑 변수에 넣으면 변수마다 다크 값을 따로 고를 수 있음을 비교한 그림">
+    <defs><marker id="arrow-dark" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="10" y="22">(a) 원시값에 다크 모드</text>
+    <rect x="10" y="90" width="140" height="64" rx="10" class="bad"/>
+    <text x="80" y="117" text-anchor="middle" class="mono">gray-100</text>
+    <text x="80" y="138" text-anchor="middle" class="sub">다크 값은 하나뿐</text>
+    <path d="M152 112 L206 62" class="line" marker-end="url(#arrow-dark)"/>
+    <path d="M152 122 h54" class="line" marker-end="url(#arrow-dark)"/>
+    <path d="M152 132 L206 182" class="line" marker-end="url(#arrow-dark)"/>
+    <rect x="210" y="44" width="130" height="36" rx="6" class="box"/>
+    <text x="275" y="67" text-anchor="middle">카드 배경</text>
+    <rect x="210" y="104" width="130" height="36" rx="6" class="box"/>
+    <text x="275" y="127" text-anchor="middle">구분선</text>
+    <rect x="210" y="164" width="130" height="36" rx="6" class="box"/>
+    <text x="275" y="187" text-anchor="middle">버튼 배경</text>
+    <text x="175" y="232" text-anchor="middle" class="sub">쓰임이 달라도 다크에서 모두 같은 값</text>
+    <path d="M370 30 V230" class="line dim"/>
+    <text x="395" y="22">(b) 매핑 변수에 라이트·다크 모드</text>
+    <rect x="395" y="44" width="355" height="80" rx="10" class="ok"/>
+    <text x="410" y="66" class="mono">surface · secondary</text>
+    <rect x="405" y="78" width="165" height="34" rx="6" class="box"/>
+    <text x="487" y="100" text-anchor="middle" font-size="11.5">라이트: neutral light/100</text>
+    <rect x="577" y="78" width="165" height="34" rx="6" class="c6 cell"/>
+    <text x="659" y="100" text-anchor="middle" font-size="11.5">다크: neutral dark/1100</text>
+    <rect x="395" y="136" width="355" height="80" rx="10" class="ok"/>
+    <text x="410" y="158" class="mono">surface/primary · default-subtle</text>
+    <rect x="405" y="170" width="165" height="34" rx="6" class="box"/>
+    <text x="487" y="192" text-anchor="middle" font-size="11.5">라이트: primary/100</text>
+    <rect x="577" y="170" width="165" height="34" rx="6" class="c6 cell"/>
+    <text x="659" y="192" text-anchor="middle" font-size="11.5">다크: neutral light/900</text>
+    <text x="572" y="238" text-anchor="middle" class="sub">변수마다 쓰임에 맞는 다크 값을 따로 골라요</text>
+  </svg>
+  <figcaption>오른쪽 값은 영상 01:21의 발표자 변수 표에서 그대로 옮겼어요. 라이트에서 둘 다 밝은 색이어도 다크 값은 변수마다 따로 정해져 있어요.</figcaption>
+</figure>
+<p>AI가 변수를 만들 수는 있어요. 하지만 맞다는 보장은 없고, 오히려 거꾸로 해석하는 데 더 많은 시간이 들어요. 한두 시간이면 직접 변수 라이브러리를 만드는 법을 배울 수 있으니 게으르지 말라는 게 발표자의 당부예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Figma 도움말에 따르면 변수의 모드는 컬렉션 단위로 만들어요. 한 컬렉션에 라이트와 다크처럼 값 묶음을 두고, 모드마다 변수 하나에 값 하나씩을 저장해요. 디자인을 모드 사이에서 바꾸면 그 컬렉션의 변수가 한꺼번에 바뀌어요. 그래서 다크 모드를 어느 컬렉션에 둘지가 곧 '어느 층에서 값을 갈아 끼울지'를 정하는 일이에요. 컬렉션당 만들 수 있는 모드 수는 요금제에 따라 달라요.</p>
+  <p class="cite">출처: <a href="https://help.figma.com/hc/en-us/articles/15343816063383-Modes-for-variables" target="_blank" rel="noopener">Figma 도움말 — Modes for variables</a></p>
+</aside>
+
+<h3>컴포넌트도 마찬가지예요</h3>
+<p>Figma 에이전트에게 '테이블 컴포넌트를 만들어 줘'라고 하자, 아래 같은 팀원 목록 테이블이 나왔어요. 체크박스, 이름, 상태, 마지막 활동, 작업 다섯 열이에요. 디자인 시스템에 익숙하지 않으면 "테이블 컴포넌트 완성"이라고 받아들이기 쉬워요.</p>
+<figure>
+  <img src="assets/frame-013929.png" alt="Figma 에이전트가 만든 'Team Members' 테이블. 체크박스, 이름, 초록·노란 상태 배지, 마지막 활동, 작업 열. 왼쪽 레이어 목록에 table card, table header 등">
+  <figcaption>
+    겉보기엔 괜찮지만, 이 테이블은 늘 이 다섯 열을 가진 팀원 테이블이라고 가정하고 만들어졌어요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=5969s" target="_blank" rel="noopener">영상 01:39:29에서 보기</a>
+  </figcaption>
+</figure>
+<p>상태 열을 배지가 아니라 다른 텍스트로 바꾸려면 컴포넌트에 들어가 복사하고 지워야 해요. 그렇게 바꾸자 아래처럼 바로 정렬이 무너졌어요. 상태 열 위치에 날짜가 들어가 있고, 열 머리와 내용이 어긋나요.</p>
+<figure>
+  <img src="assets/frame-014009.png" alt="상태 열을 바꾼 뒤의 Team Members 테이블. 상태 자리에 날짜가 들어가 열과 머리글 정렬이 어긋남">
+  <figcaption>
+    컴포넌트가 제대로 쪼개져 있지 않아서 생긴 문제예요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=6009s" target="_blank" rel="noopener">영상 01:40:09에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자가 말하는 올바른 구조는 이래요. 셀 <span class="term" data-term="아톰 컴포넌트" data-en="Atom component" data-desc="더 쪼갤 수 없는 가장 작은 컴포넌트예요. 테이블이라면 셀과 헤더 셀이 아톰이고, 이걸 조합해 행과 표를 만들어야 유연해요." data-g="14">아톰 컴포넌트</span>와 헤더 아톰 컴포넌트를 두고, 셀마다 여러 변형을 준비해요. 그리고 셀을 헤더와 행으로 묶어요. 어떤 테이블은 행 전체에 hover가 걸리고, 어떤 테이블은 셀 하나에만 걸리기 때문이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 700 260" role="img" aria-label="테이블을 헤더 셀 아톰 다섯 개와 셀 아톰 다섯 개로 쪼개고, 상태 셀은 배지 변형과 텍스트 변형을 바꿔 끼우는 구조">
+    <defs><marker id="arrow-atoms" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-table-atoms"></g>
+  </svg>
+  <figcaption>열 이름은 영상 속 팀원 테이블에서 가져왔어요. 상태 셀이 변형을 가진 아톰이면, 배지를 텍스트로 바꿔도 위 화면처럼 정렬이 무너지지 않아요.</figcaption>
+</figure>
+<p>지금 필요 없어 보이는 조합까지 미리 대비해야 해요. 그렇지 않으면 여섯 달 뒤 개발팀에 넘긴 컴포넌트가 쓰임새를 다 받쳐 주지 못해서 처음부터 다시 만들게 돼요. 버튼, 라벨, 입력창 같은 쉬운 컴포넌트가 아니라 이런 복잡한 컴포넌트가 문제라고 해요.</p>
+<p>설계 리뷰에서 "왜 이 변형을 썼어요?", "왜 이 속성이 없어요?"라는 질문을 받거나, 개발자가 변형을 언제 쓰냐고 물을 때, 직접 만들지 않은 디자이너는 답하지 못해요. 발표자의 표현으로는 AI로 디자인 시스템을 만들면 10시간 만들고 100시간 동안 무엇을 만들었는지 알아내게 돼요. 3시간 들여 직접 만드는 법을 배우라고 권해요.</p>
+</section>
+
+<section id="s9">
+  <a class="stamp" href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=6058s" target="_blank" rel="noopener">01:40:58</a>
+  <h2>스크롤로 움직이는 인터랙션 만들기</h2>
+<p>마지막은 프로덕트 디자인보다는 재미로 보여 주는 실습이에요. 이미지와 영상 생성 모델을 엮어, 스크롤하면 차가 돌아가는 웹사이트 히어로를 만들어요. 고객용 웹 경험을 만들 때 응용할 수 있어요.</p>
+
+<h3>이미지 한 장에서 시작해요</h3>
+<p>Higgsfield는 여러 이미지·영상 생성 모델을 한곳에서 쓰게 해 주는 서비스예요. 이미지 모델로 Nano Banana Pro를 고르고, 웹사이트에 맞게 가로세로 비율을 16:9로 바꾼 뒤 '흰 배경의 빨간 Tesla 이미지를 만들어 줘'라고 했어요. 아래 화면 아래쪽 입력창에 그 프롬프트가 보여요.</p>
+<figure>
+  <img src="assets/frame-014218.png" alt="Higgsfield 이미지 생성 화면. 'START CREATING WITH NANO BANANA PRO' 문구와 아래 입력창의 'Build me an image of a tesla, white background' 프롬프트, 모델 선택 Nano Banana Pro">
+  <figcaption>
+    16:9는 웹 화면에, 세로형 비율은 모바일에 더 맞아요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=6138s" target="_blank" rel="noopener">영상 01:42:18에서 보기</a>
+  </figcaption>
+</figure>
+<p>받은 이미지를 Figma에 넣으니 배경 색이 가장자리에서 뚝 끊겨서 웹에 쓰기 어려웠어요. 그래서 프레임을 넓히고 Figma의 이미지 확장 기능으로 배경을 늘렸어요. 그리고 이미지를 하나 복제해 좌우를 뒤집고, 하나는 시작 프레임, 하나는 끝 프레임으로 이름을 붙였어요. 아래가 그 두 장이에요.</p>
+<figure>
+  <img src="assets/frame-014338.png" alt="Figma 캔버스에 나란히 놓인 빨간 Tesla 이미지 두 장. 오른쪽은 좌우가 뒤집힌 버전">
+  <figcaption>
+    좋은 영상에는 시작 프레임과 끝 프레임이 있어요. 두 장 사이를 영상 모델이 채워요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=6218s" target="_blank" rel="noopener">영상 01:43:38에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>두 프레임 사이를 영상으로</h3>
+<p>영상 생성에서는 Kling 3.0을 골라요. 시작 프레임과 끝 프레임을 주면 그 사이를 이어 주는 데 강한 모델이에요. 아래 화면 왼쪽 위에 두 이미지가 들어가 있고, 모델 Kling 3.0, 길이 5초가 설정돼 있어요. 프롬프트는 비워 두고 생성했어요.</p>
+<figure>
+  <img src="assets/frame-014418.png" alt="Higgsfield 영상 생성 화면. 왼쪽에 시작·끝 프레임 두 장, Model Kling 3.0, 5s 설정. 가운데에는 이전에 만든 다른 Tesla 영상">
+  <figcaption>
+    가운데 영상은 예전에 다른 작업으로 만든 것이라 무시하라고 해요. 결과로 차가 도는 사실적인 5초 영상이 나왔어요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=6258s" target="_blank" rel="noopener">영상 01:44:18에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>영상을 프레임으로 쪼개 스크롤에 연결해요</h3>
+<p>이 시점에 Claude가 장애로 멈춰서 Grok을 썼어요. 먼저 시작 프레임 이미지를 주고 'Tesla 느낌의 웹사이트 히어로를 이 이미지를 배경으로 만들어 줘'라고 해서 히어로를 만들어요.</p>
+<p>그다음이 핵심이에요. 영상은 결국 이미지 수백 장을 빠르게 넘기는 거예요. 영상을 배경에서 반복 재생하면 어색하니, 사용자가 스크롤로 어느 프레임을 볼지 직접 정하게 해요. 그래서 MP4(MPEG-4 Part 14) 경로를 주고 이렇게 요청했어요. 'FFmpeg로 영상을 프레임으로 쪼개고 배경 이미지를 그 프레임으로 바꿔 줘. 스크롤하면 프레임이 바뀌고, 차 주변 문구도 함께 바뀌어서 하나의 경험이 되게 해 줘.'</p>
+<figure class="diagram">
+  <svg viewBox="0 0 690 235" role="img" aria-label="이미지 생성, 시작과 끝 프레임, 5초 영상, 프레임 쪼개기, 스크롤 연결 다섯 단계와, 스크롤 위치가 프레임 번호를 고르는 구조">
+    <defs>
+      <marker id="arrow-frames" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker>
+      <marker id="arrow-frames2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker>
+    </defs>
+    <g id="fig-scroll-frames"></g>
+  </svg>
+  <figcaption>FFmpeg가 영상을 이미지 100~200장으로 쪼개고, 페이지는 스크롤 위치에 맞는 한 장만 보여 줘요. 스크롤을 멈추면 차도 멈춰요.</figcaption>
+</figure>
+<p>결과가 아래 히어로예요. 처음에는 'Model 3' 제목 아래 차가 정면에 가깝게 서 있어요. 천천히 스크롤하면 프레임이 바뀌며 차가 돌고, 차가 보여 주는 면에 맞춰 왼쪽과 오른쪽에 문구가 나타나요. 차의 각도와 문구를 모두 스크롤 하나로 조종하는 거예요.</p>
+<figure>
+  <img src="assets/frame-014838.png" alt="Grok이 만든 Tesla 스타일 히어로. 'Model 3' 제목과 'Lease from' 문구, 가운데 빨간 Tesla, 아래 Order Now와 Demo Drive 버튼">
+  <figcaption>
+    이미지 생성, Kling의 프레임 사이 영상, FFmpeg 프레임 분리가 이 한 화면에 합쳐졌어요.
+    <a href="https://www.youtube.com/watch?v=r-MPiu0E4W4&amp;t=6518s" target="_blank" rel="noopener">영상 01:48:38에서 보기</a>
+  </figcaption>
+</figure>
+<p>같은 방식은 Seedance 2.0 같은 영상 모델로 만든 긴 광고 영상에도 쓸 수 있어요. 발표자는 Tesla 세 대가 나오고 실내와 무선 충전 장면으로 이어지는 영상을 장면별로 쪼개, 구간마다 다른 문구를 보여 주는 예를 함께 보여 줘요.</p>
+
+<h3>마무리: 도구를 나눠 쓰는 게 AI로 디자인하는 방법</h3>
+<p>AI는 아직 디자이너를 대체하지 않아요. 디자이너는 디자인 엔지니어 쪽으로 옮겨 가고 있고, 3~4년 전처럼 모든 걸 Figma 안에서 하던 시절과는 달라요. 오토 레이아웃과 디자인 시스템 사용 같은 일은 AI가 많이 도와줘요.</p>
+<p>그리고 모든 걸 해 주는 도구는 없어요. Antigravity는 QA, Grok은 반복, Claude와 Claude Code는 디자인 시스템 따르기처럼 각자 잘하는 일에 맞춰 도구를 오가는 게 지금 AI로 디자인하는 방법이에요. 앞으로 여섯 달, 1년 뒤 무엇이 바뀔지는 아무도 모른다는 말로 영상을 끝내요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 영어 자막이라 도구와 모델 이름이 잘못 받아적힌 곳이 많아요. 화면에 나온 표기를 기준으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>Grock, Gro, Rock, Brock</td><td>Grok</td><td></td></tr>
+      <tr><td>Cloud Code, claw code</td><td>Claude Code</td><td></td></tr>
+      <tr><td>claw design, cloud design</td><td>Claude Design</td><td></td></tr>
+      <tr><td>Codeex</td><td>Codex</td><td></td></tr>
+      <tr><td>chat GBT, chat GPD</td><td>ChatGPT</td><td></td></tr>
+      <tr><td>Saul, Soulport 5.6</td><td>5.6 Sol</td><td>Codex 모델 선택창 표기</td></tr>
+      <tr><td>it took about 70 minutes</td><td>17분</td><td>비교 표 기준 (추정)</td></tr>
+      <tr><td>Mobit, Mobin, Maven, Mauvin, Mbit</td><td>Mobbin</td><td></td></tr>
+      <tr><td>KOD</td><td>Coda</td><td>Mobbin 검색 결과 화면</td></tr>
+      <tr><td>Versel, Verscell</td><td>Vercel</td><td></td></tr>
+      <tr><td>network trajectory</td><td>Net worth trajectory</td><td></td></tr>
+      <tr><td>wicked criteria</td><td>WCAG criterion</td><td></td></tr>
+      <tr><td>skill.mmd</td><td>SKILL.md</td><td></td></tr>
+      <tr><td>Sigma agents</td><td>Figma agents</td><td></td></tr>
+      <tr><td>figment variables</td><td>Figma variables</td><td></td></tr>
+      <tr><td>technical depth</td><td>technical debt</td><td></td></tr>
+      <tr><td>Higsfield, Hicksfield</td><td>Higgsfield</td><td></td></tr>
+      <tr><td>Google Nano Banana</td><td>Nano Banana Pro</td><td>Higgsfield 모델 선택창 표기</td></tr>
+      <tr><td>Clling, Cling 3.0</td><td>Kling 3.0</td><td></td></tr>
+      <tr><td>Cance 2.0</td><td>Seedance 2.0</td><td></td></tr>
+      <tr><td>ffmpg</td><td>FFmpeg</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-8"><dt>개발자 핸드오프<span class="en">Developer handoff</span></dt><dd>완성한 디자인을 개발자가 구현할 수 있게 치수, 토큰, 상태 같은 사양과 함께 넘기는 일이에요.</dd></div>
+    <div class="g" id="g-11"><dt>기술 부채<span class="en">Technical debt</span></dt><dd>문제인 걸 알지만 고치는 비용이 너무 커서 안고 가는 부분이에요. 스킬에 적어 두지 않으면 AI가 감사하다가 그걸 고치려 들어요.</dd></div>
+    <div class="g" id="g-6"><dt>데이터 밀도<span class="en">Data density</span></dt><dd>한 화면에 정보를 얼마나 촘촘히 담는지를 말해요. 같은 대시보드도 여백 많은 안부터 파워 유저용 빽빽한 안까지 나뉘어요.</dd></div>
+    <div class="g" id="g-1"><dt>디자인 엔지니어<span class="en">Design engineer</span></dt><dd>디자인뿐 아니라 코드와 AI 도구로 아이디어를 동작하는 형태까지 만드는 역할이에요. 영상은 디자이너 역할이 이쪽으로 옮겨 가고 있다고 봐요.</dd></div>
+    <div class="g" id="g-12"><dt>디자인 토큰<span class="en">Design token</span></dt><dd>색, 간격, 글자 크기 같은 디자인 값을 이름 붙여 저장한 거예요. Figma에서는 변수로 만들어요. 이름만 있고 쓰임 설명이 없으면 AI가 잘못 골라요.</dd></div>
+    <div class="g" id="g-5"><dt>무드보드<span class="en">Mood board</span></dt><dd>원하는 분위기와 스타일을 보여 주는 레퍼런스 화면을 한곳에 모은 판이에요. 영상에서는 Mobbin 화면 28개를 네 방향으로 묶었어요.</dd></div>
+    <div class="g" id="g-7"><dt>브레이크포인트<span class="en">Breakpoint</span></dt><dd>화면 폭이 특정 값보다 좁아질 때 레이아웃을 바꾸는 기준점이에요. 영상의 Antigravity는 1400px, 1100px, 768px 세 지점을 스스로 확인했어요.</dd></div>
+    <div class="g" id="g-3"><dt>스킬<span class="en">Skill</span></dt><dd>AI에게 줄 지시와 참고 자료를 SKILL.md 파일로 묶어 둔 꾸러미예요. 매번 프롬프트로 설명할 내용을 한 번 적어 두고 필요할 때 불러 써요.</dd></div>
+    <div class="g" id="g-14"><dt>아톰 컴포넌트<span class="en">Atom component</span></dt><dd>더 쪼갤 수 없는 가장 작은 컴포넌트예요. 테이블이라면 셀과 헤더 셀이 아톰이고, 이걸 조합해 행과 표를 만들어야 유연해요.</dd></div>
+    <div class="g" id="g-9"><dt>오토 레이아웃<span class="en">Auto layout</span></dt><dd>Figma에서 요소 사이 간격과 정렬을 규칙으로 정해 두면 내용이 바뀌어도 자동으로 다시 배치되는 기능이에요. AI 결과를 Figma로 보낼 때 이게 살아 있어야 편집하기 쉬워요.</dd></div>
+    <div class="g" id="g-4"><dt>와이어프레임<span class="en">Wireframe</span></dt><dd>색과 세부 디자인 없이 레이아웃과 요소 배치만 보여 주는 로우파이 화면이에요. 방향을 정하기 전에 구조부터 고를 때 써요.</dd></div>
+    <div class="g" id="g-13"><dt>원시값<span class="en">Primitive</span></dt><dd>gray-100처럼 쓰임과 상관없이 색 값 자체에 이름을 붙인 가장 아래층 변수예요. 실제 화면에는 이걸 가리키는 매핑 변수를 써요.</dd></div>
+    <div class="g" id="g-10"><dt>접근성 감사<span class="en">Accessibility audit</span></dt><dd>화면이 시각·운동 장애가 있는 사용자도 쓸 수 있는지 WCAG 같은 기준으로 점검하는 일이에요. 색 대비, 키보드 조작, 스크린 리더 지원 등을 봐요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>CSS</dt><dd>Cascading Style Sheets</dd></div>
+    <div class="g"><dt>HTML</dt><dd>HyperText Markup Language</dd></div>
+    <div class="g" id="g-2"><dt>MCP<span class="en">Model Context Protocol</span></dt><dd>AI 에이전트가 외부 도구나 데이터에 연결되는 표준 방식이에요. 영상에서는 Claude Code를 Paper, Mobbin, Figma에 붙이는 데 써요.</dd></div>
+    <div class="g"><dt>MP4</dt><dd>MPEG-4 Part 14</dd></div>
+    <div class="g"><dt>PDF</dt><dd>Portable Document Format</dd></div>
+    <div class="g"><dt>QA</dt><dd>Quality Assurance</dd></div>
+    <div class="g"><dt>SVG</dt><dd>Scalable Vector Graphics</dd></div>
+    <div class="g"><dt>UI</dt><dd>User Interface</dd></div>
+    <div class="g"><dt>URL</dt><dd>Uniform Resource Locator</dd></div>
+    <div class="g"><dt>UX</dt><dd>User Experience</dd></div>
+    <div class="g"><dt>WCAG</dt><dd>Web Content Accessibility Guidelines</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=r-MPiu0E4W4" target="_blank" rel="noopener">원본 영상 — UI Collective, Design with AI - Full Guide</a></li>
+    <li id="src-2"><a href="https://paper.design/docs/mcp" target="_blank" rel="noopener">Paper 공식 문서 — Paper MCP Server</a></li>
+    <li id="src-3"><a href="https://docs.mobbin.com/mcp/clients/overview" target="_blank" rel="noopener">Mobbin MCP 문서 — Supported Clients</a></li>
+    <li id="src-4"><a href="https://developers.figma.com/docs/figma-mcp-server/" target="_blank" rel="noopener">Figma Developer Docs — Figma MCP Server</a></li>
+    <li id="src-5"><a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code 공식 문서 — Skills</a></li>
+    <li id="src-6"><a href="https://github.com/anthropics/knowledge-work-plugins/tree/main/design" target="_blank" rel="noopener">GitHub anthropics/knowledge-work-plugins — design</a></li>
+    <li id="src-7"><a href="https://www.w3.org/TR/WCAG22/" target="_blank" rel="noopener">W3C — WCAG 2.2</a></li>
+    <li id="src-8"><a href="https://github.com/edenspiekermann/Skills" target="_blank" rel="noopener">GitHub edenspiekermann/Skills</a></li>
+    <li id="src-9"><a href="https://help.figma.com/hc/en-us/articles/15343816063383-Modes-for-variables" target="_blank" rel="noopener">Figma 도움말 — Modes for variables</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 14일에 이 영상을 보고 정리했어요. 원본은 UI Collective 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+// 반복 구조가 있는 그림 두 개를 그려요: 테이블 아톰 구조, 스크롤 프레임 파이프라인
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+
+// 테이블 컴포넌트: 헤더 셀 아톰과 셀 아톰, 셀 변형
+(() => {
+  const g = document.getElementById('fig-table-atoms');
+  if (!g) return;
+  const heads = ['체크박스', '이름', '상태', '마지막 활동', '작업'];
+  const cells = ['체크박스', '이름', '상태 배지', '날짜', '작업'];
+  const x0 = 150, step = 108, w = 100, h = 34;
+  g.append(el('text', { x: 10, y: 62 }, '헤더 행'));
+  g.append(el('text', { x: 10, y: 80, class: 'sub' }, '헤더 셀 아톰'));
+  g.append(el('text', { x: 10, y: 132 }, '데이터 행'));
+  g.append(el('text', { x: 10, y: 150, class: 'sub' }, '셀 아톰'));
+  heads.forEach((t, i) => {
+    const x = x0 + i * step;
+    g.append(el('rect', { x, y: 50, width: w, height: h, rx: 6, class: 'c4 cell' }));
+    g.append(el('text', { x: x + w / 2, y: 72, 'text-anchor': 'middle' }, t));
+  });
+  cells.forEach((t, i) => {
+    const x = x0 + i * step;
+    g.append(el('rect', { x, y: 120, width: w, height: h, rx: 6, class: 'c5 cell' }));
+    g.append(el('text', { x: x + w / 2, y: 142, 'text-anchor': 'middle' }, t));
+  });
+  // 상태 셀을 강조하고, 아래에 바꿔 끼울 수 있는 변형 두 개
+  const sx = x0 + 2 * step;
+  g.append(el('rect', { x: sx - 5, y: 115, width: w + 10, height: h + 10, rx: 8, class: 'ring' }));
+  g.append(el('path', { d: `M${sx + w / 2} 160 v22`, class: 'line', 'marker-end': 'url(#arrow-atoms)' }));
+  g.append(el('rect', { x: sx - 60, y: 188, width: 104, height: 32, rx: 6, class: 'accent' }));
+  g.append(el('text', { x: sx - 8, y: 209, 'text-anchor': 'middle' }, '배지 변형'));
+  g.append(el('rect', { x: sx + 56, y: 188, width: 104, height: 32, rx: 6, class: 'accent' }));
+  g.append(el('text', { x: sx + 108, y: 209, 'text-anchor': 'middle' }, '텍스트 변형'));
+  g.append(el('text', { x: sx + w / 2, y: 244, 'text-anchor': 'middle', class: 'sub' }, '셀 변형만 바꾸면 열 폭과 정렬이 그대로예요'));
+  g.append(el('text', { x: 10, y: 24, class: 'sub' }, '행 단위로 묶을지, 셀 단위로 묶을지(hover 방식)도 따로 준비해요'));
+})();
+
+// 스크롤 프레임 파이프라인
+(() => {
+  const g = document.getElementById('fig-scroll-frames');
+  if (!g) return;
+  const steps = [
+    ['이미지 생성', 'Nano Banana Pro'],
+    ['시작·끝 프레임', 'Figma'],
+    ['5초 영상', 'Kling 3.0'],
+    ['프레임 쪼개기', 'FFmpeg'],
+    ['스크롤 연결', 'Grok'],
+  ];
+  const w = 120, step = 136;
+  steps.forEach(([name, tool], i) => {
+    const x = 10 + i * step;
+    g.append(el('rect', { x, y: 20, width: w, height: 70, rx: 10, class: 'box' }));
+    g.append(el('text', { x: x + w / 2, y: 50, 'text-anchor': 'middle' }, name));
+    g.append(el('text', { x: x + w / 2, y: 72, 'text-anchor': 'middle', class: 'mono' }, tool));
+    if (i < steps.length - 1)
+      g.append(el('path', { d: `M${x + w + 2} 55 h12`, class: 'line', 'marker-end': 'url(#arrow-frames)' }));
+  });
+  // 프레임 줄: 1 … N, 스크롤 위치가 프레임 번호를 고름
+  const labels = ['1', '2', '3', '4', '5', '…', 'N'];
+  const fx = 120, fw = 56, fstep = 64;
+  labels.forEach((t, i) => {
+    const x = fx + i * fstep;
+    const isCur = i === 2;
+    g.append(el('rect', { x, y: 130, width: fw, height: 40, rx: 4, class: isCur ? 'accent' : 'box' }));
+    g.append(el('text', { x: x + fw / 2, y: 155, 'text-anchor': 'middle', class: 'mono' }, t));
+  });
+  g.append(el('text', { x: 10, y: 146 }, '프레임'));
+  g.append(el('text', { x: 10, y: 164, class: 'sub' }, '이미지 100~200장'));
+  const cx = fx + 2 * fstep + fw / 2;
+  g.append(el('path', { d: `M${cx} 206 v-30`, class: 'hot', 'marker-end': 'url(#arrow-frames2)' }));
+  g.append(el('text', { x: cx + 12, y: 202 }, '지금 스크롤 위치 → 보여 줄 프레임 번호'));
+  g.append(el('text', { x: cx + 12, y: 222, class: 'sub' }, '같은 위치에서 차 옆 문구도 바뀌어요'));
+})();
+</script>
+</body>
+</html>
