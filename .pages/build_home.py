@@ -2,6 +2,7 @@
 """Build the GitHub Pages home (../index.html) from categories.json and each folder's content.json.
 
 Folders not listed in categories.json land in "미분류" so a new digest never goes missing.
+Also puts the password lock into every document page (see protect_pages).
 Run: python3 .pages/build_home.py
 """
 import html
@@ -15,6 +16,34 @@ from urllib.parse import quote
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 EXCLUDE = {"skill-dev", ".claude", ".pages", ".git"}
+
+# Blocks right-click and the devtools / view-source shortcuts. Browser menus still open devtools.
+GUARD_JS = """  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);"""
+
+# Injected right after <head> of every document page. The page stays hidden (even with JS off)
+# until the stored unlock value matches; otherwise it is sent to the home lock screen.
+LOCK_START, LOCK_END = "<!-- yn-lock:start -->", "<!-- yn-lock:end -->"
+DOC_LOCK = LOCK_START + """
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "{hash}"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+{guard}
+</script>
+""" + LOCK_END
 
 
 def esc(s):
@@ -34,6 +63,7 @@ def load_videos():
         name = unicodedata.normalize("NFC", d.name)  # macOS may hand back NFD names
         videos[name] = {
             "folder": name,
+            "page": page,
             "title": c.get("title", d.name),
             "subtitle": c.get("subtitle", ""),
             "channel": (c.get("channel") or "채널 미상").strip(),
@@ -81,6 +111,28 @@ def channel_blocks(vs, cat_of):
     if singles:
         out.append('<div class="grid" data-group>' + "".join(card(v) for v in singles) + "</div>")
     return "".join(out)
+
+
+def protect_pages(videos, pw_hash):
+    """Put the lock (or remove it when there is no password) in every document page. Safe to rerun."""
+    block = re.compile(re.escape(LOCK_START) + r".*?" + re.escape(LOCK_END) + r"\n?", re.S)
+    changed = 0
+    for v in videos.values():
+        page = v["page"]
+        src = page.read_text(encoding="utf-8")
+        out = block.sub("", src)
+        if pw_hash:
+            snippet = DOC_LOCK.replace("{hash}", pw_hash).replace("{guard}", GUARD_JS) + "\n"
+            # after <meta charset> so the charset stays inside the first 1024 bytes; else right after <head>
+            out, n = re.subn(r"(<meta charset[^>]*>\n?)", lambda m: m.group(1) + snippet, out, count=1, flags=re.I)
+            if not n:
+                out, n = re.subn(r"(<head[^>]*>\n?)", lambda m: m.group(1) + snippet, out, count=1, flags=re.I)
+            if not n:
+                raise SystemExit(f"no <head> in {page}")
+        if out != src:
+            page.write_text(out, encoding="utf-8")
+            changed += 1
+    return changed
 
 
 def main():
@@ -139,6 +191,8 @@ def main():
     pw_hash = hash_file.read_text(encoding="utf-8").strip() if hash_file.exists() else ""
     out = (
         tpl.replace("{{PW_HASH}}", pw_hash)
+        .replace("{{LOCK_CLASS}}", ' class="locked"' if pw_hash else "")
+        .replace("{{GUARD_JS}}", GUARD_JS)
         .replace("{{COUNT}}", str(len(videos)))
         .replace("{{CATS}}", str(len(cats)))
         .replace("{{CHANNELS}}", str(len(by_ch)))
@@ -147,6 +201,8 @@ def main():
         .replace("{{CHANNEL_VIEW}}", "".join(ch_html))
     )
     (ROOT / "index.html").write_text(out, encoding="utf-8")
+    changed = protect_pages(videos, pw_hash)
+    print(f"document pages {'locked' if pw_hash else 'unlocked'}: {changed} changed")
     print(f"index.html: {len(videos)} videos, {len(cats)} categories, {len(by_ch)} channels"
           + (f", 미분류 {len(rest)}: {rest}" if rest else ""))
 

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko"{{LOCK_CLASS}}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -83,22 +83,20 @@
 </style>
 <script>
   var LOCK_HASH = "{{PW_HASH}}";
+  // 문서 페이지에서 넘어왔다면 통과 후 그 문서로 돌려보내요. 이 사이트 안의 주소만 받아요.
+  function lockNext(){
+    var n = new URLSearchParams(location.search).get('next') || '', base = location.pathname.replace(/[^/]*$/, '');
+    return (n.indexOf(base) === 0 && n.indexOf('//') === -1) ? n : '';
+  }
   if (LOCK_HASH) {
     var unlocked = false;
     try { unlocked = localStorage.getItem('yn-unlock') === LOCK_HASH; } catch (e) {}
-    if (!unlocked) document.documentElement.classList.add('locked');
-  }
-  // 우클릭 메뉴와 개발자 도구·소스 보기 단축키를 막아요. 브라우저 메뉴로 여는 것까지는 못 막아요.
-  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
-  document.addEventListener('keydown', function(e){
-    var c = e.code, mod = e.ctrlKey || e.metaKey;
-    if (e.key === 'F12' ||
-        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
-        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
-        (mod && c === 'KeyU')) {
-      e.preventDefault(); e.stopPropagation();
+    if (unlocked) {
+      document.documentElement.classList.remove('locked');
+      if (lockNext()) location.replace(lockNext());
     }
-  }, true);
+  }
+{{GUARD_JS}}
 </script>
 </head>
 <body>
@@ -123,6 +121,7 @@
     sha256(pw.value).then(function(h){
       if (h === LOCK_HASH) {
         try { localStorage.setItem('yn-unlock', h); } catch (e) {}
+        if (lockNext()) { location.replace(lockNext()); return; }
         document.documentElement.classList.remove('locked');
       } else {
         err.textContent = '비밀번호가 맞지 않아요.'; pw.select();
