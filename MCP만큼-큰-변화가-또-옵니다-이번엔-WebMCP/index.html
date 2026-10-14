@@ -24,7 +24,9 @@
 </script>
 <!-- yn-lock:end -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WebMCP — 웹사이트가 AI에게 조작 도구를 내주는 방법</title>
+<title>MCP만큼 큰 변화, WebMCP</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 <style>
   :root{
     --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
@@ -32,7 +34,10 @@
     --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
     --warn:#ff8a00; --warn-soft:#fff4e6;
     --info:#00b8a9; --info-soft:#e4f8f6;
-    --radius:16px; --maxw:760px;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
   }
   @media (prefers-color-scheme:dark){
     :root{
@@ -41,6 +46,8 @@
       --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
       --warn:#ffab4a; --warn-soft:#3a2a13;
       --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
     }
   }
   *{box-sizing:border-box}
@@ -78,13 +85,29 @@
   .keypoints li strong{color:var(--text)}
 
   /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
   nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
     border-radius:var(--radius)}
   nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
   nav.toc ol{margin:0; padding-left:20px}
-  nav.toc li{margin:6px 0; font-size:15px}
-  nav.toc a{color:var(--text-sub)}
-  nav.toc a.active{color:var(--brand); font-weight:600}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
 
   /* ── 본문 ──────────────────────────────────────────── */
   section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
@@ -99,6 +122,16 @@
     background:var(--surface-2); color:var(--text-mute);
     font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
   a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
 
   /* ── 그림 ──────────────────────────────────────────── */
   figure{margin:28px 0}
@@ -115,23 +148,33 @@
   thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
     font-weight:700; white-space:nowrap}
   tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
   td code{font-size:13.5px}
 
-  /* ── 용어 툴팁 ─────────────────────────────────────── */
-  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
-    font-weight:600; background:none}
-  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
-  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
-    background:var(--text); color:var(--bg); border-radius:12px;
-    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
-    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
-    transition:opacity .12s ease; pointer-events:none}
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
   #tip.on{opacity:1; visibility:visible}
-  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
 
   /* ── 박스 두 종류 ───────────────────────────────────
      .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
-     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
   aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
   aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
   aside p{margin:8px 0}
@@ -144,6 +187,92 @@
   aside .table-scroll{margin:12px 0 0}
   aside table{min-width:320px; font-size:14.5px}
   aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
 
   /* ── 인용 ──────────────────────────────────────────── */
   blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
@@ -159,13 +288,14 @@
   pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
     border:1px solid var(--line); overflow-x:auto; line-height:1.6}
   pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
 
   /* ── 꼬리말 ────────────────────────────────────────── */
   .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
   .tail h2{font-size:20px; margin:0 0 14px}
   .tail + .tail{margin-top:40px}
   .tail ol{padding-left:20px}
-  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
   footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
     font-size:13.5px; color:var(--text-mute)}
 
@@ -181,12 +311,12 @@
 <div class="wrap">
 
 <header>
-  <h1>WebMCP — 웹사이트가 AI에게 조작 도구를 내주는 방법</h1>
-  <p class="lede">AI가 화면을 분석하지 않고 사이트가 준비한 도구를 쓰는 원리를 짚어요</p>
+  <h1>MCP만큼 큰 변화, WebMCP</h1>
+  <p class="lede">웹사이트가 AI에게 버튼 대신 도구를 건네는 방법을 짚어요</p>
   <div class="meta">
     <span>코드깎는노인</span><span class="dot">·</span>
-    <span>07:26</span><span class="dot">·</span>
-    <span>유튜브 영상 정리</span>
+    <span>영상 07:26</span><span class="dot">·</span>
+    <span>읽는 데 약 9분</span>
   </div>
   <a class="src-btn" href="https://www.youtube.com/watch?v=sOLFEc63US4" target="_blank" rel="noopener">
     원본 영상 보러 가기 →
@@ -196,171 +326,226 @@
 <div class="keypoints">
   <h2>핵심만 먼저</h2>
   <ol>
-    <li>WebMCP는 웹사이트가 AI 에이전트용 조작 도구를 코드로 미리 등록해 두는 브라우저 기능이에요.</li>
-    <li>지금은 AI가 사람용 화면을 매번 분석해 조작 코드를 짜야 해서, 분석이 틀리면 오작동해요.</li>
-    <li>사이트는 <code>registerTool</code>로 등록하고, AI는 <code>getTools</code>로 확인한 뒤 <code>executeTool</code>로 실행해요.</li>
-    <li>AI가 대신 쇼핑·예약하는 시대엔 득이지만, 광고 노출이 수익원인 사이트엔 반갑지 않을 수 있어요.</li>
-    <li>아직 실험 단계예요. 크롬 플래그를 켜야 쓸 수 있고, 스펙은 MDN이 아니라 GitHub에서 바뀌고 있어요.</li>
+    <li>WebMCP는 웹사이트가 AI(Artificial Intelligence) 에이전트용 조작 도구를 미리 등록해 두는 <span class="term" data-term="웹 API" data-en="Web API" data-desc="브라우저가 웹 페이지에 기본으로 열어 주는 기능 묶음이에요. Image, Audio, WebSocket처럼 하나씩 늘어 왔고, WebMCP의 modelContext도 그 대열에 새로 들어오는 중이에요." data-g="1">웹 API(Application Programming Interface)</span>예요.</li>
+    <li>지금 AI는 사람용 화면을 분석해서 조작 코드를 스스로 짜야 해서 실수하기 쉬워요.</li>
+    <li>사이트는 <code>registerTool</code>로 도구를 등록하고, AI는 <code>getTools</code>로 목록을 보고 <code>executeTool</code>로 실행해요.</li>
+    <li>아직 Chrome <span class="term" data-term="플래그" data-en="Chrome flags" data-desc="Chrome에서 아직 정식으로 켜지지 않은 실험 기능을 켜고 끄는 설정이에요. chrome://flags에서 바꾸고, 바꾼 뒤에는 브라우저를 다시 시작해야 적용돼요." data-g="3">플래그</span>를 켜야 쓸 수 있고, 스펙은 webmachinelearning GitHub에서 바뀌는 중이에요.</li>
+    <li>광고 노출이 수익인 사이트라면 AI 지원이 꼭 반갑지만은 않을 수 있어요.</li>
   </ol>
 </div>
 
 <nav class="toc">
   <h2>목차</h2>
   <ol>
-    <li><a href="#s1">사람용 웹은 AI에게 불편해요</a></li>
-    <li><a href="#s2">WebMCP가 해결하려는 것</a></li>
-    <li><a href="#s3">웹 API 하나가 더 생긴 것</a></li>
-    <li><a href="#s4">할 일 목록 사이트로 해 보는 데모</a></li>
-    <li><a href="#s5">AI 에이전트 쪽 구현과 앞으로의 웹</a></li>
+    <li><a href="#s1">AI는 왜 웹사이트를 쓰기 불편할까요</a></li>
+    <li><a href="#s2">WebMCP가 하는 일, 사이트에는 득일까요</a></li>
+    <li><a href="#s3">브라우저에 새로 생긴 웹 API, modelContext</a></li>
+    <li><a href="#s4">사이트는 등록하고, AI는 꺼내 써요</a></li>
+    <li><a href="#s5">AI 쪽 모습과 프런트엔드의 미래</a></li>
     <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
   </ol>
 </nav>
 
 <main>
 <section id="s1">
   <a class="stamp" href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=0s" target="_blank" rel="noopener">00:00</a>
-  <h2>사람용 웹은 AI에게 불편해요</h2>
-<p>웹사이트는 버튼, 입력창, 체크박스처럼 눈으로 보고 누르는 요소로 되어 있어요. 영상은 반대 상황을 상상해 봐요. 사이트에 들어갔더니 검은 화면에 명령어를 치라고 나오는 거예요. 이러면 대부분은 창을 닫아 버리겠죠. 그래서 웹은 특별한 지식 없이도 쓸 수 있게 만들어져 왔어요.</p>
+  <h2>AI는 왜 웹사이트를 쓰기 불편할까요</h2>
+<p>영상은 평범한 할 일 목록 사이트로 시작해요. 입력칸에 할 일을 쓰고 '추가'를 누르고, 체크 표시와 휴지통 아이콘으로 완료와 삭제를 해요. 사람은 보고 누르기만 하면 돼요.</p>
 <figure>
-  <img src="assets/frame-0027.png" alt="같은 할 일 목록 기능을 명령어로만 쓰게 만든 터미널 화면. todo list, todo add 같은 명령이 보여요">
-  <figcaption>같은 할 일 목록을 명령어로만 쓰게 만든 예시예요. 사람에게는 불편하지만 AI에게는 오히려 익숙한 방식이에요. <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=27s" target="_blank" rel="noopener">영상 00:27에서 보기</a></figcaption>
+  <img src="assets/frame-0012.png" alt="Todo List 사이트. 할 일 입력칸과 추가 버튼, 체크박스와 삭제 아이콘이 달린 할 일 세 개가 보여요">
+  <figcaption>사람을 위한 화면이에요. 기능이 전부 눈에 보이는 버튼과 입력칸으로 나와 있어요.
+    <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=12s" target="_blank" rel="noopener">영상 00:12에서 보기</a></figcaption>
 </figure>
-<h3>AI는 매번 화면을 분석해야 해요</h3>
-<p>이제 웹을 쓰는 주체에 AI 에이전트도 들어가요. 화면도 결국 코드라서 AI가 못 다루는 건 아니에요. 문제는 AI가 사이트에 올 때마다 페이지 구조를 분석하고, 그에 맞는 조작 코드를 직접 만들어야 한다는 점이에요. 사람용으로 만든 화면을 AI가 자기 편한 도구로 바꿔서 쓰는 셈이죠.</p>
-<p>사이트마다 구현 방식과 복잡도가 달라요. 그래서 분석을 잘못하면 엉뚱한 버튼을 누르는 식으로 오작동할 수 있어요.</p>
+<p>같은 기능을 명령어로만 쓸 수 있다면 어떨까요. 영상은 이 사이트를 터미널처럼 바꾼 화면을 보여 줘요. <code>todo list</code>, <code>todo add "빨래하기"</code>처럼 명령을 쳐야 목록이 나와요. 이러면 쓸 수 있는 사람이 거의 없어요. 그래서 웹은 누구나 쓸 수 있게 눈에 보이는 조작 요소로 만들어졌어요.</p>
 <figure>
-  <img src="assets/frame-0121.png" alt="할 일 목록 페이지 옆 개발자 도구 콘솔에서 querySelectorAll로 aria-label을 찾아 할 일 목록을 표로 뽑아낸 화면">
-  <figcaption>AI가 지금 하는 일을 사람이 흉내 낸 모습이에요. 페이지의 요소를 직접 찾아서 목록을 읽어 내야 해요. <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=81s" target="_blank" rel="noopener">영상 01:21에서 보기</a></figcaption>
+  <img src="assets/frame-0036.png" alt="검은 터미널 화면에서 todo list, todo add 같은 명령어로 할 일을 조회하고 추가하는 모습">
+  <figcaption>같은 할 일 목록을 명령어로만 다루는 화면이에요. 사람에게는 불편하지만, 발표자는 AI에게는 오히려 이쪽이 익숙하다고 말해요.
+    <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=36s" target="_blank" rel="noopener">영상 00:36에서 보기</a></figcaption>
+</figure>
+<h3>AI가 버튼을 누르는 방법</h3>
+<p>그런데 이제 웹을 쓰는 '누구나'에 AI도 들어가요. 화면이 코드로 되어 있으니 AI도 조작은 할 수 있어요. 다만 먼저 페이지 구조를 분석하고, 그 구조에 맞는 조작 코드를 스스로 만들어야 해요. 아래 오른쪽 콘솔이 그 코드예요. <code>aria-label="새 할 일"</code>인 입력칸을 찾아 값을 넣고, 입력 이벤트를 일으킨 뒤 폼을 제출해요. '운동하기' 하나 추가하는 데 다섯 줄이 들어요.</p>
+<figure>
+  <img src="assets/frame-0124.png" alt="Todo List 화면 옆 개발자 도구 콘솔에 querySelector로 입력칸을 찾고 값을 넣고 requestSubmit으로 제출하는 코드가 적혀 있어요">
+  <figcaption>사람용 화면을 AI가 쓰려면 이런 코드를 사이트마다 새로 짜야 해요. 구조를 잘못 읽으면 엉뚱한 칸을 건드릴 수 있어요.
+    <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=84s" target="_blank" rel="noopener">영상 01:24에서 보기</a></figcaption>
+</figure>
+<p>발표자가 짚는 문제는 여기서 나와요. 사이트마다 구현 모습도 복잡도도 달라서 AI가 분석을 잘못할 수 있어요. 그러면 잘못된 동작으로 이어져요. 다음 섹션의 WebMCP는 이 분석과 제작 단계를 사이트 쪽으로 넘기는 방법이에요. 두 방식을 나란히 놓으면 이렇게 달라요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 250" role="img" aria-label="기존 방식과 WebMCP 방식 비교. 기존에는 AI가 화면 분석과 조작 코드 제작을 직접 하고, WebMCP에서는 사이트가 등록한 도구를 AI가 골라 실행해요">
+    <defs><marker id="arrow-cmp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="20" y="28">지금: AI가 직접 만들어 써요</text>
+    <rect class="box" x="20" y="44" width="130" height="56" rx="10"/>
+    <text x="85" y="77" text-anchor="middle">사람용 화면</text>
+    <rect class="c1 cell" x="185" y="44" width="130" height="56" rx="10"/>
+    <text x="250" y="70" text-anchor="middle">AI가 화면 분석</text>
+    <text x="250" y="88" text-anchor="middle" class="sub">사이트마다 달라요</text>
+    <rect class="c1 cell" x="350" y="44" width="130" height="56" rx="10"/>
+    <text x="415" y="70" text-anchor="middle">조작 코드 제작</text>
+    <text x="415" y="88" text-anchor="middle" class="sub">AI가 스스로</text>
+    <rect class="bad" x="515" y="44" width="110" height="56" rx="10"/>
+    <text x="570" y="70" text-anchor="middle">실행</text>
+    <text x="570" y="88" text-anchor="middle" class="sub">실수할 수 있어요</text>
+    <path class="line" d="M152 72 h30" marker-end="url(#arrow-cmp)"/>
+    <path class="line" d="M317 72 h30" marker-end="url(#arrow-cmp)"/>
+    <path class="line" d="M482 72 h30" marker-end="url(#arrow-cmp)"/>
+    <text x="20" y="150">WebMCP: 사이트가 미리 준비해요</text>
+    <rect class="box" x="20" y="166" width="130" height="56" rx="10"/>
+    <text x="85" y="199" text-anchor="middle">사람용 화면</text>
+    <rect class="c2 cell" x="185" y="166" width="130" height="56" rx="10"/>
+    <text x="250" y="192" text-anchor="middle">사이트가 도구 등록</text>
+    <text x="250" y="210" text-anchor="middle" class="sub mono">registerTool</text>
+    <rect class="c3 cell" x="350" y="166" width="130" height="56" rx="10"/>
+    <text x="415" y="192" text-anchor="middle">AI가 목록 확인</text>
+    <text x="415" y="210" text-anchor="middle" class="sub mono">getTools</text>
+    <rect class="ok" x="515" y="166" width="110" height="56" rx="10"/>
+    <text x="570" y="192" text-anchor="middle">골라 실행</text>
+    <text x="570" y="210" text-anchor="middle" class="sub mono">executeTool</text>
+    <path class="line" d="M152 194 h30" marker-end="url(#arrow-cmp)"/>
+    <path class="line" d="M317 194 h30" marker-end="url(#arrow-cmp)"/>
+    <path class="line" d="M482 194 h30" marker-end="url(#arrow-cmp)"/>
+  </svg>
+  <figcaption>달라지는 건 가운데 두 칸이에요. 분석과 도구 제작을 AI가 하던 데서, 사이트가 도구를 만들어 두고 AI는 고르기만 해요.</figcaption>
 </figure>
 </section>
 
 <section id="s2">
   <a class="stamp" href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=98s" target="_blank" rel="noopener">01:38</a>
-  <h2>WebMCP가 해결하려는 것</h2>
-<p>WebMCP는 이 문제를 사이트 쪽에서 풀어요. 사람용으로 만든 사이트에 AI도 올 거라고 보고, AI가 쓰기 쉬운 조작 도구를 미리 준비해 두는 거예요. 그러면 AI는 사이트를 분석하거나 도구를 직접 만들 필요가 없어요. 사이트가 코드로 만들어 둔 도구를 그대로 꺼내 쓰면 돼요.</p>
+  <h2>WebMCP가 하는 일, 사이트에는 득일까요</h2>
+<p>WebMCP는 사람용으로 만든 사이트에 AI도 찾아올 걸 생각해서, AI가 쓰기 쉬운 조작 도구를 코드로 미리 준비해 두는 방법이에요. AI는 사이트를 분석하거나 도구를 직접 만들 필요가 없어요. 사이트가 배려해서 만들어 둔 도구를 그대로 쓰면 돼요.</p>
+<h3>사이트에 득일까요</h3>
+<p>발표자는 여기서 한 가지 질문을 던져요. AI가 쉽게 쓰도록 편의를 봐 주는 게 사이트에 이득일까요. 아래 그림이 그 고민을 보여 줘요. 왼쪽에서는 사람이 화면을 직접 누르고, 그 옆에 동전과 오르는 그래프가 있어요. 오른쪽에서는 로봇이 케이블로 연결된 화면을 다뤄요. 가운데 사람은 턱을 괴고 고민해요.</p>
 <figure>
-  <img src="assets/frame-0144.png" alt="사람이 보는 화면 뒤로 AI용 연결 블록이 붙어 있고, 로봇이 그 블록에 연결된 일러스트">
-  <figcaption>사람용 화면은 그대로 두고, 그 뒤에 AI용 연결 지점을 따로 마련한다는 그림이에요. <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=104s" target="_blank" rel="noopener">영상 01:44에서 보기</a></figcaption>
+  <img src="assets/frame-0224.png" alt="왼쪽에 화면을 직접 누르는 사람과 동전·상승 그래프, 오른쪽에 케이블로 연결된 화면을 다루는 로봇, 가운데에 고민하는 사람이 있는 일러스트">
+  <figcaption>사람이 직접 눌러야 돈이 되는 사이트와, AI가 대신 써도 되는 사이트는 입장이 달라요.
+    <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=144s" target="_blank" rel="noopener">영상 02:24에서 보기</a></figcaption>
 </figure>
-<h3>사이트에 득일까요?</h3>
-<p>영상은 사이트 입장에서 AI를 배려해 주는 게 꼭 좋은지도 짚어요.</p>
+<p>답은 서비스 성격에 따라 갈려요. 영상이 든 두 경우를 나란히 놓으면 이래요.</p>
 <div class="table-scroll">
   <table>
-    <thead><tr><th>사이트 유형</th><th>WebMCP 지원이</th><th>이유</th></tr></thead>
+    <thead><tr><th>사이트 성격</th><th>WebMCP 지원이</th><th>이유</th></tr></thead>
     <tbody>
-      <tr><td>상품 판매·예약 서비스</td><td>득이 될 수 있어요</td><td>AI가 사용자 대신 찾고 예약하고 구매할 때, AI를 놓치지 않는 창구가 돼요</td></tr>
-      <tr><td>방문·광고 노출이 수익원인 사이트</td><td>반갑지 않을 수 있어요</td><td>사용자가 직접 화면을 보고 눌러야 의미가 있어요</td></tr>
+      <tr><td>상품 검색, 예약, 구매</td><td>반가울 수 있어요</td><td>AI가 사용자 대신 찾고 예약하고 사는 시대에, 그 대리인을 놓치지 않는 창구가 돼요</td></tr>
+      <tr><td>방문과 광고 노출이 수익인 곳</td><td>반갑지 않을 수 있어요</td><td>사용자가 화면을 직접 보고 눌러야 의미가 있어요</td></tr>
     </tbody>
   </table>
 </div>
-<figure>
-  <img src="assets/frame-0214.png" alt="로봇이 사람 대신 쇼핑 화면에서 가방을 고르고, 사람은 뒤에서 지켜보는 일러스트">
-  <figcaption>AI가 사람의 대리인으로 쇼핑하는 장면이에요. 이런 흐름에서는 WebMCP가 사이트의 새 입구가 돼요. <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=134s" target="_blank" rel="noopener">영상 02:14에서 보기</a></figcaption>
-</figure>
-<p><span class="term" data-term="바이브 코딩" data-desc="코드를 한 줄씩 직접 쓰기보다 AI에게 원하는 걸 말로 설명해서 만들어 가는 개발 방식이에요.">바이브 코딩</span>으로 사이트를 만든다면 <span class="term" data-term="코딩 에이전트" data-desc="코드를 읽고 고치고 명령을 실행하는 일을 스스로 이어서 하는 AI 도구예요. 요청 한 번에 여러 파일을 손봐요.">코딩 에이전트</span>에게 WebMCP 지원을 붙여 달라고 하면 돼요. 그래도 원리는 알아 두는 게 좋다며 영상은 다음 내용으로 넘어가요.</p>
+<p><span class="term" data-term="바이브 코딩" data-en="Vibe coding" data-desc="코드를 한 줄씩 직접 쓰기보다 AI에게 말로 원하는 걸 설명해서 만들게 하는 개발 방식이에요. 영상은 이렇게 만든 사이트도 코딩 에이전트에게 WebMCP 지원을 부탁하면 된다고 말해요." data-g="2">바이브 코딩</span>으로 사이트를 만드는 사람이라면, AI도 쉽게 쓰게 하고 싶을 때 WebMCP로 AI용 조작 방법을 마련해 주면 돼요. 실제 작업은 코딩 에이전트에게 부탁하면 끝나요. 그래도 어떤 원리로 되는지는 알아 두는 게 좋다며, 발표자는 바로 원리로 넘어가요.</p>
 </section>
 
 <section id="s3">
   <a class="stamp" href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=163s" target="_blank" rel="noopener">02:43</a>
-  <h2>웹 API 하나가 더 생긴 것</h2>
-<p>웹에는 이미지, 오디오, 입력 요소가 있고, 바이너리 코드를 돌리는 WebAssembly와 실시간 양방향 통신을 하는 WebSocket도 있어요. 모두 처음부터 있던 게 아니라 웹이 발전하면서 하나씩 생겼어요. 이런 기능을 <span class="term" data-term="웹 API" data-desc="브라우저가 웹 페이지에 기본으로 열어 주는 기능 묶음이에요. 이미지 표시, WebSocket 통신처럼 자바스크립트에서 바로 불러 써요.">웹 API</span>라고 불러요. WebMCP는 이 목록에 하나가 더해진 거예요.</p>
+  <h2>브라우저에 새로 생긴 웹 API, modelContext</h2>
+<p>먼저 WebMCP가 브라우저 안에서 어떤 자리에 있는지부터 봐요. 발표자는 콘솔에 <code>Image</code>, <code>Audio</code>, <code>HTMLInputElement</code>, <code>WebAssembly</code>, <code>WebSocket</code>을 차례로 쳐서 보여 줘요. 모두 브라우저가 기본으로 들고 있는 기능이에요.</p>
 <figure>
-  <img src="assets/frame-0319.png" alt="브라우저 콘솔에서 Image, Audio, HTMLInputElement, WebAssembly, WebSocket, ModelContext를 차례로 입력해 본 화면">
-  <figcaption>기존 웹 API 목록 맨 아래에 <code>ModelContext</code>가 있어요. WebMCP가 이 이름으로 브라우저에 들어와 있어요. <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=199s" target="_blank" rel="noopener">영상 03:19에서 보기</a></figcaption>
+  <img src="assets/frame-0313.png" alt="개발자 도구 콘솔에 Image, Audio, HTMLInputElement, WebAssembly, WebSocket을 입력하자 각각 native code 함수나 객체가 출력된 화면">
+  <figcaption>이미지·오디오·입력칸부터 WebAssembly·WebSocket까지, 웹이 발전하면서 하나씩 더해진 웹 API예요. WebMCP는 여기에 새로 붙는 하나예요.
+    <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=193s" target="_blank" rel="noopener">영상 03:13에서 보기</a></figcaption>
 </figure>
-<p>이미지 API에 주소나 크기를 정하는 기능이 있듯이, <span class="term" data-term="ModelContext" data-desc="WebMCP가 브라우저에 추가하는 인터페이스 이름이에요. document.modelContext로 접근해서 도구를 등록하고 조회하고 실행해요.">ModelContext</span>에는 AI용 도구를 등록하고 쓰게 하는 기능이 들어 있어요. 영상의 표현대로 꽤 단출해요.</p>
-<figure>
-  <img src="assets/frame-0337.png" alt="콘솔에 펼친 ModelContext 객체. executeTool, getTools, ontoolchange, registerTool 항목이 보여요">
-  <figcaption>ModelContext가 가진 기능 목록이에요. 사실상 등록, 조회, 실행 세 가지와 변경 이벤트 하나예요. <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=217s" target="_blank" rel="noopener">영상 03:37에서 보기</a></figcaption>
-</figure>
-<div class="table-scroll">
-  <table>
-    <thead><tr><th>기능</th><th>누가 쓰나요</th><th>하는 일</th></tr></thead>
-    <tbody>
-      <tr><td><code>registerTool</code></td><td>사이트</td><td>AI가 쓸 조작 도구를 등록해요</td></tr>
-      <tr><td><code>getTools</code></td><td>AI</td><td>이 사이트에 등록된 도구와 설명을 확인해요</td></tr>
-      <tr><td><code>executeTool</code></td><td>AI</td><td>고른 도구를 실행해요</td></tr>
-    </tbody>
-  </table>
-</div>
+<p>이 기능들은 웹이 처음부터 갖고 있던 게 아니에요. 필요할 때마다 하나씩 생겼어요. 예를 들어 이미지는 자료 위치와 크기를 정하는 기능을 제공해요. 같은 식으로 WebMCP를 쓰게 해 주는 <code>ModelContext</code>에도 AI용 도구를 등록하고 쓰게 하는 기능이 들어 있어요.</p>
 <h3>플래그를 켜야 보여요</h3>
-<p>ModelContext는 기본으로 꺼져 있어요. 그래서 크롬의 <code>chrome://flags</code>에서 <code>WebMCP for testing</code> <span class="term" data-term="플래그" data-desc="크롬에서 아직 정식 출시 전인 실험 기능을 켜고 끄는 스위치예요. chrome://flags 주소에서 바꿔요.">플래그</span>를 켜고 브라우저를 다시 시작해야 해요. 여기서 말하는 브라우저는 사람이 웹 서핑에 쓰는 것이 아니라 AI가 쓰는 브라우저예요. 설정 후 접속하면 콘솔에서 <code>document.modelContext</code>가 잡혀요.</p>
+<p><code>ModelContext</code>는 아직 기본으로 켜져 있지 않아요. 그래서 Chrome 주소창에 <code>chrome://flags/#enable-webmcp-testing</code>을 열고, 노란색으로 표시된 'WebMCP for testing' 항목을 Enabled로 바꾼 뒤 아래 Relaunch 버튼으로 다시 시작해요. 설명란에는 'Enables the WebMCP API'라고 적혀 있어요.</p>
 <figure>
-  <img src="assets/frame-0355.png" alt="크롬 chrome://flags 화면에서 WebMCP for testing 항목을 Enabled로 바꾸고 Relaunch 버튼을 누르는 장면">
-  <figcaption>WebMCP for testing 플래그를 켜는 장면이에요. 설명에 'Enables the WebMCP API'라고 적혀 있어요. <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=235s" target="_blank" rel="noopener">영상 03:55에서 보기</a></figcaption>
+  <img src="assets/frame-0353.png" alt="Chrome 플래그 화면에서 WebMCP for testing 항목이 Enabled로 설정되어 있고 아래에 Relaunch 버튼이 보여요">
+  <figcaption>이 설정은 사람이 웹 서핑하는 브라우저가 아니라 AI가 쓸 브라우저에 하는 거예요.
+    <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=233s" target="_blank" rel="noopener">영상 03:53에서 보기</a></figcaption>
 </figure>
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>WebMCP 스펙은 W3C의 Web Machine Learning 커뮤니티 그룹이 내는 초안 보고서예요. 문서 스스로 W3C 표준도 아니고 표준화 트랙에 오른 것도 아니라고 밝히고 있어요. 편집자는 Microsoft와 Google 소속이에요. 플래그 이름에 'for testing'이 붙은 것도 이런 실험 단계라서예요.</p>
-  <p class="cite">출처: <a href="https://webmachinelearning.github.io/webmcp/" target="_blank" rel="noopener">WebMCP 스펙 — Web Machine Learning Community Group</a></p>
-</aside>
+<p>플래그를 켠 브라우저로, AI가 됐다고 생각하고 사이트에 들어가면 <code>document.modelContext</code>가 생겨 있어요. 오른쪽 콘솔에서 그 안을 펼쳐 보면 함수가 몇 개 없어요. <code>executeTool</code>, <code>getTools</code>, <code>registerTool</code> 세 개와 도구 목록이 바뀔 때 부르는 <code>ontoolchange</code>가 전부예요.</p>
+<figure>
+  <img src="assets/frame-0413.png" alt="Todo List 사이트 옆 콘솔에서 document.modelContext의 prototype을 펼쳐 executeTool, getTools, registerTool, ontoolchange가 보이는 화면">
+  <figcaption>도구는 꽤 단출해요. 사이트는 registerTool을 쓰고, AI는 getTools와 executeTool을 써요.
+    <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=253s" target="_blank" rel="noopener">영상 04:13에서 보기</a></figcaption>
+</figure>
 </section>
 
 <section id="s4">
-  <a class="stamp" href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=260s" target="_blank" rel="noopener">04:20</a>
-  <h2>할 일 목록 사이트로 해 보는 데모</h2>
-<p>데모 사이트는 할 일 목록이에요. 이 사이트에서 AI용 도구라면 목록 조회, 추가, 완료 처리, 삭제 정도가 되겠죠.</p>
-<h3>사이트 쪽: registerTool로 등록해요</h3>
-<p>사이트는 각 동작을 하는 코드를 준비해서 <code>registerTool</code>로 등록해요. 도구 하나는 두 부분으로 나뉘어요.</p>
-<ul>
-  <li><strong>도구 정보</strong>: 이름(<code>delete_todo</code>), 사람이 읽을 제목, 설명, 그리고 어떤 입력을 받는지 적은 <span class="term" data-term="inputSchema" data-desc="도구가 어떤 입력을 받는지 JSON Schema 형식으로 적은 명세예요. AI는 이걸 보고 올바른 인자를 만들어 넘겨요.">inputSchema</span>예요.</li>
-  <li><strong>도구 코드 본체</strong>: <code>execute</code> 함수예요. 화면에서 해당 할 일의 삭제 버튼을 찾아 누르고, 성공 여부를 돌려줘요.</li>
-</ul>
+  <a class="stamp" href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=255s" target="_blank" rel="noopener">04:15</a>
+  <h2>사이트는 등록하고, AI는 꺼내 써요</h2>
+<p>할 일 목록 사이트라면 AI용 도구는 목록 조회, 할 일 추가, 완료 처리, 삭제쯤이 돼요. 사이트는 이런 동작을 하는 코드를 준비해서 <code>registerTool</code>로 하나씩 등록해요. 아래는 삭제 도구를 등록하는 코드예요. 파란 부분이 '도구 정보', 초록 부분이 '도구 코드 본체'예요.</p>
 <figure>
-  <img src="assets/frame-0440.png" alt="document.modelContext.registerTool로 delete_todo 도구를 등록하는 코드. 위쪽 name·description·inputSchema는 도구 정보, 아래 execute 함수는 도구 코드 본체로 색칠돼 있어요">
-  <figcaption>도구 하나를 등록하는 코드예요. 실행 코드는 결국 기존 화면의 삭제 버튼을 눌러요. 새 백엔드 없이 지금 있는 프론트엔드 로직을 재사용하는 거예요. <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=280s" target="_blank" rel="noopener">영상 04:40에서 보기</a></figcaption>
+  <img src="assets/frame-0443.png" alt="document.modelContext.registerTool 코드. 위쪽 파란 영역에 name delete_todo, title, description, inputSchema가 있고 아래 초록 영역에 execute 함수가 있어요">
+  <figcaption>도구 정보에는 이름(<code>delete_todo</code>), 설명, 받을 값의 형식(<code>inputSchema</code>, 여기서는 문자열 <code>title</code>)이 들어가요. 본체는 해당 할 일의 삭제 버튼을 찾아 눌러요.
+    <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=283s" target="_blank" rel="noopener">영상 04:43에서 보기</a></figcaption>
 </figure>
-<p>코딩 에이전트에게 "WebMCP 지원해 줘"라고 부탁하면, 에이전트가 사이트에 이런 등록 코드를 넣어 주는 거예요.</p>
-<h3>AI 쪽: getTools로 보고 executeTool로 실행해요</h3>
-<p>AI는 사이트에 들어오면 먼저 준비된 도구가 있는지 <code>getTools</code>로 확인해요. 도구마다 무슨 용도이고 어떻게 쓰는지 설명이 붙어 있어서, AI는 그걸 읽고 바로 쓸 수 있어요.</p>
+<p>눈여겨볼 곳은 초록 부분이에요. 본체가 하는 일은 결국 첫 섹션에서 AI가 짜던 코드와 비슷해요. <code>aria-label</code>로 '삭제' 버튼을 찾고, 없으면 <code>"Todo not found"</code>를 돌려주고, 있으면 <code>click()</code>해요. 차이는 이 코드를 사이트가 한 번 써 두고, AI는 매번 새로 짤 필요가 없다는 점이에요. 코딩 에이전트에게 "WebMCP 지원해 줘"라고 하면 이런 등록 코드가 사이트에 들어가요.</p>
+<h3>AI는 목록부터 봐요</h3>
+<p>이제 AI 입장이에요. 사이트에 들어가면 먼저 준비된 도구가 있는지 <code>getTools</code>로 확인해요. 콘솔 아래쪽 표에 도구 네 개가 나와요. <code>add_todo</code>, <code>complete_todo</code>, <code>delete_todo</code>, <code>list_todos</code>이고, 각각 '새로운 할 일을 추가합니다' 같은 설명이 붙어 있어요.</p>
 <figure>
-  <img src="assets/frame-0510.png" alt="콘솔에서 getTools 결과를 표로 출력한 화면. add_todo, complete_todo, delete_todo, list_todos 네 도구와 한국어 설명이 보여요">
-  <figcaption>등록된 도구 네 개와 각각의 설명이에요. AI는 이 설명만 보고 어떤 도구를 쓸지 골라요. <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=310s" target="_blank" rel="noopener">영상 05:10에서 보기</a></figcaption>
+  <img src="assets/frame-0500.png" alt="console.table로 getTools 결과를 출력한 표. add_todo, complete_todo, delete_todo, list_todos 네 도구와 설명, inputSchema, title 열이 보여요">
+  <figcaption>설명과 <span class="term" data-term="입력 형식" data-en="inputSchema" data-desc="도구가 받을 값의 이름과 형식을 적어 둔 JSON Schema예요. AI는 이걸 읽고 어떤 값을 넣어 도구를 부를지 정해요." data-g="4">입력 형식</span>이 같이 오니까, AI는 이것만 읽고 어떤 도구를 어떻게 부를지 정할 수 있어요.
+    <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=300s" target="_blank" rel="noopener">영상 05:00에서 보기</a></figcaption>
 </figure>
-<p>할 일 목록을 보고 싶으면 <code>list_todos</code>를 <code>executeTool</code>로 실행해요. 추가, 완료, 삭제도 같은 방식이에요. AI는 화면 구조를 몰라도 사이트가 내준 방법만으로 사이트를 다룰 수 있어요.</p>
+<p>할 일 목록이 궁금하면 <code>list_todos</code>를 찾아 <code>executeTool</code>로 실행해요. 아래 콘솔 맨 위 결과가 그거예요. 할 일 세 개가 <code>done: true/false</code>와 함께 나와요. 그 아래로 '운동하기'를 <code>add_todo</code>로 추가하고, <code>complete_todo</code>로 완료하고, <code>delete_todo</code>로 지운 결과가 이어져요. 셋 다 <code>{success: true, title: '운동하기'}</code>를 돌려줘요.</p>
 <figure>
-  <img src="assets/frame-0550.png" alt="콘솔에서 list_todos, add_todo, complete_todo, delete_todo를 차례로 executeTool로 실행하고 success: true 결과를 받은 화면">
-  <figcaption>'운동하기'를 추가하고, 완료하고, 삭제하는 과정이 모두 같은 모양의 호출이에요. <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=350s" target="_blank" rel="noopener">영상 05:50에서 보기</a></figcaption>
+  <img src="assets/frame-0540.png" alt="콘솔에서 executeTool로 list_todos를 실행해 할 일 세 개를 받고, 이어서 add_todo, complete_todo, delete_todo를 운동하기로 실행해 success true를 받은 화면">
+  <figcaption>도구 이름과 값만 바꿔서 같은 한 줄로 조회·추가·완료·삭제를 다 해요. 화면 분석은 한 번도 없어요.
+    <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=340s" target="_blank" rel="noopener">영상 05:40에서 보기</a></figcaption>
 </figure>
-<h3>페이지가 열리면 자동으로 등록되게</h3>
-<p>여기까지는 콘솔에서 손으로 등록했어요. 실제로는 코딩 에이전트에게 "접속하면 도구가 미리 등록되어 있게 해 줘"라고 요청해서 사이트를 고치면 돼요. 고친 페이지에 들어가면 도구 네 개가 바로 등록되어 있어요.</p>
+<p>흐름을 순서대로 정리하면 이래요. 사이트가 먼저 도구를 등록해 두고, AI는 목록을 받은 뒤 필요한 도구를 골라 실행해요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  participant S as 웹사이트
+  participant B as modelContext
+  participant A as AI 에이전트
+  S->>B: registerTool (add_todo 등 4개)
+  A->>B: getTools
+  B-->>A: 도구 4개와 설명, 입력 형식
+  A->>B: executeTool(list_todos)
+  B->>S: 도구 코드 본체 실행
+  S-->>A: 할 일 3개
+</pre>
+  <figcaption>AI는 사이트 화면을 직접 건드리지 않아요. modelContext를 거쳐 사이트가 써 둔 본체를 부를 뿐이에요.</figcaption>
+</figure>
+<h3>처음부터 등록된 사이트로 고치기</h3>
+<p>지금까지는 콘솔에서 직접 등록해 봤어요. 실제로는 접속하자마자 도구가 등록돼 있도록 사이트를 고쳐야 해요. 영상은 채팅형 AI에게 이 코드를 넣어 WebMCP를 지원하게 해 달라고 부탁해요. 답변을 보면 같은 화면을 복제한 <code>/todolist_webmcp</code>에만 도구 네 개를 등록하고, <code>document.modelContext</code>가 없는 브라우저에서는 페이지가 깨지지 않게 막겠다고 해요.</p>
 <figure>
-  <img src="assets/frame-0600.png" alt="ChatGPT 대화 화면. 에이전트가 todolist_webmcp 페이지를 만들고 list_todos, add_todo, complete_todo, delete_todo 도구를 추가했다고 답한 내용">
-  <figcaption>코딩 에이전트가 고친 결과예요. 페이지가 로드되면 네 도구가 자동 등록되고, 기존 /todolist 페이지는 그대로 뒀다고 해요. <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=360s" target="_blank" rel="noopener">영상 06:00에서 보기</a></figcaption>
+  <img src="assets/frame-0556.png" alt="채팅형 AI가 todolist_webmcp 경로에서만 WebMCP 도구 4개를 등록하고 modelContext가 없으면 페이지가 깨지지 않도록 처리하겠다고 답하는 화면">
+  <figcaption>지원하지 않는 브라우저에 대한 보호 처리까지 함께 요청 결과에 들어가요.
+    <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=356s" target="_blank" rel="noopener">영상 05:56에서 보기</a></figcaption>
 </figure>
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>영상에서 쓴 <code>registerTool</code>은 자바스크립트로 도구를 정의하는 명령형(Imperative) 방식이에요. 크롬은 이와 함께 HTML 폼만으로 도구를 정의하는 선언형(Declarative) 방식도 제안하고 있어요. 간단한 입력 폼이라면 자바스크립트 없이 폼 자체를 AI용 도구로 내놓는 방식이에요. 스펙에서 선언형 부분은 아직 비어 있고 별도 설명 문서를 참고하라고 적혀 있어요.</p>
-  <p class="cite">출처: <a href="https://developer.chrome.com/blog/webmcp-epp" target="_blank" rel="noopener">Chrome for Developers — WebMCP is available for early preview</a> · <a href="https://webmachinelearning.github.io/webmcp/" target="_blank" rel="noopener">WebMCP 스펙 4.3절</a></p>
-</aside>
+<p>고친 페이지 주소창을 보면 <code>todolist_webmcp</code>예요. 이번에는 아무것도 등록하지 않고 <code>getTools</code>만 불렀는데, 같은 도구 네 개가 이미 표에 있어요.</p>
+<figure>
+  <img src="assets/frame-0612.png" alt="todolist_webmcp 주소의 Todo List 사이트에서 getTools만 실행했는데 add_todo, complete_todo, delete_todo, list_todos가 표로 나온 화면">
+  <figcaption>AI 에이전트는 이제 등록된 도구를 쓰기만 하면 돼요.
+    <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=372s" target="_blank" rel="noopener">영상 06:12에서 보기</a></figcaption>
+</figure>
 </section>
 
 <section id="s5">
-  <a class="stamp" href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=375s" target="_blank" rel="noopener">06:15</a>
-  <h2>AI 에이전트 쪽 구현과 앞으로의 웹</h2>
-<p>앞에서 콘솔로 해 본 AI 에이전트 쪽 동작은 프로그램으로도 만들 수 있어요. 영상은 <span class="term" data-term="Playwright" data-desc="브라우저를 코드로 띄우고 조작하는 자동화 도구예요. 테스트나 에이전트가 실제 브라우저를 움직일 때 많이 써요.">Playwright</span>로 WebMCP를 켠 크롬을 띄우고, 사이트에 접속해 도구를 확인한 뒤 하나씩 실행하는 클라이언트를 보여 줘요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=380s" target="_blank" rel="noopener">06:20</a>
+  <h2>AI 쪽 모습과 프런트엔드의 미래</h2>
+<p>앞에서 콘솔로 흉내 낸 AI 쪽은 실제로 이런 프로그램이 돼요. WebMCP가 켜진 브라우저로 사이트에 들어가서 도구를 확인하고 하나씩 꺼내 써요. 아래 터미널은 'WebMCP <span class="term" data-term="Playwright" data-en="Playwright" data-desc="코드로 브라우저를 열고 클릭·입력을 자동으로 하는 도구예요. 영상에서는 AI 에이전트 쪽 클라이언트를 이걸로 만들어 사람 없이 도구를 불러요." data-g="5">Playwright</span> Client'의 실행 결과예요. 1번에서 Chrome 151과 <code>modelContext</code>, <code>getTools</code>, <code>executeTool</code>이 모두 있는지 체크하고, 2번에서 등록된 도구 네 개를 표로 찍어요.</p>
 <figure>
-  <img src="assets/frame-0615.png" alt="터미널에서 WebMCP Playwright Client를 실행한 출력. Chrome 151, modelContext·getTools·executeTool 체크 표시와 등록된 도구 네 개 표가 보여요">
-  <figcaption>에이전트 쪽 구현 결과예요. 브라우저가 WebMCP를 지원하는지 확인하고, 등록된 도구를 읽은 다음 실행해요. <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=375s" target="_blank" rel="noopener">영상 06:15에서 보기</a></figcaption>
+  <img src="assets/frame-0622.png" alt="터미널에 WebMCP Playwright Client가 실행되어 Target 주소 todolist_webmcp, Chrome 151.0.0.0과 modelContext·getTools·executeTool 체크, 등록된 도구 네 개 표가 출력된 화면">
+  <figcaption>대상 주소(Target)가 앞에서 고친 <code>todolist_webmcp</code>예요. 사람 없이 프로그램이 도구를 찾아 써요.
+    <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=382s" target="_blank" rel="noopener">영상 06:22에서 보기</a></figcaption>
 </figure>
-<h3>발표자가 보는 웹의 앞날</h3>
-<p>발표자는 결국 웹을 쓰는 주체는 AI 에이전트만 남을 수도 있다고 봐요. 그러면 프론트엔드는 필요 없고 백엔드의 API나 <span class="term" data-term="MCP" data-desc="Model Context Protocol의 줄임말이에요. AI 앱이 외부 도구와 데이터에 붙는 방식을 맞춘 공개 규약이라서, 한 번 만든 도구를 여러 AI가 같이 써요.">MCP</span>만 남겠죠. 하지만 지금 웹이 당장 그렇게 바뀌는 건 불가능에 가까워요.</p>
-<p>그래서 발표자는 WebMCP를 현실적인 타협으로 해석해요. 기존 웹은 그대로 쓰고, 프론트엔드 코드에 AI가 조작할 수 있는 인터페이스를 끼워 넣는 방식이라는 거예요.</p>
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>스펙 서론도 비슷하게 설명해요. WebMCP를 쓰는 웹 페이지는 도구를 백엔드가 아니라 클라이언트 쪽 스크립트로 구현한 MCP 서버라고 볼 수 있다고 해요. 또 사용자와 에이전트가 같은 화면에서 함께 일하는 흐름을 목표로 한다고 적혀 있어요. 사람용 화면을 없애기보다 나란히 두는 쪽이에요.</p>
-  <p class="cite">출처: <a href="https://webmachinelearning.github.io/webmcp/" target="_blank" rel="noopener">WebMCP 스펙 1절 Introduction</a></p>
-</aside>
+<h3>프런트엔드는 필요 없어질까요</h3>
+<p>마지막은 발표자의 생각이에요. 웹을 결국 AI 에이전트만 쓰게 된다면 프런트엔드는 사실상 필요 없어지고, 백엔드가 주는 API나 MCP(Model Context Protocol)만 남을 거라고 봐요. 하지만 지금 웹이 바로 그렇게 바뀌는 건 불가능에 가깝다고 해요.</p>
+<blockquote>
+  <p>현실적인 방법으로서 AI 에이전트가 기존의 웹을 이용하되 프런트엔드 측의 코드를 통해 조작할 수 있는 방식의 인터페이스를 주입해서 준비해 두는 방법으로서 WebMCP가 제안된 것이지 않을까</p>
+  <cite>— 영상 06:31</cite>
+</blockquote>
+<p>즉 WebMCP는 화면은 그대로 두고, 프런트엔드 코드에 AI용 입구를 하나 더 다는 절충안이라는 해석이에요.</p>
 <h3>스펙은 어디서 보나요</h3>
-<p>ModelContext API는 웹 API 문서가 보통 올라오는 MDN에서는 찾을 수 없어요. 지금은 Web Machine Learning 그룹의 GitHub 저장소에 스펙이 주로 올라오고, 내용도 활발히 바뀌고 있어요.</p>
+<p>발표자는 이 API, 정확히는 Model Context API가 웹 API 문서가 모이는 MDN(Mozilla Developer Network)에는 아직 없다고 말해요. 대신 webmachinelearning GitHub 저장소에 스펙이 올라오고 있어요. 아래 화면 왼쪽 위에 'W3C Community Group Draft Report', 배경에 'UNOFFICIAL DRAFT'가 보여요. 본문은 3장 Supporting concepts로, 도구 하나가 name, title, description, input schema로 이뤄진다고 정의해요.</p>
 <figure>
-  <img src="assets/frame-0709.png" alt="webmachinelearning.github.io/webmcp 스펙 페이지. 왼쪽 목차에 ModelContext Interface, Declarative WebMCP 항목이 있고 UNOFFICIAL DRAFT 워터마크가 보여요">
-  <figcaption>WebMCP 스펙 페이지예요. 'UNOFFICIAL DRAFT' 표시처럼 아직 초안이에요. <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=429s" target="_blank" rel="noopener">영상 07:09에서 보기</a></figcaption>
+  <img src="assets/frame-0708.png" alt="webmachinelearning.github.io/webmcp 스펙 페이지. 왼쪽에 목차, 본문에 model context와 tool definition의 name, title, description, input schema 정의가 있고 UNOFFICIAL DRAFT 워터마크가 있어요">
+  <figcaption>앞에서 본 registerTool의 도구 정보 항목이 스펙에 그대로 정의돼 있어요. 발표자는 지금도 변화가 활발하다고 해요.
+    <a href="https://www.youtube.com/watch?v=sOLFEc63US4&amp;t=428s" target="_blank" rel="noopener">영상 07:08에서 보기</a></figcaption>
 </figure>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>크롬은 WebMCP를 얼리 프리뷰 프로그램으로 공개하고 있어요. 참가 신청을 하면 문서와 데모를 받아 프로토타입을 만들어 볼 수 있어요. 실제 서비스에 넣기 전에 스펙이 바뀌었는지 이 두 곳을 먼저 확인하는 게 좋아요.</p>
-  <p class="cite">출처: <a href="https://developer.chrome.com/blog/webmcp-epp" target="_blank" rel="noopener">Chrome for Developers — WebMCP is available for early preview</a> · <a href="https://github.com/webmachinelearning/webmcp" target="_blank" rel="noopener">webmachinelearning/webmcp GitHub</a></p>
+  <p>스펙 첫머리를 보면 이 문서는 W3C(World Wide Web Consortium)의 Web Machine Learning <span class="term" data-term="커뮤니티 그룹" data-en="W3C Community Group" data-desc="W3C 아래에서 누구나 참여해 아이디어를 다듬는 모임이에요. 여기서 낸 문서는 정식 표준이 아니라 초안이라, 내용이 자주 바뀔 수 있어요." data-g="7">커뮤니티 그룹</span>이 낸 초안이에요. 'W3C 표준도 아니고 표준 트랙에 있지도 않다'고 스스로 밝혀요. 편집자는 Microsoft 한 명과 Google 두 명이에요. 그래서 함수 이름이나 동작이 바뀔 수 있다고 보고 읽는 게 좋아요.</p>
+  <p>스펙 소개 문단은 WebMCP를 쓰는 페이지를 '도구를 백엔드가 아니라 클라이언트 쪽 스크립트로 구현한 MCP 서버'로 볼 수 있다고 설명해요. 영상 제목이 MCP와 나란히 놓은 이유가 여기 있어요. 또 <code>modelContext</code>는 보안 컨텍스트(HTTPS(Hypertext Transfer Protocol Secure) 같은)에서만 열리도록 정의돼 있어요.</p>
+  <p class="cite">출처: <a href="https://webmachinelearning.github.io/webmcp/" target="_blank" rel="noopener">WebMCP 스펙 (Web Machine Learning Community Group)</a> · <a href="https://github.com/webmachinelearning/webmcp" target="_blank" rel="noopener">webmachinelearning/webmcp GitHub 저장소</a></p>
+</aside>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상은 편리한 면만 다루지만, 스펙에는 보안과 개인정보 절이 따로 있어요. 첫 항목이 <span class="term" data-term="프롬프트 인젝션" data-en="Prompt injection" data-desc="AI가 읽는 글 속에 몰래 지시를 숨겨서 AI를 원래 의도와 다르게 움직이게 하는 공격이에요. 도구 설명도 AI가 그대로 읽는 글이라 여기에 노출돼요." data-g="6">프롬프트 인젝션</span>이에요. 도구의 설명, 입력, 출력에 악의적인 지시를 숨겨 에이전트를 조종할 수 있다는 거예요. 도구 설명은 AI가 그대로 읽는 글이라, 에이전트를 만드는 쪽은 처음 보는 사이트의 도구 설명을 믿을지 따로 판단해야 해요.</p>
+  <p class="cite">출처: <a href="https://webmachinelearning.github.io/webmcp/" target="_blank" rel="noopener">WebMCP 스펙 6.3.1 Prompt Injection Attacks</a></p>
 </aside>
 </section>
 
@@ -368,137 +553,276 @@
   <h2>자막 표기 바로잡기</h2>
 <aside class="note">
   <span class="tag">자막 관련 참고</span>
-  <p>자동생성 자막이라 영어 이름과 함수 이름이 잘못 받아적힌 곳이 있어요. 화면에 나온 표기를 기준으로 바로잡았어요.</p>
+  <p>자동생성 자막이라 함수 이름과 영어 용어가 잘못 받아적힌 곳이 있어요. 화면의 코드를 기준으로 이렇게 바로잡았어요.</p>
   <div class="table-scroll"><table>
     <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
     <tbody>
-      <tr><td>MC피니 스킬이니 한했으니</td><td>MCP니 스킬이니 하네스니</td><td>영상 자막에 박힌 표기</td></tr>
-      <tr><td>모델 콘텍스트</td><td>ModelContext (document.modelContext)</td><td></td></tr>
-      <tr><td>레지스터 툴 / 레지스터 툴 도그 / 레지스터 틀독</td><td>registerTool</td><td></td></tr>
+      <tr><td>MC피니 스킬이니 한했으니</td><td>MCP니 스킬이니 하네스니</td><td>첫 화면 돌에 MCP, SKILL.md, Harness가 새겨져 있어요</td></tr>
+      <tr><td>웹 MCP</td><td>WebMCP</td><td></td></tr>
+      <tr><td>모델 콘텍스트</td><td>modelContext (ModelContext)</td><td>document.modelContext</td></tr>
+      <tr><td>투드리스트</td><td>Todo List</td><td></td></tr>
+      <tr><td>레지스터 툴 도그 / 레지스터 틀독</td><td>registerTool</td><td></td></tr>
       <tr><td>개툴스</td><td>getTools</td><td></td></tr>
       <tr><td>익스큐트 툴</td><td>executeTool</td><td></td></tr>
       <tr><td>리스트투스</td><td>list_todos</td><td></td></tr>
-      <tr><td>투드리스트</td><td>Todo List</td><td></td></tr>
-      <tr><td>웹 머신 러닝이라는 디터브 레포지토리</td><td>Web Machine Learning의 GitHub 저장소</td><td></td></tr>
-      <tr><td>프런트 핸드</td><td>프론트엔드</td><td></td></tr>
-      <tr><td>웹 MCP가 제한된 것</td><td>WebMCP가 제안된 것</td><td>영상 자막에 박힌 표기</td></tr>
+      <tr><td>프런트 핸드</td><td>프런트엔드</td><td></td></tr>
+      <tr><td>제한된</td><td>제안된</td><td>문맥상 (추정)</td></tr>
+      <tr><td>웹 머신 러닝이라는 디터브 레포지토리</td><td>webmachinelearning GitHub 저장소</td><td></td></tr>
     </tbody>
   </table></div>
 </aside>
 </section>
 </main>
 
-<div class="tail">
+<div class="tail" id="glossary">
   <h2>이 글에 나온 용어</h2>
-  <div class="table-scroll">
-    <table>
-      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
-      <tbody>
-        <tr><td>바이브 코딩</td><td>코드를 한 줄씩 직접 쓰기보다 AI에게 원하는 걸 말로 설명해서 만들어 가는 개발 방식이에요.</td></tr>
-        <tr><td>코딩 에이전트</td><td>코드를 읽고 고치고 명령을 실행하는 일을 스스로 이어서 하는 AI 도구예요. 요청 한 번에 여러 파일을 손봐요.</td></tr>
-        <tr><td>웹 API</td><td>브라우저가 웹 페이지에 기본으로 열어 주는 기능 묶음이에요. 이미지 표시, WebSocket 통신처럼 자바스크립트에서 바로 불러 써요.</td></tr>
-        <tr><td>ModelContext</td><td>WebMCP가 브라우저에 추가하는 인터페이스 이름이에요. document.modelContext로 접근해서 도구를 등록하고 조회하고 실행해요.</td></tr>
-        <tr><td>플래그</td><td>크롬에서 아직 정식 출시 전인 실험 기능을 켜고 끄는 스위치예요. chrome://flags 주소에서 바꿔요.</td></tr>
-        <tr><td>inputSchema</td><td>도구가 어떤 입력을 받는지 JSON Schema 형식으로 적은 명세예요. AI는 이걸 보고 올바른 인자를 만들어 넘겨요.</td></tr>
-        <tr><td>MCP</td><td>Model Context Protocol의 줄임말이에요. AI 앱이 외부 도구와 데이터에 붙는 방식을 맞춘 공개 규약이라서, 한 번 만든 도구를 여러 AI가 같이 써요.</td></tr>
-        <tr><td>Playwright</td><td>브라우저를 코드로 띄우고 조작하는 자동화 도구예요. 테스트나 에이전트가 실제 브라우저를 움직일 때 많이 써요.</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-2"><dt>바이브 코딩<span class="en">Vibe coding</span></dt><dd>코드를 한 줄씩 직접 쓰기보다 AI에게 말로 원하는 걸 설명해서 만들게 하는 개발 방식이에요. 영상은 이렇게 만든 사이트도 코딩 에이전트에게 WebMCP 지원을 부탁하면 된다고 말해요.</dd></div>
+    <div class="g" id="g-1"><dt>웹 API<span class="en">Web API</span></dt><dd>브라우저가 웹 페이지에 기본으로 열어 주는 기능 묶음이에요. Image, Audio, WebSocket처럼 하나씩 늘어 왔고, WebMCP의 modelContext도 그 대열에 새로 들어오는 중이에요.</dd></div>
+    <div class="g" id="g-4"><dt>입력 형식<span class="en">inputSchema</span></dt><dd>도구가 받을 값의 이름과 형식을 적어 둔 JSON Schema예요. AI는 이걸 읽고 어떤 값을 넣어 도구를 부를지 정해요.</dd></div>
+    <div class="g" id="g-7"><dt>커뮤니티 그룹<span class="en">W3C Community Group</span></dt><dd>W3C 아래에서 누구나 참여해 아이디어를 다듬는 모임이에요. 여기서 낸 문서는 정식 표준이 아니라 초안이라, 내용이 자주 바뀔 수 있어요.</dd></div>
+    <div class="g" id="g-6"><dt>프롬프트 인젝션<span class="en">Prompt injection</span></dt><dd>AI가 읽는 글 속에 몰래 지시를 숨겨서 AI를 원래 의도와 다르게 움직이게 하는 공격이에요. 도구 설명도 AI가 그대로 읽는 글이라 여기에 노출돼요.</dd></div>
+    <div class="g" id="g-3"><dt>플래그<span class="en">Chrome flags</span></dt><dd>Chrome에서 아직 정식으로 켜지지 않은 실험 기능을 켜고 끄는 설정이에요. chrome://flags에서 바꾸고, 바꾼 뒤에는 브라우저를 다시 시작해야 적용돼요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>HTTPS</dt><dd>Hypertext Transfer Protocol Secure</dd></div>
+    <div class="g"><dt>MCP</dt><dd>Model Context Protocol</dd></div>
+    <div class="g"><dt>MDN</dt><dd>Mozilla Developer Network</dd></div>
+    <div class="g" id="g-5"><dt>Playwright<span class="en">Playwright</span></dt><dd>코드로 브라우저를 열고 클릭·입력을 자동으로 하는 도구예요. 영상에서는 AI 에이전트 쪽 클라이언트를 이걸로 만들어 사람 없이 도구를 불러요.</dd></div>
+    <div class="g"><dt>W3C</dt><dd>World Wide Web Consortium</dd></div>
+  </dl>
 </div>
 
-<div class="tail">
+<div class="tail" id="sources">
   <h2>참고한 곳</h2>
   <ol>
-    <li><a href="https://www.youtube.com/watch?v=sOLFEc63US4" target="_blank" rel="noopener">원본 영상 — 코드깎는노인</a></li>
-    <li><a href="https://webmachinelearning.github.io/webmcp/" target="_blank" rel="noopener">WebMCP 스펙 — W3C Web Machine Learning Community Group 초안</a></li>
-    <li><a href="https://github.com/webmachinelearning/webmcp" target="_blank" rel="noopener">webmachinelearning/webmcp — GitHub 저장소</a></li>
-    <li><a href="https://developer.chrome.com/blog/webmcp-epp" target="_blank" rel="noopener">Chrome for Developers — WebMCP is available for early preview</a></li>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=sOLFEc63US4" target="_blank" rel="noopener">원본 영상 — 코드깎는노인</a></li>
+    <li id="src-2"><a href="https://webmachinelearning.github.io/webmcp/" target="_blank" rel="noopener">WebMCP 스펙 — Web Machine Learning Community Group</a></li>
+    <li id="src-3"><a href="https://github.com/webmachinelearning/webmcp" target="_blank" rel="noopener">webmachinelearning/webmcp — GitHub</a></li>
   </ol>
 </div>
 
-<footer>2026년 10월 1일에 이 영상을 보고 정리했어요. 원본은 코드깎는노인 채널에 있어요.</footer>
+<footer>2026년 10월 14일에 이 영상을 보고 정리했어요. 원본은 코드깎는노인 채널에 있어요.</footer>
 
 </div>
 
-<div id="tip" role="tooltip"></div>
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
 <script>
 (function () {
-  // ── 용어 툴팁 ───────────────────────────────────────
-  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
-  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
-  var tip = document.getElementById('tip');
-  var open = null;
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
 
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
   function show(el) {
+    clearTimeout(hideTimer);
     var desc = el.getAttribute('data-desc');
     if (!desc) return;
-    var name = el.getAttribute('data-term') || el.textContent;
+    if (open && open !== el) open.classList.remove('open');
     tip.innerHTML = '';
-    var b = document.createElement('b');
-    b.textContent = name;
-    tip.appendChild(b);
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
     tip.appendChild(document.createTextNode(desc));
-    tip.classList.add('on');
-
-    var r = el.getBoundingClientRect();
-    var t = tip.getBoundingClientRect();
-    var pad = 12;
-    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
-    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
-    var top = r.top + window.scrollY - t.height - 10;
-    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
-    tip.style.left = left + 'px';
-    tip.style.top = top + 'px';
-    open = el;
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
   }
-
-  function hide() {
-    tip.classList.remove('on');
-    open = null;
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
   }
 
   document.querySelectorAll('.term').forEach(function (el) {
-    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
-    el.addEventListener('mouseenter', function () { show(el); });
-    el.addEventListener('mouseleave', hide);
-    el.addEventListener('focus', function () { show(el); });
-    el.addEventListener('blur', hide);
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
     el.addEventListener('click', function (e) {
-      e.preventDefault();
-      open === el ? hide() : show(el);
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
     });
   });
 
-  document.addEventListener('click', function (e) {
-    if (open && !e.target.closest('.term')) hide();
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
   });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') hide();
-  });
-  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
-  window.addEventListener('resize', hide);
 
-  // ── 목차 현재 위치 표시 ─────────────────────────────
-  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
-  var map = {};
-  links.forEach(function (a) {
-    var s = document.getElementById(a.getAttribute('href').slice(1));
-    if (s) map[s.id] = a;
-  });
-  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
-  if ('IntersectionObserver' in window && targets.length) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (!en.isIntersecting) return;
-        links.forEach(function (a) { a.classList.remove('active'); });
-        map[en.target.id].classList.add('active');
-      });
-    }, { rootMargin: '-10% 0px -75% 0px' });
-    targets.forEach(function (t) { io.observe(t); });
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
   }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
 })();
 </script>
+
 </body>
 </html>
