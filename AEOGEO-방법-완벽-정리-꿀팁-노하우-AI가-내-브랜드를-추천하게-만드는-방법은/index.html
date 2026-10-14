@@ -25,6 +25,8 @@
 <!-- yn-lock:end -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AEO·GEO 완벽 정리: AI가 내 브랜드를 추천하게 만드는 방법</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 <style>
   :root{
     --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
@@ -32,7 +34,10 @@
     --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
     --warn:#ff8a00; --warn-soft:#fff4e6;
     --info:#00b8a9; --info-soft:#e4f8f6;
-    --radius:16px; --maxw:760px;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
   }
   @media (prefers-color-scheme:dark){
     :root{
@@ -41,6 +46,8 @@
       --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
       --warn:#ffab4a; --warn-soft:#3a2a13;
       --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
     }
   }
   *{box-sizing:border-box}
@@ -78,13 +85,29 @@
   .keypoints li strong{color:var(--text)}
 
   /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
   nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
     border-radius:var(--radius)}
   nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
   nav.toc ol{margin:0; padding-left:20px}
-  nav.toc li{margin:6px 0; font-size:15px}
-  nav.toc a{color:var(--text-sub)}
-  nav.toc a.active{color:var(--brand); font-weight:600}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
 
   /* ── 본문 ──────────────────────────────────────────── */
   section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
@@ -99,6 +122,16 @@
     background:var(--surface-2); color:var(--text-mute);
     font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
   a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
 
   /* ── 그림 ──────────────────────────────────────────── */
   figure{margin:28px 0}
@@ -115,23 +148,33 @@
   thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
     font-weight:700; white-space:nowrap}
   tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
   td code{font-size:13.5px}
 
-  /* ── 용어 툴팁 ─────────────────────────────────────── */
-  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
-    font-weight:600; background:none}
-  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
-  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
-    background:var(--text); color:var(--bg); border-radius:12px;
-    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
-    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
-    transition:opacity .12s ease; pointer-events:none}
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
   #tip.on{opacity:1; visibility:visible}
-  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
 
   /* ── 박스 두 종류 ───────────────────────────────────
      .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
-     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
   aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
   aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
   aside p{margin:8px 0}
@@ -144,6 +187,92 @@
   aside .table-scroll{margin:12px 0 0}
   aside table{min-width:320px; font-size:14.5px}
   aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
 
   /* ── 인용 ──────────────────────────────────────────── */
   blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
@@ -159,13 +288,14 @@
   pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
     border:1px solid var(--line); overflow-x:auto; line-height:1.6}
   pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
 
   /* ── 꼬리말 ────────────────────────────────────────── */
   .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
   .tail h2{font-size:20px; margin:0 0 14px}
   .tail + .tail{margin-top:40px}
   .tail ol{padding-left:20px}
-  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
   footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
     font-size:13.5px; color:var(--text-mute)}
 
@@ -182,11 +312,11 @@
 
 <header>
   <h1>AEO·GEO 완벽 정리: AI가 내 브랜드를 추천하게 만드는 방법</h1>
-  <p class="lede">검색 대신 AI에게 묻는 시대에 콘텐츠를 어떻게 바꿀지 짚어요</p>
+  <p class="lede">검색 순위 대신 AI 답변 속 추천을 노리는 법을 정리해요</p>
   <div class="meta">
     <span>마케팅 조니</span><span class="dot">·</span>
-    <span>16:55</span><span class="dot">·</span>
-    <span>유튜브 영상 정리</span>
+    <span>영상 16:55</span><span class="dot">·</span>
+    <span>읽는 데 약 11분</span>
   </div>
   <a class="src-btn" href="https://www.youtube.com/watch?v=8HFePXEAH4Y" target="_blank" rel="noopener">
     원본 영상 보러 가기 →
@@ -196,354 +326,533 @@
 <div class="keypoints">
   <h2>핵심만 먼저</h2>
   <ol>
-    <li>이제 고객은 검색 대신 AI에게 추천을 부탁해요. AI 답변 안에 우리 브랜드가 들어가게 하는 게 마케터의 일이에요.</li>
-    <li>신뢰할 만한 출처를 밝히고, 고객이 실제로 할 질문을 Q&amp;A로 콘텐츠에 넣으세요.</li>
-    <li>같은 질문 10번 중 우리 브랜드가 몇 번 나오는지가 새로운 KPI예요.</li>
-    <li>네이버 블로그보다 티스토리·워드프레스·보도자료처럼 AI가 읽을 수 있는 채널을 쓰세요.</li>
-    <li>싱킹 모드로 AI가 먼저 찾는 사이트를 알아내되, 반드시 임시 채팅을 켜고 테스트하세요.</li>
+    <li>SEO(Search Engine Optimization)는 키워드, <span class="term" data-term="AEO" data-en="Answer Engine Optimization" data-desc="검색한 사람의 질문에 바로 답이 되도록 콘텐츠를 질문과 답변 형태로 짜는 일이에요. 검색 결과 맨 위에 답이 뽑혀 나오는 자리를 노려요." data-g="1">AEO(Answer Engine Optimization)</span>는 질문과 답변, <span class="term" data-term="GEO" data-en="Generative Engine Optimization" data-desc="ChatGPT 같은 생성형 AI가 답을 만들 때 내 콘텐츠를 가져가고 내 브랜드를 언급하게 만드는 일이에요. 목표가 순위가 아니라 AI 답변 속 추천이에요." data-g="2">GEO(Generative Engine Optimization)</span>는 AI(Artificial Intelligence) 답변 속 추천을 겨냥해요. 셋은 대체 관계가 아니라 한 세트예요.</li>
+    <li>고객이 AI에게 던질 질문을 예측해 그 표현 그대로 제목과 소제목에 넣고, 본문을 질문과 답으로 구성해요.</li>
+    <li>같은 질문을 10번 던져 우리 브랜드가 몇 번 나오는지 재는 <span class="term" data-term="LLM 가시성 점수" data-en="LLM visibility score" data-desc="같은 질문을 AI에게 여러 번 했을 때 우리 브랜드가 답에 나온 비율이에요. 10번 중 8번이면 8/10이에요. 영상이 제안하는 새 성과 지표예요." data-g="6">LLM(Large Language Model) 가시성 점수</span>가 새 KPI(Key Performance Indicator)가 될 거라고 봐요.</li>
+    <li>네이버 블로그는 AI가 잘 못 읽어요. 티스토리, 워드프레스, 관련 매체 보도자료처럼 열린 채널에 올려요.</li>
+    <li><span class="term" data-term="싱킹 모드" data-en="Thinking mode" data-desc="AI가 바로 답하지 않고 여러 단계로 생각하고 검색한 뒤 답하는 모드예요. 그 과정에서 어떤 사이트를 찾아보는지 화면에 보여요." data-g="10">싱킹 모드</span>로 AI가 먼저 찾아보는 사이트를 역추적하되, 테스트는 반드시 <span class="term" data-term="임시 채팅" data-en="Temporary chat" data-desc="대화 내용을 기억하지 않고 개인화 메모리도 쓰지 않는 대화 방식이에요. 다른 사람이 볼 답과 비슷한 답을 확인할 때 써요." data-g="12">임시 채팅</span>을 켜고 해요.</li>
   </ol>
 </div>
 
 <nav class="toc">
   <h2>목차</h2>
   <ol>
-    <li><a href="#s1">검색에서 추천으로: SEO, AEO, GEO</a></li>
-    <li><a href="#s2">GEO 원칙 1·2: 믿을 만한 출처와 Q&amp;A 구조</a></li>
-    <li><a href="#s3">GEO 원칙 3: AI 답변 속 언급을 재세요</a></li>
-    <li><a href="#s4">타겟 AI, 채널, 홈페이지 점검</a></li>
-    <li><a href="#s5">AI가 먼저 찾는 사이트를 거꾸로 추적하기</a></li>
-    <li><a href="#s6">테스트할 때는 왜 임시 채팅을 켜야 할까요?</a></li>
-    <li><a href="#s7">SEO, AEO, GEO는 한 세트예요</a></li>
+    <li><a href="#s1">검색에서 AI 추천으로: SEO, AEO, GEO</a></li>
+    <li><a href="#s2">GEO 4원칙과 첫째, 믿을 만한 출처</a></li>
+    <li><a href="#s3">둘째, 고객의 질문을 미리 넣어 두기</a></li>
+    <li><a href="#s4">셋째, LLM 가시성 점수라는 새 KPI</a></li>
+    <li><a href="#s5">실전 팁: 타겟 AI, 열린 채널, 홈페이지</a></li>
+    <li><a href="#s6">AI의 사고 과정 엿보기</a></li>
+    <li><a href="#s7">임시 채팅으로 테스트하고, 셋은 한 세트로</a></li>
     <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
   </ol>
 </nav>
 
 <main>
 <section id="s1">
   <a class="stamp" href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=35s" target="_blank" rel="noopener">00:35</a>
-  <h2>검색에서 추천으로: SEO, AEO, GEO</h2>
-<p>예전에는 사람들이 검색창에 '청담동 피부과'를 치고 나온 링크를 눌러 정보를 얻었어요. 이제는 AI에게 '여드름 치료 잘하는 청담동 피부과 추천해 줘'라고 부탁해요. 마케터가 할 일도 바뀌어요. AI가 내놓는 답변 안에 우리 콘텐츠가 들어가게 만드는 거예요.</p>
-<p>영상은 이 변화를 세 단계로 나눠 설명해요. 키워드를 제목과 본문에 잘 넣으면 되던 <span class="term" data-term="SEO" data-desc="검색엔진 최적화예요. 특정 키워드로 검색했을 때 내 글이나 홈페이지가 위쪽에 나오게 다듬는 일이에요.">SEO</span>에서, 질문에 바로 답하는 콘텐츠를 만드는 <span class="term" data-term="AEO" data-desc="답변엔진 최적화예요. 사람들이 던질 질문에 콘텐츠가 바로 답이 되도록 질문·답변 형태로 구성하는 일이에요.">AEO</span>로, 다시 AI가 가져다 쓰기 좋게 정리하는 <span class="term" data-term="GEO" data-desc="생성형엔진 최적화예요. ChatGPT 같은 AI가 답을 만들 때 내 콘텐츠를 가져가 인용하고 추천하도록 다듬는 일이에요.">GEO</span>로 넘어가는 흐름이에요.</p>
-<figure>
-  <img src="assets/frame-0054.png" alt="SEO 검색엔진 최적화, AEO 답변엔진 최적화, GEO 생성형엔진 최적화를 세 칸으로 나란히 놓은 슬라이드">
-  <figcaption>세 가지 최적화가 무엇을 노리는지 한 장에 비교한 슬라이드예요. <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=54s" target="_blank" rel="noopener">영상 00:54에서 보기</a></figcaption>
+  <h2>검색에서 AI 추천으로: SEO, AEO, GEO</h2>
+<p>예전에는 '청담동 피부과'라는 키워드를 제목과 본문에 잘 넣고, 이미지 몇 장을 붙이면 검색 상위에 올랐어요. 진행자는 이제 그 방식만으로는 안 된다고 말해요. 사람들이 검색창에 키워드를 치는 대신 AI에게 추천을 부탁하기 때문이에요.</p>
+<p>아래 그림은 진행자가 말로 설명한 두 시대를 나란히 놓은 거예요. 왼쪽은 키워드로 검색해 링크를 누르던 흐름이고, 오른쪽은 AI에게 조건을 붙여 묻고 AI가 만든 답을 읽는 흐름이에요. 마케터가 노릴 자리가 '검색 결과 순위'에서 'AI 답변 속'으로 옮겨 갔어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="검색 시대와 AI 추천 시대의 정보 찾기 흐름 비교">
+    <defs><marker id="arrow-era" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="155" y="22" text-anchor="middle">검색의 시대</text>
+    <text x="485" y="22" text-anchor="middle">AI 추천의 시대</text>
+    <rect class="box dim" x="40" y="38" width="230" height="44" rx="8"/>
+    <text x="155" y="65" text-anchor="middle">'청담동 피부과' 검색</text>
+    <path class="line" d="M155 84 v22" marker-end="url(#arrow-era)"/>
+    <rect class="box dim" x="40" y="110" width="230" height="44" rx="8"/>
+    <text x="155" y="137" text-anchor="middle">검색 결과 순위</text>
+    <path class="line" d="M155 156 v22" marker-end="url(#arrow-era)"/>
+    <rect class="box dim" x="40" y="182" width="230" height="40" rx="8"/>
+    <text x="155" y="207" text-anchor="middle">링크를 눌러 정보 얻기</text>
+    <rect class="box c1 cell" x="350" y="38" width="270" height="44" rx="8"/>
+    <text x="485" y="58" text-anchor="middle">'여드름 치료하려는데</text>
+    <text x="485" y="75" text-anchor="middle" class="sub">청담동 피부과 추천해 줘'</text>
+    <path class="line" d="M485 84 v22" marker-end="url(#arrow-era)"/>
+    <rect class="box accent ring" x="350" y="110" width="270" height="44" rx="8"/>
+    <text x="485" y="137" text-anchor="middle">AI 답변 속 추천 ← 여기에 들어가기</text>
+    <path class="line" d="M485 156 v22" marker-end="url(#arrow-era)"/>
+    <rect class="box dim" x="350" y="182" width="270" height="40" rx="8"/>
+    <text x="485" y="207" text-anchor="middle" class="sub">일부만 아래 작은 링크를 눌러요</text>
+  </svg>
+  <figcaption>오른쪽에서는 클릭 자체가 줄어요. 그래서 AI 답변 안에 들어가는 게 곧 노출이에요.</figcaption>
 </figure>
+<p>영상은 이 변화를 SEO, AEO, GEO 세 단계로 나눠요. 화면의 카드 세 장이 각각 무엇을 겨냥하는지 보여 줘요. 왼쪽 SEO는 '키워드 중심, 구글·네이버 상위 노출', 가운데 AEO는 '질문/답변 중심, Featured Snippet(<span class="term" data-term="추천 스니펫" data-en="Featured Snippet" data-desc="구글 검색 결과 맨 위에 특정 페이지의 한 구절을 뽑아 질문의 답처럼 보여 주는 칸이에요. AEO가 노리는 대표적인 자리예요." data-g="3">추천 스니펫</span>) 노출', 오른쪽 GEO는 'AI 학습 최적화, AI 답변 내 브랜드 언급 및 추천'이라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0045.png" alt="SEO 검색엔진 최적화, AEO 답변엔진 최적화, GEO 생성형엔진 최적화를 카드 세 장으로 비교한 슬라이드">
+  <figcaption>파란색이 진해질수록 AI 쪽으로 가요. 맨 오른쪽 GEO만 '브랜드 언급 및 추천'이 목표예요.
+    <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=45s" target="_blank" rel="noopener">영상 00:45에서 보기</a></figcaption>
+</figure>
+<p>진행자는 같은 피부과 예시로 콘텐츠가 어떻게 달라져야 하는지 짚어요.</p>
 <div class="table-scroll">
   <table>
-    <thead><tr><th>구분</th><th>중심</th><th>목표</th><th>콘텐츠 예시</th></tr></thead>
+    <thead><tr><th>단계</th><th>청담동 피부과 콘텐츠라면</th></tr></thead>
     <tbody>
-      <tr><td>SEO (검색엔진 최적화)</td><td>키워드</td><td>구글·네이버 상위 노출</td><td>제목·본문에 '청담동 피부과' 넣기</td></tr>
-      <tr><td>AEO (답변엔진 최적화)</td><td>질문과 답변</td><td><span class="term" data-term="추천 스니펫" data-desc="구글 검색 결과 맨 위에 질문의 답을 요약해 보여 주는 칸이에요. 영어로 Featured Snippet이라고 해요.">추천 스니펫</span>(Featured Snippet) 노출</td><td>'여드름 치료 잘하는 청담동 피부과는?' 같은 질문·답변</td></tr>
-      <tr><td>GEO (생성형엔진 최적화)</td><td>AI 학습·인용</td><td>AI 답변 안에서 브랜드 언급·추천</td><td>목차, 요약 박스로 정리된 글</td></tr>
+      <tr><td>SEO</td><td>'청담동 피부과' 키워드를 제목·본문에 넣고 이미지 몇 장</td></tr>
+      <tr><td>AEO</td><td>'여드름 치료 잘하는 청담동 피부과는?' 같은 질문과 그 답변을 글에 담기</td></tr>
+      <tr><td>GEO</td><td>목차와 요약 박스를 넣어 AI가 답을 만들 때 가져가기 좋게 정리하기</td></tr>
     </tbody>
   </table>
 </div>
-<h3>왜 사업자에게 위기일까요</h3>
-<p>홈페이지로 사람을 모아야 정보를 전하고 물건을 팔 수 있어요. 그런데 AI가 답을 다 정리해 주니 사람들이 링크를 누르지 않아요. 영상에서는 이걸 검색엔진의 <span class="term" data-term="제로클릭" data-desc="검색 결과 화면에서 답을 다 얻어서 사람들이 링크를 누르지 않는 현상이에요. 사이트로 오는 방문자가 줄어드는 원인이 돼요.">제로클릭</span> 현상이라고 불러요. 구글 검색 결과 위에 AI 답변이 뜨고, 그 아래 작게 붙은 출처 링크에라도 들어가야 한다는 얘기예요.</p>
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>구글은 공식 문서에서 AI Overviews나 AI Mode에 나오려고 따로 해야 할 최적화는 없다고 밝혀요. 크롤링 허용, 내부 링크, 중요한 내용은 글자로 쓰기, 보이는 내용과 맞는 구조화 데이터 같은 SEO 기본기를 그대로 지키라고 해요. AI용 파일이나 특별한 마크업을 새로 만들 필요도 없다고 적혀 있어요.</p>
-  <p class="cite">출처: <a href="https://developers.google.com/search/docs/appearance/ai-features" target="_blank" rel="noopener">Google Search Central — AI features and your website</a></p>
-</aside>
+<p>사업자에게는 위기이기도 해요. 홈페이지로 사람을 모아 정보를 전해야 하는데, AI가 답을 바로 주니 클릭 자체를 안 하거든요. 그래도 AI 요약 아래 링크를 눌러 보는 사람이 있어서, 그 자리에 우리 콘텐츠가 들어가게 만드는 게 중요하다고 정리해요.</p>
 </section>
 
 <section id="s2">
   <a class="stamp" href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=202s" target="_blank" rel="noopener">03:22</a>
-  <h2>GEO 원칙 1·2: 믿을 만한 출처와 Q&amp;A 구조</h2>
-<p>AI가 내 콘텐츠를 잘 알아보게 하려면 두 가지를 봐야 해요. 하나는 채널이에요. 티스토리나 워드프레스로 만든 블로그가 AI에게 더 유리하다고 해요. 다른 하나는 형식이에요. 요즘 AI는 글만 읽지 않고 이미지와 영상도 알아봐요. 그래서 이미지와 영상도 AI가 잘 인식하게 만들어야 해요.</p>
-<p>영상은 GEO의 핵심이 크게 네 가지라고 소개해요. 다만 이름을 붙여 설명하는 건 세 가지예요. 이 섹션에서 앞의 두 가지를, 다음 섹션에서 세 번째를 다뤄요.</p>
-<h3>1. 신뢰도 높은 출처를 인용하세요</h3>
-<p>AI는 검증된 전문가 의견이나 공식 기관 데이터를 좋아할 수밖에 없어요. 그래서 출처를 분명히 밝혀야 해요. 그 출처가 내 제품이나 브랜드와 관련이 있으면 더 좋아요.</p>
+  <h2>GEO 4원칙과 첫째, 믿을 만한 출처</h2>
+<p>진행자는 먼저 채널과 형식을 짚어요. AI 입장에서는 네이버 블로그보다 티스토리나 워드프레스로 만든 블로그가 읽기 쉬워요. 또 AI는 이제 글만 긁어 가는 게 아니라 이미지와 영상도 알아봐요. 그러니 이미지와 영상도 AI가 잘 알아보게 만드는 기술이 필요해요.</p>
+<p>이 이야기를 묶은 게 GEO 4원칙이에요. 화면의 아이콘 네 개가 순서대로 ① 신뢰도 높은 출처 인용, ② 질문-답변(Q&amp;A) 구조, ③ LLM 가시성 점수 관리, ④ <span class="term" data-term="멀티모달" data-en="Multimodal" data-desc="글, 이미지, 영상처럼 여러 형태의 정보를 함께 다루는 것이에요. AI가 사진과 영상도 읽으니 그것들도 AI가 알아보기 쉽게 만들어야 해요." data-g="5">멀티모달</span> 최적화예요. 영상은 ①~③을 하나씩 설명하고, ④는 바로 앞의 이미지·영상 이야기로 대신해요.</p>
 <figure>
-  <img src="assets/frame-0429.png" alt="건강기능식품 리포트 본문에 '인용: 약학신문 / 대한의학회' 표시가 붙고 'AI 신뢰도 가산점 부여'라는 말풍선이 달린 슬라이드">
-  <figcaption>본문에 공신력 있는 출처를 밝히면 AI가 신뢰도를 더 준다는 예시예요. 슬라이드 아래에는 '출처 명시 필수 + 브랜드 연관성'이라고 적혀 있어요. <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=269s" target="_blank" rel="noopener">영상 04:29에서 보기</a></figcaption>
+  <img src="assets/frame-0145.png" alt="신뢰도 높은 출처 인용, 질문-답변 구조, LLM 가시성 점수 관리, 멀티모달 최적화를 아이콘 네 개로 정리한 슬라이드">
+  <figcaption>이 네 가지가 이 영상의 뼈대예요. 다음 두 섹션이 ②와 ③을 다뤄요.
+    <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=105s" target="_blank" rel="noopener">영상 01:45에서 보기</a></figcaption>
 </figure>
-<h3>2. 고객이 할 질문을 미리 Q&amp;A로 넣으세요</h3>
-<p>AI는 질문과 답변 구조를 좋아해요. 핵심은 고객이 AI에게 어떤 식으로 물을지 미리 짐작하는 거예요. 펜션이라면 사람들은 '서울 펜션 추천해 줘'처럼 묻지 않아요. '후기 좋은 펜션', '수영장 있는 펜션', '아이와 갈 만한 펜션'처럼 조건을 붙여 물어요.</p>
-<p>그 질문을 콘텐츠에 대놓고 넣으면 돼요. 예를 들어 '이 펜션은 후기 좋기로 유명한데 비결이 뭔가요?'라고 묻고, 사장님이 '고객 후기에 하나하나 답글을 달아요'라고 답하는 식이에요. AI가 비슷한 질문을 받았을 때 그 답을 가져가기 쉬워져요.</p>
-<div class="table-scroll">
-  <table>
-    <thead><tr><th>고객이 실제로 물을 법한 질문</th><th>콘텐츠에 넣을 Q&amp;A</th></tr></thead>
-    <tbody>
-      <tr><td>후기 좋은 펜션 추천해 줘</td><td>후기 관리 비결을 묻고 답하기</td></tr>
-      <tr><td>수영장 있는 펜션 추천해 줘</td><td>수영장 시설을 묻고 답하기</td></tr>
-      <tr><td>아이와 함께 갈 만한 펜션 추천해 줘</td><td>아이 동반 편의를 묻고 답하기</td></tr>
-    </tbody>
-  </table>
-</div>
+<p>첫째 원칙은 <b>신뢰도 높은 출처를 인용하라</b>예요. AI는 검증된 전문가 의견이나 공식 기관 데이터를 선호할 수밖에 없다고 해요. 그래서 출처를 분명히 밝히고, 가능하면 그 출처가 내 제품·브랜드와 관련 있어야 해요. 화면 자막은 이 원칙을 E.E.A.T라는 말로 묶어요.</p>
+<p>슬라이드 오른쪽의 '건강기능식품 리포트' 카드를 보면, 본문 가운데에 '[인용: 약학신문 / 대한의학회]'가 들어가 있어요. 그 옆 파란 말풍선이 'AI 신뢰도 가산점 부여'예요. 왼쪽 아래에는 '출처 명시 필수 + 브랜드 연관성'이라는 조건이 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-0430.png" alt="신뢰도 높은 출처를 인용하라는 슬라이드. 건강기능식품 리포트 본문에 약학신문과 대한의학회 인용 표시가 있고 AI 신뢰도 가산점 부여라는 말풍선이 붙어 있다">
+  <figcaption>건강 제품이라면 약학·의학 쪽 출처처럼, 브랜드와 같은 분야의 출처가 가산점을 받아요.
+    <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=270s" target="_blank" rel="noopener">영상 04:30에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>자막의 E.E.A.T는 구글이 쓰는 말 E-E-A-T예요. 경험(Experience), 전문성(Expertise), 권위(Authoritativeness), 신뢰(Trustworthiness)의 머리글자이고, 구글은 이 중 신뢰가 가장 중요하다고 밝혀요. 다만 구글은 E-E-A-T 자체가 하나의 순위 요소는 아니라고 설명해요. 좋은 콘텐츠를 가려내는 여러 신호를 묶어 부르는 이름에 가까워요.</p>
+  <p class="cite">출처: <a href="https://developers.google.com/search/docs/fundamentals/creating-helpful-content" target="_blank" rel="noopener">Google Search Central — 유용하고 신뢰할 수 있는 콘텐츠 만들기</a></p>
+</aside>
 </section>
 
 <section id="s3">
-  <a class="stamp" href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=397s" target="_blank" rel="noopener">06:37</a>
-  <h2>GEO 원칙 3: AI 답변 속 언급을 재세요</h2>
-<p>세 번째 원칙은 측정이에요. 영상에서는 이걸 <span class="term" data-term="LLM 가시성 점수" data-desc="같은 질문을 AI에 여러 번 했을 때 우리 브랜드가 답변에 나온 비율이에요. 영상에서 쓰는 말이라 업계 표준 용어는 아니에요.">LLM 가시성 점수</span>라고 불러요. 우리 브랜드가 AI 답변에 얼마나 자주 나오는지를 재 보자는 거예요.</p>
-<p>화장품 브랜드라면 '40대 여성이 쓸 만한 주름 개선 화장품 추천해 줘'라고 물었을 때 우리 제품이 몇 번 나오는지 세어 봐요. 측정이 돼야 고칠 점이 보이고 전략도 세울 수 있어요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=296s" target="_blank" rel="noopener">04:56</a>
+  <h2>둘째, 고객의 질문을 미리 넣어 두기</h2>
+<p>둘째 원칙은 <b>질문과 답변 구조</b>예요. AI는 질문에 딱 맞춰 답하는 글을 좋아해요. 진행자는 이걸 '진짜 팁'이라며 펜션을 예로 들어요.</p>
+<p>사람들은 AI에게 "서울에 있는 펜션 추천해 줘"처럼 막연하게 묻지 않아요. 조건을 붙여서 물어요. 슬라이드 오른쪽 파란 말풍선 세 개가 그 예시예요. '후기 좋은 펜션 추천해줘', '수영장 있는 펜션 추천', '아이와 갈 만한 펜션'이에요. 왼쪽 문구는 이 질문(프롬프트)을 콘텐츠 제목과 소제목에 직접 배치하라고 해요.</p>
 <figure>
-  <img src="assets/frame-0721.png" alt="'LLM 가시성 점수: 완전히 새로운 KPI' 슬라이드. 기존은 검색 결과 페이지 순위, 신규는 AI 답변 속 브랜드 언급 빈도이고 오른쪽 게이지에 8/10이 표시돼 있어요">
-  <figcaption>같은 질문을 10번 넣었을 때 우리 브랜드가 8번 나오면 8/10이라는 식으로 재요. <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=441s" target="_blank" rel="noopener">영상 07:21에서 보기</a></figcaption>
+  <img src="assets/frame-0456.png" alt="예상 질문을 콘텐츠 제목과 소제목에 직접 배치하라는 슬라이드. 후기 좋은 펜션, 수영장 있는 펜션, 아이와 갈 만한 펜션 세 질문이 말풍선으로 붙어 있다">
+  <figcaption>'AI에게 질문하는 방식 그대로가 가장 완벽한 키워드'라는 문구가 이 원칙의 요약이에요.
+    <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=296s" target="_blank" rel="noopener">영상 04:56에서 보기</a></figcaption>
 </figure>
-<div class="table-scroll">
-  <table>
-    <thead><tr><th></th><th>SEO 시대</th><th>AEO·GEO 시대</th></tr></thead>
-    <tbody>
-      <tr><td>무엇을 재나요</td><td>우리 글이 검색 결과 몇 위에 있는지</td><td>AI 답변에 우리 브랜드가 들어가는 비율</td></tr>
-      <tr><td><span class="term" data-term="KPI" data-desc="핵심 성과 지표예요. 마케팅이 잘되고 있는지 판단하려고 정해 두고 꾸준히 재는 숫자예요.">KPI</span> 예시</td><td>몇 위 안에 노출시키기</td><td>같은 질문 10번 중 몇 번 언급되는지</td></tr>
-    </tbody>
-  </table>
-</div>
-<p>진행자도 말은 쉬운데 와닿지는 않는다고 해요. 그래도 출연자는 이 비율이 앞으로 분명히 새로운 KPI가 될 거라고 강조해요.</p>
+<p>핵심은 고객이 AI에게 어떤 형태로 물을지 미리 예측하는 거예요. AI는 그 질문에 맞는 답을 찾아오니까, 우리 콘텐츠의 질문·답변 안에 그 표현이 이미 들어 있어야 해요.</p>
+<blockquote>
+  <p>그니까 대놓고 대놓고 질문에 찍어 주는게 중요해요.</p>
+  <cite>— 영상 04:25</cite>
+</blockquote>
+<p>본문은 실제로 묻고 답하는 형태로 써요. 아래 그림은 진행자가 말로 예를 든 펜션 글의 한 단락을 옮긴 거예요. 고객 질문 하나가 소제목이 되고, 사장님의 답이 본문이 돼요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 200" role="img" aria-label="펜션 블로그 글을 질문과 사장님 답변으로 구성한 예시">
+    <defs><marker id="arrow-qa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="box c1 cell" x="20" y="20" width="180" height="70" rx="10"/>
+    <text x="110" y="50" text-anchor="middle">고객이 AI에게</text>
+    <text x="110" y="72" text-anchor="middle" class="sub">'후기 좋은 펜션 추천해 줘'</text>
+    <path class="line" d="M202 55 h40" marker-end="url(#arrow-qa)"/>
+    <rect class="box accent" x="250" y="20" width="370" height="70" rx="10"/>
+    <text x="270" y="47" class="sub">Q. 소제목</text>
+    <text x="270" y="72">○○ 펜션은 후기 좋은 펜션으로 유명한데, 노하우는?</text>
+    <rect class="box c2 cell" x="250" y="106" width="370" height="76" rx="10"/>
+    <text x="270" y="133" class="sub">A. 사장님 답변</text>
+    <text x="270" y="158">고객 후기마다 일일이 답글을 달고 있어요.</text>
+    <path class="line" d="M435 92 v10" marker-end="url(#arrow-qa)"/>
+  </svg>
+  <figcaption>고객의 질문 표현이 소제목에 그대로 들어가요. AI가 '후기 좋은 펜션'을 찾을 때 이 단락이 맞아떨어져요.</figcaption>
+</figure>
 </section>
 
 <section id="s4">
-  <a class="stamp" href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=532s" target="_blank" rel="noopener">08:52</a>
-  <h2>타겟 AI, 채널, 홈페이지 점검</h2>
-<p>여기서부터는 실전 팁이에요. 영상은 다섯 가지로 정리해요. 타겟 AI 고르기, 열린 채널 고르기, 홈페이지 <span class="term" data-term="크롤링" data-desc="검색엔진이나 AI의 프로그램이 웹페이지를 돌아다니며 내용을 읽어 가는 일이에요. 읽혀야 검색이나 답변에 쓰일 수 있어요.">크롤링</span> 구조 점검, AI <span class="term" data-term="싱킹 모드" data-desc="AI가 바로 답하지 않고 여러 단계로 생각하고 검색한 뒤 답하는 모드예요. 그 과정이 화면에 보여서 어디를 찾아봤는지 알 수 있어요.">싱킹 모드</span>로 거꾸로 추적하기, 임시 채팅으로 편향 없애기예요. 이 섹션은 앞의 세 가지를 다뤄요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=397s" target="_blank" rel="noopener">06:37</a>
+  <h2>셋째, LLM 가시성 점수라는 새 KPI</h2>
+<p>셋째 원칙은 진행자가 'LLM 가시성 점수 관리'라고 부르는 거예요. 쉽게 말해 <b>측정하자</b>는 거예요. 우리 브랜드가 AI 답변에 얼마나 자주 나오는지 재는 거죠.</p>
+<p>화장품 브랜드라면 "40대 여성이 쓸 만한 주름 개선에 도움 되는 화장품 추천해 줘"라고 물었을 때 우리 제품이 몇 번 나오는지 봐야 해요. 슬라이드 오른쪽 게이지의 '8/10'이 그 점수예요. 아래 설명대로 같은 질문을 10번 넣었을 때 AI 답변에 우리 브랜드가 8번 나왔다는 뜻이에요.</p>
 <figure>
-  <img src="assets/frame-0845.png" alt="'GEO 실전 꿀팁 5가지 총정리' 슬라이드에 다섯 항목이 나열돼 있어요">
-  <figcaption>뒤의 두 섹션까지 이어지는 실전 팁 다섯 가지의 목차예요. <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=525s" target="_blank" rel="noopener">영상 08:45에서 보기</a></figcaption>
+  <img src="assets/frame-0705.png" alt="LLM 가시성 점수가 새로운 KPI라는 슬라이드. 기존은 검색 결과 페이지 순위, 신규는 AI 최종 답변 속 브랜드 언급 빈도이고 오른쪽 게이지에 8/10이 적혀 있다">
+  <figcaption>왼쪽 X 표시와 체크 표시가 기존 지표와 새 지표를 나눠요. 8/10은 예시 값이에요.
+    <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=425s" target="_blank" rel="noopener">영상 07:05에서 보기</a></figcaption>
 </figure>
-<h3>타겟 AI를 하나 정하세요</h3>
-<p>모든 AI에 다 노출되겠다는 건 사실상 불가능해요. 우리나라에서는 무료 사용자까지 치면 ChatGPT를 가장 많이 쓰고, 그다음이 Gemini예요. 둘은 검색하는 방식이 달라서 한 번에 둘 다 노리기가 쉽지 않아요.</p>
-<figure>
-  <img src="assets/frame-0918.png" alt="1순위 ChatGPT와 2순위 Gemini를 VS로 비교한 슬라이드. ChatGPT는 국내 최다 사용자와 깊은 추론, Gemini는 구글 생태계 연동과 실시간 검색이 강점으로 적혀 있어요">
-  <figcaption>슬라이드는 두 AI의 강점을 나란히 놓고, 검색 방식이 다르니 타겟을 먼저 좁히라고 해요. <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=558s" target="_blank" rel="noopener">영상 09:18에서 보기</a></figcaption>
-</figure>
-<p>화면에는 말로는 나오지 않은 내용도 하나 있어요. ChatGPT는 Bing과, Gemini는 Google과 연결돼 있다고 보고, Bing 웹마스터 도구에 꼭 등록하라고 적혀 있어요.</p>
-<figure>
-  <img src="assets/frame-0929.png" alt="'AI의 뇌는 어디에 연결되어 있는가?'라는 제목 아래 챗GPT에서 Bing으로, 제미나이에서 Google로 화살표가 이어진 슬라이드">
-  <figcaption>타겟 AI가 정해지면 그 AI가 기대는 검색엔진도 챙기라는 뜻의 슬라이드예요. <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=569s" target="_blank" rel="noopener">영상 09:29에서 보기</a></figcaption>
-</figure>
-<h3>AI가 읽을 수 있는 채널에 올리세요</h3>
-<p>ChatGPT와 Gemini 둘 다 네이버 블로그를 잘 못 읽어요. 네이버가 바깥에 닫혀 있는 플랫폼이라 AI가 들어가기 어렵기 때문이에요. GEO를 노린다면 티스토리 블로그나 워드프레스 블로그, 언론사 보도자료가 낫다고 해요.</p>
-<figure>
-  <img src="assets/frame-1002.png" alt="'AI가 접근할 수 있는 채널인가?' 슬라이드. 왼쪽 빨간 칸에 AI가 못 읽는 폐쇄형 채널로 네이버 블로그, 오른쪽 파란 칸에 AI가 잘 읽는 오픈형 채널로 티스토리·워드프레스·언론사 보도자료가 적혀 있어요">
-  <figcaption>아래 팁 줄에는 보도자료를 낼 때 상품과 관련 깊고 원문을 그대로 실어 주는 매체를 고르라고 적혀 있어요. <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=602s" target="_blank" rel="noopener">영상 10:02에서 보기</a></figcaption>
-</figure>
-<h3>홈페이지 SEO 설정을 빼먹지 마세요</h3>
-<p>내 홈페이지도 AI가 잘 크롤링할 수 있는 구조여야 해요. 결국 이것도 홈페이지 SEO예요. 카페24 같은 쇼핑몰 빌더는 설정 화면에서 SEO 항목을 채울 수 있어요. 이걸 빼먹는 사람이 많다고 해요.</p>
-<figure>
-  <img src="assets/frame-1046.png" alt="'AI 크롤러 통과 수문 열기' 슬라이드. robots.txt 접근 권한에서 GPTBot과 Google-Extended를 허용으로 둔 토글, FAQ Schema 구조화 데이터, 개방형 플랫폼 선택이 그려져 있어요">
-  <figcaption>슬라이드는 <span class="term" data-term="robots.txt" data-desc="홈페이지에 두는 안내 파일이에요. 어떤 수집 프로그램이 어느 페이지를 읽어도 되는지 적어 둬요.">robots.txt</span>로 AI 크롤러를 막지 말고, FAQ 구조화 데이터를 넣으라고 정리해요. <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=646s" target="_blank" rel="noopener">영상 10:46에서 보기</a></figcaption>
-</figure>
-<figure>
-  <img src="assets/frame-1050.png" alt="카페24 관리자 화면에서 검색엔진 최적화 설정 영역을 빨간 상자로 표시한 화면">
-  <figcaption>카페24 관리자에서 SEO 설정이 있는 위치를 짚어 준 화면이에요. <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=650s" target="_blank" rel="noopener">영상 10:50에서 보기</a></figcaption>
-</figure>
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>슬라이드의 크롤러 이름은 하는 일이 서로 달라요. OpenAI 문서를 보면 GPTBot은 모델 학습용 수집이에요. ChatGPT 검색 결과에 사이트가 나오게 하는 건 OAI-SearchBot이에요. ChatGPT 검색에 나오고 싶다면 OAI-SearchBot을 막지 않았는지부터 확인해야 해요.</p>
-  <p>Google-Extended는 Gemini 학습과 Gemini 앱의 근거 자료로 쓰일지만 정해요. 구글 문서는 이 설정이 구글 검색 노출이나 순위에는 영향을 주지 않는다고 밝혀요.</p>
-  <p class="cite">출처: <a href="https://developers.openai.com/api/docs/bots" target="_blank" rel="noopener">OpenAI — Overview of OpenAI Crawlers</a> · <a href="https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers" target="_blank" rel="noopener">Google Search Central — Google's common crawlers</a></p>
-</aside>
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>FAQ 구조화 데이터를 넣어도 구글 검색 결과에 질문·답변 펼침 화면이 뜨는 건 아니에요. 구글은 이 기능을 잘 알려진 공신력 있는 정부·보건 사이트에만 보여 준다고 밝혀요. 그래도 본문에 Q&amp;A를 두는 것 자체는 앞에서 본 질문·답변 구조와 같은 방향이에요.</p>
-  <p class="cite">출처: <a href="https://developers.google.com/search/docs/appearance/structured-data/faqpage" target="_blank" rel="noopener">Google Search Central — FAQ (FAQPage) structured data</a></p>
-</aside>
+<p>슬라이드 왼쪽이 이 원칙의 요지예요. 기존 지표는 '단순 검색 결과 페이지 순위'였어요. 오늘 우리 블로그 글이 몇 위인지 체크하듯이요. 새 지표는 'AI가 생성한 최종 답변 속 우리 브랜드의 언급 빈도'예요.</p>
+<p>진행자는 이 비율이 앞으로 분명히 KPI가 될 거라고 말해요. 측정이 돼야 개선점이 보이고 전략도 나오기 때문이에요. 함께 출연한 진행자는 말은 쉬운데 확 와닿지는 않는다고 반응하는데, 이 측정 방법은 뒤의 '사고 과정 엿보기' 섹션에서 구체적으로 나와요.</p>
 </section>
 
 <section id="s5">
-  <a class="stamp" href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=633s" target="_blank" rel="noopener">10:33</a>
-  <h2>AI가 먼저 찾는 사이트를 거꾸로 추적하기</h2>
-<p>영상이 가장 힘줘 말하는 팁이에요. 타겟 AI에 내가 노리는 질문을 직접 던져 보고, AI가 답을 찾는 과정을 거꾸로 따라가는 방법이에요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=520s" target="_blank" rel="noopener">08:40</a>
+  <h2>실전 팁: 타겟 AI, 열린 채널, 홈페이지</h2>
+<p>원칙에 이어 진행자는 GEO 실전 팁을 다섯 가지로 정리해요. 오른쪽 목록이 순서대로 ① 타겟 AI 선정(ChatGPT vs Gemini), ② 유리한 오픈형 채널 선택, ③ 홈페이지 <span class="term" data-term="크롤링" data-en="Crawling" data-desc="검색엔진이나 AI 회사의 프로그램이 웹페이지를 돌아다니며 내용을 읽어 가는 일이에요. 크롤러가 못 들어오면 AI도 내 글을 모르게 돼요." data-g="7">크롤링</span> 구조 점검, ④ AI 싱킹모드 역추적, ⑤ 편향을 없애는 임시채팅 모드예요. 이 섹션은 ①~③을, 다음 두 섹션은 ④와 ⑤를 다뤄요.</p>
 <figure>
-  <img src="assets/frame-1103.png" alt="'GEO 테스트 황금 공식' 슬라이드. 임시채팅 모드 ON 경고 아래 싱킹 모드 켜기, 같은 질문 10회 입력, 사고 과정 녹화, 공통 참조 사이트 추출, 실제 사례 순서의 다섯 칸 흐름도가 있어요">
-  <figcaption>이 섹션과 다음 섹션의 내용을 한 줄 흐름으로 묶은 슬라이드예요. <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=663s" target="_blank" rel="noopener">영상 11:03에서 보기</a></figcaption>
+  <img src="assets/frame-0854.png" alt="GEO 실전 꿀팁 5가지 총정리 슬라이드. 타겟 AI 선정, 유리한 오픈형 채널 선택, 홈페이지 크롤링 구조 점검, AI 싱킹모드 역추적, 편향을 없애는 임시채팅 모드가 적혀 있다">
+  <figcaption>앞의 셋은 준비, 뒤의 둘은 테스트예요.
+    <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=534s" target="_blank" rel="noopener">영상 08:54에서 보기</a></figcaption>
 </figure>
-<ol>
-  <li>ChatGPT나 Gemini에서 빠른 모드 대신 싱킹 모드를 켜요. 그러면 AI가 생각하고 검색하는 과정이 화면에 죽 보여요.</li>
-  <li>'주름 개선에 좋은 화장품 추천해 줘'처럼 내가 노리는 질문을 던져요.</li>
-  <li>사고 과정은 순식간에 지나가니 화면을 녹화해요. PC 브라우저에서 녹화하면 어렵지 않아요.</li>
-  <li>같은 질문을 10번 반복해요. LLM은 물을 때마다 똑같이 검색하지 않기 때문이에요.</li>
-  <li>10번 중에 공통으로 먼저 찾아보는 사이트를 골라내고, 그 사이트를 공략해요.</li>
-</ol>
-<h3>실제 사례: 글램핑장</h3>
-<p>출연자는 지인의 글램핑장을 컨설팅하면서 이 방법을 써 봤어요. ChatGPT에 '어느 지역 괜찮은 글램핑장 추천해 줘'를 10번 물었더니 10번 모두 먼저 찾아본 사이트가 고캠핑이었어요. 들어가 보니 공공기관이 운영하는 캠핑 정보 플랫폼이었어요. 공공기관 사이트라 AI가 권위와 신뢰 점수를 더 주고 먼저 찾는다는 해석이에요.</p>
+<h3>① 타겟 AI부터 정해요</h3>
+<p>모든 AI에 다 노출되겠다는 건 사실상 불가능하다고 해요. 슬라이드 제목도 '모든 AI를 노리면 실패한다. 하나에 집중하라'예요. 왼쪽 1순위 ChatGPT 카드에는 '국내 최다 사용자(유/무료 합산)'와 '깊이 있는 추론과 데이터 합성 능력 우수'가, 오른쪽 2순위 Gemini 카드에는 '구글 생태계 연동의 절대적 강점'과 '실시간 검색 연계와 구글 워크스페이스 최적화'가 적혀 있어요.</p>
 <figure>
-  <img src="assets/frame-1247.png" alt="ChatGPT 대화 화면 위에 '해당 질문을 10번 했을 때 우선적으로 챗지피티가 참고하는 사이트 고캠핑, 고캠핑은 한국관광공사에서 운영하는 사이트'라는 자막이 얹힌 화면">
-  <figcaption>편집 자막에 고캠핑이 한국관광공사 운영 사이트라고 적혀 있어요. <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=767s" target="_blank" rel="noopener">영상 12:47에서 보기</a></figcaption>
+  <img src="assets/frame-0916.png" alt="1순위 ChatGPT와 2순위 Gemini를 VS로 비교하는 슬라이드. 아래에 두 AI는 검색 방식이 완전히 다르니 타겟 채널을 먼저 좁히라는 문구가 있다">
+  <figcaption>아래 띠의 '두 AI는 검색 방식이 완전히 다릅니다'가 하나만 고르라는 이유예요.
+    <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=556s" target="_blank" rel="noopener">영상 09:16에서 보기</a></figcaption>
 </figure>
-<p>편집 자막은 이어서, 고캠핑에 최신 정보를 등록했더니 ChatGPT가 그 글램핑장을 추천하기 시작했다고 덧붙여요. 키워드마다 AI가 먼저 보는 사이트가 따로 있으니, 업종별로 직접 확인해 봐야 해요.</p>
-</section>
-
-<section id="s6">
-  <a class="stamp" href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=803s" target="_blank" rel="noopener">13:23</a>
-  <h2>테스트할 때는 왜 임시 채팅을 켜야 할까요?</h2>
-<p>이 테스트를 할 때 꼭 지킬 게 있어요. 개인화를 끄고 물어봐야 해요. ChatGPT와 Gemini는 지금 <span class="term" data-term="개인화 메모리" data-desc="AI가 예전 대화 내용을 기억해 두고 다음 답변에 반영하는 기능이에요. 테스트할 때는 답을 한쪽으로 치우치게 만들어요.">개인화 메모리</span>가 있어서 예전 대화를 기억하고 다음 답변에 반영해요. 내가 우리 브랜드 얘기를 많이 했다면 AI가 그걸 기억하고 치우친 답을 줄 수밖에 없어요.</p>
-<p>방법은 두 서비스가 같아요. PC 화면 오른쪽 위에 있는 임시 채팅 토글을 켜고 물어보면 돼요. 그러면 대화 내용이 개인화 메모리에 저장되지 않아요. 진행자의 말처럼 로그인하지 않고 검색하는 것과 비슷하다고 보면 돼요.</p>
+<p>다음 화면은 검색 방식이 왜 다른지 한 장으로 보여 줘요. 위쪽은 ChatGPT가 Bing으로, 아래쪽은 Gemini가 Google로 이어져요. Bing 아래 파란 표시는 '빙 웹마스터 도구 등록 필수'예요.</p>
 <figure>
-  <img src="assets/frame-1417.png" alt="Gemini 화면에서 임시 채팅이 켜진 상태. '임시채팅 기능을 활성화 한 상태에서 질문할 것'이라는 자막이 얹혀 있어요">
-  <figcaption>오른쪽 위 아이콘으로 임시 채팅을 켠 Gemini 화면이에요. <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=857s" target="_blank" rel="noopener">영상 14:17에서 보기</a></figcaption>
+  <img src="assets/frame-0930.png" alt="ChatGPT에서 Bing으로, Gemini에서 Google로 화살표가 이어진 슬라이드. Bing 아래에 빙 웹마스터 도구 등록 필수라는 표시가 있다">
+  <figcaption>ChatGPT를 노린다면 구글만이 아니라 Bing 쪽 노출도 챙겨야 한다는 뜻이에요.
+    <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=570s" target="_blank" rel="noopener">영상 09:30에서 보기</a></figcaption>
 </figure>
-<blockquote>
-  <p>이런 테스트를 할 때는 반드시 임시 채팅 버튼을 누르고 물어봐라. 이게 핵심입니다.</p>
-  <cite>— 영상 14:32</cite>
-</blockquote>
-</section>
-
-<section id="s7">
-  <a class="stamp" href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=907s" target="_blank" rel="noopener">15:07</a>
-  <h2>SEO, AEO, GEO는 한 세트예요</h2>
-<p>진행자가 전체를 이렇게 정리해요. 티스토리 같은 열린 채널에 콘텐츠를 만들고, <span class="term" data-term="E-E-A-T" data-desc="경험, 전문성, 권위, 신뢰의 머리글자예요. 구글이 믿을 만한 콘텐츠인지 볼 때 쓰는 기준이에요.">E-E-A-T</span> 기준에 맞춰 질문과 답변 형식으로 쓰고, 관련 언론 기사를 받아 블로그에 반영해 신뢰를 더하라는 거예요.</p>
-<p>출연자는 하나를 덧붙여요. GEO를 한다고 SEO를 버려도 되는 건 아니에요. 고객이 AI에게 던질 질문의 키워드를 콘텐츠에 잘 배치하는 기본기가 여전히 들어가야 해요. 그래서 SEO, AEO, GEO는 따로가 아니라 한 세트예요.</p>
+<h3>② AI가 읽을 수 있는 채널에 올려요</h3>
+<p>이건 ChatGPT와 Gemini 모두에 해당해요. 네이버는 <span class="term" data-term="폐쇄형 플랫폼" data-desc="외부 검색엔진이나 AI가 안의 글을 자유롭게 읽어 가기 어려운 서비스예요. 영상은 네이버 블로그를 그 예로 들어요." data-g="9">폐쇄형 플랫폼</span>이라 AI가 들어가 읽기 어려워요. 슬라이드 왼쪽 빨간 칸이 'AI가 못 읽는 폐쇄형 채널, 네이버 블로그'이고, 오른쪽 파란 칸이 'AI가 잘 읽는 오픈형 채널, 티스토리·워드프레스·언론사 보도자료'예요. 맨 아래 '보도자료 팁'은 내 상품과 연관성 높은 매체(예: 약학신문, 디지털타임스)를 고르라고 해요.</p>
 <figure>
-  <img src="assets/frame-1601.png" alt="마무리 슬라이드. 'AI가 내 브랜드를 추천하게 만드는 것, 이것이 새로운 마케터의 역할입니다'라는 문구 아래 SEO 검색 노출, AEO 질문 답변, GEO AI 추천이 화살표로 이어져 있어요">
-  <figcaption>세 가지가 검색 노출에서 질문 답변, AI 추천으로 이어지는 한 흐름이라는 마무리예요. <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=961s" target="_blank" rel="noopener">영상 16:01에서 보기</a></figcaption>
+  <img src="assets/frame-1010.png" alt="AI가 접근할 수 있는 채널인가라는 슬라이드. 왼쪽 빨간 칸은 폐쇄형 채널 네이버 블로그, 오른쪽 파란 칸은 오픈형 채널 티스토리, 워드프레스, 언론사 보도자료다">
+  <figcaption>파란 칸 아래 '구글이 잘 읽는 곳이 곧 AI가 잘 읽는 곳'이 기준이에요.
+    <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=610s" target="_blank" rel="noopener">영상 10:10에서 보기</a></figcaption>
+</figure>
+<h3>③ 홈페이지를 크롤러에게 열어요</h3>
+<p>내 홈페이지를 AI가 잘 크롤링할 수 있는 구조로 만드는 것도 결국 홈페이지 SEO예요. 카페24나 아임웹 같은 쇼핑몰 빌더는 설정에서 SEO 최적화를 켤 수 있는데, 이걸 빼먹는 사람이 많다고 해요.</p>
+<p>화면은 세 가지를 정리해요. 왼쪽은 <span class="term" data-term="robots.txt" data-desc="웹사이트 맨 위 폴더에 두는 작은 안내 파일이에요. 어떤 수집 프로그램(크롤러)이 사이트에 들어와도 되는지 적어 둬요." data-g="8">robots.txt</span> 접근 권한 설정으로, 'User-agent: GPTBot'과 'User-agent: Google-Extended'를 '허용(Allow)' 상태로 두는 그림이에요. 오른쪽 위는 질문과 답을 짝지은 FAQ(Frequently Asked Questions) 구조화 데이터, 오른쪽 아래는 개방형 플랫폼 선택이에요. 화면 자막은 자사 홈페이지를 구글 서치 콘솔과 빙 웹마스터 도구에 등록하라고 덧붙여요.</p>
+<figure>
+  <img src="assets/frame-1042.png" alt="AI 크롤러 통과 수문 열기 슬라이드. robots.txt에서 GPTBot과 Google-Extended를 허용하는 토글, FAQ 구조화 데이터, 개방형 플랫폼 선택이 있고 구글 서치 콘솔과 빙 웹마스터 도구 등록 필수라는 자막이 있다">
+  <figcaption>토글이 켜져 있어야 AI 크롤러가 들어와요. 아래 자막의 두 도구 등록이 함께 가요.
+    <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=642s" target="_blank" rel="noopener">영상 10:42에서 보기</a></figcaption>
 </figure>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>자막에는 'EAT'라고 들리지만, 구글이 지금 쓰는 말은 경험(Experience)이 더해진 E-E-A-T예요. 경험, 전문성, 권위, 신뢰를 뜻해요. 구글은 E-E-A-T 자체가 순위 요소는 아니고, 이런 성질을 갖춘 콘텐츠를 알아보는 여러 신호를 함께 쓴다고 설명해요.</p>
-  <p class="cite">출처: <a href="https://developers.google.com/search/docs/fundamentals/creating-helpful-content" target="_blank" rel="noopener">Google Search Central — Creating helpful, reliable, people-first content</a></p>
+  <p>슬라이드의 두 이름은 'AI 검색 노출'과 직접 이어지지 않아요. OpenAI 문서에 따르면 GPTBot은 AI 모델 학습용 수집기예요. ChatGPT 검색 결과에 사이트를 띄우는 건 OAI-SearchBot이라서, ChatGPT 검색 노출이 목표라면 OAI-SearchBot을 허용하라고 권해요.</p>
+  <p>구글 문서는 Google-Extended가 Gemini 학습과 답변 근거에 쓰일지를 정하는 표시일 뿐, 구글 검색 노출이나 순위에는 영향이 없다고 밝혀요. 또 구글은 AI 개요(AI Overviews)에 나오려고 따로 해야 할 최적화는 없고, 기존 SEO 기본기가 그대로 통한다고 설명해요.</p>
+  <p class="cite">출처: <a href="https://platform.openai.com/docs/bots" target="_blank" rel="noopener">OpenAI — Overview of OpenAI Crawlers</a> · <a href="https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers" target="_blank" rel="noopener">Google Search Central — Google의 일반 크롤러</a> · <a href="https://developers.google.com/search/docs/appearance/ai-features" target="_blank" rel="noopener">Google Search Central — AI features and your website</a></p>
 </aside>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>FAQ 구조화 데이터를 넣어도 구글 검색 결과에 질문·답변이 펼쳐지는 FAQ 리치 결과는 2023년 8월부터 잘 알려진 정부·건강 분야 사이트에만 나와요. 그 밖의 사이트에서는 이 모양이 보통 보이지 않아요. 구글은 쓰이지 않는 구조화 데이터가 검색에 문제를 일으키지는 않는다고 덧붙여요.</p>
+  <p class="cite">출처: <a href="https://developers.google.com/search/blog/2023/08/howto-faq-changes" target="_blank" rel="noopener">Google Search Central Blog — Changes to HowTo and FAQ rich results (2023)</a></p>
+</aside>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=660s" target="_blank" rel="noopener">11:00</a>
+  <h2>AI의 사고 과정 엿보기</h2>
+<p>넷째 팁은 진행자가 가장 공들여 설명하는 부분이에요. 타겟 AI에게 질문을 던지고 AI가 어디를 찾아보는지 거꾸로 따라가는 거예요. 슬라이드는 이 과정을 다섯 칸으로 그려요. 타겟 AI의 싱킹(사고) 모드 활성화, 동일한 예상 질문 10회 반복 입력, 사고 과정 화면 녹화 및 캡처, 공통으로 반복 참조되는 사이트 추출, 그리고 맨 오른쪽 실제 사례예요. 맨 위 빨간 띠는 '임시채팅 모드 ON'이 필수라고 적어 둬요.</p>
+<figure>
+  <img src="assets/frame-1100.png" alt="환경 설정과 역추적 공식 슬라이드. 싱킹 모드 활성화, 같은 질문 10회 입력, 사고 과정 녹화, 공통 참조 사이트 추출의 네 단계와 고캠핑 사례 카드, 위쪽에 임시채팅 모드 필수 경고가 있다">
+  <figcaption>왼쪽 네 칸은 순서대로 따라 하면 되는 절차이고, 오른쪽 카드가 그 결과예요.
+    <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=660s" target="_blank" rel="noopener">영상 11:00에서 보기</a></figcaption>
+</figure>
+<p>ChatGPT나 Gemini에는 빠른 답변 모드 말고 싱킹 모드가 있어요. 이 모드로 "주름 개선에 좋은 화장품 추천해 줘"처럼 노리는 질문을 던지면, 답 아래에 AI의 사고 과정이 쭉 지나가요. 너무 빨리 지나가니 PC(Personal Computer) 브라우저에서 화면을 녹화해 두고 캡처하면 돼요.</p>
+<p>중요한 건 횟수예요. AI는 같은 질문을 10번 받아도 10번 똑같이 검색하지 않아요. 그래서 한 번 묻고 끝내지 말고 10번을 물어, 공통으로 먼저 찾아보는 사이트를 골라내요. 그곳이 공략할 지점이에요.</p>
+<p>진행자는 컨설팅 중인 지인의 글램핑장 사례를 들어요. ChatGPT에 특정 지역의 괜찮은 글램핑장을 추천해 달라고 10번 물었더니, 10번 모두 먼저 찾아본 사이트가 '고캠핑'이었어요. 데모 화면의 자막이 그 결과를 짚어 줘요.</p>
+<figure>
+  <img src="assets/frame-1248.png" alt="ChatGPT 대화 화면 위에 같은 질문을 10번 했을 때 ChatGPT가 우선 참고하는 사이트가 고캠핑이고, 고캠핑은 한국관광공사가 운영하는 사이트라는 자막이 얹힌 장면">
+  <figcaption>대화 화면의 글씨는 작아서 읽기 어렵지만, 가운데 자막이 결론을 말해 줘요.
+    <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=768s" target="_blank" rel="noopener">영상 12:48에서 보기</a></figcaption>
+</figure>
+<p>고캠핑은 공공기관이 운영하는 캠핑 정보 플랫폼이에요. 그래서 ChatGPT가 권위와 신뢰 점수를 높게 주고 먼저 찾아본다는 게 진행자의 해석이에요. 이후 화면 자막에 따르면 고캠핑에 최신 데이터를 등록했더니 ChatGPT가 그 글램핑장을 추천하기 시작했어요. 키워드마다 AI가 먼저 보는 사이트가 따로 있다는 뜻이에요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>고캠핑 사이트에는 '한국관광공사 고캠핑'이라고 적혀 있어요. 전국 캠핑장 검색과 함께, 문화체육관광부와 한국관광공사가 고른 공공 우수야영장 정보도 실려 있어요. 영상 속 글램핑장처럼 캠핑장을 운영한다면 이곳에 등록된 정보가 정확한지 먼저 확인해 볼 만해요.</p>
+  <p class="cite">출처: <a href="https://www.gocamping.or.kr/" target="_blank" rel="noopener">한국관광공사 고캠핑</a></p>
+</aside>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=802s" target="_blank" rel="noopener">13:22</a>
+  <h2>임시 채팅으로 테스트하고, 셋은 한 세트로</h2>
+<p>다섯째 팁은 테스트 환경이에요. 위의 10번 질문은 <b>개인화를 끈 상태</b>에서 해야 해요. ChatGPT와 Gemini에는 지난 대화를 기억하는 <span class="term" data-term="개인화 메모리" data-en="Memory" data-desc="AI가 지난 대화에서 알게 된 내 정보를 기억해 다음 답에 반영하는 기능이에요. 테스트할 때는 이게 답을 내 쪽으로 기울게 해요." data-g="11">개인화 메모리</span>가 있어요. 켜 둔 채로 물으면 AI가 내 이야기를 참고해서, 내가 원하는 쪽으로 기운 답이 나올 수밖에 없어요.</p>
+<p>끄는 방법은 두 서비스가 같다고 해요. PC 화면 기준 오른쪽 위에 임시 채팅 토글이 있어요. 아래 Gemini 첫 화면에서 빨간 동그라미가 쳐진 오른쪽 위 아이콘이 그 버튼이에요. 켜고 대화하면 대화 내용이 개인화 메모리에 남지 않아서, 로그인하지 않고 묻는 것과 비슷해요.</p>
+<figure>
+  <img src="assets/frame-1410.png" alt="Gemini 새 대화 화면. 무엇을 도와드릴까요 입력창이 가운데 있고 오른쪽 위 임시 채팅 아이콘에 빨간 동그라미가 쳐져 있다">
+  <figcaption>테스트하기 전에 오른쪽 위 아이콘부터 눌러요. 그래야 공정한 상태의 답을 볼 수 있어요.
+    <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=850s" target="_blank" rel="noopener">영상 14:10에서 보기</a></figcaption>
+</figure>
+<p>마지막으로 진행자는 전체를 묶어요. 티스토리 같은 열린 채널에 글을 쓰고, <span class="term" data-term="E-E-A-T" data-en="Experience, Expertise, Authoritativeness, Trustworthiness" data-desc="구글이 좋은 콘텐츠를 가려낼 때 보는 경험, 전문성, 권위, 신뢰를 묶은 말이에요. 영상 자막에는 E.E.A.T로 나와요." data-g="4">E-E-A-T</span>에 맞춰 질문과 답변 형태로 구성하고, 관련 언론사 기사를 받아 블로그에 반영하라는 거예요. 그리고 하나를 덧붙여요. GEO를 한다고 SEO를 무시해도 되는 게 아니에요. 질문에 맞는 키워드를 콘텐츠에 잘 배치하는 SEO 기본기가 AEO와 GEO에도 들어가야 해요.</p>
+<p>마지막 화면이 이 결론을 한 문장으로 보여 줘요. 아래 줄의 '[SEO] 검색 노출 → [AEO] 질문 답변 → [GEO] AI 추천'은 셋이 따로가 아니라 이어진 한 세트라는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-1612.png" alt="AI가 내 브랜드를 추천하게 만드는 것, 이것이 새로운 마케터의 역할이라는 문구와 SEO 검색 노출, AEO 질문 답변, GEO AI 추천이 화살표로 이어진 마지막 슬라이드">
+  <figcaption>화살표 순서대로 기본기 위에 다음 단계가 쌓여요. 자막의 '예상 질문과 답변에 맞는 키워드 배치'가 셋을 잇는 공통 작업이에요.
+    <a href="https://www.youtube.com/watch?v=8HFePXEAH4Y&amp;t=972s" target="_blank" rel="noopener">영상 16:12에서 보기</a></figcaption>
+</figure>
 </section>
 
 <section id="corrections">
   <h2>자막 표기 바로잡기</h2>
 <aside class="note">
   <span class="tag">자막 관련 참고</span>
-  <p>자동생성 자막이라 서비스 이름과 용어가 잘못 받아적힌 곳이 많아요. 화면 슬라이드와 문맥으로 이렇게 바로잡았어요.</p>
+  <p>자동생성 자막이라 서비스 이름과 영어 용어가 많이 잘못 받아적혔어요. 화면의 슬라이드와 자막을 기준으로 이렇게 바로잡았어요.</p>
   <div class="table-scroll"><table>
     <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
     <tbody>
-      <tr><td>채집빛, 채치T, 채찍비티, 채피pt, 최치T</td><td>ChatGPT</td><td></td></tr>
+      <tr><td>채집빛, 채치비T, 최치T, 채찍비티, 채피pt</td><td>ChatGPT</td><td></td></tr>
       <tr><td>재미나이</td><td>Gemini</td><td></td></tr>
       <tr><td>AE5</td><td>AEO</td><td></td></tr>
-      <tr><td>G2, GE5, GE 5O, GE, 지오, 지유</td><td>GEO</td><td></td></tr>
-      <tr><td>엔트마이션, 오토마이제이션</td><td>Engine Optimization</td><td>출연자가 영어로 풀어 말한 부분</td></tr>
-      <tr><td>LML 가시성 점수</td><td>LLM 가시성 점수</td><td>슬라이드 표기</td></tr>
-      <tr><td>워드프레소</td><td>워드프레스</td><td></td></tr>
-      <tr><td>곡 캠핑, 고 캠핑</td><td>고캠핑</td><td>한국관광공사가 운영하는 캠핑 정보 사이트</td></tr>
+      <tr><td>G2, GE5, GE, 지오, 지유</td><td>GEO</td><td></td></tr>
+      <tr><td>엔트마이션, 오토마이제이션</td><td>(Answer Engine) Optimization</td><td>영어 이름을 읽다 흐려진 부분</td></tr>
+      <tr><td>LML 가시성 점수</td><td>LLM 가시성 점수</td><td>화면 슬라이드 표기</td></tr>
+      <tr><td>고 캠핑, 곡 캠핑</td><td>고캠핑</td><td>한국관광공사 운영 사이트</td></tr>
       <tr><td>카페 14</td><td>카페24</td><td></td></tr>
-      <tr><td>아맵</td><td>아임웹 (추정)</td><td></td></tr>
-      <tr><td>EAT AAT</td><td>E-E-A-T (추정)</td><td></td></tr>
-      <tr><td>개헌성</td><td>연관성</td><td>슬라이드의 &#x27;브랜드 연관성&#x27;</td></tr>
+      <tr><td>아맵</td><td>아임웹</td><td>(추정) 쇼핑몰 빌더 이름</td></tr>
+      <tr><td>EAT AAT</td><td>E-E-A-T</td><td>화면 자막은 E.E.A.T</td></tr>
+      <tr><td>개헌성</td><td>연관성</td><td></td></tr>
       <tr><td>주름 계선</td><td>주름 개선</td><td></td></tr>
-      <tr><td>순위 찍키</td><td>순위 체크</td><td></td></tr>
-      <tr><td>마케팅 짜니, 마케팅 전이</td><td>마케팅 조니</td><td>채널 이름</td></tr>
+      <tr><td>편양적인</td><td>편향적인</td><td></td></tr>
     </tbody>
   </table></div>
 </aside>
 </section>
 </main>
 
-<div class="tail">
+<div class="tail" id="glossary">
   <h2>이 글에 나온 용어</h2>
-  <div class="table-scroll">
-    <table>
-      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
-      <tbody>
-        <tr><td>SEO</td><td>검색엔진 최적화예요. 특정 키워드로 검색했을 때 내 글이나 홈페이지가 위쪽에 나오게 다듬는 일이에요.</td></tr>
-        <tr><td>AEO</td><td>답변엔진 최적화예요. 사람들이 던질 질문에 콘텐츠가 바로 답이 되도록 질문·답변 형태로 구성하는 일이에요.</td></tr>
-        <tr><td>GEO</td><td>생성형엔진 최적화예요. ChatGPT 같은 AI가 답을 만들 때 내 콘텐츠를 가져가 인용하고 추천하도록 다듬는 일이에요.</td></tr>
-        <tr><td>제로클릭</td><td>검색 결과 화면에서 답을 다 얻어서 사람들이 링크를 누르지 않는 현상이에요. 사이트로 오는 방문자가 줄어드는 원인이 돼요.</td></tr>
-        <tr><td>추천 스니펫</td><td>구글 검색 결과 맨 위에 질문의 답을 요약해 보여 주는 칸이에요. 영어로 Featured Snippet이라고 해요.</td></tr>
-        <tr><td>KPI</td><td>핵심 성과 지표예요. 마케팅이 잘되고 있는지 판단하려고 정해 두고 꾸준히 재는 숫자예요.</td></tr>
-        <tr><td>LLM 가시성 점수</td><td>같은 질문을 AI에 여러 번 했을 때 우리 브랜드가 답변에 나온 비율이에요. 영상에서 쓰는 말이라 업계 표준 용어는 아니에요.</td></tr>
-        <tr><td>크롤링</td><td>검색엔진이나 AI의 프로그램이 웹페이지를 돌아다니며 내용을 읽어 가는 일이에요. 읽혀야 검색이나 답변에 쓰일 수 있어요.</td></tr>
-        <tr><td>robots.txt</td><td>홈페이지에 두는 안내 파일이에요. 어떤 수집 프로그램이 어느 페이지를 읽어도 되는지 적어 둬요.</td></tr>
-        <tr><td>싱킹 모드</td><td>AI가 바로 답하지 않고 여러 단계로 생각하고 검색한 뒤 답하는 모드예요. 그 과정이 화면에 보여서 어디를 찾아봤는지 알 수 있어요.</td></tr>
-        <tr><td>개인화 메모리</td><td>AI가 예전 대화 내용을 기억해 두고 다음 답변에 반영하는 기능이에요. 테스트할 때는 답을 한쪽으로 치우치게 만들어요.</td></tr>
-        <tr><td>E-E-A-T</td><td>경험, 전문성, 권위, 신뢰의 머리글자예요. 구글이 믿을 만한 콘텐츠인지 볼 때 쓰는 기준이에요.</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-11"><dt>개인화 메모리<span class="en">Memory</span></dt><dd>AI가 지난 대화에서 알게 된 내 정보를 기억해 다음 답에 반영하는 기능이에요. 테스트할 때는 이게 답을 내 쪽으로 기울게 해요.</dd></div>
+    <div class="g" id="g-5"><dt>멀티모달<span class="en">Multimodal</span></dt><dd>글, 이미지, 영상처럼 여러 형태의 정보를 함께 다루는 것이에요. AI가 사진과 영상도 읽으니 그것들도 AI가 알아보기 쉽게 만들어야 해요.</dd></div>
+    <div class="g" id="g-10"><dt>싱킹 모드<span class="en">Thinking mode</span></dt><dd>AI가 바로 답하지 않고 여러 단계로 생각하고 검색한 뒤 답하는 모드예요. 그 과정에서 어떤 사이트를 찾아보는지 화면에 보여요.</dd></div>
+    <div class="g" id="g-12"><dt>임시 채팅<span class="en">Temporary chat</span></dt><dd>대화 내용을 기억하지 않고 개인화 메모리도 쓰지 않는 대화 방식이에요. 다른 사람이 볼 답과 비슷한 답을 확인할 때 써요.</dd></div>
+    <div class="g" id="g-3"><dt>추천 스니펫<span class="en">Featured Snippet</span></dt><dd>구글 검색 결과 맨 위에 특정 페이지의 한 구절을 뽑아 질문의 답처럼 보여 주는 칸이에요. AEO가 노리는 대표적인 자리예요.</dd></div>
+    <div class="g" id="g-7"><dt>크롤링<span class="en">Crawling</span></dt><dd>검색엔진이나 AI 회사의 프로그램이 웹페이지를 돌아다니며 내용을 읽어 가는 일이에요. 크롤러가 못 들어오면 AI도 내 글을 모르게 돼요.</dd></div>
+    <div class="g" id="g-9"><dt>폐쇄형 플랫폼</dt><dd>외부 검색엔진이나 AI가 안의 글을 자유롭게 읽어 가기 어려운 서비스예요. 영상은 네이버 블로그를 그 예로 들어요.</dd></div>
+    <div class="g" id="g-1"><dt>AEO<span class="en">Answer Engine Optimization</span></dt><dd>검색한 사람의 질문에 바로 답이 되도록 콘텐츠를 질문과 답변 형태로 짜는 일이에요. 검색 결과 맨 위에 답이 뽑혀 나오는 자리를 노려요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g" id="g-4"><dt>E-E-A-T<span class="en">Experience, Expertise, Authoritativeness, Trustworthiness</span></dt><dd>구글이 좋은 콘텐츠를 가려낼 때 보는 경험, 전문성, 권위, 신뢰를 묶은 말이에요. 영상 자막에는 E.E.A.T로 나와요.</dd></div>
+    <div class="g"><dt>FAQ</dt><dd>Frequently Asked Questions</dd></div>
+    <div class="g" id="g-2"><dt>GEO<span class="en">Generative Engine Optimization</span></dt><dd>ChatGPT 같은 생성형 AI가 답을 만들 때 내 콘텐츠를 가져가고 내 브랜드를 언급하게 만드는 일이에요. 목표가 순위가 아니라 AI 답변 속 추천이에요.</dd></div>
+    <div class="g"><dt>KPI</dt><dd>Key Performance Indicator</dd></div>
+    <div class="g"><dt>LLM</dt><dd>Large Language Model</dd></div>
+    <div class="g" id="g-6"><dt>LLM 가시성 점수<span class="en">LLM visibility score</span></dt><dd>같은 질문을 AI에게 여러 번 했을 때 우리 브랜드가 답에 나온 비율이에요. 10번 중 8번이면 8/10이에요. 영상이 제안하는 새 성과 지표예요.</dd></div>
+    <div class="g"><dt>PC</dt><dd>Personal Computer</dd></div>
+    <div class="g" id="g-8"><dt>robots.txt</dt><dd>웹사이트 맨 위 폴더에 두는 작은 안내 파일이에요. 어떤 수집 프로그램(크롤러)이 사이트에 들어와도 되는지 적어 둬요.</dd></div>
+    <div class="g"><dt>SEO</dt><dd>Search Engine Optimization</dd></div>
+  </dl>
 </div>
 
-<div class="tail">
+<div class="tail" id="sources">
   <h2>참고한 곳</h2>
   <ol>
-    <li><a href="https://www.youtube.com/watch?v=8HFePXEAH4Y" target="_blank" rel="noopener">원본 영상 — 마케팅 조니</a></li>
-    <li><a href="https://developers.google.com/search/docs/appearance/ai-features" target="_blank" rel="noopener">Google Search Central — AI features and your website</a></li>
-    <li><a href="https://developers.openai.com/api/docs/bots" target="_blank" rel="noopener">OpenAI — Overview of OpenAI Crawlers</a></li>
-    <li><a href="https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers" target="_blank" rel="noopener">Google Search Central — Google&#x27;s common crawlers</a></li>
-    <li><a href="https://developers.google.com/search/docs/appearance/structured-data/faqpage" target="_blank" rel="noopener">Google Search Central — FAQ (FAQPage) structured data</a></li>
-    <li><a href="https://developers.google.com/search/docs/fundamentals/creating-helpful-content" target="_blank" rel="noopener">Google Search Central — Creating helpful, reliable, people-first content</a></li>
-    <li><a href="https://www.gocamping.or.kr/" target="_blank" rel="noopener">고캠핑 — 한국관광공사</a></li>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=8HFePXEAH4Y" target="_blank" rel="noopener">원본 영상 — 마케팅 조니, AEO,GEO 방법 완벽 정리</a></li>
+    <li id="src-2"><a href="https://developers.google.com/search/docs/fundamentals/creating-helpful-content" target="_blank" rel="noopener">Google Search Central — 유용하고 신뢰할 수 있는 콘텐츠 만들기 (E-E-A-T)</a></li>
+    <li id="src-3"><a href="https://platform.openai.com/docs/bots" target="_blank" rel="noopener">OpenAI — Overview of OpenAI Crawlers (GPTBot, OAI-SearchBot)</a></li>
+    <li id="src-4"><a href="https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers" target="_blank" rel="noopener">Google Search Central — Google의 일반 크롤러 (Google-Extended)</a></li>
+    <li id="src-5"><a href="https://developers.google.com/search/docs/appearance/ai-features" target="_blank" rel="noopener">Google Search Central — AI features and your website</a></li>
+    <li id="src-6"><a href="https://developers.google.com/search/blog/2023/08/howto-faq-changes" target="_blank" rel="noopener">Google Search Central Blog — Changes to HowTo and FAQ rich results (2023)</a></li>
+    <li id="src-7"><a href="https://www.gocamping.or.kr/" target="_blank" rel="noopener">한국관광공사 고캠핑</a></li>
   </ol>
 </div>
 
-<footer>2026년 10월 1일에 이 영상을 보고 정리했어요. 원본은 마케팅 조니 채널에 있어요.</footer>
+<footer>2026년 10월 14일에 이 영상을 보고 정리했어요. 원본은 마케팅 조니 채널에 있어요.</footer>
 
 </div>
 
-<div id="tip" role="tooltip"></div>
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
 <script>
 (function () {
-  // ── 용어 툴팁 ───────────────────────────────────────
-  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
-  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
-  var tip = document.getElementById('tip');
-  var open = null;
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
 
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
   function show(el) {
+    clearTimeout(hideTimer);
     var desc = el.getAttribute('data-desc');
     if (!desc) return;
-    var name = el.getAttribute('data-term') || el.textContent;
+    if (open && open !== el) open.classList.remove('open');
     tip.innerHTML = '';
-    var b = document.createElement('b');
-    b.textContent = name;
-    tip.appendChild(b);
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
     tip.appendChild(document.createTextNode(desc));
-    tip.classList.add('on');
-
-    var r = el.getBoundingClientRect();
-    var t = tip.getBoundingClientRect();
-    var pad = 12;
-    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
-    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
-    var top = r.top + window.scrollY - t.height - 10;
-    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
-    tip.style.left = left + 'px';
-    tip.style.top = top + 'px';
-    open = el;
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
   }
-
-  function hide() {
-    tip.classList.remove('on');
-    open = null;
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
   }
 
   document.querySelectorAll('.term').forEach(function (el) {
-    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
-    el.addEventListener('mouseenter', function () { show(el); });
-    el.addEventListener('mouseleave', hide);
-    el.addEventListener('focus', function () { show(el); });
-    el.addEventListener('blur', hide);
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
     el.addEventListener('click', function (e) {
-      e.preventDefault();
-      open === el ? hide() : show(el);
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
     });
   });
 
-  document.addEventListener('click', function (e) {
-    if (open && !e.target.closest('.term')) hide();
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
   });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') hide();
-  });
-  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
-  window.addEventListener('resize', hide);
 
-  // ── 목차 현재 위치 표시 ─────────────────────────────
-  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
-  var map = {};
-  links.forEach(function (a) {
-    var s = document.getElementById(a.getAttribute('href').slice(1));
-    if (s) map[s.id] = a;
-  });
-  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
-  if ('IntersectionObserver' in window && targets.length) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (!en.isIntersecting) return;
-        links.forEach(function (a) { a.classList.remove('active'); });
-        map[en.target.id].classList.add('active');
-      });
-    }, { rootMargin: '-10% 0px -75% 0px' });
-    targets.forEach(function (t) { io.observe(t); });
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
   }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
 })();
 </script>
+
 </body>
 </html>

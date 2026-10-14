@@ -25,6 +25,8 @@
 <!-- yn-lock:end -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GPT·Claude가 우리 브랜드를 추천하게 만드는 GEO 최적화</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 <style>
   :root{
     --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
@@ -32,7 +34,10 @@
     --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
     --warn:#ff8a00; --warn-soft:#fff4e6;
     --info:#00b8a9; --info-soft:#e4f8f6;
-    --radius:16px; --maxw:760px;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
   }
   @media (prefers-color-scheme:dark){
     :root{
@@ -41,6 +46,8 @@
       --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
       --warn:#ffab4a; --warn-soft:#3a2a13;
       --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
     }
   }
   *{box-sizing:border-box}
@@ -78,13 +85,29 @@
   .keypoints li strong{color:var(--text)}
 
   /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
   nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
     border-radius:var(--radius)}
   nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
   nav.toc ol{margin:0; padding-left:20px}
-  nav.toc li{margin:6px 0; font-size:15px}
-  nav.toc a{color:var(--text-sub)}
-  nav.toc a.active{color:var(--brand); font-weight:600}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
 
   /* ── 본문 ──────────────────────────────────────────── */
   section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
@@ -99,6 +122,16 @@
     background:var(--surface-2); color:var(--text-mute);
     font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
   a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
 
   /* ── 그림 ──────────────────────────────────────────── */
   figure{margin:28px 0}
@@ -115,23 +148,33 @@
   thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
     font-weight:700; white-space:nowrap}
   tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
   td code{font-size:13.5px}
 
-  /* ── 용어 툴팁 ─────────────────────────────────────── */
-  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
-    font-weight:600; background:none}
-  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
-  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
-    background:var(--text); color:var(--bg); border-radius:12px;
-    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
-    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
-    transition:opacity .12s ease; pointer-events:none}
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
   #tip.on{opacity:1; visibility:visible}
-  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
 
   /* ── 박스 두 종류 ───────────────────────────────────
      .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
-     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
   aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
   aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
   aside p{margin:8px 0}
@@ -144,6 +187,92 @@
   aside .table-scroll{margin:12px 0 0}
   aside table{min-width:320px; font-size:14.5px}
   aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
 
   /* ── 인용 ──────────────────────────────────────────── */
   blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
@@ -159,13 +288,14 @@
   pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
     border:1px solid var(--line); overflow-x:auto; line-height:1.6}
   pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
 
   /* ── 꼬리말 ────────────────────────────────────────── */
   .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
   .tail h2{font-size:20px; margin:0 0 14px}
   .tail + .tail{margin-top:40px}
   .tail ol{padding-left:20px}
-  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
   footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
     font-size:13.5px; color:var(--text-mute)}
 
@@ -182,11 +312,11 @@
 
 <header>
   <h1>GPT·Claude가 우리 브랜드를 추천하게 만드는 GEO 최적화</h1>
-  <p class="lede">AI 답변에 뜨려면 왜 구글 SEO부터 다져야 하는지 짚어요</p>
+  <p class="lede">AI 답변에 등장하려면 무엇부터 고쳐야 하는지 실제 사이트로 짚어요</p>
   <div class="meta">
     <span>빌더 조쉬 Builder Josh</span><span class="dot">·</span>
-    <span>45:56</span><span class="dot">·</span>
-    <span>유튜브 영상 정리</span>
+    <span>영상 45:56</span><span class="dot">·</span>
+    <span>읽는 데 약 24분</span>
   </div>
   <a class="src-btn" href="https://www.youtube.com/watch?v=6S_3OfKM-No" target="_blank" rel="noopener">
     원본 영상 보러 가기 →
@@ -196,504 +326,774 @@
 <div class="keypoints">
   <h2>핵심만 먼저</h2>
   <ol>
-    <li>GEO는 SEO 위에 서 있어요. AI도 구글처럼 검색해서 답을 만들고, 구글 상위 글이 AI 답변에도 잘 뽑혀요.</li>
-    <li>SEO의 절반은 테크니컬 SEO예요. 메타 정보, robots.txt, 사이트맵, 제목 위계, alt 텍스트 같은 디테일이 순위를 가려요.</li>
-    <li>AI로 찍어낸 글을 많이 쌓는 건 답이 아니에요. 한 주제에 권위가 쌓여야 사람도, 구글도, GPT도 믿어요.</li>
-    <li>고객의 검색 여정과 '함께 묻는 질문'을 그대로 콘텐츠로 만들고, 큰 키워드는 연관 키워드부터 차지해 가요.</li>
-    <li>CSR로 만든 사이트는 GPT 봇이 내용을 못 가져갈 수 있어요. GEO에서는 렌더링 구조까지 봐야 해요.</li>
+    <li>GEO(Generative Engine Optimization)는 SEO(Search Engine Optimization) 위에 서 있어요. AI(Artificial Intelligence) 검색도 <span class="term" data-term="크롤링" data-en="Crawling" data-desc="검색 엔진의 봇이 사이트를 돌아다니며 페이지 내용을 읽어 가는 일이에요. 봇이 못 읽은 페이지는 검색에 나올 수 없어요." data-g="2">크롤링</span>·<span class="term" data-term="색인" data-en="Indexing" data-desc="봇이 읽어 온 페이지를 검색할 수 있게 정리해 저장해 두는 일이에요. 도서관 책을 분류해 꽂아 두는 것과 비슷해요." data-g="3">색인</span>·랭킹 흐름을 따르고, 구글 상위 결과와 많이 겹쳐요.</li>
+    <li>SEO는 콘텐츠만으로 끝나지 않아요. <span class="term" data-term="메타 정보" data-en="Meta tags" data-desc="페이지에 적어 두지만 화면에는 안 보이고 검색 봇이 읽는 정보예요. 검색 결과에 뜨는 제목(타이틀)과 설명(디스크립션)이 여기서 나와요." data-g="4">메타 정보</span>, 제목 태그 위계, <span class="term" data-term="robots.txt" data-desc="사이트 첫 주소 뒤에 두는 텍스트 파일로, 어떤 검색 봇이 어떤 경로에 들어와도 되는지 적어 둬요. 봇에게 여는 대문 역할이에요." data-g="7">robots.txt</span>, <span class="term" data-term="사이트맵" data-en="Sitemap" data-desc="사이트에 어떤 페이지가 있고 언제 바뀌었는지 목록으로 적어 검색 엔진에 알려 주는 파일이에요. 봇에게 건네는 지도예요." data-g="8">사이트맵</span>, 이미지 <span class="term" data-term="대체 텍스트" data-en="Alt text" data-desc="이미지가 무엇인지 글로 적어 두는 설명이에요. 검색 엔진은 그림을 직접 이해하기 어려워서 이 글을 보고 이미지를 판단해요." data-g="9">대체 텍스트</span> 같은 기술적인 부분이 함께 맞아야 해요.</li>
+    <li><span class="term" data-term="클라이언트 사이드 렌더링" data-en="Client-Side Rendering" data-desc="서버는 빈 틀만 보내고, 방문자의 브라우저가 나중에 내용을 채우는 방식이에요. 사람은 잘 보지만 기다려 주지 않는 봇은 빈 페이지만 볼 수 있어요." data-g="13">클라이언트 사이드 렌더링</span>(CSR(Client-Side Rendering)) 페이지는 사람 눈엔 멀쩡해도 GPT(Generative Pre-trained Transformer) 봇에겐 거의 빈 페이지로 보일 수 있어요.</li>
+    <li>키워드는 고객의 검색 여정과 연관 키워드 그물로 봐요. 큰 키워드는 주변 키워드부터 차지해 들어가요.</li>
+    <li>작은 팀이라면 SEO는 처음부터 시작하되, 성과가 나기까지 <span class="term" data-term="퍼포먼스 마케팅" data-en="Performance marketing" data-desc="검색 광고나 SNS 광고처럼 돈을 들여 바로 트래픽을 사 오고, 클릭과 구매 같은 숫자로 성과를 재는 마케팅이에요." data-g="14">퍼포먼스 마케팅</span>과 CRM(Customer Relationship Management)을 함께 돌려요.</li>
   </ol>
 </div>
 
 <nav class="toc">
   <h2>목차</h2>
   <ol>
-    <li><a href="#s1">SEO는 콘텐츠와 기술, 두 축이에요</a></li>
+    <li><a href="#s1">SEO는 두 갈래로 움직여요</a></li>
     <li><a href="#s2">GEO는 SEO 위에 서 있어요</a></li>
-    <li><a href="#s3">실제 사이트 진단: 검색 결과의 첫인상</a></li>
-    <li><a href="#s4">봇의 눈으로 사이트 구조 점검하기</a></li>
-    <li><a href="#s5">키워드 고르기와 고객의 검색 여정</a></li>
-    <li><a href="#s6">렌더링 구조와 사이트 진단 점수</a></li>
-    <li><a href="#s7">키워드 땅따먹기와 AI 답변 모니터링</a></li>
-    <li><a href="#s8">AI가 좋아하는 콘텐츠 만들기</a></li>
-    <li><a href="#s9">작은 팀은 마케팅 자원을 어떻게 나눌까요?</a></li>
+    <li><a href="#s3">진단 1: 검색 결과의 첫인상</a></li>
+    <li><a href="#s4">진단 2: 봇이 보는 사이트 구조</a></li>
+    <li><a href="#s5">키워드 하나에서 검색 여정 지도로</a></li>
+    <li><a href="#s6">봇이 못 읽는 페이지: CSR과 SSR</a></li>
+    <li><a href="#s7">키워드 땅따먹기와 AI 답변 속 노출</a></li>
+    <li><a href="#s8">AI가 좋아하는 콘텐츠는 이렇게 설계해요</a></li>
+    <li><a href="#s9">작은 팀은 마케팅을 어떻게 나눌까요</a></li>
     <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
   </ol>
 </nav>
 
 <main>
 <section id="s1">
   <a class="stamp" href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=42s" target="_blank" rel="noopener">00:42</a>
-  <h2>SEO는 콘텐츠와 기술, 두 축이에요</h2>
-<p>게스트는 헤일로X(HaloX)라는 SEO·GEO 솔루션을 혼자 만들고 있는 이재철 대표예요. 퍼포먼스, SEO, 그로스, CRM처럼 데이터를 바탕으로 하는 마케팅을 오래 해 왔어요.</p>
-<h3>SEO가 뭔가요?</h3>
-<p>SEO는 Search Engine Optimization의 약자예요. 누군가 구글이나 네이버에서 특정 키워드를 검색했을 때 내 제품이 위쪽에 뜨도록 다듬는 일이에요. 광고비는 들지 않아요. 대신 시간과 노력이 들어요. 그래서 이 대표는 시간은 있고 돈은 적은 1인 창업자에게 가장 잘 맞는 마케팅이라고 봐요.</p>
+  <h2>SEO는 두 갈래로 움직여요</h2>
+<p>SEO는 구글이나 네이버에서 어떤 키워드를 검색했을 때 내 제품이 위쪽에 보이도록 다듬는 일이에요. 광고처럼 돈이 드는 대신 시간과 노력이 들어요. 게스트는 그래서 시간은 있고 예산은 적은 1인 창업자에게 가장 잘 맞는 마케팅이라고 봐요.</p>
+<p>진행자는 'SEO는 블로그 글을 많이 쌓는 것'이라고 알고 있었어요. 게스트는 그게 틀린 말은 아니라고 해요. 좋은 글을 오래 쌓으면 그 주제에 대한 사이트의 신뢰와 권위가 생기니까요. 다만 그건 콘텐츠 SEO 한쪽 이야기예요.</p>
+<h3>검색 엔진이 사이트를 다루는 세 단계</h3>
+<p>누군가 구글에서 'AX 정의'를 검색하면 결과가 순서대로 나와요. 그 전에 구글 봇이 사이트에 들어와 글을 읽고(크롤링), 정리해서 저장하고(색인), 어떤 키워드에 얼마나 위로 보여 줄지 정해요(랭킹). 영상에 나온 슬라이드는 이 과정을 사이트 발견 → 크롤링·렌더링 → 사이트 구조 이해 → 올바른 색인 네 칸으로 그려요.</p>
 <figure>
-  <img src="assets/frame-0200.png" alt="검색창에 '러닝화'를 입력하면 검색 엔진 최적화를 거쳐 결과 페이지로 이어지는 흐름을 그린 일러스트">
-  <figcaption>SEO는 검색 키워드와 제품 노출을 잇는 일이에요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=120s" target="_blank" rel="noopener">영상 02:00에서 보기</a></figcaption>
+  <img src="assets/frame-0344.png" alt="'테크니컬 SEO의 역할' 슬라이드. 로봇이 사이트를 발견하고, 크롤링·렌더링하고, 사이트 구조를 이해한 뒤, 올바르게 색인하는 네 단계가 화살표로 이어져 있다">
+  <figcaption>제목 아래 한 줄이 핵심이에요. 테크니컬 SEO는 검색 엔진이 사이트를 '발견하고 이해해서 올바르게 색인하도록' 돕는 일이에요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=224s" target="_blank" rel="noopener">영상 03:44에서 보기</a></figcaption>
 </figure>
-<h3>콘텐츠만으로는 반쪽이에요</h3>
-<p>블로그 글을 오래 쌓으면 그 주제에 대한 사이트의 신뢰와 권위가 생겨요. 이게 콘텐츠 SEO예요. 그런데 구글이 사이트를 노출하기까지는 단계가 있어요. 구글 봇이 사이트에 찾아와 읽고(<span class="term" data-term="크롤링" data-desc="검색 엔진의 로봇이 웹사이트를 돌아다니며 페이지를 읽어 가는 일이에요. 봇이 읽지 못한 페이지는 검색 결과에 나올 수 없어요.">크롤링</span>), 내용을 정리해 두고(<span class="term" data-term="색인" data-desc="검색 엔진이 읽어 온 페이지를 나중에 찾기 쉽게 정리해 저장해 두는 일이에요. 책 뒤의 찾아보기처럼, 색인에 올라가야 검색에 걸려요.">색인</span>), 어떤 키워드에 보여 줄지 순위를 매겨요(랭킹).</p>
-<p>콘텐츠는 이 중 '무엇을 색인시킬까'를 다뤄요. 봇이 어떻게 들어와서 사이트를 이해할지는 비어 있죠. 그 빈자리를 채우는 게 <span class="term" data-term="테크니컬 SEO" data-desc="글 내용이 아니라 사이트의 기술 바탕을 손보는 SEO예요. 속도, 메타 정보, URL 구조처럼 검색 봇이 사이트를 잘 읽고 이해하게 만드는 일이에요.">테크니컬 SEO</span>예요. 둘 다 잘돼야 순위가 올라가요.</p>
-<figure>
-  <img src="assets/frame-0344.png" alt="로봇이 사이트를 발견하고, 크롤링·렌더링하고, 사이트 구조를 이해한 뒤 올바르게 색인하는 4단계를 그린 일러스트">
-  <figcaption>테크니컬 SEO는 봇이 사이트를 발견해서 제대로 색인하기까지를 돕는 일이에요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=224s" target="_blank" rel="noopener">영상 03:44에서 보기</a></figcaption>
+<p>게스트는 이 흐름 위에서 두 SEO의 몫을 나눠요. 콘텐츠 SEO는 '어떤 정보를 색인시킬까'를 다듬어요. <span class="term" data-term="테크니컬 SEO" data-en="Technical SEO" data-desc="글 내용이 아니라 사이트 자체를 다듬어서 검색 봇이 잘 찾아오고 잘 이해하게 만드는 일이에요. 속도, 메타 정보, URL 구조 같은 것이 여기에 들어가요." data-g="1">테크니컬 SEO</span>는 '봇이 어떻게 들어와서 사이트를 이해할까', 곧 크롤링 쪽을 맡아요. 블로그만 열심히 쓴 사이트는 이 크롤링 쪽이 비어 있는 셈이고, 둘 다 잘 돼야 순위가 올라가요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 220" role="img" aria-label="크롤링, 색인, 랭킹 세 단계와 테크니컬 SEO, 콘텐츠 SEO가 맡는 부분">
+    <defs><marker id="arrow-pipe" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="c1 cell" x="20" y="30" width="170" height="70" rx="10"/>
+    <text x="105" y="62" text-anchor="middle">크롤링</text>
+    <text x="105" y="84" text-anchor="middle" class="sub">봇이 들어와 읽어요</text>
+    <rect class="c2 cell" x="235" y="30" width="170" height="70" rx="10"/>
+    <text x="320" y="62" text-anchor="middle">색인</text>
+    <text x="320" y="84" text-anchor="middle" class="sub">정리해서 저장해요</text>
+    <rect class="accent" x="450" y="30" width="170" height="70" rx="10"/>
+    <text x="535" y="62" text-anchor="middle">랭킹</text>
+    <text x="535" y="84" text-anchor="middle" class="sub">키워드별 순위를 매겨요</text>
+    <path class="line" d="M192 65 h40" marker-end="url(#arrow-pipe)"/>
+    <path class="line" d="M407 65 h40" marker-end="url(#arrow-pipe)"/>
+    <rect class="c1 cell" x="20" y="130" width="170" height="70" rx="10"/>
+    <text x="105" y="160" text-anchor="middle">테크니컬 SEO</text>
+    <text x="105" y="182" text-anchor="middle" class="sub">봇이 어떻게 이해할까</text>
+    <rect class="c2 cell" x="235" y="130" width="170" height="70" rx="10"/>
+    <text x="320" y="160" text-anchor="middle">콘텐츠 SEO</text>
+    <text x="320" y="182" text-anchor="middle" class="sub">무엇을 색인시킬까</text>
+    <text x="535" y="160" text-anchor="middle" class="sub">두 쪽이 다 잘 되면</text>
+    <text x="535" y="182" text-anchor="middle" class="sub">순위가 올라가요</text>
+    <path class="line" d="M105 128 v-26"/>
+    <path class="line" d="M320 128 v-26"/>
+  </svg>
+  <figcaption>블로그 글만 쌓으면 가운데 아래 칸(콘텐츠 SEO)만 채워져요. 게스트가 '크롤 영역이 비어 있다'고 한 게 왼쪽 아래 칸(테크니컬 SEO)이에요.</figcaption>
 </figure>
-<p>이 대표가 꼽은 테크니컬 SEO의 예는 이래요. 사이트 속도가 빨라야 하고, 사람 눈에는 안 보이지만 봇이 읽는 <span class="term" data-term="메타 정보" data-desc="페이지 화면에는 안 보이지만 검색 엔진에게 &#x27;이 페이지는 이런 내용&#x27;이라고 알려 주는 정보예요. 타이틀과 디스크립션이 대표적이에요.">메타 정보</span>(타이틀, 디스크립션)와 스키마 정보가 갖춰져야 해요. URL 구조도 여기에 들어가요.</p>
+<h3>테크니컬 SEO에 들어가는 것</h3>
+<p>게스트가 꼽은 건 세 가지예요. 첫째는 사이트 속도예요. 둘째는 사람 눈에는 안 보이고 봇만 읽는 메타 정보로, 타이틀·디스크립션·스키마가 여기 들어가요. 셋째는 URL(Uniform Resource Locator) 구조예요. 뒤쪽 진단 장면에서 이 세 가지를 실제 사이트로 하나씩 확인해요.</p>
 <h3>B2B라면 구글부터</h3>
-<p>국내 검색은 네이버와 구글이 양강이에요. 하지만 이 대표는 전문성이 높은 B2B 분야에서는 구글 검색 비중이 훨씬 높다고 봐요. 업계 사람들이 전문 정보를 구글에서 찾기 때문이에요. 그래서 B2B 회사라면 구글에 맞춰 최적화하는 게 낫다는 결론이에요.</p>
+<p>국내에선 네이버와 구글을 둘 다 신경 써야 해요. 그래도 B2B(Business to Business) 회사라면 구글을 먼저 보라고 해요. 한 분야의 전문 정보는 우리부터가 네이버보다 구글에서 더 자주 찾잖아요. 게스트는 전체 점유율은 네이버가 높아도, 전문성이 높은 분야에선 구글 점유율이 훨씬 높게 나온 조사가 있다고 덧붙여요. 영상에서 그 조사가 무엇인지는 밝히지 않았어요.</p>
 </section>
 
 <section id="s2">
-  <a class="stamp" href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=388s" target="_blank" rel="noopener">06:28</a>
+  <a class="stamp" href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=336s" target="_blank" rel="noopener">05:36</a>
   <h2>GEO는 SEO 위에 서 있어요</h2>
-<p>GEO는 Generative Engine Optimization의 약자예요. 사람들이 정보를 찾고 비교하는 곳이 구글·네이버에서 GPT, Claude, Perplexity 같은 LLM으로 옮겨 가고 있어요. 그러면 브랜드는 'GPT 답변 안에도 우리 이름이 나왔으면' 하고 바라게 되죠. SEO가 구글 알고리즘을 이해해서 상위에 오르는 전략이었다면, GEO는 'GPT는 왜 이렇게 답했을까'를 거꾸로 풀어 보는 전략이에요.</p>
-<h3>AI도 결국 구글처럼 찾아요</h3>
-<p>이 대표는 GEO가 결국 SEO와 맞닿아 있다고 말해요. GPT, Gemini, Perplexity, Claude도 질문에 답할 재료를 검색으로 가져와요. 그 흐름이 구글의 크롤링·색인·랭킹과 같고, 결과도 구글과 생각보다 많이 겹친대요.</p>
+<p>GEO는 SEO의 '검색 엔진(Search Engine)' 자리에 '생성형 엔진(Generative Engine)'을 넣은 말이에요. 사람들이 정보를 찾고 이해하고 비교하는 곳이 구글·네이버에서 GPT·Claude·Perplexity 같은 LLM(Large Language Model)으로 옮겨 가고 있어요. 그러면 브랜드는 '구글에서 보이고 싶다'에 더해 'GPT 답변에서도 보이고 싶다'는 고민을 하게 돼요.</p>
+<p>SEO가 구글 알고리즘을 이해해서 위로 올라가는 전략이었다면, GEO는 GPT 답변 안에 우리 브랜드가 나오게 하는 전략이에요. 출발점은 'GPT는 왜 이렇게 답했을까'를 거꾸로 따져 보는 거예요.</p>
+<h3>AI 검색도 같은 흐름을 따라요</h3>
+<p>게스트가 GEO를 SEO와 묶어서 보는 이유가 이 슬라이드에 있어요. 왼쪽 SEO는 검색어 입력 → 크롤링·색인 → 랭킹 → 검색 결과, 오른쪽 GEO는 질문 입력 → 정보 탐색 → 이해·비교 → AI 답변이에요. 두 칸 사이의 등호(=)가 메시지예요.</p>
 <figure>
-  <img src="assets/frame-0804.png" alt="SEO(검색어 입력, 크롤링·색인, 랭킹, 검색 결과)와 GEO(질문 입력, 정보 탐색, 이해·비교, AI 답변) 흐름을 나란히 놓고 같다고 표시한 일러스트">
-  <figcaption>도구는 달라도 정보를 찾고 고르는 흐름은 같다는 그림이에요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=484s" target="_blank" rel="noopener">영상 08:04에서 보기</a></figcaption>
+  <img src="assets/frame-0804.png" alt="'SEO와 GEO의 공통 워크플로우' 슬라이드. 왼쪽 SEO 칸은 검색어 입력, 크롤링·색인, 랭킹, 검색 결과 순서이고, 오른쪽 GEO 칸은 GPT·Gemini·Claude·Perplexity 아래 질문 입력, 정보 탐색, 이해·비교, AI 답변 순서다. 두 칸 사이에 등호가 있다">
+  <figcaption>부제가 요점이에요. '도구는 달라도 정보를 찾고 선별하는 흐름은 닮아 있다'.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=484s" target="_blank" rel="noopener">영상 08:04에서 보기</a></figcaption>
 </figure>
-<p>그동안 여러 실험으로 드러난 경향은 하나예요. 구글 상단에 뜨는 콘텐츠가 GPT에도 뜰 확률이 높아요. 사람들이 어떤 키워드에서 무엇을 원하는지는 구글이 이미 오랫동안 알고리즘으로 다듬어 놨어요. GPT가 이걸 벗어나 새 알고리즘을 짜기는 어렵다는 거예요. 물론 앞으로 바뀔 수는 있다고 덧붙여요. 그래서 GEO도 SEO 관점에서 시작하라는 게 이 대표의 방향이에요.</p>
+<p>게스트 설명은 이래요. GPT·Gemini·Perplexity·Claude는 사람이 자연어로 던진 질문에 답할 재료를 웹에서 찾아와요. 그 과정이 구글의 크롤링·색인·랭킹을 그대로 따르고, 결과도 구글과 생각보다 많이 겹쳐요. 엔진마다 조금씩 다르긴 해요. 그래도 지금까지 실험으로 드러난 경향은 '구글 위쪽에 노출되는 콘텐츠가 GPT에도 나올 확률이 높다'는 거예요.</p>
+<p>이유도 짚어요. 사람들이 어떤 키워드에 어떤 결과를 선호하는지는 구글이 오랫동안 알고리즘으로 쌓아 왔어요. GPT가 그걸 벗어난 새 알고리즘을 짜기는 쉽지 않다는 거죠. 물론 나중엔 바뀔 수 있다는 단서를 달아요. 그래서 게스트의 결론은 'GEO도 SEO 관점에서 시작하자'예요.</p>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>구글도 같은 입장이에요. 구글 공식 문서는 AI 오버뷰와 AI 모드에 나오려고 따로 갖출 요건이나 특별한 최적화는 없다고 해요. 기존 SEO 모범 사례가 그대로 통한대요.</p>
+  <p>구글도 자기 검색의 AI 기능에 대해 비슷하게 말해요. AI 오버뷰나 AI 모드에 나오려고 따로 갖춰야 할 조건이나 특별한 최적화는 없고, 기존 SEO 기본기가 그대로 통한다고 안내해요. 다만 이건 구글 검색 안의 AI 기능 이야기예요. ChatGPT 같은 다른 회사 엔진이 구글 결과와 얼마나 겹치는지는 게스트가 실험을 바탕으로 한 말이에요.</p>
   <p class="cite">출처: <a href="https://developers.google.com/search/docs/appearance/ai-features" target="_blank" rel="noopener">Google Search Central — AI features and your website</a></p>
 </aside>
-<h3>콘텐츠만 쌓으면 되겠지?</h3>
-<p>많은 회사가 하는 실수예요. 'AX 정의'를 검색해서 어떤 사이트에 들어갔는데, AX 글은 하나뿐이고 나머지가 다 보험 글이라면 어떨까요? 진행자 말대로 '검색에 걸리려고 해 놨구나' 싶어서 신뢰가 확 떨어지죠. 이 대표는 사람이 느끼는 이 감각을 구글도, GPT도 똑같이 느낀다고 해요.</p>
-<p>글을 많이 내는 것과 한 주제에 권위를 갖는 건 다른 문제예요. GPT나 Claude로 글을 찍어내기는 쉬워졌지만, 전략이 없으면 원하는 키워드를 차지하지 못해요.</p>
-<figure>
-  <img src="assets/frame-1018.png" alt="진행자와 게스트가 앉아 있는 화면 위에 '전략 없는 콘텐츠는 특정 키워드를 점유하지 못한다'는 큰 자막이 떠 있는 장면">
-  <figcaption>이 구간의 결론을 편집 자막으로 강조한 장면이에요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=618s" target="_blank" rel="noopener">영상 10:18에서 보기</a></figcaption>
-</figure>
+<h3>콘텐츠만 쌓으면 될까요</h3>
+<p>진행자는 많은 회사가 '콘텐츠만 쌓으면 되겠지' 하고 생각한다고 물어요. 게스트는 예를 하나 들어요. 'AX 정의'를 검색해서 어떤 사이트에 들어갔는데, AX(AI Transformation) 글은 딱 하나고 나머지가 전부 보험 이야기예요. 진행자는 바로 '검색에 걸리려고 해 놨구나' 싶어서 믿음이 떨어진다고 답해요.</p>
+<p>게스트는 사람이 느끼는 이 판단을 구글도, GPT도 똑같이 한다고 해요. 글이 많은 것과 한 주제에서 권위를 가진 것은 다른 문제라는 거예요. AI로 블로그 글을 자동으로 찍어 내기는 쉬워졌어요. 하지만 전략 없이 찍어 낸 글은 특정 키워드를 차지하지 못할 확률이 높아요.</p>
 </section>
 
 <section id="s3">
-  <a class="stamp" href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=638s" target="_blank" rel="noopener">10:38</a>
-  <h2>실제 사이트 진단: 검색 결과의 첫인상</h2>
-<p>2부에서는 진행자 회사인 조슈아앤컴퍼니 사이트를 직접 진단했어요. 진단 전에 짚은 팁이 하나 있어요. 구글과 GPT는 사람마다 결과를 다르게 보여 줘요. 그래서 순위를 모니터링할 땐 게스트 모드처럼 개인화가 빠진 창에서 보라고 해요.</p>
-<h3>파비콘과 AI 문체</h3>
-<p>첫 지적은 검색 결과 옆에 회사 로고, 즉 <span class="term" data-term="파비콘" data-desc="브라우저 탭과 검색 결과에서 사이트 이름 옆에 뜨는 작은 로고 그림이에요. 있으면 믿을 만한 사이트처럼 보여요.">파비콘</span>이 없다는 점이에요. 파비콘이 있으면 신뢰가 생기고, 없으면 바로 신뢰가 떨어진대요.</p>
-<p>두 번째는 글에서 AI 티가 난다는 점이에요. 이 대표는 사이트 문장을 보고 Claude로 만들었다는 걸 바로 알아챘어요. Claude 글의 큰 특징이 엠 대시(—)라는 거예요. AI 글을 많이 볼수록 이런 게 눈에 걸린대요. 앞으로의 독자에겐 AI가 쓴 글보다 사람이 쓴 글이 더 믿음을 줄 거라고 봐요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=637s" target="_blank" rel="noopener">10:37</a>
+  <h2>진단 1: 검색 결과의 첫인상</h2>
+<p>2부는 진행자의 회사 조슈아앤컴퍼니 사이트(joshua.site)를 게스트가 직접 진단하는 장면이에요. 시작 전에 팁이 하나 있어요. 구글과 GPT는 사람마다 결과를 맞춤으로 바꿔 보여 줘요. 그러니 내 사이트 순위를 볼 때는 시크릿 창 같은 게스트 모드로 검색하는 게 좋아요.</p>
+<h3>첫눈에 걸리는 것들</h3>
+<p>처음 지적한 건 <span class="term" data-term="파비콘" data-en="Favicon" data-desc="브라우저 탭과 검색 결과에 보이는 사이트의 작은 로고 그림이에요. 없으면 사이트가 덜 갖춰져 보여요." data-g="6">파비콘</span>이에요. 검색 결과와 브라우저 탭에 회사 로고가 없어요. 로고가 있는 사이트는 믿음이 가고, 없으면 바로 신뢰감이 떨어진다고 해요.</p>
+<p>두 번째는 글투예요. 게스트는 사이트 문장을 보고 Claude로 만들었다는 걸 바로 알아봐요. 진행자도 Claude Code로 만들었다고 인정해요. 게스트가 꼽은 Claude 글의 가장 큰 특징은 긴 줄표(—)예요. 실제로 아래 검색 결과 제목에도 'JOSHUA — 교육부터 구축'처럼 줄표가 들어가 있어요. AI를 많이 쓸수록 이런 표현이 '눈에 걸린다'고 해요. 앞으로는 사람이 쓴 글이 더 믿음을 줄 수밖에 없다는 게 게스트 생각이에요.</p>
+<h3>AI 요약과 AEO</h3>
+<p>'조슈아앤컴퍼니'를 검색하면 맨 위에 <span class="term" data-term="AI 요약" data-en="AI Overviews" data-desc="구글 검색 결과 맨 위에 AI가 여러 사이트 내용을 엮어 만든 요약 답변이에요. 문장마다 어느 사이트에서 가져왔는지 링크가 붙어요." data-g="11">AI 요약</span>이 떠요. 회사가 무엇을 하는 곳인지, 주요 사업 영역이 무엇인지를 몇 문장으로 정리해 줘요. 문장 끝마다 작은 링크 칩이 붙어 있는데, 그 문장을 어느 사이트에서 가져왔는지 보여 주는 표시예요.</p>
 <figure>
-  <img src="assets/frame-1147.png" alt="구글 검색 결과의 조슈아앤컴퍼니 항목 아래 '엠 대시(—): 영어 대문자 M의 너비만큼 긴 문장 부호'라는 설명 자막이 붙은 장면">
-  <figcaption>엠 대시가 Claude 문체의 단서라는 대목이에요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=707s" target="_blank" rel="noopener">영상 11:47에서 보기</a></figcaption>
+  <img src="assets/frame-1225.png" alt="구글 검색 결과 맨 위의 AI 개요. 조슈아앤컴퍼니가 IT 유튜버 빌더 조쉬가 이끄는 AI 전환·AX 전문 기업이라는 설명과 주요 사업 영역 목록이 있고, 문장 끝마다 출처 링크 칩이 붙어 있다">
+  <figcaption>회사 소개 문장은 회사 사이트에서, 일부는 다른 사이트에서 가져와 엮었어요. 이렇게 가져다 쓴 곳을 소스, 링크를 붙여 밝힌 곳을 인용이라고 불러요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=745s" target="_blank" rel="noopener">영상 12:25에서 보기</a></figcaption>
 </figure>
-<h3>AI 오버뷰는 어떻게 만들어지나요</h3>
-<p>회사 이름을 검색하니 구글 상단에 <span class="term" data-term="AI 오버뷰" data-desc="구글 검색 결과 맨 위에 AI가 여러 사이트를 요약해 보여 주는 답변 상자예요. 출처 사이트가 링크로 함께 붙어요.">AI 오버뷰</span>가 떴어요. 이 대표는 이 영역을 SEO와 GEO 사이에 있다고 설명해요. 요즘은 AEO(Answer Engine Optimization, 답변 엔진 최적화)라고도 불러요.</p>
-<p>AI는 여러 사이트에서 정보를 가져와 문장을 만들어요. 이렇게 가져온 사이트를 '소스', 문장에 출처로 붙는 걸 '인용'이라고 해요. 그래서 AI 오버뷰를 노린다면 거기 나온 사이트들이 어떤 순서로 나왔는지, 구글 톱10에 있는지, 왜 뽑혔는지를 따져 봐야 해요.</p>
-<figure>
-  <img src="assets/frame-1227.png" alt="조슈아앤컴퍼니를 소개하는 구글 AI 오버뷰. 주요 사업 영역 세 가지가 나열되고 문장마다 출처 링크 칩이 붙어 있어요">
-  <figcaption>문장 끝의 작은 링크 칩이 '인용'이에요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=747s" target="_blank" rel="noopener">영상 12:27에서 보기</a></figcaption>
-</figure>
+<p>게스트는 이 영역이 SEO와 GEO 사이에 있다고 해요. 요즘은 AEO(답변 엔진 최적화)라고도 부르고요. AI 요약을 최적화하고 싶다면 이렇게 물어보면 돼요. 요약에 인용된 사이트들이 어떤 순서로 나왔는지, 그 사이트들이 검색 상위 10위 안에 있는지, 있다면 왜 거기 올랐는지요.</p>
 <h3>사이트 이름이 도메인으로 떠요</h3>
-<p>검색 결과의 사이트 이름 자리에 회사 이름 대신 'joshua.site'가 떴어요. 진행자도 의도한 게 아니었어요. 사이트 이름 설정이 빠진 거예요.</p>
-<p>타이틀, 디스크립션, 그 아래 하위 링크가 어떻게 보일지는 구글이 판단해요. 하지만 JSON-LD 같은 형식으로 스키마 정보가 잘 갖춰져 있으면 원하는 모습에 가깝게 나와요. 이런 게 다 테크니컬 영역이에요.</p>
+<p>그 아래 일반 검색 결과를 보면 맨 위 사이트 이름 자리에 'joshua.site'가 떠요. 회사 이름 '조슈아앤컴퍼니'가 나와야 할 자리예요. 진행자도 의도한 게 아니었어요. 사이트 이름이 설정돼 있지 않은 상태예요.</p>
 <figure>
-  <img src="assets/frame-1347.png" alt="구글 검색 결과에서 사이트 이름이 joshua.site로 표시되고, 아래에 '조슈아앤컴퍼니 JOSHUA — 교육부터 구축, 운영까지 AX 파트너' 타이틀과 하위 링크가 보이는 화면">
-  <figcaption>사이트 이름, 타이틀, 디스크립션, 하위 링크가 한눈에 보여요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=827s" target="_blank" rel="noopener">영상 13:47에서 보기</a></figcaption>
+  <img src="assets/frame-1409.png" alt="joshua.site 검색 결과. 사이트 이름 자리에 joshua.site가 표시되고, 제목 '조슈아앤컴퍼니 JOSHUA — 교육부터 구축, 운영까지 AX 파트너' 아래에 '기업 AI 교육', 'SK그룹 인재개발 AI' 두 개의 하위 링크가 붙어 있다">
+  <figcaption>맨 위 작은 글씨가 사이트 이름 자리예요. 아래 하위 링크 두 줄은 구글이 판단해 붙였는데, 구조화 데이터를 잘 갖추면 이런 영역이 더 잘 나온다고 해요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=849s" target="_blank" rel="noopener">영상 14:09에서 보기</a></figcaption>
 </figure>
+<p>게스트는 이게 모두 테크니컬 영역이라고 해요. 타이틀과 디스크립션, 그리고 검색 결과에 붙는 하위 링크 같은 영역은 구글이 판단해서 보여 줘요. 그래도 JSON-LD 같은 <span class="term" data-term="구조화 데이터" data-en="Structured data (Schema)" data-desc="회사 이름, 상품 가격, 리뷰 같은 정보를 검색 엔진이 알아보기 쉬운 정해진 형식으로 적어 둔 것이에요. 스키마라고도 하고, 검색 결과에 더 풍부하게 보이게 도와줘요." data-g="5">구조화 데이터</span>를 잘 넣어 두면 이렇게 노출된다고 해요.</p>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>구글은 검색 결과의 사이트 이름을 정할 때 홈페이지의 WebSite 구조화 데이터를 가장 중요하게 본다고 해요. og:site_name, 타이틀, 제목 요소도 함께 참고해요. 사이트 이름을 홈페이지 곳곳에서 똑같이 쓰고, 약칭은 alternateName으로 따로 알려 주라고 권해요.</p>
-  <p class="cite">출처: <a href="https://developers.google.com/search/docs/appearance/site-names" target="_blank" rel="noopener">Google Search Central — Provide a site name to Google Search</a></p>
+  <p>구글은 검색 결과에 보일 사이트 이름을 정할 때 홈페이지의 WebSite 구조화 데이터를 가장 중요하게 봐요. 그 밖에 og:site_name, &lt;title&gt;, 제목 태그 같은 홈페이지 텍스트도 참고해요. 이 구조화 데이터는 하위 페이지가 아니라 도메인의 첫 화면(홈페이지)에 넣어야 해요.</p>
+  <p class="cite">출처: <a href="https://developers.google.com/search/docs/appearance/site-names" target="_blank" rel="noopener">Google Search Central — Site names in Google Search</a></p>
 </aside>
-<h3>AI에게 맡기면 끝일까요?</h3>
-<p>진행자는 사이트를 Claude Code로 만들었고, SEO 최적화도 한 번 시켜 봤대요. 결과는 보신 대로예요. 이 대표는 요즘 AI에게 SEO를 맡기면 해 주는 것처럼 보이지만, 아무리 밀어붙여도 디테일은 결국 놓친다고 해요.</p>
+<h3>'SEO 최적화해 줘'의 한계</h3>
+<p>진행자는 Claude Code에게 'SEO 최적화해 줘'라고 한 번 시켜 봤다고 해요. 게스트는 요즘 이런 요청을 하면 AI가 다 해 준 것처럼 보이지만, 아무리 밀어붙여도 세부를 놓친다고 해요. 방금 본 파비콘과 사이트 이름이 그런 예예요.</p>
 </section>
 
 <section id="s4">
-  <a class="stamp" href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=902s" target="_blank" rel="noopener">15:02</a>
-  <h2>봇의 눈으로 사이트 구조 점검하기</h2>
-<p>이 대표는 사이트를 빠르게 훑을 때 크롬 확장 프로그램 'SEO META in 1 CLICK'을 즐겨 써요. 비슷한 확장 프로그램이 많으니 하나 골라 쓰면 된다고 해요. 진단에서 본 항목을 정리하면 이래요.</p>
-<div class="table-scroll">
-  <table>
-    <thead><tr><th>점검 항목</th><th>무엇을 보나요</th><th>진행자 사이트는?</th></tr></thead>
-    <tbody>
-      <tr><td>타이틀·디스크립션</td><td>검색 결과에 어떤 문구로 노출되는지</td><td>들어가 있어요</td></tr>
-      <tr><td>제목 위계(H1·H2·H3)</td><td>대제목·중제목·소제목이 의도대로 짜였는지</td><td>의도와 맞는지 확인이 필요해요</td></tr>
-      <tr><td><span class="term" data-term="robots.txt" data-desc="사이트 맨 앞에 두는 짧은 안내문이에요. 어떤 검색 봇이 들어와도 되는지, 어느 페이지는 보지 말라는지 적어 둬요.">robots.txt</span></td><td>어떤 봇이 들어와도 되고 어디는 안 되는지</td><td>모든 봇을 다 받아요</td></tr>
-      <tr><td><span class="term" data-term="사이트맵" data-desc="사이트에 어떤 페이지 주소가 있는지 목록으로 정리한 파일이에요. 검색 봇이 페이지를 빠짐없이 찾도록 돕는 지도 역할을 해요.">사이트맵</span></td><td>URL 목록, 최신 수정일, 우선순위</td><td>잘 돼 있는 편이에요</td></tr>
-      <tr><td>URL 구조</td><td>경로 단위로 정보가 묶였는지</td><td>깔끔해요. 블로그는 아직 없어요</td></tr>
-      <tr><td>이미지 <span class="term" data-term="alt 텍스트" data-desc="이미지에 붙이는 설명 글이에요. 그림을 못 보는 사람과 검색 엔진이 그 이미지가 무엇인지 알 수 있게 해 줘요.">alt 텍스트</span></td><td>이미지가 어떤 키워드와 이어지는지</td><td>고객사 이름만 적혀 있어요</td></tr>
-    </tbody>
-  </table>
-</div>
-<h3>타이틀과 디스크립션</h3>
-<p>확장 프로그램을 열면 타이틀과 디스크립션 같은 메타 정보가 바로 보여요. 검색 결과에 뜬 문구가 여기서 왔는지 비교해 보면, 사이트 정보가 구글과 AI에 어떻게 노출되는지 한 번에 파악할 수 있어요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=900s" target="_blank" rel="noopener">15:00</a>
+  <h2>진단 2: 봇이 보는 사이트 구조</h2>
+<p>이번엔 사이트 안으로 들어가요. 게스트가 쓰는 도구는 크롬 확장 프로그램 'SEO META in 1 CLICK'이에요. 버튼 한 번에 그 페이지의 메타 정보, 제목 태그, 이미지, 링크를 보여 줘요. 전문 도구도 쓰지만, 사이트를 빠르게 파악할 땐 이런 확장 프로그램이 편하다고 해요. 비슷한 확장 프로그램이 많으니 하나 골라 쓰면 돼요.</p>
 <figure>
-  <img src="assets/frame-1547.png" alt="SEO META in 1 CLICK 확장 프로그램의 요약 탭. 타이틀, 디스크립션, 키워드, URL, canonical, robots 태그(INDEX, FOLLOW), 언어 정보가 나열돼 있어요">
-  <figcaption>메타 정보를 한 판에 보여 주는 요약 탭이에요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=947s" target="_blank" rel="noopener">영상 15:47에서 보기</a></figcaption>
+  <img src="assets/frame-1527.png" alt="크롬 웹 스토어의 SEO META in 1 CLICK 확장 프로그램 정보 카드. 별점 다섯 개, 891개 평가, Developer Tools 분류, 사용자 40만 명 이상이라고 적혀 있고, 뒤로 조슈아앤컴퍼니 사이트 첫 화면이 보인다">
+  <figcaption>무료 확장 프로그램이라 누구나 바로 따라 해 볼 수 있어요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=927s" target="_blank" rel="noopener">영상 15:27에서 보기</a></figcaption>
 </figure>
-<h3>제목 위계</h3>
-<p>봇은 H1, H2, H3 태그로 정보의 위계를 이해해요. 말 그대로 대제목, 중제목, 소제목이에요. 그래서 중제목으로 읽혀야 할 문장이 정말 H2로 되어 있는지 확인해야 해요. 많은 사람이 놓치는 부분이래요.</p>
+<h3>타이틀·디스크립션과 제목 위계</h3>
+<p>먼저 Summary 탭에서 타이틀과 디스크립션을 봐요. 검색 결과에 보이던 제목 '조슈아앤컴퍼니 JOSHUA — …'가 바로 이 메타 정보에서 나온 거예요. 그 아래 설명 문구도 대체로 디스크립션을 바탕으로 나와요. 이렇게 보면 사이트가 구글과 AI에 어떤 정보로 노출되는지 한 판에 볼 수 있어요.</p>
+<p>다음은 Headers 탭이에요. 봇은 H1·H2·H3 태그로 정보의 위계를 이해해요. 말 그대로 대제목·중제목·소제목이에요. 화면에선 H1이 '당신의 첫 AX 파트너'이고, 그 아래 H2와 H3가 들여쓰기로 이어져요.</p>
 <figure>
-  <img src="assets/frame-1655.png" alt="확장 프로그램의 Headers 탭. H1 '당신의 첫 AX 파트너' 아래로 H2와 H3 제목들이 들여쓰기로 나열돼 있어요">
-  <figcaption>봇이 읽는 사이트의 목차예요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1015s" target="_blank" rel="noopener">영상 16:55에서 보기</a></figcaption>
+  <img src="assets/frame-1655.png" alt="SEO META in 1 CLICK의 Headers 탭. 'All headers in order of their appearance in HTML' 제목 아래 H1 '당신의 첫 AX 파트너', 그 밑에 여러 H2와 H3 제목이 들여쓰기로 나열돼 있다">
+  <figcaption>들여쓰기가 곧 봇이 이해하는 목차예요. 중제목으로 쓴 문장이 정말 H2인지 확인해 봐야 해요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1015s" target="_blank" rel="noopener">영상 16:55에서 보기</a></figcaption>
 </figure>
-<h3>robots.txt는 대문, 사이트맵은 지도</h3>
-<p>사이트에 들어와 판단하는 건 사람이 아니라 구글 봇, GPT 봇, Claude 봇이에요. robots.txt는 이 봇들에게 '여긴 봐도 되고 여긴 보지 마'라고 밝혀 두는 문서예요. 이 대표는 사이트의 대문이라고 불러요.</p>
+<p>게스트는 '이 문장이 중제목으로 읽히는 게 의도한 건가요?'라고 물어요. 사람이 보기에 중제목인 문장은 태그도 H2여야 봇이 같은 구조로 이해해요. 이 부분을 놓치는 경우가 많다고 해요.</p>
+<h3>robots.txt — 봇에게 여는 대문</h3>
+<p>사이트에 들어와 판단하는 건 사람이 아니라 구글 봇, GPT 봇, Claude 봇이에요. 이 봇들에게 '여기는 봐도 되고 여기는 보지 마'를 미리 밝혀 두는 파일이 robots.txt예요. 진행자는 이 파일이 있는 줄 처음 알았다고 해요.</p>
+<p>조슈아앤컴퍼니의 robots.txt는 단 세 줄이에요. 모든 봇(User-Agent: *)에게 모든 경로를 허용하고(Allow: /), 사이트맵 주소를 알려 줘요.</p>
 <figure>
-  <img src="assets/frame-1715.png" alt="joshua.site/robots.txt 화면. User-Agent: *, Allow: /, Sitemap 주소 세 줄만 적혀 있어요">
-  <figcaption>모든 봇에게 모든 경로를 허용한 상태예요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1035s" target="_blank" rel="noopener">영상 17:15에서 보기</a></figcaption>
+  <img src="assets/frame-1715.png" alt="joshua.site/robots.txt 화면. 'User-Agent: *', 'Allow: /', 'Sitemap: https://joshua.site/sitemap.xml' 세 줄만 적혀 있다">
+  <figcaption>게스트 표현으로는 '모든 로봇 환영, 마음대로 들어와' 상태예요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1035s" target="_blank" rel="noopener">영상 17:15에서 보기</a></figcaption>
 </figure>
-<p>진행자 사이트는 '모든 봇 환영' 상태였어요. 이게 좋은지 나쁜지는 운영자가 판단할 일이에요. 다만 봇은 생각보다 트래픽을 많이 가져가요. 그래서 링크드인처럼 필요 없는 봇은 막고, 들어온 봇에게도 불필요한 경로는 막아 두는 곳도 있어요. 이 대표는 이걸 트래픽 최적화에 가깝다고 봐요.</p>
+<p>비교용으로 링크드인의 robots.txt를 열어요. 봇 이름마다 막을 경로를 한 줄씩 길게 적어 놨어요. 아래 화면에서 LinkedInBot은 전부 허용하고, Googlebot에게는 /addContacts, /analytics/, /chat/ 같은 경로를 막아요.</p>
+<figure>
+  <img src="assets/frame-1935.png" alt="linkedin.com/robots.txt 화면. 무단 크롤링을 금지한다는 안내문 아래 'User-agent: LinkedInBot / Allow: /'가 있고, 'User-agent: Googlebot' 아래에 Disallow 줄이 길게 이어진다">
+  <figcaption>어떤 곳은 걸리게, 어떤 곳은 안 걸리게 봇별로 아주 자세하게 정할 수 있어요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1175s" target="_blank" rel="noopener">영상 19:35에서 보기</a></figcaption>
+</figure>
+<p>모든 봇을 환영하는 게 나쁘다는 뜻은 아니에요. 운영자가 판단할 일이에요. 다만 봇은 생각보다 트래픽을 많이 가져가요. 사람의 방문과 상관없는 트래픽이니, 불필요한 봇은 막고 들어온 봇도 불필요한 경로엔 못 가게 하는 거예요. 게스트는 이걸 트래픽 최적화에 가깝다고 설명해요.</p>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>구글 공식 문서는 robots.txt를 주로 사이트 과부하를 막는 용도라고 설명해요. 페이지를 구글 검색에서 빼는 수단은 아니래요. 검색에서 빼려면 noindex를 쓰거나 비밀번호로 막아야 해요.</p>
-  <p>AI 봇도 목적별로 나뉘어 있어요. OpenAI는 검색 결과 노출용 OAI-SearchBot과 학습용 GPTBot을 따로 운영해요. 그래서 검색 노출은 허용하고 학습만 막을 수도 있어요.</p>
+  <p>구글은 robots.txt가 주로 사이트에 요청이 몰리지 않게 하는 용도라고 안내해요. 페이지를 구글 검색에서 빼는 수단은 아니에요. 검색에 안 나오게 하려면 noindex를 쓰거나 비밀번호로 막아야 해요.</p>
+  <p>AI 봇도 robots.txt로 따로 정할 수 있어요. OpenAI는 학습용 수집 봇(GPTBot)과 ChatGPT 검색용 봇(OAI-SearchBot)을 따로 두고 있어요. 그래서 검색 결과엔 나오되 학습엔 안 쓰이게 하는 식의 설정이 가능해요.</p>
   <p class="cite">출처: <a href="https://developers.google.com/search/docs/crawling-indexing/robots/intro" target="_blank" rel="noopener">Google Search Central — Introduction to robots.txt</a> · <a href="https://platform.openai.com/docs/bots" target="_blank" rel="noopener">OpenAI — Overview of OpenAI Crawlers</a></p>
 </aside>
-<p>대문을 통과한 봇에게 길을 알려 주는 게 사이트맵이에요. 사이트의 URL이 무엇인지, 언제 최신으로 바뀌었는지, 우선순위가 어떤지를 적어 둔 지도예요.</p>
+<h3>사이트맵 — 들어온 봇에게 주는 지도</h3>
+<p>robots.txt가 대문이라면 사이트맵은 지도예요. '우리 사이트 URL은 이것들이니 참고해'라고 알려 줘요. 화면의 sitemap.xml에는 URL마다 주소(loc), 마지막 수정 시각(lastmod), 바뀌는 주기(changefreq), 우선순위(priority)가 적혀 있어요. 게스트는 조슈아앤컴퍼니의 사이트맵은 잘 돼 있는 편이라고 평가해요.</p>
 <figure>
-  <img src="assets/frame-1815.png" alt="joshua.site의 sitemap.xml 화면. URL마다 loc, lastmod, changefreq, priority 태그가 반복돼요">
-  <figcaption>URL마다 주소, 수정일, 우선순위를 적어 둔 사이트맵이에요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1095s" target="_blank" rel="noopener">영상 18:15에서 보기</a></figcaption>
+  <img src="assets/frame-1815.png" alt="joshua.site/sitemap.xml 화면. url 항목마다 loc, lastmod, changefreq, priority 태그가 반복되는 XML 목록">
+  <figcaption>URL 하나당 네 줄씩 반복돼요. lastmod는 '이때 최신으로 바뀌었다', priority는 '이 URL이 얼마나 중요하다'는 뜻이에요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1095s" target="_blank" rel="noopener">영상 18:15에서 보기</a></figcaption>
 </figure>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>영상은 사이트맵의 우선순위 값이 URL의 중요도를 알려 준다고 설명해요. 그런데 구글은 사이트맵의 priority와 changefreq 값을 무시한다고 밝혀요. lastmod(수정일)는 꾸준히 정확하면 참고해요. 구글을 기준으로 보면 수정일을 정확히 적는 쪽이 더 중요해요.</p>
+  <p>영상은 priority로 URL의 중요도를 알려 준다고 설명하지만, 구글은 &lt;priority&gt;와 &lt;changefreq&gt; 값을 쓰지 않는다고 밝혀요. &lt;lastmod&gt;는 실제 수정 시각과 꾸준히 맞을 때만 참고해요. 구글 기준으로는 lastmod를 정확하게 유지하는 게 더 쓸모 있어요.</p>
   <p class="cite">출처: <a href="https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap" target="_blank" rel="noopener">Google Search Central — Build and submit a sitemap</a></p>
 </aside>
-<h3>URL 구조와 alt 텍스트</h3>
-<p>사이트 정보는 URL 경로 단위로 묶이는 게 기본이에요. 진행자 사이트는 워크, 에듀케이션, 솔루션처럼 경로가 깔끔하게 나뉘어 있었어요. 블로그는 아직 없고, 인블로그로 만들 생각이래요. 그러면 사이트에서 블로그로 넘어가는 링크를 꼭 걸어 두라고 해요.</p>
-<p>alt 텍스트에서는 고객사 로고를 짚었어요. 삼성 로고 이미지의 alt 텍스트가 '삼성'뿐이었어요. 그러면 이 이미지는 '삼성' 검색과 이어져요. 그런데 진행자가 노출되고 싶은 건 자기 회사 이름이죠. 그래서 회사 이름이 함께 들어가야 한다는 거예요. 이 대표는 SEO를 '디테일의 싸움'이라고 표현해요.</p>
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>구글은 alt 텍스트를 페이지 맥락에 맞게 정보가 풍부하도록 쓰라고 권해요. 키워드를 잔뜩 채워 넣으면 사용자 경험이 나빠지고 스팸으로 보일 수 있다고 경고해요. 회사 이름을 넣더라도 '조슈아앤컴퍼니 고객사 삼성 로고'처럼 이미지를 설명하는 문장이 안전해요.</p>
-  <p class="cite">출처: <a href="https://developers.google.com/search/docs/appearance/google-images" target="_blank" rel="noopener">Google Search Central — Image SEO best practices</a></p>
-</aside>
+<h3>URL 구조와 이미지 대체 텍스트</h3>
+<p>사이트의 정보는 기본적으로 URL 경로 단위로 묶여요. 봇은 work, education, solution 같은 경로를 보고 '이 사이트는 이런 단위로 정보가 나뉘는구나' 하고 이해해요. 조슈아앤컴퍼니는 이 구조가 깔끔한 편이에요. 블로그는 아직 없어서 인블로그로 만들어 연결할 계획이라고 해요.</p>
+<p>마지막으로 Images 탭에서 대체 텍스트(alt)를 봐요. 고객사 로고 이미지마다 alt가 '삼성', 'LG전자', 'SK하이닉스'로만 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-2115.png" alt="SEO META in 1 CLICK의 Images 탭. 'Images to complete' 목록에 joshua-logo.svg는 ALT 조슈아앤컴퍼니, samsung.svg는 ALT 삼성, lg.svg는 ALT LG전자, skhynix.svg는 ALT SK하이닉스로 적혀 있고, 뒤로 사이트의 고객사 로고 줄이 보인다">
+  <figcaption>로고 파일마다 alt에 고객사 이름만 있어요. 게스트는 여기에 우리 회사 이름도 함께 넣으라고 해요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1275s" target="_blank" rel="noopener">영상 21:15에서 보기</a></figcaption>
+</figure>
+<p>alt에 '삼성'이라고 쓰면 '삼성'을 검색했을 때 이 이미지를 거쳐 들어오는 길이 생겨요. 그런데 우리가 노출되고 싶은 건 삼성이 아니라 조슈아앤컴퍼니잖아요. 그래서 alt에도 회사 이름이 함께 들어가야 해요. 이미지 대체 텍스트에는 노출시키고 싶은 키워드를 넣는다는 원칙이에요. 진행자는 'SEO는 악마의 디테일과의 싸움'이라는 말을 실감한다고 해요.</p>
 </section>
 
 <section id="s5">
   <a class="stamp" href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1307s" target="_blank" rel="noopener">21:47</a>
-  <h2>키워드 고르기와 고객의 검색 여정</h2>
-<p>진행자 회사는 여러 분야를 넓게 다뤄 왔지만, 앞으로는 제조업 중심의 '산업 AX'에 집중하려고 해요. 그럼 어떤 키워드로 시작해서 어디로 넓혀 가야 할까요? 이 대표는 '제조 AX'를 직접 검색하며 순서를 보여 줬어요.</p>
-<ol>
-  <li><strong>AI 오버뷰가 있는지 봐요.</strong> 있다면 어떤 도메인이 노출되는지 확인해요.</li>
-  <li><strong>경쟁 강도를 가늠해요.</strong> 우리가 비집고 들어갈 수 있는 자리인지 판단해요.</li>
-  <li><strong>관련 키워드로 검색 여정을 그려요.</strong> 사람들이 이 주제를 어떤 순서로 찾아 나가는지 지도를 그려 봐요.</li>
+  <h2>키워드 하나에서 검색 여정 지도로</h2>
+<p>진행자 회사는 넓게 여러 AX를 다뤄 왔지만, 앞으로는 제조업의 AX에 집중하려고 해요. 그럼 키워드 하나를 잡는다면 어디서 시작할까요? 게스트는 '제조 AX'를 직접 검색하며 순서를 보여 줘요.</p>
+<ol class="steps">
+  <li><b>AI 요약이 뜨는지 봐요</b> — 이 키워드에서 AI가 직접 답을 만들어 주는지 확인해요.</li>
+  <li><b>어떤 도메인이 노출되는지 봐요</b> — 지금 이 자리를 누가 차지하고 있는지예요.</li>
+  <li><b>경쟁 강도를 가늠해요</b> — 우리가 들어갈 틈이 있는지 판단해요.</li>
+  <li><b>관련 검색어와 관련 질문을 모아요</b> — 사람들이 다음에 무엇을 찾는지 보는 단서예요.</li>
 </ol>
-<h3>고객의 검색 여정</h3>
-<p>사람은 정보를 얻을 때 단계를 밟아요. 먼저 뜻을 이해하고, 하는 곳을 찾아보고, 비교하고, 추천을 받고, 결정해요. 제조 AX라면 '제조 AX가 뭐지?'에서 시작해 '사례는 뭐가 있지?', '하는 곳은 어디지?', '도와줄 컨설팅은?', '어디가 좋아?'로 이어져요.</p>
+<h3>검색 여정</h3>
+<p>사람이 무언가를 알아볼 때는 검색에도 단계가 있어요. 게스트는 이걸 검색 여정이라고 불러요. 영상 슬라이드는 궁금증 발생 → 정보 이해 → 대안 탐색 → 비교 → 추천과 결정으로 이어지는 길을 그려요. 가운데 메모처럼 '찾은 것을 이해하고 비교하는 과정'이 길게 이어져요.</p>
 <figure>
-  <img src="assets/frame-2247.png" alt="궁금증 발생에서 정보 이해, 대안 탐색으로 이어지는 길을 사람이 걸어가는 모습으로 그린 '고객의 검색 여정' 일러스트">
-  <figcaption>질문에서 시작해 추천과 결정으로 이어지는 검색 여정이에요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1367s" target="_blank" rel="noopener">영상 22:47에서 보기</a></figcaption>
+  <img src="assets/frame-2312.png" alt="'고객의 검색 여정' 슬라이드. 물음표를 든 사람의 '궁금증 발생'에서 시작해 정보 이해, 대안 탐색, 비교를 거쳐 깃발이 꽂힌 '추천과 결정'까지 구불구불한 길로 이어진 그림">
+  <figcaption>부제는 '질문에서 시작해 추천과 결정으로 이어지는 과정'이에요. 키워드 하나는 이 길의 한 지점일 뿐이에요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1392s" target="_blank" rel="noopener">영상 23:12에서 보기</a></figcaption>
 </figure>
-<h3>PAA가 콘텐츠 목록이 돼요</h3>
-<p>요즘 검색은 단어보다 자연어 질문으로 바뀌고 있어요. 구글에서는 일부 키워드에 <span class="term" data-term="PAA" data-desc="People Also Ask의 줄임말로, 구글 검색 결과의 &#x27;관련 질문&#x27; 상자예요. 같은 주제로 사람들이 실제로 많이 묻는 질문을 보여 줘서 콘텐츠 아이디어로 쓰기 좋아요.">PAA</span> 영역이 떠요. 사람들이 이 키워드와 함께 실제로 묻는 질문이 모여 있는 곳이에요. 제조 AX에서는 'AX란 무엇인가요?', 'DX와 AX의 차이는?', 'AX 트렌드는?' 같은 질문이 보였어요.</p>
+<p>게스트가 '제조 AX'에 이 여정을 대 본 예는 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>여정 단계</th><th>고객이 던지는 질문</th></tr></thead>
+    <tbody>
+      <tr><td>정보 이해</td><td>제조 AX가 뭐야?</td></tr>
+      <tr><td>대안 탐색</td><td>제조 AX 사례는 뭐가 있어? 이걸 하고 있는 곳은 어디야?</td></tr>
+      <tr><td>비교</td><td>도와줄 컨설팅을 찾아요. 관련 컨설팅 사이트들이 나와요.</td></tr>
+      <tr><td>추천과 결정</td><td>그래서 어디가 좋아?</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>이 단서들은 검색 결과 아래의 관련 검색어에서 얻을 수 있어요. 그걸 이어서 '제조 AX를 검색한 사람은 이렇게 검색해 나가겠구나' 하는 여정 지도를 그려 보는 거예요.</p>
+<h3>관련 질문(PAA)이 곧 콘텐츠 목록</h3>
+<p>요즘 검색은 단어보다 자연어 문장으로 해요. 구글은 일부 키워드에서 '관련 질문' 칸을 보여 주는데, 이게 <span class="term" data-term="People Also Ask" data-desc="구글 검색 결과 중간에 뜨는 &#x27;관련 질문&#x27; 상자예요. 같은 키워드로 사람들이 실제로 많이 묻는 질문을 보여 줘서 콘텐츠 주제를 찾는 단서가 돼요." data-g="10">People Also Ask</span>(PAA(People Also Ask)) 영역이에요. 아래 화면에는 'AX란 무엇인가요?', 'DX와 AX의 차이점은 무엇인가요?', 'AX 트렌드는 무엇인가요?' 같은 질문이 떠 있어요.</p>
 <figure>
-  <img src="assets/frame-2427.png" alt="'제조AX' 구글 검색 결과의 '관련 질문' 상자. 'AX란 무엇인가요?', 'DX와 AX의 차이점은?' 같은 질문이 접힌 채 나열되고, PAA(People Also Ask) 설명 자막이 붙어 있어요">
-  <figcaption>이 질문 목록이 곧 만들어야 할 콘텐츠 목록이에요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1467s" target="_blank" rel="noopener">영상 24:27에서 보기</a></figcaption>
+  <img src="assets/frame-2416.png" alt="구글 검색 결과의 '관련 질문' 상자. 'AX란 무엇인가요?', 'DX와 AX의 차이점은 무엇인가요?', 'AX 트렌드는 무엇인가요?', '제조 ax max 얼라이언스는 무엇인가요?' 네 질문이 펼침 단추와 함께 나열돼 있다">
+  <figcaption>사람들이 이 키워드로 실제로 묻는 질문이에요. 이게 사이트에 있어야 할 콘텐츠예요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1456s" target="_blank" rel="noopener">영상 24:16에서 보기</a></figcaption>
 </figure>
-<p>진행자가 바로 정리했어요. 이 질문들에 답하는 글이 우리 사이트에 있으면 돼요. 키워드는 곧 트래픽이에요. 질문에 맞는 콘텐츠로 사람을 데려오고, 신뢰를 주는 사이트가 받쳐 주면 리드가 들어와요. 이 대표도 정확히 그거라고 답했어요.</p>
+<p>게스트 말로는 '이 질문들이 우리 사이트 콘텐츠로 있으면 되겠다'예요. 진행자도 바로 이해해요. 키워드는 결국 트래픽이니, 그 질문에 답하는 글을 두면 사람이 들어와요. 들어온 사람에게 잘 갖춘 사이트로 신뢰를 주면 문의(리드)가 생겨요.</p>
 </section>
 
 <section id="s6">
   <a class="stamp" href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1513s" target="_blank" rel="noopener">25:13</a>
-  <h2>렌더링 구조와 사이트 진단 점수</h2>
-<p>앞의 과정을 손으로 하면 금방 한계가 와요. 모니터링할 키워드도, 찾아야 할 질문도 수십·수백 개예요. 페이지도 하나가 아니라서 전부 점검해야 하죠. 이걸 한 번에 하려고 이 대표가 만든 게 헤일로X예요.</p>
-<p>진행자가 놀란 점은 이 상용 SaaS를 Lovable로 만들었다는 거예요. 이 대표는 Lovable 앰배서더로 활동하고 있어서, 서비스를 만들 때 Lovable을 최대한 써 본대요.</p>
-<h3>테크니컬 SEO를 한 번에 점검해요</h3>
-<p>헤일로X는 앞에서 하나씩 본 항목을 한꺼번에 점검해요. 타이틀, 디스크립션, H1, canonical, 깨진 링크, 중복 콘텐츠, robots.txt가 있는지와 제대로 쓰였는지, 사이트맵 구조에 문제가 없는지까지 봐요.</p>
+  <h2>봇이 못 읽는 페이지: CSR과 SSR</h2>
+<p>여기서부터는 게스트가 만든 SEO·GEO 도구 HaloX 화면으로 설명이 이어져요. 게스트는 러버블 앰배서더로 활동하고 있고, 이 서비스도 러버블로 만들었다고 해요. 앞에서 손으로 하나씩 본 점검을 도구로 만든 이유는 단순해요. 지켜봐야 할 키워드와 질문이 수십, 수백 개이고 페이지도 여러 개라 손으로는 다 못 보기 때문이에요.</p>
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>이 구간의 화면은 게스트 회사의 제품 데모예요. 이 문서는 제품 소개가 아니라, 화면에 나온 점검 항목과 개념을 중심으로 정리했어요. 화면 속 사이트와 숫자도 데모용이에요.</p>
+</aside>
+<h3>기술 점검 항목</h3>
+<p>진단 화면 위쪽에 SEO 점수(86)와 GEO 점수(84)가 원으로 나와요. 옆에는 각 점수를 이루는 항목이 적혀 있어요. 기술 SEO는 봇 접근성·구조화·콘텐츠·신뢰도·기술 건강도, 기술 GEO는 봇 접근성·구조화·인용·기술 건강도예요.</p>
 <figure>
-  <img src="assets/frame-2702.png" alt="헤일로X의 사이트 진단 화면. SEO 점수 86점과 GEO 점수 84점이 원형 그래프로 나오고, 아래에 추이 그래프와 방사형 차트가 있어요">
-  <figcaption>SEO와 GEO 점수를 따로 매기는 진단 화면이에요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1622s" target="_blank" rel="noopener">영상 27:02에서 보기</a></figcaption>
+  <img src="assets/frame-2702.png" alt="HaloX 사이트 진단 화면. 데모 사이트 bylynn.shop에 대해 SEO 86, GEO 84 점수 원이 있고, 그 아래 SEO·GEO 추이 그래프와 SEO 분석·GEO 분석 레이더 차트가 보인다">
+  <figcaption>점수 아래의 추이 그래프가 중요해요. 게스트는 점수 자체보다 이전보다 좋아졌는지를 보라고 해요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1622s" target="_blank" rel="noopener">영상 27:02에서 보기</a></figcaption>
 </figure>
-<h3>GEO에서 특히 예민한 렌더링 구조</h3>
-<p>GEO가 SEO와 다른 점 하나가 렌더링 구조예요. 웹사이트는 크게 두 방식으로 화면을 만들어요. 서버에서 완성된 HTML을 보내는 <span class="term" data-term="SSR" data-desc="서버에서 페이지 내용을 다 채운 뒤 보내는 방식이에요. 받자마자 글이 들어 있어서 검색 봇이 읽기 쉬워요.">SSR</span>, 그리고 빈 틀을 보낸 뒤 브라우저에서 그려 내는 <span class="term" data-term="CSR" data-desc="빈 틀만 먼저 보내고 내용은 브라우저에서 나중에 채워 넣는 방식이에요. 개발은 편하지만 기다려 주지 않는 봇은 빈 페이지만 볼 수 있어요.">CSR</span>이에요.</p>
-<p>사람은 로딩을 기다렸다가 다 봐요. 구글 봇도 방식과 상관없이 기다렸다가 결국 다 가져가요. 그런데 다른 봇은 안 기다리거나, 기다려도 못 받아 갈 수 있어요. 이 대표 설명으로는 GPT 봇이 특히 그래요. SSR이면 가져가지만 CSR이면 사이트에 들어와도 아무 정보도 못 본대요.</p>
+<p>점검하는 항목은 앞에서 본 것들의 연장이에요. 타이틀·디스크립션·H1, 캐노니컬 설정, 깨진 링크, 중복 콘텐츠, robots.txt가 있는지와 제대로 쓰였는지, 사이트맵 구조에 이상이 없는지예요.</p>
+<h3>렌더링 — GEO가 SEO보다 예민한 곳</h3>
+<p>게스트가 GEO에서 SEO와 가장 다르다고 꼽은 게 렌더링 구조예요. 페이지를 만드는 방식은 크게 둘이에요. 서버에서 내용을 다 채워서 보내는 <span class="term" data-term="서버 사이드 렌더링" data-en="Server-Side Rendering" data-desc="서버가 페이지 내용을 다 채워서 보내는 방식이에요. 봇이 페이지를 열자마자 내용을 읽을 수 있어요." data-g="12">서버 사이드 렌더링</span>(SSR(Server-Side Rendering))과, 빈 틀을 먼저 보내고 브라우저에서 내용을 채우는 클라이언트 사이드 렌더링(CSR)이에요.</p>
+<p>사람은 로딩이 끝날 때까지 기다렸다가 다 봐요. 봇은 안 기다릴 수도 있고, 기다려도 못 받아 갈 수 있어요. 구글은 어느 방식이든 기다렸다가 다 가져가요. 그런데 GPT 봇은 CSR 페이지에서 내용을 거의 못 본다고 해요. 사람 눈엔 멀쩡한 페이지가 GPT에겐 빈 페이지인 셈이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="SSR과 CSR 페이지를 사람, 구글 봇, GPT 봇이 각각 얼마나 보는지 비교">
+    <text x="20" y="28" class="sub">페이지 방식</text>
+    <text x="250" y="28" text-anchor="middle" class="sub">사람</text>
+    <text x="400" y="28" text-anchor="middle" class="sub">구글 봇</text>
+    <text x="550" y="28" text-anchor="middle" class="sub">GPT 봇</text>
+    <rect class="c1 cell" x="20" y="45" width="140" height="70" rx="10"/>
+    <text x="90" y="76" text-anchor="middle">SSR</text>
+    <text x="90" y="98" text-anchor="middle" class="sub">서버에서 완성</text>
+    <rect class="ok" x="185" y="55" width="130" height="50" rx="8"/><text x="250" y="85" text-anchor="middle">다 봐요</text>
+    <rect class="ok" x="335" y="55" width="130" height="50" rx="8"/><text x="400" y="85" text-anchor="middle">가져가요</text>
+    <rect class="ok" x="485" y="55" width="130" height="50" rx="8"/><text x="550" y="85" text-anchor="middle">가져가요</text>
+    <rect class="c4 cell" x="20" y="140" width="140" height="70" rx="10"/>
+    <text x="90" y="171" text-anchor="middle">CSR</text>
+    <text x="90" y="193" text-anchor="middle" class="sub">브라우저에서 채움</text>
+    <rect class="ok" x="185" y="150" width="130" height="50" rx="8"/><text x="250" y="180" text-anchor="middle">다 봐요</text>
+    <rect class="ok" x="335" y="150" width="130" height="50" rx="8"/><text x="400" y="173" text-anchor="middle">기다렸다가</text><text x="400" y="191" text-anchor="middle" class="sub">가져가요</text>
+    <rect class="bad" x="485" y="150" width="130" height="50" rx="8"/><text x="550" y="173" text-anchor="middle">거의 못 봐요</text><text x="550" y="191" text-anchor="middle" class="sub">AI 가시성 0~4%</text>
+  </svg>
+  <figcaption>게스트 설명을 칸으로 옮겼어요. 문제는 오른쪽 아래 한 칸이에요. 사람과 구글은 같은 페이지를 다 보니 운영자가 알아채기 어려워요.</figcaption>
+</figure>
+<p>개발이 편해서 CSR을 많이 쓰지만, 그 대가로 봇에게 정보가 늦게 가거나 아예 안 갈 수 있다는 거예요. 진행자가 'SEO·GEO만 보면 CSR을 안 쓰는 게 좋겠네요'라고 하자, 게스트는 어쩔 수 없는 경우도 있다고 답해요. 커머스는 상품 정보를 클라이언트에서 불러와 보여 주는 경우가 대부분이에요.</p>
+<p>진행자는 반대쪽 문제도 짚어요. 커머스 상세 페이지는 이미지와 영상만으로 설명된 경우가 많아서, AI가 그 내용을 가져가 이해하지 못해요. 그래서 요즘 커머스에선 상세 페이지를 텍스트로 다시 짜는 걸 고민해요. 배경만 이미지로 두고, 내용은 HTML(HyperText Markup Language)과 CSS(Cascading Style Sheets) 텍스트로 깔아 이미지처럼 보이게 만든 사례도 있다고 해요.</p>
+<h3>같은 SSR이어도 다 같진 않아요</h3>
+<p>HaloX는 페이지가 어떤 렌더링 케이스인지 나눠서 등급을 매겨요. 아래 화면에는 여덟 가지 케이스가 있고, 데모 사이트는 맨 아래 'Pure CSR'로 진단됐어요. 그 아래에는 권장 조치 목록도 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-3042.png" alt="HaloX 사이트 진단의 렌더링 케이스 화면. 위에 'Pure CSR 케이스 감지' 경고가 있고, Pure SSR, Suspense SSR, Lazy 본문, Bot UA 차단, Stale Prerender, Balanced Hybrid, CSR-heavy Hybrid, Pure CSR 여덟 칸에 A부터 D까지 등급이 붙어 있다. 아래에 SSR/SSG 도입 등 권장 액션 체크리스트가 있다">
+  <figcaption>위쪽 빨간 경고가 이 데모 사이트의 결과예요. '첫 HTML은 빈 div와 JS 묶음뿐이라 AI 봇은 거의 아무것도 못 본다'고 적혀 있어요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1842s" target="_blank" rel="noopener">영상 30:42에서 보기</a></figcaption>
+</figure>
+<p>화면 속 케이스를 옮기면 이래요. 등급은 도구가 붙인 값이에요.</p>
 <div class="table-scroll">
   <table>
-    <thead><tr><th>렌더링 방식</th><th>사람</th><th>구글 봇</th><th>GPT 봇</th></tr></thead>
+    <thead><tr><th>케이스</th><th>등급</th><th>화면 설명</th></tr></thead>
     <tbody>
-      <tr><td>SSR</td><td>다 봐요</td><td>가져가요</td><td>가져가요</td></tr>
-      <tr><td>CSR</td><td>다 봐요</td><td>기다렸다가 가져가요</td><td>못 가져갈 수 있어요</td></tr>
+      <tr><td>Pure SSR</td><td>A</td><td>첫 HTML에 본문이 거의 다 담겨 있어 AI 봇에 가장 친화적이에요</td></tr>
+      <tr><td>Balanced Hybrid</td><td>A</td><td>본문은 SSR, 상호작용과 실시간 데이터만 클라이언트에서 채워요</td></tr>
+      <tr><td>Suspense SSR</td><td>B</td><td>SSR이지만 본문 일부를 늦게 흘려보내서 첫 응답엔 빠질 수 있어요</td></tr>
+      <tr><td>Lazy 본문</td><td>C</td><td>틀은 SSR인데 본문 컴포넌트를 나중에 불러와요</td></tr>
+      <tr><td>Stale Prerender</td><td>C</td><td>미리 만들어 둔 페이지가 최신 본문과 어긋나 AI가 옛 내용을 인용할 수 있어요</td></tr>
+      <tr><td>Bot UA(User Agent) 차단</td><td>D</td><td>GPTBot 같은 AI 봇이 본문을 아예 못 받아요</td></tr>
+      <tr><td>CSR-heavy Hybrid</td><td>D</td><td>틀과 메뉴만 SSR이고 본문 대부분은 클라이언트에서 채워요</td></tr>
+      <tr><td>Pure CSR</td><td>(진단 대상)</td><td>첫 HTML이 빈 틀과 JS(JavaScript)뿐이라 AI 봇은 거의 아무것도 못 봐요</td></tr>
     </tbody>
   </table>
 </div>
-<p>CSR은 개발이 편한 대신, 봇에게 정보가 늦게 가거나 아예 안 갈 수 있다는 부작용이 있어요. 같은 SSR이라도 Suspense SSR처럼 정보를 늦게, 다른 순서로 보내면 GPT가 못 받는 경우가 있대요. 헤일로X는 이런 렌더링 유형을 구분해서, 봇이 정보를 가져갈 수 있는지와 몇 퍼센트나 가져갔는지를 보여 줘요.</p>
+<p>게스트도 같은 SSR이라도 Suspense SSR은 정보를 늦게 보내거나 보내는 순서가 달라서 GPT가 못 받는 경우가 있다고 해요. 그래서 렌더링 방식에 따라 봇이 정보를 가져갈 수 있는지, 가져갔다면 몇 퍼센트나 가져갔는지를 봐요.</p>
 <figure>
-  <img src="assets/frame-3042.png" alt="헤일로X의 렌더링 진단 화면. Pure SSR, Suspense SSR, Lazy 렌더, Bot 차단, Static Prerender, Balanced Hybrid, CSR-Heavy Hybrid, Pure CSR 같은 유형 카드가 나열돼 있어요">
-  <figcaption>같은 SSR·CSR 안에서도 유형을 더 잘게 나눠 봐요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1842s" target="_blank" rel="noopener">영상 30:42에서 보기</a></figcaption>
+  <img src="assets/frame-3102.png" alt="HaloX의 AI 봇 접근성과 렌더링 방식 진단 화면. ClaudeBot과 PerplexityBot은 robots 허용 상태이고, 'Vue SPA(CSR) 렌더링 경고' 아래 페이지별 가시성 표에서 /flag/todaynew와 /flag/besthundred는 0%, /signUp 4%, /category 1%, /login 3%, /cart 2%로 모두 Pure CSR이다">
+  <figcaption>봇 접근 자체는 허용돼 있어요. 그런데도 페이지마다 AI 가시성이 0~4%예요. 들어와도 읽을 게 없는 거예요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1862s" target="_blank" rel="noopener">영상 31:02에서 보기</a></figcaption>
 </figure>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>구글 공식 문서도 비슷하게 말해요. 구글은 자바스크립트를 실행해 페이지를 그려 보지만, 서버 사이드 렌더링이나 사전 렌더링은 여전히 좋은 선택이래요. 사용자와 크롤러 모두에게 빠르고, 모든 봇이 자바스크립트를 실행할 수 있는 건 아니라서예요. GPT 봇이 CSR을 어떻게 처리하는지는 영상 속 이 대표의 관찰이에요. OpenAI 공식 문서에서는 확인하지 못했어요.</p>
+  <p>구글은 자바스크립트로 만든 페이지도 렌더링해서 읽어요. 그래도 서버 사이드 렌더링이나 미리 렌더링해 두는 방식을 여전히 권해요. 사용자와 크롤러 모두에게 더 빠르고, 모든 봇이 자바스크립트를 실행할 수 있는 건 아니기 때문이에요. 영상에서 '구글은 기다렸다가 가져가지만 다른 봇은 못 가져갈 수 있다'고 한 설명과 같은 방향이에요.</p>
   <p class="cite">출처: <a href="https://developers.google.com/search/docs/crawling-indexing/javascript/javascript-seo-basics" target="_blank" rel="noopener">Google Search Central — JavaScript SEO basics</a></p>
 </aside>
-<h3>커머스는 어떻게 하나요</h3>
-<p>커머스는 상품 정보를 대개 클라이언트에서 불러와요. SSR만으로 짓기 어렵대요. 게다가 상세 페이지가 이미지와 영상 위주라 AI가 그대로 읽고 이해하지 못해요. 그래서 요즘 커머스는 상세 정보를 텍스트로 쌓는 방법을 고민해요. 배경만 이미지로 두고, 내용은 HTML과 CSS 텍스트로 얹어 이미지처럼 보이게 만드는 곳도 있대요.</p>
-<h3>점수는 '전보다 나아졌나'로 봐요</h3>
-<p>진단 점수는 구글이 만든 기준처럼 SEO에서 오래 써 온 항목을 빌려 매겨요. 봇 접근성, 구조화 데이터와 스키마, 타이틀·메타 정보, 사이트 속도 같은 것들이에요. 페이지 단위로도 CSR인지 SSR인지, 타이틀·디스크립션·스키마가 있는지 볼 수 있어요.</p>
+<h3>점수는 비교용이에요</h3>
+<p>점수는 SEO에서 오래 써 온 기술 기준과 구글이 만든 기준을 빌려 계산해요. 봇 접근성, 구조화 데이터와 스키마, 타이틀 같은 HTML 메타 정보가 있는지, 사이트가 빠른지 느린지를 종합해요. 진단 기록에서 이전보다 무엇이 바뀌었는지도 볼 수 있어요.</p>
+<p>페이지 단위로도 볼 수 있어요. 아래 표에서 페이지마다 SEO·GEO 점수와 렌더링 방식, 메타 정보(T/D/S)가 있는지를 한 줄씩 보여 줘요.</p>
 <figure>
-  <img src="assets/frame-3142.png" alt="헤일로X의 페이지별 진단 표. /, /cart, /category, /login, /signup 같은 경로마다 SEO·GEO 점수 막대와 CSR 표시, 메타 정보 유무가 나와요">
-  <figcaption>페이지마다 점수와 렌더링 방식을 따로 보여 줘요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1902s" target="_blank" rel="noopener">영상 31:42에서 보기</a></figcaption>
+  <img src="assets/frame-3202.png" alt="HaloX의 페이지 탭. /, /cart, /category, /login, /signUp 같은 경로마다 SEO 점수와 GEO 점수 막대, 렌더링·AI 가시성 칸에 CSR 1~4%, Meta(T/D/S) 칸에 경고 표시가 나열돼 있다">
+  <figcaption>SEO·GEO 점수는 95~100으로 높은데 AI 가시성은 1~4%예요. 점수 하나만 보면 놓치는 게 이런 부분이에요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1922s" target="_blank" rel="noopener">영상 32:02에서 보기</a></figcaption>
 </figure>
-<p>그럼 70점, 86점은 좋은 걸까요? 이 대표는 절대적인 기준은 없다고 답해요. 지금 점수를 기준으로 잡고, 고친 뒤 점수가 오르는지 추적하는 게 맞는 방향이래요.</p>
+<p>진행자가 '70점이면 좋은 건가요?'라고 묻자 게스트는 절대 기준은 없다고 답해요. 지금 점수를 기준으로 잡고, 고친 뒤 점수가 올라가는지 보면 된다는 거예요.</p>
 </section>
 
 <section id="s7">
-  <a class="stamp" href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1970s" target="_blank" rel="noopener">32:50</a>
-  <h2>키워드 땅따먹기와 AI 답변 모니터링</h2>
-<p>'제조 AX'처럼 키워드가 많아지면 모두 지켜봐야 해요. 헤일로X는 키워드마다 이런 걸 보여 줘요.</p>
-<ul>
-  <li>우리 사이트와 경쟁사가 몇 등인지</li>
-  <li>AI 오버뷰가 있는지, 있다면 우리나 경쟁사가 들어갔는지</li>
-  <li>검색량과 트렌드, 검색 의도</li>
-  <li>연관 키워드가 있는지, 무엇인지</li>
+  <a class="stamp" href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1982s" target="_blank" rel="noopener">33:02</a>
+  <h2>키워드 땅따먹기와 AI 답변 속 노출</h2>
+<p>'제조 AX' 하나만 해도 연결된 키워드가 아주 많아요. 게스트는 그 키워드를 전부 지켜봐야 한다고 해요. 키워드마다 확인하는 건 이래요.</p>
+<ul class="checklist">
+  <li>우리 사이트는 몇 위인가요? 경쟁사는 몇 위인가요?</li>
+  <li>AI 요약이 있나요? 있다면 우리와 경쟁사 중 누가 들어갔나요?</li>
+  <li>검색량과 추세는 어떤가요?</li>
+  <li>검색 의도는 무엇인가요? 정보를 찾는 건지, 비교하는 건지요.</li>
+  <li>관련 질문(PAA)이 있나요? 있다면 어떤 질문인가요?</li>
+  <li>연관 키워드가 있나요? 있다면 어떤 것인가요?</li>
 </ul>
+<p>진행자는 키워드마다 이런 걸 파악하면 '이 키워드엔 이런 콘텐츠를 앉혀야겠다', '관련 질문을 보니 다음 콘텐츠는 이걸로 하자' 같은 전략이 나온다고 정리해요.</p>
+<h3>상위 10위가 첫 기준인 이유</h3>
+<p>아래 화면 위쪽에 키워드 현황이 숫자로 나와요. 지켜보는 236개 키워드 중 32개(14%)가 상위 10위 안에 있어요. AI 요약 칸은 우리가 인용된 키워드 31개, 경쟁사가 인용된 키워드 10개, 아무도 차지하지 않은 키워드 182개로 나눠 보여 줘요. 오른쪽 끝의 평균 순위는 5.3위예요.</p>
 <figure>
-  <img src="assets/frame-3310.png" alt="헤일로X의 키워드 현황 화면. 톱10 키워드 수, AI 요약 인용 현황, 평균 순위가 위에 요약되고 아래에 키워드별 표가 있어요">
-  <figcaption>키워드마다 순위, AI 오버뷰 인용, 검색량을 함께 보는 화면이에요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=1990s" target="_blank" rel="noopener">영상 33:10에서 보기</a></figcaption>
+  <img src="assets/frame-3530.png" alt="HaloX 키워드 현황 화면. Top 10 키워드 32/236(14%), AI 요약 인용은 자사 31·경합 4·경쟁사 10·미점유 182·AIO 없음 13, 자사 순위는 우위 30·경합 3·뒤처짐 16·미점유 187, 평균 순위 5.3위가 표시되고, 아래에 키워드 네트워크 그래프가 있다">
+  <figcaption>위쪽 네 칸이 상위 10위 → AI 요약 인용 → 자사 순위 → 평균 순위 순서예요. 게스트가 말한 개선 순서와 같아요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=2130s" target="_blank" rel="noopener">영상 35:30에서 보기</a></figcaption>
 </figure>
-<p>진행자는 이걸 보고 다음 콘텐츠를 무엇으로 만들지 전략을 세울 수 있겠다고 반응했어요.</p>
-<h3>키워드 땅따먹기</h3>
-<p>키워드는 연관 키워드와 이어져 있어요. 그래서 고객 여정 지도를 네트워크로 그리면, 어디서 이기고 어디서 지고 있는지 한눈에 보여요. 데모에서는 이미 차지한 키워드, 경합 중인 키워드가 색으로 나뉘었어요.</p>
+<p>상위 10위를 먼저 보는 이유로, 게스트는 AI 요약에 올라가는 결과의 약 60%가 검색 상위 10위 결과라고 말해요. 그래서 상위 10위 안에 몇 개가 있는지 보고, 그중 AI 요약에 인용됐는지, 우리 순위와 평균 순위는 어떤지를 보며 차근차근 고쳐 나가요. 이 60%라는 숫자의 출처는 영상에서 밝히지 않았어요.</p>
+<h3>키워드 네트워크와 땅따먹기</h3>
+<p>키워드는 연관 키워드와 이어져요. 이걸 그물처럼 그리면 고객 여정 지도가 한 장에 보여요. 어디서 우리가 이기고 있는지, 어디서 지고 있는지, 다음엔 어떤 키워드를 차지하고 싶은지가 보여요. 게스트는 데모 화면을 가리키며 '여기는 지금 차지하고 있고, 여기는 경합 중'이라고 짚어요.</p>
 <figure>
-  <img src="assets/frame-3450.png" alt="키워드를 점으로, 연관 관계를 선으로 이은 네트워크 그래프. 일부 영역이 분홍색으로 칠해져 있어요">
-  <figcaption>키워드 사이의 관계를 그린 네트워크예요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=2090s" target="_blank" rel="noopener">영상 34:50에서 보기</a></figcaption>
+  <img src="assets/frame-3505.png" alt="HaloX 키워드 네트워크 화면. 'CRM 마케팅 성공 사례' 노드에 주황 원이 표시돼 있고, 그 위로 마켓컬리 마케팅 성공 사례, 마켓 컬리 crm, 아마존 마케팅 사례, 관계 마케팅 성공 사례, 이커머스 마케팅 사례 같은 연관 키워드가 분홍 삼각형 영역 안에 퍼져 있다. 오른쪽 목록에는 알림톡 발송, 팁스 운영사 리스트, CRM 마케팅 성공 사례가 있다">
+  <figcaption>강조된 'CRM 마케팅 성공 사례' 주변으로 연관 키워드가 퍼져 있어요. 이 주변부가 먼저 차지할 땅이에요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=2105s" target="_blank" rel="noopener">영상 35:05에서 보기</a></figcaption>
 </figure>
-<p>'CRM 마케팅 성공 사례'처럼 큰 키워드는 바로 차지하기 어려워요. 그럴 땐 주변의 연관 키워드부터 먹고 들어가요. 1차 연관 키워드도 크면 2차 연관 키워드까지 넓혀서 다시 시작해요. 진행자는 이걸 '땅따먹기 전략'이라고 불렀어요.</p>
-<h3>왜 톱10인가요</h3>
-<p>헤일로X는 모니터링 중인 키워드 가운데 몇 개가 톱10에 있는지 먼저 보여 줘요. 이 대표는 AI 오버뷰에 오르는 것 중 약 60%가 톱10 검색 결과라고 말해요. 그래서 톱10이 첫 기준이고, 그다음 AI 요약에 인용됐는지, 우리 순위와 평균 순위는 어떤지를 보며 차근차근 고쳐 나가요.</p>
-<h3>AI 답변에서는 세 가지를 봐요</h3>
-<p>구글 말고 GPT, Gemini, Perplexity, Claude의 답변도 지켜봐요. 질문을 던지면 답변이 나오고, 그 안에 소스와 인용이 있어요. 이 대표는 답변 속 우리 브랜드의 모습을 세 가지로 나눠 봐요.</p>
-<div class="table-scroll">
-  <table>
-    <thead><tr><th>구분</th><th>뜻</th></tr></thead>
-    <tbody>
-      <tr><td>멘션(M)</td><td>답변 문장 안에 우리 브랜드가 언급돼요</td></tr>
-      <tr><td>소스(S)</td><td>답변을 만드는 재료로 우리 사이트 정보가 쓰여요</td></tr>
-      <tr><td>인용(C)</td><td>신뢰도가 높고 도메인 권위가 높다고 판단돼 문장 끝에 우리 URL이 붙어요</td></tr>
-    </tbody>
-  </table>
-</div>
+<p>'CRM 마케팅 성공 사례'를 바로 차지하기는 어려울 수 있어요. 그럴 땐 연관 키워드부터 먼저 차지하고 그다음에 노리는 '땅따먹기' 전략을 쓸 수 있어요. 1차 연관 키워드도 너무 크면 2차 연관 키워드까지 내려가서 다시 시작해요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 210" role="img" aria-label="2차 연관 키워드에서 1차 연관 키워드를 거쳐 목표 키워드로 넓혀 가는 땅따먹기 순서">
+    <defs><marker id="arrow-land" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="c2 cell" x="20" y="60" width="170" height="90" rx="10"/>
+    <text x="105" y="98" text-anchor="middle">2차 연관 키워드</text>
+    <text x="105" y="122" text-anchor="middle" class="sub">1차도 크면 여기부터</text>
+    <rect class="c1 cell" x="235" y="60" width="170" height="90" rx="10"/>
+    <text x="320" y="98" text-anchor="middle">1차 연관 키워드</text>
+    <text x="320" y="122" text-anchor="middle" class="sub">먼저 차지해요</text>
+    <rect class="accent ring" x="450" y="60" width="170" height="90" rx="10"/>
+    <text x="535" y="92" text-anchor="middle">목표 키워드</text>
+    <text x="535" y="114" text-anchor="middle" class="sub">CRM 마케팅</text>
+    <text x="535" y="132" text-anchor="middle" class="sub">성공 사례</text>
+    <path class="line" d="M192 105 h40" marker-end="url(#arrow-land)"/>
+    <path class="line" d="M407 105 h40" marker-end="url(#arrow-land)"/>
+    <text x="320" y="35" text-anchor="middle" class="sub">바깥쪽에서 안쪽으로 넓혀 가요</text>
+  </svg>
+  <figcaption>큰 키워드로 바로 들어가지 않고, 주변을 하나씩 차지해 둘러싸는 순서예요.</figcaption>
+</figure>
+<h3>AI 답변 안에서 보는 세 가지: 멘션·소스·인용</h3>
+<p>구글 검색만이 아니에요. 같은 질문을 GPT·Gemini·Perplexity·Claude에 던지고 답변을 봐요. 그 답에 우리 도메인이 있는지, 문장 안에서 우리를 언급하는지를 확인해요.</p>
+<p>아래 화면은 ChatGPT 답변의 한 부분이에요. 초록색으로 칠해진 '블럭스'가 답변 문장 안에서 브랜드가 언급된 곳, 곧 멘션이에요. 문장 끝 괄호 속 '(blux.ai)'는 그 문장을 어디서 가져왔는지 밝힌 인용이에요.</p>
 <figure>
-  <img src="assets/frame-3730.png" alt="'플랫폼별 노출 현황' 팝업. ChatGPT 아래에 M, S, C 배지와 '1위/2' 순위 표시가 있고, 하단에 Mention, Source, Citation 범례가 있어요">
-  <figcaption>엔진별로 멘션·소스·인용 여부와 추천 순위를 보여 줘요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=2250s" target="_blank" rel="noopener">영상 37:30에서 보기</a></figcaption>
+  <img src="assets/frame-3715.png" alt="ChatGPT 답변 일부. '블럭스 장점' 제목 아래 '1. AI 개인화 추천에 강점이 있어요' 항목이 있고, 브랜드 이름 '블럭스'가 초록색으로 강조돼 있으며 문장 끝에 '(blux.ai)' 링크가 붙어 있다">
+  <figcaption>초록 칠이 멘션, 문장 끝 괄호가 인용이에요. 한 답변 안에서 두 신호를 함께 볼 수 있어요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=2235s" target="_blank" rel="noopener">영상 37:15에서 보기</a></figcaption>
 </figure>
-<p>멘션됐다면 경쟁사보다 몇 번째로 추천되는지도 봐요. 재미있는 건 엔진마다 인용하는 매체가 다르다는 점이에요. 예를 들어 허브스팟이나 위키피디아가 잘 인용된다면, 위키피디아에 브랜드를 올리는 전략을 세워 볼 수 있어요.</p>
+<p>게스트의 구분은 이래요. AI는 여러 사이트에서 정보를 가져와 문장을 만들어요. 가져다 쓴 사이트가 소스예요. 소스 중에서도 확신도가 높은 문장이고 도메인 권위가 높다고 판단되면, 문장 끝에 URL을 붙여요. 그게 인용이에요. 그래서 셋을 '멘션됐나, 소스로 쓰였나, 그중 인용됐나'로 봐요. 멘션됐다면 경쟁사보다 몇 번째로 추천되는지도 함께 봐요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="AI 답변에서 멘션, 소스, 인용의 관계. 인용은 소스 안에 포함되고 멘션은 답변 문장 쪽에 따로 있다">
+    <rect class="c1 cell" x="20" y="20" width="260" height="190" rx="12"/>
+    <text x="150" y="50" text-anchor="middle">답변 문장</text>
+    <rect class="c3 cell" x="45" y="80" width="210" height="100" rx="10"/>
+    <text x="150" y="118" text-anchor="middle">M · 멘션</text>
+    <text x="150" y="142" text-anchor="middle" class="sub">문장 안에 브랜드 언급</text>
+    <text x="150" y="162" text-anchor="middle" class="sub">몇 번째로 추천됐나</text>
+    <rect class="c2 cell" x="320" y="20" width="300" height="190" rx="12"/>
+    <text x="470" y="50" text-anchor="middle">S · 소스</text>
+    <text x="470" y="72" text-anchor="middle" class="sub">답변을 만들 때 가져다 쓴 사이트</text>
+    <rect class="accent ring" x="350" y="95" width="240" height="90" rx="10"/>
+    <text x="470" y="128" text-anchor="middle">C · 인용</text>
+    <text x="470" y="150" text-anchor="middle" class="sub">확신도·도메인 권위가 높아</text>
+    <text x="470" y="168" text-anchor="middle" class="sub">문장 끝에 URL이 붙은 소스</text>
+  </svg>
+  <figcaption>인용은 소스의 일부예요. 멘션은 따로 봐요. 우리 사이트가 소스로만 쓰이고 이름은 안 나올 수도 있어서예요.</figcaption>
+</figure>
+<p>도구 화면은 이걸 엔진별 카드로 보여 줘요. 아래 ChatGPT 카드에는 M·S·C 세 칸과 '1위/2'라는 순위가 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-3730.png" alt="'플랫폼별 노출 현황' 카드. ChatGPT 아래에 M, S, C 세 칸이 있고 그 밑에 '1위/2' 순위 표시가 있다. 하단 범례는 M Mention, S Source, C Citation이다">
+  <figcaption>'1위/2'는 경쟁사와 비교해 몇 번째로 추천됐는지를 보여 주는 칸이에요. 멘션 노출, 소스 노출, 인용 노출, 멘션 순위를 한 칸에 모았어요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=2250s" target="_blank" rel="noopener">영상 37:30에서 보기</a></figcaption>
+</figure>
+<h3>엔진마다 좋아하는 곳이 달라요</h3>
+<p>게스트가 재밌다고 꼽은 건 엔진마다 노출 정도와 인용하는 곳이 다르다는 점이에요. 그걸 보고 어떤 매체를 주력 채널로, 어떤 매체를 보조 채널로 쓸지 정해요. 예를 들어 어떤 엔진이 위키피디아를 잘 인용한다면, 위키피디아에 우리 브랜드가 나오게 하는 전략을 고민해 볼 수 있어요.</p>
 </section>
 
 <section id="s8">
   <a class="stamp" href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=2291s" target="_blank" rel="noopener">38:11</a>
-  <h2>AI가 좋아하는 콘텐츠 만들기</h2>
-<p>어떤 키워드를 점유할지 정했다면, SEO든 GEO든 결국 콘텐츠가 필요해요. 이 대표는 콘텐츠를 만들기 전에 이렇게 준비해요.</p>
-<ol>
-  <li>그 키워드의 지금 순위, 경쟁사, 검색량, 경쟁 정도를 확인해요.</li>
-  <li>검색 결과에 어떤 도메인과 타이틀·디스크립션이 나오는지, AI 요약은 어떻게 나오는지 봐요.</li>
-  <li>상위 URL의 형식을 보고 가이드형, 리뷰형, 비교형, 하우투형 중 무엇이 맞을지 정해요.</li>
-  <li>검색하는 사람이 느끼는 페인포인트를 콘텐츠의 단서로 삼아요.</li>
-</ol>
+  <h2>AI가 좋아하는 콘텐츠는 이렇게 설계해요</h2>
+<p>어떤 키워드를 차지할지 정했다면, SEO든 GEO든 결국 콘텐츠가 필요해요. 게스트는 '검색 엔진과 AI가 좋아하는 콘텐츠'를 만드는 순서를 보여 줘요.</p>
+<h3>먼저 그 키워드의 판을 읽어요</h3>
+<p>그 키워드에서 우리 순위와 경쟁사 순위, 검색량, 경쟁 정도를 봐요. 검색 결과에 어떤 도메인과 어떤 제목·설명이 나오는지, AI 요약이 있다면 어떻게 요약하는지도 봐요. 그리고 지금 노출되는 글들의 형식을 보고, 이 키워드엔 가이드형·리뷰형·비교형·하우투형 중 무엇이 맞는지 정해요.</p>
 <figure>
-  <img src="assets/frame-3911.png" alt="헤일로X의 '전략 분석 결과' 카드. 콘텐츠 형식으로 가이드형, 리뷰형, 비교형, 하우투형, 리스트형, 뉴스형이 나열되고 하나가 선택돼 있어요">
-  <figcaption>상위 결과를 보고 어울리는 콘텐츠 형식을 골라 줘요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=2351s" target="_blank" rel="noopener">영상 39:11에서 보기</a></figcaption>
+  <img src="assets/frame-3915.png" alt="'전략 분석 결과' 카드. 콘텐츠 핵심에 2026년 하객룩 트렌드 설명이 있고, 콘텐츠 형식으로 가이드·리뷰형·비교형·HOW-TO·리스트형·뉴스형 중 가이드와 HOW-TO가 강조돼 있다. '블로그 비중 21% — 심층 가이드로 차별화 가능'이라는 메모와 타깃 독자 설명, 독자 수준 초급·중급·고급 중 중급 선택이 보인다">
+  <figcaption>데모 키워드는 '하객룩'이에요. 형식 여섯 개 중 가이드와 HOW-TO가 골라져 있어요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=2355s" target="_blank" rel="noopener">영상 39:15에서 보기</a></figcaption>
 </figure>
-<h3>목차는 질문에 답하는 모양으로</h3>
-<p>제목과 디스크립션, 다른 콘텐츠와의 차별점도 정해요. 이 대표는 AI와 구글이 통계 숫자를 좋아한다고 해요. 그래서 전문성과 권위를 보여 줄 통계나 인용 근거가 있는지도 챙겨요.</p>
-<p>목차는 특히 중요하대요. 가장 좋은 목차는 질문에 대한 답이 되는 목차예요. 상위 결과의 타이틀·디스크립션에서 반복되는 문장을 빌려 오는 것도 좋아요. 그래서 <span class="term" data-term="SERP" data-desc="Search Engine Results Page의 줄임말로, 검색어를 넣었을 때 나오는 결과 페이지 전체를 말해요. 어떤 사이트와 문구가 어떤 순서로 뜨는지 보는 기준이에요.">SERP</span>와 AI 오버뷰, PAA 질문까지 목차가 덮고 있는지를 보며 짜요.</p>
+<p>그 키워드를 검색하는 사람이 느끼는 불편, 곧 페인 포인트도 콘텐츠의 단서가 돼요. 이걸 바탕으로 목차까지 제안해 줘요.</p>
+<h3>잘 노출되는 글의 재료</h3>
+<p>아래 화면은 콘텐츠 하나의 설계도예요. 제목과 한 줄 설명, 다른 글과의 차별점, 넣을 인용(통계 1·전문가 1·권위 2), 기대 효과(3~6개월)가 적혀 있어요.</p>
 <figure>
-  <img src="assets/frame-3951.png" alt="'콘텐츠 블루프린트' 카드. '2026년 하객룩 쇼핑몰 비교 분석' 같은 제목과 설명, 차별점, 예상 분량이 적혀 있고 오른쪽 위에 95점이 표시돼 있어요">
-  <figcaption>제목, 디스크립션, 차별점을 묶은 콘텐츠 설계도예요. 데모라 예시 주제예요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=2391s" target="_blank" rel="noopener">영상 39:51에서 보기</a></figcaption>
+  <img src="assets/frame-3940.png" alt="'콘텐츠 블루프린트' 카드. Pillar, 글유형 비교형, 트래픽 high, 난이도 보통 태그 아래 제목 '2026년 하객룩 쇼핑몰 비교 분석: 아뜨랑스 vs 무신사 vs HaloX 적용 브랜드'가 있고, 차별점, 역할 Pillar·광범위 권위, 인용 슬롯 통계 1·전문가 1·권위 2, 예상 효과 3~6개월, 우선순위 95가 표시돼 있다">
+  <figcaption>'인용 슬롯' 칸이 눈여겨볼 곳이에요. 통계와 전문가·권위 있는 출처를 글에 몇 개 넣을지까지 미리 정해요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=2380s" target="_blank" rel="noopener">영상 39:40에서 보기</a></figcaption>
 </figure>
-<h3>제품을 녹이는 방식</h3>
-<p>내 제품이 있다면 콘텐츠에 녹여야 하죠. 이 대표는 GPT가 중립성을 좋아해서 비교 콘텐츠가 좋다고 말해요. 균형 있게 쓸지, 자사 중심으로 쓸지, 제품을 표로 보여 줄지, 끝에 짧게만 넣을지도 고를 수 있어요.</p>
-<h3>AI가 좋아하는 도메인과 문장</h3>
-<p>이 대표는 AI가 좋아하는 도메인과 문장이 따로 있다고 봐요. 헤일로X는 그런 도메인과 문장을 모아 뒀다가 콘텐츠를 쓸 때 활용해요. 이미 AI가 좋아하는 재료로 쓰니 노출될 확률이 더 높다는 논리예요. 여기에 회사가 오래 써 온 글 스타일을 페르소나로 만들어 얹고, 추가 맥락을 더해 초안을 만들어요.</p>
-<figure>
-  <img src="assets/frame-4151.png" alt="헤일로X가 만든 콘텐츠 초안 화면. '전문가 팁', '자주 하는 실수' 같은 소제목 아래 본문이 이어지고 맨 아래 레퍼런스가 붙어 있어요">
-  <figcaption>TL;DR부터 개념, 분석, 비교표, 레퍼런스까지 갖춘 초안이 나와요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=2511s" target="_blank" rel="noopener">영상 41:51에서 보기</a></figcaption>
-</figure>
-<p>진행자는 이 대표가 마케팅에 과학적으로 접근한다고 평했어요. 이 대표도 숫자와 원리를 좋아해서 SEO가 잘 맞는 분야라고 답했어요. 다만 이런 도구는 SEO 기술 지식이 어느 정도 있어야 제대로 쓸 수 있다고 덧붙였어요.</p>
+<p>게스트가 꼽은 재료를 정리하면 이래요.</p>
+<ul>
+  <li><b>통계와 권위</b>: AI와 구글은 통계 숫자를 좋아해요. 전문성과 권위를 보여 주는 인용을 넣어요.</li>
+  <li><b>목차</b>: 목차가 아주 중요하다고 해요. 가장 좋은 건 관련 질문에 답하는 목차예요. 검색 결과(SERP(Search Engine Results Page))의 제목·설명에 반복해서 나오는 문장도 빌려 쓰면 좋아요. 그래서 목차가 SERP, AI 요약, 관련 질문을 얼마나 덮고 있는지를 보며 다듬어요.</li>
+  <li><b>비교 콘텐츠</b>: GPT는 중립적인 글을 좋아해서 비교 글이 잘 맞아요. 자사 제품은 균형 있게 넣을 수도, 자사 중심으로 쓸 수도 있어요. 표로 보여 줄지, 끝에 짧게 넣을지도 정해요.</li>
+  <li><b>AI가 좋아하는 도메인과 문장</b>: AI가 자주 인용하는 도메인과 문장을 모아 두고, 그걸 바탕으로 쓰면 노출 확률이 높아진다고 해요.</li>
+  <li><b>페르소나</b>: 회사가 오래 써 온 글 스타일을 페르소나로 만들어 두고, 거기에 맥락을 더해 글을 써요.</li>
+</ul>
+<p>이렇게 만든 글은 요약(TL;DR)으로 시작해서 개념 소개, 분석, 비교표로 이어지고 참고 자료로 끝나요. 진행자는 게스트의 방식이 과학적이라고 느꼈다고 하고, 게스트는 숫자와 원리를 좋아해서 잘 맞는 분야라고 답해요.</p>
 </section>
 
 <section id="s9">
-  <a class="stamp" href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=2578s" target="_blank" rel="noopener">42:58</a>
-  <h2>작은 팀은 마케팅 자원을 어떻게 나눌까요?</h2>
-<p>진행자 회사엔 콘텐츠 마케터가 따로 없어요. 퍼포먼스 마케팅도, CRM도, SEO도 다 해야 할 것 같은데 자원은 한정돼 있죠. 어떻게 나눠야 할까요?</p>
-<p>이 대표는 사이트 상태나 브랜드 단계에 따라 다르다고 전제한 뒤, 마케팅을 두 갈래로 나눠요.</p>
+  <a class="stamp" href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=2526s" target="_blank" rel="noopener">42:06</a>
+  <h2>작은 팀은 마케팅을 어떻게 나눌까요</h2>
+<p>게스트는 HaloX가 SEO 기술 지식이 어느 정도 있는 사람에게 맞는 도구라고 말해요. 그런 기반이 없다면 컨설팅을 함께 하며 돕는다고 해요. 그리고 SEO는 스타트업부터 대기업까지 다 중요하고, GEO에 대응하려면 꼭 해야 하는 일이라고 덧붙여요.</p>
+<h3>자원이 적을 때 무엇부터 할까요</h3>
+<p>진행자의 고민은 현실적이에요. 콘텐츠 마케터가 따로 없어서 자기가 직접 해야 하는데, 퍼포먼스 마케팅도 CRM도 SEO도 다 해야 할 것 같아요. 게스트는 사이트 상태와 브랜드 단계에 따라 다르다고 전제한 뒤, 마케팅을 두 부류로 나눠요.</p>
 <figure>
-  <img src="assets/frame-4358.png" alt="'마케팅의 두 가지 역할' 일러스트. 왼쪽은 SEO와 퍼포먼스 마케팅으로 신규 고객을 데려오는 깔때기, 오른쪽은 CRM 마케팅으로 기존 고객을 붙잡는 모습이에요">
-  <figcaption>데려오는 마케팅과 머무르게 하는 마케팅이에요. <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=2638s" target="_blank" rel="noopener">영상 43:58에서 보기</a></figcaption>
+  <img src="assets/frame-4356.png" alt="'마케팅의 두 가지 역할' 슬라이드. 왼쪽 '고객을 데려오는 마케팅' 칸에 SEO와 퍼포먼스 마케팅 아이콘, 자석 모양 깔때기, '신규 고객 확보 — 검색과 광고로 새로운 고객을 만난다'가 있고, 더하기 기호 오른쪽 '고객을 머무르게 하는 마케팅' 칸에 CRM 마케팅과 '기존 고객 유지 — 관계와 재방문으로 고객을 유지한다'가 있다">
+  <figcaption>두 칸 사이가 더하기 기호예요. 어느 한쪽을 고르는 게 아니라 둘을 함께 돌린다는 뜻이에요.
+    <a href="https://www.youtube.com/watch?v=6S_3OfKM-No&amp;t=2636s" target="_blank" rel="noopener">영상 43:56에서 보기</a></figcaption>
 </figure>
+<p>SEO와 퍼포먼스 마케팅은 고객을 데려오는 데 집중하고, CRM은 고객을 머무르게 하는 데 집중해요. 고객을 어느 정도 데려온 뒤(애퀴지션), 들어온 사람들이 머무르는지 보면서 사이트를 고쳐 나가야 해요. 그래서 이 둘은 계속 반복해야 하는 짝이에요.</p>
+<h3>SEO는 늦게 열매를 맺어요</h3>
+<p>SEO는 시작해서 성과를 보기까지 짧으면 1~2개월, 길면 6개월이 걸리는 큰 작업이에요. 그래서 게스트의 답은 이래요. SEO는 처음부터 당연히 시작해요. 동시에 빨리 성과를 보고 서비스를 고쳐야 한다면, 퍼포먼스 마케팅으로 트래픽을 붓고 CRM으로 그 사람들이 떠나지 않게 해요. 진행자의 반응은 '할 일이 많네요'였어요.</p>
 <div class="table-scroll">
   <table>
-    <thead><tr><th>구분</th><th>하는 일</th><th>방법</th></tr></thead>
+    <thead><tr><th>활동</th><th>역할</th><th>영상에서 말한 쓰임</th></tr></thead>
     <tbody>
-      <tr><td>데려오는 마케팅</td><td>새 고객을 사이트로 데려와요</td><td>SEO, 퍼포먼스 마케팅</td></tr>
-      <tr><td>머무르게 하는 마케팅</td><td>들어온 고객이 떠나지 않게 해요</td><td>CRM 마케팅</td></tr>
+      <tr><td>SEO</td><td>고객을 데려와요</td><td>처음부터 시작해요. 성과까지 1~6개월이 걸려요</td></tr>
+      <tr><td>퍼포먼스 마케팅</td><td>고객을 데려와요</td><td>빨리 트래픽을 부어 반응을 봐요</td></tr>
+      <tr><td>CRM</td><td>고객을 머무르게 해요</td><td>들어온 사람이 떠나지 않게 해요</td></tr>
     </tbody>
   </table>
 </div>
-<p>고객을 어느 정도 데려온 뒤, 그들이 머무는지 보면서 사이트를 고쳐 나가야 해요. 그래서 두 가지는 계속 번갈아 돌아가요.</p>
-<p>SEO는 성과가 보이기까지 짧으면 한두 달, 길면 6개월이 걸리는 큰 작업이에요. 그래서 SEO는 처음부터 시작해 두되, 빨리 성과를 보고 판단해야 한다면 퍼포먼스로 트래픽을 붓고 CRM으로 이탈을 막는 일을 함께 하라고 해요.</p>
-<p>마지막으로 이 대표는 한국의 SEO·GEO 시장이 해외보다 확실히 뒤처져 있다고 말해요. 다른 마케팅보다 관심이 덜했는데, GEO가 떠오르면서 관심이 커지고 있대요. 이 분야에 뛰어드는 사람이 더 많아지길 바란다는 말로 마무리했어요.</p>
+<h3>마무리</h3>
+<p>게스트는 한국의 SEO·GEO가 해외보다 확실히 뒤처져 있고, 다른 마케팅 분야보다 관심도 덜했다고 말해요. 그런데 GEO가 등장하면서 관심이 커지고 있어요. 이 분야에 뛰어드는 사람이 많아지고 산업이 넓어졌으면 좋겠다는 말로 끝맺어요.</p>
 </section>
 
 <section id="corrections">
   <h2>자막 표기 바로잡기</h2>
 <aside class="note">
   <span class="tag">자막 관련 참고</span>
-  <p>자동생성 자막이라 영어 용어와 이름이 많이 틀려 있어요. 화면 자막과 문맥으로 이렇게 바로잡았어요.</p>
+  <p>자동생성 자막이라 이름과 영어 용어가 잘못 받아적힌 곳이 많아요. 화면과 문맥으로 이렇게 바로잡았어요.</p>
   <div class="table-scroll"><table>
     <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
     <tbody>
-      <tr><td>하와이의 팟캐스트</td><td>How I AI 팟캐스트</td><td>화면 로고 기준</td></tr>
-      <tr><td>SU 관련 솔루션, GE, 지오, GU, GO</td><td>SEO, GEO</td><td></td></tr>
-      <tr><td>세긴, 세인, 세계</td><td>색인</td><td></td></tr>
-      <tr><td>테크니컬 SE</td><td>테크니컬 SEO</td><td></td></tr>
-      <tr><td>도미</td><td>도메인</td><td></td></tr>
-      <tr><td>전류, 점류</td><td>점유</td><td></td></tr>
-      <tr><td>퍼플렉시스</td><td>Perplexity</td><td></td></tr>
-      <tr><td>운대시</td><td>엠 대시(—)</td><td>화면 자막 기준</td></tr>
-      <tr><td>조시인 컴퍼니, 조향 컴퍼니, 조시아인 컴퍼니</td><td>조슈아앤컴퍼니</td><td>화면 기준</td></tr>
-      <tr><td>쓰레드 토키딜 조시화점 사이트</td><td>joshua.site</td><td>화면 기준</td></tr>
-      <tr><td>스키마 마커들이 제이슨</td><td>스키마 마크업, JSON-LD</td><td>(추정)</td></tr>
-      <tr><td>AO 영역, 엔서 엔진 최적화</td><td>AEO(Answer Engine Optimization)</td><td></td></tr>
-      <tr><td>SEO 메타인 원클릭</td><td>SEO META in 1 CLICK</td><td>화면 기준</td></tr>
-      <tr><td>로봇 문서, 로봇 분석</td><td>robots.txt</td><td></td></tr>
-      <tr><td>잉크드</td><td>링크드인(LinkedIn)</td><td>화면 자막 기준</td></tr>
+      <tr><td>하와이의 팟캐스트</td><td>How I AI 팟캐스트</td><td>화면 왼쪽 위 로고</td></tr>
+      <tr><td>헤일로엑스 / 헤일러 X / 헤이로 X</td><td>HaloX</td><td>게스트의 SEO·GEO 도구</td></tr>
+      <tr><td>조슈아앤 컴퍼니 / 조시인 컴퍼니 / 조시아 컴퍼니 / 조향 컴퍼니</td><td>조슈아앤컴퍼니 (joshua.site)</td><td>진행자의 회사</td></tr>
+      <tr><td>GE / GO / 지오</td><td>GEO</td><td></td></tr>
+      <tr><td>AO 영역</td><td>AEO (Answer Engine Optimization)</td><td></td></tr>
+      <tr><td>세긴 / 세인 / 세계과</td><td>색인</td><td></td></tr>
+      <tr><td>전류 / 점류</td><td>점유</td><td></td></tr>
+      <tr><td>건위</td><td>권위</td><td></td></tr>
+      <tr><td>카비콘 / 패비콘</td><td>파비콘</td><td></td></tr>
+      <tr><td>운대시</td><td>엠대시(—, 긴 줄표)</td><td>(추정)</td></tr>
+      <tr><td>SEO 메타인 원클릭 / SEU 메타인 원클릭</td><td>SEO META in 1 CLICK</td><td>크롬 확장 프로그램</td></tr>
+      <tr><td>잉크드</td><td>링크드인</td><td></td></tr>
       <tr><td>사이드맨</td><td>사이트맵</td><td></td></tr>
-      <tr><td>알트, RT</td><td>alt 텍스트</td><td></td></tr>
-      <tr><td>제조 EX</td><td>제조 AX</td><td></td></tr>
-      <tr><td>people플 PAA, PA</td><td>PAA(People Also Ask)</td><td>화면 자막 기준</td></tr>
-      <tr><td>러버, 러버블로 만들겠어</td><td>Lovable</td><td></td></tr>
+      <tr><td>people플 PAA / PA</td><td>People Also Ask (PAA)</td><td></td></tr>
+      <tr><td>서프</td><td>SERP (검색 결과 페이지)</td><td></td></tr>
+      <tr><td>연간 키워드 / 연관 케어드</td><td>연관 키워드</td><td></td></tr>
+      <tr><td>서스펜스 SR</td><td>Suspense SSR</td><td></td></tr>
+      <tr><td>키피디아 / 위키디아</td><td>위키피디아</td><td></td></tr>
+      <tr><td>퍼플렉시스</td><td>Perplexity</td><td></td></tr>
       <tr><td>앰베소드</td><td>앰배서더</td><td></td></tr>
-      <tr><td>헤일러 X, 헤이로 X, 헤일로엑스</td><td>헤일로X(HaloX)</td><td>화면 기준</td></tr>
-      <tr><td>캐논니컬</td><td>canonical</td><td></td></tr>
-      <tr><td>서스펜스 SR</td><td>Suspense SSR</td><td>화면 기준</td></tr>
-      <tr><td>연간 키워드, 연관 케어드</td><td>연관 키워드</td><td></td></tr>
-      <tr><td>맨션</td><td>멘션(Mention)</td><td></td></tr>
-      <tr><td>브스팟, 키피디아</td><td>허브스팟(HubSpot), 위키피디아</td><td>(추정)</td></tr>
-      <tr><td>서프</td><td>SERP</td><td>화면 자막 기준</td></tr>
-      <tr><td>하우트형</td><td>하우투(How-to)형</td><td></td></tr>
-      <tr><td>퀴지션, 에큐에이션</td><td>애퀴지션(acquisition, 고객 유치)</td><td>(추정)</td></tr>
+      <tr><td>에큐에이션 / 퀴지션</td><td>애퀴지션 (acquisition, 고객 획득)</td><td></td></tr>
     </tbody>
   </table></div>
 </aside>
 </section>
 </main>
 
-<div class="tail">
+<div class="tail" id="glossary">
   <h2>이 글에 나온 용어</h2>
-  <div class="table-scroll">
-    <table>
-      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
-      <tbody>
-        <tr><td>테크니컬 SEO</td><td>글 내용이 아니라 사이트의 기술 바탕을 손보는 SEO예요. 속도, 메타 정보, URL 구조처럼 검색 봇이 사이트를 잘 읽고 이해하게 만드는 일이에요.</td></tr>
-        <tr><td>크롤링</td><td>검색 엔진의 로봇이 웹사이트를 돌아다니며 페이지를 읽어 가는 일이에요. 봇이 읽지 못한 페이지는 검색 결과에 나올 수 없어요.</td></tr>
-        <tr><td>색인</td><td>검색 엔진이 읽어 온 페이지를 나중에 찾기 쉽게 정리해 저장해 두는 일이에요. 책 뒤의 찾아보기처럼, 색인에 올라가야 검색에 걸려요.</td></tr>
-        <tr><td>메타 정보</td><td>페이지 화면에는 안 보이지만 검색 엔진에게 &#x27;이 페이지는 이런 내용&#x27;이라고 알려 주는 정보예요. 타이틀과 디스크립션이 대표적이에요.</td></tr>
-        <tr><td>파비콘</td><td>브라우저 탭과 검색 결과에서 사이트 이름 옆에 뜨는 작은 로고 그림이에요. 있으면 믿을 만한 사이트처럼 보여요.</td></tr>
-        <tr><td>robots.txt</td><td>사이트 맨 앞에 두는 짧은 안내문이에요. 어떤 검색 봇이 들어와도 되는지, 어느 페이지는 보지 말라는지 적어 둬요.</td></tr>
-        <tr><td>사이트맵</td><td>사이트에 어떤 페이지 주소가 있는지 목록으로 정리한 파일이에요. 검색 봇이 페이지를 빠짐없이 찾도록 돕는 지도 역할을 해요.</td></tr>
-        <tr><td>alt 텍스트</td><td>이미지에 붙이는 설명 글이에요. 그림을 못 보는 사람과 검색 엔진이 그 이미지가 무엇인지 알 수 있게 해 줘요.</td></tr>
-        <tr><td>AI 오버뷰</td><td>구글 검색 결과 맨 위에 AI가 여러 사이트를 요약해 보여 주는 답변 상자예요. 출처 사이트가 링크로 함께 붙어요.</td></tr>
-        <tr><td>PAA</td><td>People Also Ask의 줄임말로, 구글 검색 결과의 &#x27;관련 질문&#x27; 상자예요. 같은 주제로 사람들이 실제로 많이 묻는 질문을 보여 줘서 콘텐츠 아이디어로 쓰기 좋아요.</td></tr>
-        <tr><td>SSR</td><td>서버에서 페이지 내용을 다 채운 뒤 보내는 방식이에요. 받자마자 글이 들어 있어서 검색 봇이 읽기 쉬워요.</td></tr>
-        <tr><td>CSR</td><td>빈 틀만 먼저 보내고 내용은 브라우저에서 나중에 채워 넣는 방식이에요. 개발은 편하지만 기다려 주지 않는 봇은 빈 페이지만 볼 수 있어요.</td></tr>
-        <tr><td>SERP</td><td>Search Engine Results Page의 줄임말로, 검색어를 넣었을 때 나오는 결과 페이지 전체를 말해요. 어떤 사이트와 문구가 어떤 순서로 뜨는지 보는 기준이에요.</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-5"><dt>구조화 데이터<span class="en">Structured data (Schema)</span></dt><dd>회사 이름, 상품 가격, 리뷰 같은 정보를 검색 엔진이 알아보기 쉬운 정해진 형식으로 적어 둔 것이에요. 스키마라고도 하고, 검색 결과에 더 풍부하게 보이게 도와줘요.</dd></div>
+    <div class="g" id="g-9"><dt>대체 텍스트<span class="en">Alt text</span></dt><dd>이미지가 무엇인지 글로 적어 두는 설명이에요. 검색 엔진은 그림을 직접 이해하기 어려워서 이 글을 보고 이미지를 판단해요.</dd></div>
+    <div class="g" id="g-4"><dt>메타 정보<span class="en">Meta tags</span></dt><dd>페이지에 적어 두지만 화면에는 안 보이고 검색 봇이 읽는 정보예요. 검색 결과에 뜨는 제목(타이틀)과 설명(디스크립션)이 여기서 나와요.</dd></div>
+    <div class="g" id="g-8"><dt>사이트맵<span class="en">Sitemap</span></dt><dd>사이트에 어떤 페이지가 있고 언제 바뀌었는지 목록으로 적어 검색 엔진에 알려 주는 파일이에요. 봇에게 건네는 지도예요.</dd></div>
+    <div class="g" id="g-3"><dt>색인<span class="en">Indexing</span></dt><dd>봇이 읽어 온 페이지를 검색할 수 있게 정리해 저장해 두는 일이에요. 도서관 책을 분류해 꽂아 두는 것과 비슷해요.</dd></div>
+    <div class="g" id="g-12"><dt>서버 사이드 렌더링<span class="en">Server-Side Rendering</span></dt><dd>서버가 페이지 내용을 다 채워서 보내는 방식이에요. 봇이 페이지를 열자마자 내용을 읽을 수 있어요.</dd></div>
+    <div class="g" id="g-2"><dt>크롤링<span class="en">Crawling</span></dt><dd>검색 엔진의 봇이 사이트를 돌아다니며 페이지 내용을 읽어 가는 일이에요. 봇이 못 읽은 페이지는 검색에 나올 수 없어요.</dd></div>
+    <div class="g" id="g-13"><dt>클라이언트 사이드 렌더링<span class="en">Client-Side Rendering</span></dt><dd>서버는 빈 틀만 보내고, 방문자의 브라우저가 나중에 내용을 채우는 방식이에요. 사람은 잘 보지만 기다려 주지 않는 봇은 빈 페이지만 볼 수 있어요.</dd></div>
+    <div class="g" id="g-1"><dt>테크니컬 SEO<span class="en">Technical SEO</span></dt><dd>글 내용이 아니라 사이트 자체를 다듬어서 검색 봇이 잘 찾아오고 잘 이해하게 만드는 일이에요. 속도, 메타 정보, URL 구조 같은 것이 여기에 들어가요.</dd></div>
+    <div class="g" id="g-6"><dt>파비콘<span class="en">Favicon</span></dt><dd>브라우저 탭과 검색 결과에 보이는 사이트의 작은 로고 그림이에요. 없으면 사이트가 덜 갖춰져 보여요.</dd></div>
+    <div class="g" id="g-14"><dt>퍼포먼스 마케팅<span class="en">Performance marketing</span></dt><dd>검색 광고나 SNS 광고처럼 돈을 들여 바로 트래픽을 사 오고, 클릭과 구매 같은 숫자로 성과를 재는 마케팅이에요.</dd></div>
+    <div class="g"><dt>AEO</dt><dd>Answer Engine Optimization</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g" id="g-11"><dt>AI 요약<span class="en">AI Overviews</span></dt><dd>구글 검색 결과 맨 위에 AI가 여러 사이트 내용을 엮어 만든 요약 답변이에요. 문장마다 어느 사이트에서 가져왔는지 링크가 붙어요.</dd></div>
+    <div class="g"><dt>AX</dt><dd>AI Transformation</dd></div>
+    <div class="g"><dt>B2B</dt><dd>Business to Business</dd></div>
+    <div class="g"><dt>CRM</dt><dd>Customer Relationship Management</dd></div>
+    <div class="g"><dt>CSR</dt><dd>Client-Side Rendering</dd></div>
+    <div class="g"><dt>CSS</dt><dd>Cascading Style Sheets</dd></div>
+    <div class="g"><dt>GEO</dt><dd>Generative Engine Optimization</dd></div>
+    <div class="g"><dt>GPT</dt><dd>Generative Pre-trained Transformer</dd></div>
+    <div class="g"><dt>HTML</dt><dd>HyperText Markup Language</dd></div>
+    <div class="g"><dt>JS</dt><dd>JavaScript</dd></div>
+    <div class="g"><dt>LLM</dt><dd>Large Language Model</dd></div>
+    <div class="g"><dt>PAA</dt><dd>People Also Ask</dd></div>
+    <div class="g" id="g-10"><dt>People Also Ask</dt><dd>구글 검색 결과 중간에 뜨는 &#x27;관련 질문&#x27; 상자예요. 같은 키워드로 사람들이 실제로 많이 묻는 질문을 보여 줘서 콘텐츠 주제를 찾는 단서가 돼요.</dd></div>
+    <div class="g" id="g-7"><dt>robots.txt</dt><dd>사이트 첫 주소 뒤에 두는 텍스트 파일로, 어떤 검색 봇이 어떤 경로에 들어와도 되는지 적어 둬요. 봇에게 여는 대문 역할이에요.</dd></div>
+    <div class="g"><dt>SEO</dt><dd>Search Engine Optimization</dd></div>
+    <div class="g"><dt>SERP</dt><dd>Search Engine Results Page</dd></div>
+    <div class="g"><dt>SSR</dt><dd>Server-Side Rendering</dd></div>
+    <div class="g"><dt>UA</dt><dd>User Agent</dd></div>
+    <div class="g"><dt>URL</dt><dd>Uniform Resource Locator</dd></div>
+  </dl>
 </div>
 
-<div class="tail">
+<div class="tail" id="sources">
   <h2>참고한 곳</h2>
   <ol>
-    <li><a href="https://www.youtube.com/watch?v=6S_3OfKM-No" target="_blank" rel="noopener">원본 영상 — 빌더 조쉬 Builder Josh</a></li>
-    <li><a href="https://developers.google.com/search/docs/appearance/ai-features" target="_blank" rel="noopener">Google Search Central — AI features and your website</a></li>
-    <li><a href="https://developers.google.com/search/docs/appearance/site-names" target="_blank" rel="noopener">Google Search Central — Provide a site name to Google Search</a></li>
-    <li><a href="https://developers.google.com/search/docs/crawling-indexing/robots/intro" target="_blank" rel="noopener">Google Search Central — Introduction to robots.txt</a></li>
-    <li><a href="https://platform.openai.com/docs/bots" target="_blank" rel="noopener">OpenAI — Overview of OpenAI Crawlers</a></li>
-    <li><a href="https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap" target="_blank" rel="noopener">Google Search Central — Build and submit a sitemap</a></li>
-    <li><a href="https://developers.google.com/search/docs/appearance/google-images" target="_blank" rel="noopener">Google Search Central — Image SEO best practices</a></li>
-    <li><a href="https://developers.google.com/search/docs/crawling-indexing/javascript/javascript-seo-basics" target="_blank" rel="noopener">Google Search Central — JavaScript SEO basics</a></li>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=6S_3OfKM-No" target="_blank" rel="noopener">원본 영상 — 빌더 조쉬 Builder Josh</a></li>
+    <li id="src-2"><a href="https://developers.google.com/search/docs/appearance/ai-features" target="_blank" rel="noopener">Google Search Central — AI features and your website</a></li>
+    <li id="src-3"><a href="https://developers.google.com/search/docs/appearance/site-names" target="_blank" rel="noopener">Google Search Central — Site names in Google Search</a></li>
+    <li id="src-4"><a href="https://developers.google.com/search/docs/crawling-indexing/robots/intro" target="_blank" rel="noopener">Google Search Central — Introduction to robots.txt</a></li>
+    <li id="src-5"><a href="https://platform.openai.com/docs/bots" target="_blank" rel="noopener">OpenAI — Overview of OpenAI Crawlers</a></li>
+    <li id="src-6"><a href="https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap" target="_blank" rel="noopener">Google Search Central — Build and submit a sitemap</a></li>
+    <li id="src-7"><a href="https://developers.google.com/search/docs/crawling-indexing/javascript/javascript-seo-basics" target="_blank" rel="noopener">Google Search Central — JavaScript SEO basics</a></li>
   </ol>
 </div>
 
-<footer>2026년 10월 1일에 이 영상을 보고 정리했어요. 원본은 빌더 조쉬 Builder Josh 채널에 있어요.</footer>
+<footer>2026년 10월 14일에 이 영상을 보고 정리했어요. 원본은 빌더 조쉬 Builder Josh 채널에 있어요.</footer>
 
 </div>
 
-<div id="tip" role="tooltip"></div>
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
 <script>
 (function () {
-  // ── 용어 툴팁 ───────────────────────────────────────
-  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
-  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
-  var tip = document.getElementById('tip');
-  var open = null;
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
 
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
   function show(el) {
+    clearTimeout(hideTimer);
     var desc = el.getAttribute('data-desc');
     if (!desc) return;
-    var name = el.getAttribute('data-term') || el.textContent;
+    if (open && open !== el) open.classList.remove('open');
     tip.innerHTML = '';
-    var b = document.createElement('b');
-    b.textContent = name;
-    tip.appendChild(b);
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
     tip.appendChild(document.createTextNode(desc));
-    tip.classList.add('on');
-
-    var r = el.getBoundingClientRect();
-    var t = tip.getBoundingClientRect();
-    var pad = 12;
-    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
-    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
-    var top = r.top + window.scrollY - t.height - 10;
-    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
-    tip.style.left = left + 'px';
-    tip.style.top = top + 'px';
-    open = el;
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
   }
-
-  function hide() {
-    tip.classList.remove('on');
-    open = null;
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
   }
 
   document.querySelectorAll('.term').forEach(function (el) {
-    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
-    el.addEventListener('mouseenter', function () { show(el); });
-    el.addEventListener('mouseleave', hide);
-    el.addEventListener('focus', function () { show(el); });
-    el.addEventListener('blur', hide);
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
     el.addEventListener('click', function (e) {
-      e.preventDefault();
-      open === el ? hide() : show(el);
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
     });
   });
 
-  document.addEventListener('click', function (e) {
-    if (open && !e.target.closest('.term')) hide();
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
   });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') hide();
-  });
-  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
-  window.addEventListener('resize', hide);
 
-  // ── 목차 현재 위치 표시 ─────────────────────────────
-  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
-  var map = {};
-  links.forEach(function (a) {
-    var s = document.getElementById(a.getAttribute('href').slice(1));
-    if (s) map[s.id] = a;
-  });
-  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
-  if ('IntersectionObserver' in window && targets.length) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (!en.isIntersecting) return;
-        links.forEach(function (a) { a.classList.remove('active'); });
-        map[en.target.id].classList.add('active');
-      });
-    }, { rootMargin: '-10% 0px -75% 0px' });
-    targets.forEach(function (t) { io.observe(t); });
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
   }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
 })();
 </script>
+
 </body>
 </html>

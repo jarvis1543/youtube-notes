@@ -25,6 +25,8 @@
 <!-- yn-lock:end -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>바이브코딩 앱이 해킹될 수밖에 없는 이유 (완결)</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 <style>
   :root{
     --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
@@ -32,7 +34,10 @@
     --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
     --warn:#ff8a00; --warn-soft:#fff4e6;
     --info:#00b8a9; --info-soft:#e4f8f6;
-    --radius:16px; --maxw:760px;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
   }
   @media (prefers-color-scheme:dark){
     :root{
@@ -41,6 +46,8 @@
       --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
       --warn:#ffab4a; --warn-soft:#3a2a13;
       --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
     }
   }
   *{box-sizing:border-box}
@@ -78,13 +85,29 @@
   .keypoints li strong{color:var(--text)}
 
   /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
   nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
     border-radius:var(--radius)}
   nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
   nav.toc ol{margin:0; padding-left:20px}
-  nav.toc li{margin:6px 0; font-size:15px}
-  nav.toc a{color:var(--text-sub)}
-  nav.toc a.active{color:var(--brand); font-weight:600}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
 
   /* ── 본문 ──────────────────────────────────────────── */
   section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
@@ -99,6 +122,16 @@
     background:var(--surface-2); color:var(--text-mute);
     font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
   a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
 
   /* ── 그림 ──────────────────────────────────────────── */
   figure{margin:28px 0}
@@ -115,23 +148,33 @@
   thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
     font-weight:700; white-space:nowrap}
   tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
   td code{font-size:13.5px}
 
-  /* ── 용어 툴팁 ─────────────────────────────────────── */
-  .term{border-bottom:2px dotted var(--brand); color:inherit; cursor:help;
-    font-weight:600; background:none}
-  .term:focus{outline:2px solid var(--brand); outline-offset:2px; border-radius:3px}
-  #tip{position:absolute; z-index:50; max-width:320px; padding:12px 14px;
-    background:var(--text); color:var(--bg); border-radius:12px;
-    font-size:14px; line-height:1.6; font-weight:400; letter-spacing:-.01em;
-    box-shadow:0 8px 24px rgba(0,0,0,.18); opacity:0; visibility:hidden;
-    transition:opacity .12s ease; pointer-events:none}
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
   #tip.on{opacity:1; visibility:visible}
-  #tip b{display:block; margin-bottom:4px; font-size:13px; opacity:.72}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
 
   /* ── 박스 두 종류 ───────────────────────────────────
      .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
-     .note — 문서를 읽는 데 필요한 안내 (자막 오인식, 협찬 구간 등, 출처 없음) */
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
   aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
   aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
   aside p{margin:8px 0}
@@ -144,6 +187,92 @@
   aside .table-scroll{margin:12px 0 0}
   aside table{min-width:320px; font-size:14.5px}
   aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
 
   /* ── 인용 ──────────────────────────────────────────── */
   blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
@@ -159,13 +288,14 @@
   pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
     border:1px solid var(--line); overflow-x:auto; line-height:1.6}
   pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
 
   /* ── 꼬리말 ────────────────────────────────────────── */
   .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
   .tail h2{font-size:20px; margin:0 0 14px}
   .tail + .tail{margin-top:40px}
   .tail ol{padding-left:20px}
-  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub)}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
   footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
     font-size:13.5px; color:var(--text-mute)}
 
@@ -185,8 +315,8 @@
   <p class="lede">보안 체크리스트 9~16번, 인가부터 개인정보 처리방침까지 짚어요</p>
   <div class="meta">
     <span>아는개발자</span><span class="dot">·</span>
-    <span>16:11</span><span class="dot">·</span>
-    <span>유튜브 영상 정리</span>
+    <span>영상 16:11</span><span class="dot">·</span>
+    <span>읽는 데 약 12분</span>
   </div>
   <a class="src-btn" href="https://www.youtube.com/watch?v=hFa-oqgueLw" target="_blank" rel="noopener">
     원본 영상 보러 가기 →
@@ -196,11 +326,11 @@
 <div class="keypoints">
   <h2>핵심만 먼저</h2>
   <ol>
-    <li>인증은 누구인지 확인하는 것, 인가는 어디까지 갈 수 있는지 정하는 것이에요. 로그인 기능이 있어도 인가가 없으면 남의 데이터가 보여요.</li>
-    <li>데이터를 다룰 때마다 서버가 '이 데이터의 주인이 지금 로그인한 사람인가'를 확인해야 해요. 주소의 숫자만 바꿔 남의 주문이 열리면 실패예요.</li>
-    <li>버튼을 화면에서 숨기는 건 차단이 아니에요. 개발자 도구로 주소를 알아내면 그대로 호출할 수 있어서, 막는 건 서버에서 해야 해요.</li>
-    <li>로그인 시도 제한, 토큰 만료, 관리자 토큰 안 남기기, 기본 계정 바꾸기, 관리자 2단계 인증을 챙겨요.</li>
-    <li>HTTPS를 켜고 비밀번호는 검증된 방식으로 해시해요. 개인정보 처리방침은 이메일 하나만 받아도 써서 게시하고, 처리위탁도 적어요.</li>
+    <li><span class="term" data-term="인증" data-en="Authentication" data-desc="이 사람이 누구인지 확인하는 절차예요. 로그인이 대표적이에요. 통과했다고 모든 걸 볼 수 있는 건 아니에요." data-g="1">인증</span>은 누구인지 확인하는 것, <span class="term" data-term="인가" data-en="Authorization" data-desc="확인된 사람이 무엇을 보고 할 수 있는지 정하는 절차예요. 바이브 코딩 앱에서 가장 자주 빠지는 부분이에요." data-g="2">인가</span>는 어디까지 허락할지 정하는 거예요. 로그인이 된다고 인가까지 된 건 아니에요.</li>
+    <li>데이터를 조회·수정·삭제하는 모든 요청에서 서버가 '이 데이터의 주인이 지금 로그인한 사람인가'를 확인해야 해요.</li>
+    <li>버튼을 화면에서 숨기는 건 차단이 아니에요. <span class="term" data-term="개발자 도구" data-en="DevTools" data-desc="브라우저에 들어 있는 점검 도구예요. 네트워크 탭에서 화면이 어떤 주소로 요청을 보내는지 누구나 볼 수 있어요." data-g="3">개발자 도구</span>로 주소를 알아내면 그냥 호출되니, 차단은 서버에서 해요.</li>
+    <li>비밀번호는 되돌릴 수 없는 <span class="term" data-term="해시" data-en="Hash" data-desc="입력을 고정된 길이의 값으로 바꾸는 한 방향 변환이에요. 결과에서 원래 값을 되돌릴 수 없어서 비밀번호 저장에 써요." data-g="7">해시</span>로, 검증된 방식으로 저장해요. 해시 로직을 직접 짜면 안 돼요.</li>
+    <li>이메일 하나만 받아도 <span class="term" data-term="개인정보 처리방침" data-en="Privacy policy" data-desc="어떤 개인정보를 왜, 얼마나 오래 처리하는지 이용자에게 알리는 공개 문서예요. 개인정보 보호법이 내용과 공개를 의무로 정해요." data-g="11">개인정보 처리방침</span>을 게시해야 하고, AI(Artificial Intelligence) API(Application Programming Interface)·클라우드 DB(Database)를 쓰면 <span class="term" data-term="처리위탁" data-desc="개인정보를 다루는 일을 다른 회사에 맡기는 거예요. AI API나 클라우드 DB에 사용자 정보를 보내는 것도 여기에 들어가서, 처리방침에 적어야 해요." data-g="12">처리위탁</span> 항목도 적어야 해요.</li>
   </ol>
 </div>
 
@@ -208,13 +338,15 @@
   <h2>목차</h2>
   <ol>
     <li><a href="#s1">인증과 인가는 다른 얘기예요</a></li>
-    <li><a href="#s2">로그인만 됐다고 다 열리면 안 돼요 (9·10번)</a></li>
-    <li><a href="#s3">숨기지 말고 서버에서 막아요 (11번)</a></li>
-    <li><a href="#s4">로그인 관리 다섯 가지 (12번)</a></li>
-    <li><a href="#s5">전송은 HTTPS, 비밀번호는 해시 (13·14번)</a></li>
-    <li><a href="#s6">법이 정한 정보와 개인정보 처리방침 (15·16번)</a></li>
+    <li><a href="#s2">로그인만 됐다고 남의 데이터가 보이면 안 돼요</a></li>
+    <li><a href="#s3">화면에서 숨기는 건 막는 게 아니에요</a></li>
+    <li><a href="#s4">로그인 관리 다섯 가지</a></li>
+    <li><a href="#s5">HTTPS와 비밀번호 해시</a></li>
+    <li><a href="#s6">법이 정한 정보와 개인정보 처리방침</a></li>
     <li><a href="#s7">보너스: OWASP Top 10</a></li>
     <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
   </ol>
 </nav>
 
@@ -222,422 +354,638 @@
 <section id="s1">
   <a class="stamp" href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=0s" target="_blank" rel="noopener">00:00</a>
   <h2>인증과 인가는 다른 얘기예요</h2>
-<p>영상은 실제 사고 하나로 시작해요. 작년 맥도날드 채용 사이트의 관리자 비밀번호가 <code>123456</code>이었고, 그 탓에 지원자 약 6,400만 명의 이름·이메일·전화번호와 대화 내용이 노출됐어요. 이런 사고를 막는 체크리스트가 이 영상의 주제예요.</p>
-<p>체크리스트는 모두 16개이고, 관련 있는 것끼리 4부로 묶었어요. 이번 영상은 3부(<span class="term" data-term="인증" data-desc="상대가 누구인지 확인하는 절차예요. 로그인처럼 아이디·비밀번호나 신분증으로 &#x27;이 사람이 맞다&#x27;를 가려내요.">인증</span>·<span class="term" data-term="인가" data-desc="확인된 사용자가 무엇을 할 수 있는지 정하는 절차예요. 같은 회원이라도 내 주문만 보고, 관리자만 관리 화면에 들어가게 해요.">인가</span>)와 4부(암호화·개인정보 처리방침), 곧 9번부터 16번까지를 다뤄요. 1부(API 키·환경변수)와 2부(데이터베이스 접근 권한)는 이전 영상에 있어요.</p>
+<p>바이브 코딩으로 만든 앱이 왜 쉽게 뚫리는지, 영상은 맥도날드 채용 사이트 사례로 시작해요. 관리자 비밀번호가 123456이었고, 지원자 이름·이메일·전화번호와 면접 대화 내용까지 6,400만 건이 노출됐다고 해요.</p>
+<p>이번 편은 보안 체크리스트 16개 중 뒤쪽 여덟 개를 다뤄요. 아래 화면의 09~16번이 이 문서의 목차예요. 앞의 1부(API 키·환경변수)와 2부(데이터베이스 접근 권한)는 채널의 이전 영상에 있어요.</p>
 <figure>
-  <img src="assets/frame-0026.png" alt="3부·4부 체크리스트 09번부터 16번까지 여덟 항목을 나열한 슬라이드">
+  <img src="assets/frame-0026.png" alt="3부·4부 체크리스트 슬라이드. 09 서버에서 권한까지 검사부터 16 개인정보처리방침 만들기까지 여덟 줄">
   <figcaption>
-    이번 영상에서 다루는 여덟 항목이에요. 도입부에서는 '딱 일곱 가지'라고 말하지만 실제로는 9~16번, 여덟 개를 다뤄요.
+    09~11번은 인가, 12번은 로그인 관리, 13~16번은 암호화와 개인정보예요.
     <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=26s" target="_blank" rel="noopener">영상 00:26에서 보기</a>
   </figcaption>
 </figure>
-<aside class="more">
-  <span class="tag">영상에 없는 보충 설명</span>
-  <p>이 사고는 보안 연구자 Ian Carroll과 Sam Curry가 2025년에 찾아 공개했어요. 채용 챗봇 McHire(Paradox.ai 제작)의 관리 화면이 기본 계정 <code>123456:123456</code>을 받아 줬어요. 여기에 내부 API의 <span class="term" data-term="IDOR" data-desc="요청에 든 번호만 바꿔서 남의 데이터에 접근하는 취약점이에요. 서버가 그 데이터의 소유자를 확인하지 않을 때 생겨요.">IDOR</span> 취약점이 겹쳐서 6,400만 건이 넘는 지원 기록에 접근할 수 있었어요. 기본 계정(12번)과 소유자 검사 누락(10번)이 한 사고에서 같이 터진 사례예요. 제보 후 하루 남짓 만에 고쳐졌다고 해요.</p>
-  <p class="cite">출처: <a href="https://ian.sh/mcdonalds" target="_blank" rel="noopener">Ian Carroll — Would you like an IDOR with that?</a></p>
-</aside>
-<h3>건물에 비유하면 쉬워요</h3>
-<p>회사 건물 1층에 경비실이 있다고 해 봐요. 신분증을 확인하고 '우리 회사 직원이 맞네' 하고 들여보내 주는 절차가 인증이에요. 들어온 사람에게 '사원은 5층까지, 6층부터는 임원만' 하고 갈 수 있는 층을 정해 주는 절차가 인가예요.</p>
-<p>외우는 요령도 알려 줘요. 인증의 '증'은 신분증, 인가는 '너 몇 층까지 가?'로 기억하면 돼요. 문을 열어 주는 것과 층을 제한하는 건 완전히 다른 일이에요.</p>
+<h3>건물로 비유한 인증과 인가</h3>
+<p>두 말은 자주 같이 나오지만 뜻이 달라요. 영상은 회사 건물에 들어가는 과정에 빗대요. 1층 경비실에서 신분증을 보여 주고 건물에 들어가는 게 인증이에요. 들어간 다음 "사원은 5층까지, 6층부터는 임원만"처럼 갈 수 있는 층을 정해 주는 게 인가예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="1층 경비실에서 신분증 확인(인증) 후, 사원은 5층까지 임원은 6층 이상까지 갈 수 있게 정하는(인가) 건물 그림">
+    <defs><marker id="arrow-bldg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect x="20" y="140" width="170" height="70" rx="10" class="c1 cell"/>
+    <text x="105" y="170" text-anchor="middle">1층 경비실</text>
+    <text x="105" y="192" text-anchor="middle" class="sub">신분증 확인</text>
+    <text x="105" y="125" text-anchor="middle" class="sub">인증 · 누구인가?</text>
+    <path d="M195 175 h60" class="line" marker-end="url(#arrow-bldg)"/>
+    <rect x="270" y="20" width="200" height="56" rx="8" class="c2 cell"/>
+    <text x="370" y="45" text-anchor="middle">6층 이상</text>
+    <text x="370" y="65" text-anchor="middle" class="sub">임원만</text>
+    <rect x="270" y="84" width="200" height="56" rx="8" class="c3 cell"/>
+    <text x="370" y="109" text-anchor="middle">5층 · 내 팀</text>
+    <text x="370" y="129" text-anchor="middle" class="sub">사원까지</text>
+    <rect x="270" y="148" width="200" height="56" rx="8" class="box"/>
+    <text x="370" y="181" text-anchor="middle">1~4층</text>
+    <text x="560" y="100" text-anchor="middle">인가</text>
+    <text x="560" y="122" text-anchor="middle" class="sub">너 몇 층까지 가?</text>
+    <rect x="260" y="12" width="220" height="200" rx="12" class="ring" fill="none"/>
+  </svg>
+  <figcaption>인증은 건물에 들어오게 하는 문, 인가는 들어온 사람이 몇 층까지 가는지 정하는 규칙이에요.</figcaption>
+</figure>
+<p>영상은 외우는 법도 알려 줘요. 인증의 '증'은 신분증, 인가는 "너 몇 층까지 가?"예요. 아래 슬라이드처럼 문을 열어 주는 것과 층을 제한하는 건 완전히 다른 얘기예요.</p>
 <figure>
-  <img src="assets/frame-0225.png" alt="'이 둘은 문 열어주기 ≠ 층 제한하기, 완전히 다른 얘기'라고 적힌 슬라이드">
+  <img src="assets/frame-0223.png" alt="이 둘은 문 열어주기 ≠ 층 제한하기, 완전히 다른 얘기라고 적힌 슬라이드">
   <figcaption>
-    인증(문 열어 주기)과 인가(층 제한하기)를 한 장으로 정리한 슬라이드예요. 이어지는 9~11번은 모두 인가 이야기예요.
-    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=145s" target="_blank" rel="noopener">영상 02:25에서 보기</a>
+    '층 제한하기'에 동그라미가 쳐져 있어요. 이 영상 앞부분은 이 인가 이야기예요.
+    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=143s" target="_blank" rel="noopener">영상 02:23에서 보기</a>
   </figcaption>
 </figure>
 </section>
 
 <section id="s2">
   <a class="stamp" href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=147s" target="_blank" rel="noopener">02:27</a>
-  <h2>로그인만 됐다고 다 열리면 안 돼요 (9·10번)</h2>
-<p>AI에게 '로그인 기능 만들어 줘'라고 하면 회원가입·로그인 화면을 그럴듯하게 만들어 줘요. 잘 돌아가는 것처럼 보이지만 껍데기만 있는 경우가 많아요. 인가 처리가 없으면 로그인만 하면 남의 데이터까지 보여요. 사원이 임원실, 회장실까지 드나드는 셈이에요.</p>
+  <h2>로그인만 됐다고 남의 데이터가 보이면 안 돼요</h2>
+<p>AI에게 "로그인 기능 만들어 줘"라고 하면 회원가입·로그인 화면이 금방 나와요. 영상은 이게 껍데기인 경우가 많다고 해요. 로그인은 되는데, 로그인한 사람이 무엇을 볼 수 있는지는 아무도 정하지 않은 상태예요. 그러면 사원이 임원실·회장실에 다 들어가는 일이 생겨요.</p>
+<h3>9번 · 서버에서 권한까지 검사하기</h3>
+<p>로그인이 된다고 안전한 게 아니에요. 확인하는 방법은 단순해요. 권한 없는 일반 계정을 하나 만들고, 그 계정으로 관리자 화면 같은 여러 주소에 들어가 봐요. 권한 없는 주소가 하나도 열리지 않아야 해요.</p>
+<h3>10번 · 내 것만 열리게 소유자 검사하기</h3>
+<p>쇼핑몰 주문 내역 주소를 보면 끝에 숫자가 붙어 있어요. 아래 슬라이드의 주황색 <code>1024</code>가 주문 번호예요. 주소는 누구나 고칠 수 있으니 1025로 바꿔서 엔터를 칠 수 있어요. 그게 남의 주문이라면 보이면 안 돼요.</p>
 <figure>
-  <img src="assets/frame-0243.png" alt="'09 서버에서 권한까지 검사하기' 제목 아래 '로그인 기능 만들어줘'와 '네! 회원가입, 로그인 다 만들었습니다' 대화가 있는 슬라이드">
+  <img src="assets/frame-0359.png" alt="10 내 것만 열리게 소유자 검사하기 슬라이드. myapp.com/orders/1024 주소에서 1024가 주황색으로 강조됨">
   <figcaption>
-    AI는 로그인 기능을 다 만들었다고 답하지만, 인가는 따로 챙겨야 해요.
-    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=163s" target="_blank" rel="noopener">영상 02:43에서 보기</a>
+    주소에 든 번호를 바꾸는 것만으로 남의 데이터를 요청할 수 있어요.
+    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=239s" target="_blank" rel="noopener">영상 03:59에서 보기</a>
   </figcaption>
 </figure>
-<p>로그인이 된다고 끝난 게 아니에요. 확인하려면 권한 없는 일반 계정을 하나 만들어요. 그 계정으로 관리자 화면 같은 여러 주소에 들어가 보고, 하나도 열리지 않는지 꼼꼼히 봐요.</p>
-<h3>주소의 숫자를 바꿔 보세요 (10번)</h3>
-<p>특정 사용자의 페이지는 정말 그 사용자만 열 수 있어야 해요. 쇼핑몰 주문 내역 주소가 <code>myapp.com/orders/1024</code>라면, 1024가 주문 번호예요. 주소창에서 이 숫자를 1025로 바꿔 엔터를 칠 수 있죠. 그게 남의 주문이라면 열리면 안 돼요.</p>
+<p>영상은 직접 해 봐요. 쿠팡에서 공유기를 산 주문 상세 주소의 마지막 숫자 6을 7로 바꿨어요. 화면 가운데에 "주문 정보가 존재하지 않습니다"가 뜨고, 다시 6으로 돌리면 정상으로 보여요. 쿠팡은 인가가 잘 된 경우예요.</p>
 <figure>
-  <img src="assets/frame-0403.png" alt="'10 내 것만 열리게 소유자 검사하기' 제목과 myapp.com/orders/1024 주소 예시 슬라이드">
+  <img src="assets/frame-0443.png" alt="쿠팡 마이쿠팡 화면 가운데에 주문 정보가 존재하지 않습니다 안내가 뜨고 주황색 원으로 표시됨">
   <figcaption>
-    끝의 숫자 1024가 주문 번호예요. 이걸 바꿔서 남의 주문이 열리면 소유자 검사가 빠진 거예요.
-    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=243s" target="_blank" rel="noopener">영상 04:03에서 보기</a>
+    남의 주문 번호로 바꾸면 내용 대신 '존재하지 않는다'는 안내만 나와요.
+    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=283s" target="_blank" rel="noopener">영상 04:43에서 보기</a>
   </figcaption>
 </figure>
-<p>영상에서는 쿠팡에서 직접 산 공유기 주문 내역으로 시험해 봐요. 주문 번호 끝자리 6을 7로 바꾸자 '주문 정보가 존재하지 않습니다'가 떴어요. 다시 6으로 돌리면 잘 열렸고요. 쿠팡은 인가 처리가 잘 돼 있다는 뜻이에요.</p>
-<p>남의 주문이 열리는 서버는 '이 데이터의 주인이 지금 로그인한 사람인가?'를 묻지 않은 거예요. 이 질문은 모든 요청마다 해야 해요.</p>
+<p>인가가 안 된 서버에서 남의 주문이 보이는 이유는 하나예요. 서버가 아래 슬라이드의 질문, "이 데이터의 주인이 지금 로그인한 사람인가?"를 묻지 않았기 때문이에요. 이 질문은 한 번이 아니라 매 요청마다 해야 해요.</p>
 <figure>
-  <img src="assets/frame-0507.png" alt="'서버가 이걸 안 물어봤기 때문입니다 — 이 데이터의 주인이 지금 로그인한 사람인가? 매 요청마다 이걸 확인해야 합니다' 슬라이드">
+  <img src="assets/frame-0507.png" alt="서버가 이걸 안 물어봤기 때문입니다, 이 데이터의 주인이 지금 로그인한 사람인가?, 매 요청마다 이걸 확인해야 합니다라고 적힌 슬라이드">
   <figcaption>
-    10번의 핵심 질문이에요. 한 번 로그인했다고 끝이 아니라, 요청이 올 때마다 확인해야 해요.
+    핵심 질문은 '로그인했나'가 아니라 '이 데이터의 주인인가'예요.
     <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=307s" target="_blank" rel="noopener">영상 05:07에서 보기</a>
   </figcaption>
 </figure>
-<p>점검은 AI에게 맡길 수도 있어요. 영상이 보여 준 요청문은 이래요.</p>
+<p>요청 하나가 서버에서 어떻게 걸러지는지 그려 보면 이래요. 로그인 확인과 주인 확인이 따로 있다는 게 요점이에요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  participant U as 로그인한 사용자 A
+  participant S as 서버
+  participant D as DB
+  U->>S: GET /orders/1025
+  S->>S: 로그인했나? (인증) → 예
+  S->>D: 1025번 주문 조회
+  D-->>S: 주인 = 사용자 B
+  S->>S: 주인 = 지금 로그인한 사람? (인가) → 아니요
+  S-->>U: 거절 (주문 정보가 존재하지 않음)
+</pre>
+  <figcaption>로그인 확인만 있고 주인 확인이 빠지면 마지막 줄이 '1025번 주문 내용'으로 바뀌어요.</figcaption>
+</figure>
+<p>점검은 AI에게 맡길 수도 있어요. 영상이 보여 준 요청문은 아래와 같아요. "지금 로그인한 사용자와 같은지"에 밑줄이 그어져 있어요.</p>
 <figure>
-  <img src="assets/frame-0524.png" alt="'AI에게 이렇게 시키세요' 아래 소유자 확인을 요청하는 문장이 적힌 슬라이드">
+  <img src="assets/frame-0523.png" alt="AI에게 이렇게 시키세요 슬라이드. 데이터를 조회·수정·삭제하는 모든 곳에서 그 데이터의 주인이 지금 로그인한 사용자와 같은지 서버에서 확인하고 다르면 거절해줘">
   <figcaption>
-    '데이터를 조회·수정·삭제하는 모든 곳에서, 그 데이터의 주인이 지금 로그인한 사용자와 같은지 서버에서 확인하고 다르면 거절해줘.'
-    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=324s" target="_blank" rel="noopener">영상 05:24에서 보기</a>
+    조회만이 아니라 수정·삭제까지 '모든 곳'이라고 범위를 못 박은 게 포인트예요.
+    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=323s" target="_blank" rel="noopener">영상 05:23에서 보기</a>
   </figcaption>
 </figure>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>주소나 요청에 든 번호만 바꿔서 남의 데이터에 접근하는 취약점을 IDOR라고 불러요. 영상이 말한 '소유자 검사 누락'이 바로 이거예요. OWASP Top 10:2025에서는 1위인 A01 Broken Access Control(접근 제어 실패)에 속해요. 9~11번이 다루는 인가 문제가 웹에서 가장 흔한 위험으로 꼽힌다는 뜻이에요.</p>
-  <p class="cite">출처: <a href="https://top10.owasp.org/2025" target="_blank" rel="noopener">OWASP Top 10:2025</a></p>
+  <p>도입부의 맥도날드 사례를 찾아낸 보안 연구자 Ian Carroll의 글을 보면, 이 사고는 두 단계였어요. 먼저 McHire라는 채용 챗봇 플랫폼의 테스트 매장 관리자 계정에 아이디·비밀번호 '123456'으로 들어갔어요. 그다음 지원자 대화를 불러오는 요청의 <code>lead_id</code> 숫자를 하나씩 줄이자 다른 지원자의 개인정보가 나왔어요. 10번에서 본 '번호 바꾸기'가 그대로 통한 거예요. 6,400만은 연구자가 '조회할 수 있었던 지원 건수'로 밝힌 숫자예요. 글의 타임라인에는 2025년 6월 30일에 알렸고 7월 1일에 고쳐졌다고 적혀 있어요.</p>
+  <p class="cite">출처: <a href="https://ian.sh/mcdonalds" target="_blank" rel="noopener">Ian Carroll — McHire 취약점 공개 글</a></p>
 </aside>
 </section>
 
 <section id="s3">
   <a class="stamp" href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=333s" target="_blank" rel="noopener">05:33</a>
-  <h2>숨기지 말고 서버에서 막아요 (11번)</h2>
-<p>관리자로 로그인했을 때만 보이는 '관리자 모드' 버튼을 만들었다고 해 봐요. 일반 사용자로 들어가면 버튼이 숨겨져 있어요. 문제는 이 판단을 프론트엔드에서만 할 때예요.</p>
+  <h2>화면에서 숨기는 건 막는 게 아니에요</h2>
+<p>11번은 인가를 <em>어디서</em> 하느냐의 문제예요. 관리자로 로그인했을 때만 보이는 '관리자 모드' 버튼이 있다고 해 봐요. 아래 슬라이드는 일반 사용자 화면이에요. <code>myapp.com/dashboard</code>의 메뉴에 '내 정보', '주문'만 보이고, 회색 '관리자 (숨김)'은 감춰져 있어요.</p>
 <figure>
-  <img src="assets/frame-0550.png" alt="'11 차단은 화면 말고 서버에서 하기' 제목 아래 myapp.com/dashboard 화면에 내 정보·주문 메뉴와 흐리게 숨겨진 관리자 메뉴가 있는 슬라이드">
+  <img src="assets/frame-0557.png" alt="11 차단은 화면 말고 서버에서 하기 슬라이드. myapp.com/dashboard 메뉴에서 관리자 항목이 숨김 처리되어 있고 서버에서 하기에 주황색 원이 쳐짐">
   <figcaption>
-    일반 사용자 화면에서 관리자 메뉴만 흐리게 숨긴 상태예요. 버튼은 안 보여도 그 뒤의 주소는 살아 있어요.
-    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=350s" target="_blank" rel="noopener">영상 05:50에서 보기</a>
+    메뉴를 감추는 건 프론트엔드가 하는 일이에요. 영상은 '서버에서'에 동그라미를 쳐요.
+    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=357s" target="_blank" rel="noopener">영상 05:57에서 보기</a>
   </figcaption>
 </figure>
-<p>크롬 <span class="term" data-term="개발자 도구" data-desc="브라우저에 들어 있는 점검 도구예요. 페이지가 어떤 주소로 어떤 요청을 보내는지 누구나 볼 수 있어서, 화면에서 숨긴 기능도 드러나요.">개발자 도구</span>를 열면 버튼이 어느 주소로 요청하는지 다 보여요. 그 주소를 그대로 호출하면 일반 사용자도 관리자 기능을 쓸 수 있어요. '관리자면 관리자 화면으로 보낸다' 같은 로직이 프론트엔드 코드에 있으면, 관리자 주소도 브라우저에서 쉽게 알아낼 수 있고요.</p>
-<div class="table-scroll">
-  <table>
-    <thead><tr><th></th><th>화면에서 감춤</th><th>서버에서 차단</th></tr></thead>
-    <tbody>
-      <tr><td>메뉴</td><td>안 보여요</td><td>안 보여요</td></tr>
-      <tr><td>주소를 알아내 직접 호출하면</td><td>그대로 열려요</td><td>요청 자체를 거절해요</td></tr>
-      <tr><td>안전한가요</td><td>아니에요</td><td>권한이 없으면 처리하지 않아요</td></tr>
-    </tbody>
-  </table>
-</div>
+<p>문제는 크롬 개발자 도구를 열면 화면이 어떤 주소로 요청하는지 다 보인다는 점이에요. 관리자 주소를 알아내서 그대로 호출하면, 서버가 확인하지 않는 한 일반 사용자도 그 기능을 쓸 수 있어요. 관리자 화면으로 가는 조건을 프론트엔드 코드에만 넣어 두면 주소도 코드에서 바로 드러나요.</p>
+<p>아래 슬라이드가 두 방식을 나란히 놓아요. 왼쪽 '화면에서 감춤'은 메뉴만 안 보이고 주소는 그대로 열려 있어요. 오른쪽 '서버에서 차단'은 요청 자체를 거절하니 주소를 알아내도 소용없어요.</p>
 <figure>
-  <img src="assets/frame-0637.png" alt="왼쪽 '화면에서 감춤: 메뉴만 안 보임, 주소는 그대로 열림', 오른쪽 '서버에서 차단: 요청 자체를 거절, 주소를 알아도 못 함'을 비교한 슬라이드">
+  <img src="assets/frame-0637.png" alt="화면에서 감춤(메뉴만 안 보임, 주소는 그대로 열림)과 서버에서 차단(요청 자체를 거절, 주소를 알아도 못 함)을 비교한 슬라이드">
   <figcaption>
-    위 표의 근거가 된 비교 슬라이드예요.
+    화면에서 안 보인다고 못 하는 게 아니에요. 인증·인가는 프론트엔드에서만 하면 안 돼요.
     <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=397s" target="_blank" rel="noopener">영상 06:37에서 보기</a>
   </figcaption>
 </figure>
-<p>11번의 핵심은 한 문장이에요. 화면에서 안 보인다고 못 하는 게 아니에요. 그래서 인증·인가 판단은 절대 프론트엔드에만 두면 안 되고, 서버가 맡아야 해요.</p>
 </section>
 
 <section id="s4">
   <a class="stamp" href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=425s" target="_blank" rel="noopener">07:05</a>
-  <h2>로그인 관리 다섯 가지 (12번)</h2>
-<p>12번은 로그인과 관련해 챙길 다섯 가지를 묶은 항목이에요.</p>
+  <h2>로그인 관리 다섯 가지</h2>
+<p>12번은 로그인과 관련해 챙길 다섯 가지를 한 세트로 묶었어요. 먼저 전체를 표로 보고, 화면이 있는 항목만 아래에서 다시 볼게요.</p>
 <div class="table-scroll">
   <table>
     <thead><tr><th>#</th><th>할 일</th><th>안 하면 생기는 일</th></tr></thead>
     <tbody>
-      <tr><td>1</td><td>로그인 시도 횟수 제한</td><td>프로그램으로 비밀번호를 수십만 번 대입해 볼 수 있어요</td></tr>
-      <tr><td>2</td><td>토큰에 만료 시간 넣기</td><td>출입증이 평생 유효해서, 탈퇴해도 로그인 상태가 남을 수 있어요</td></tr>
-      <tr><td>3</td><td>관리자 토큰을 브라우저에 저장하지 않기</td><td>모든 사용자가 그 토큰으로 관리자 기능을 쓸 수 있어요</td></tr>
-      <tr><td>4</td><td>기본 관리자 계정 바꾸기</td><td><code>admin / admin</code>, <code>test1234</code>는 누구나 짐작해요</td></tr>
-      <tr><td>5</td><td>관리자 계정에 <span class="term" data-term="2단계 인증" data-desc="비밀번호에 더해 이메일·문자 코드 같은 두 번째 확인을 거치는 방식이에요. 비밀번호가 새어도 바로 뚫리지 않게 막아 줘요.">2단계 인증</span> 걸기</td><td>비밀번호 하나만 뚫리면 끝나요</td></tr>
+      <tr><td>1</td><td>로그인 시도 횟수 제한</td><td>프로그램이 비밀번호를 수십만 개 대입해 봐요</td></tr>
+      <tr><td>2</td><td><span class="term" data-term="토큰" data-en="Token" data-desc="로그인에 성공했다는 증표로 서버가 내주는 값이에요. 요청마다 이걸 보여 주며 로그인 상태를 증명해요. 새면 남이 그 사람 행세를 할 수 있어요." data-g="4">토큰</span>에 만료 시간 넣기</td><td>출입증이 평생 유효해요. 탈퇴해도 로그인 상태가 남을 수 있어요</td></tr>
+      <tr><td>3</td><td>관리자 토큰을 브라우저에 저장하지 않기</td><td>모든 사용자가 관리자 기능을 쓸 수 있어요</td></tr>
+      <tr><td>4</td><td>기본 관리자 계정 바꾸기</td><td>admin/admin, test1234는 누구나 떠올려요</td></tr>
+      <tr><td>5</td><td>관리자 계정에 <span class="term" data-term="2단계 인증" data-en="Two-factor authentication" data-desc="비밀번호에 더해 이메일·문자 코드 같은 두 번째 확인을 요구하는 방식이에요. 비밀번호가 새도 바로 뚫리지 않아요." data-g="6">2단계 인증</span></td><td>비밀번호 하나만 뚫리면 끝이에요</td></tr>
     </tbody>
   </table>
 </div>
 <h3>시도 횟수와 토큰 만료</h3>
-<p>시도 횟수를 막지 않으면 프로그램이 비밀번호를 수없이 바꿔 넣어 봐요. '5회 이상 틀리면 로그인 제한' 같은 기능이 이걸 막아요.</p>
+<p>시도 횟수를 막지 않으면 프로그램으로 비밀번호를 대량으로 넣어 볼 수 있어요. 아래 슬라이드는 이걸 "하루 수십만 번"이라고 적었어요. 여러 서비스에서 보는 "다섯 번 이상 틀리면 로그인 제한"이 이 장치예요.</p>
 <figure>
-  <img src="assets/frame-0723.png" alt="'1 로그인 시도 횟수 제한하세요 — 안 막으면 하루 수십만 번' 슬라이드">
+  <img src="assets/frame-0723.png" alt="1 로그인 시도 횟수 제한하세요, 안 막으면 하루 수십만 번이라고 적힌 슬라이드">
   <figcaption>
-    막지 않으면 하루 수십만 번까지 대입할 수 있다는 슬라이드예요.
+    횟수 제한이 없으면 비밀번호 맞히기가 시간 문제가 돼요.
     <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=443s" target="_blank" rel="noopener">영상 07:23에서 보기</a>
   </figcaption>
 </figure>
-<p>토큰은 '이 사람은 로그인한 정상 회원'이라는 출입증이에요. 만료가 없으면 평생 유효하고, 갱신하지 않으면 탈퇴한 사람이 로그인 상태로 남는 일도 생겨요. 구체적으로는 <span class="term" data-term="JWT" data-desc="로그인 정보를 담아 서명한 토큰 형식이에요. 서버가 세션을 따로 저장하지 않아도 돼서 많이 쓰지만, 만료 시간을 넣지 않으면 계속 유효해요.">JWT</span> 이야기인데, 영상은 다룰 내용이 많아 다음 콘텐츠로 미뤄요.</p>
-<h3>관리자 토큰과 기본 계정</h3>
-<p>테스트하려고 관리자 토큰을 브라우저 <span class="term" data-term="로컬 스토리지" data-desc="브라우저에 값을 저장해 두는 공간이에요. 그 페이지의 자바스크립트와 사용자가 언제든 읽을 수 있어서 민감한 토큰을 두면 위험해요.">로컬 스토리지</span>에 넣는 코드를 쓰는 경우가 있어요. 지우면 괜찮지만, 남은 채로 배포하면 서비스를 쓰는 모든 사용자가 그 토큰으로 관리자 기능을 쓸 수 있어요. 영상은 이런 코드를 아예 쓰지 말라고 권해요.</p>
+<p>토큰은 '이 사람은 로그인한 정상 회원'이라는 출입증이에요. 슬라이드 한가운데 문구처럼, 만료가 없으면 평생 유효해요. 갱신도 안 하면 탈퇴한 사람이 로그인 상태로 남는 이상한 일도 생겨요. 영상은 대표적인 형식인 JWT(JSON Web Token)를 언급만 하고 자세한 건 다음 콘텐츠로 미뤘어요.</p>
 <figure>
-  <img src="assets/frame-0812.png" alt="'3 관리자 토큰 브라우저에 저장하지 마세요' 제목 아래 localStorage.setItem(&quot;adminToken&quot;, token) 코드가 있는 슬라이드">
+  <img src="assets/frame-0741.png" alt="2 토큰에 만료 시간 넣으세요, 토큰은 로그인했다는 출입증, 만료가 없으면 평생 유효라고 적힌 슬라이드">
   <figcaption>
-    테스트용으로 넣었다가 그대로 배포되기 쉬운 코드예요.
-    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=492s" target="_blank" rel="noopener">영상 08:12에서 보기</a>
+    출입증에는 유효 기간이 있어야 해요.
+    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=461s" target="_blank" rel="noopener">영상 07:41에서 보기</a>
   </figcaption>
 </figure>
-<p>아이디와 비밀번호를 누구나 아는 문자열로 두는 것도 안 돼요. 도입부의 맥도날드 사고가 바로 이 경우였어요. 관리자 계정에는 이메일이나 문자로 한 번 더 확인하는 2단계 인증을 걸면 훨씬 안전해져요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>JWT 표준(RFC(Request for Comments) 7519)에는 만료 시각을 담는 <code>exp</code> 항목이 있어요. 표준은 이 시각이 지난 토큰은 처리하면 안 된다고 정해요. AI가 만든 로그인 코드를 볼 때 토큰을 만드는 곳에 <code>exp</code>(또는 라이브러리의 <code>expiresIn</code> 같은 옵션)가 있는지 찾아보면 2번을 빨리 확인할 수 있어요.</p>
+  <p class="cite">출처: <a href="https://www.rfc-editor.org/rfc/rfc7519#section-4.1.4" target="_blank" rel="noopener">RFC 7519 — 4.1.4 'exp' Claim</a></p>
+</aside>
+<h3>테스트용 코드와 기본 계정</h3>
+<p>3번은 테스트하다 남긴 코드 이야기예요. 아래 슬라이드의 <code>localStorage.setItem("adminToken", token)</code>처럼 관리자 토큰을 브라우저 <span class="term" data-term="로컬 스토리지" data-en="localStorage" data-desc="브라우저가 사이트별로 값을 저장해 두는 공간이에요. 그 브라우저의 사용자와 페이지 스크립트가 자유롭게 읽을 수 있어서 비밀을 두기엔 맞지 않아요." data-g="5">로컬 스토리지</span>에 넣는 코드를 심는 경우가 있어요. 이게 지워지지 않고 배포되면 서비스를 쓰는 모든 사람이 그 관리자 토큰으로 관리자 기능을 써요. 영상은 아예 이런 코드를 쓰지 말라고 권해요.</p>
 <figure>
-  <img src="assets/frame-0826.png" alt="'4 기본 관리자 계정 지금 바꾸세요' 제목 아래 admin / admin, test1234, admin1234 예시에 밑줄을 그은 슬라이드">
+  <img src="assets/frame-0808.png" alt="3 관리자 토큰 브라우저에 저장하지 마세요 슬라이드. localStorage.setItem(adminToken, token) 코드에서 adminToken에 주황색 원">
   <figcaption>
-    피해야 할 기본 계정 예시예요.
-    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=506s" target="_blank" rel="noopener">영상 08:26에서 보기</a>
+    브라우저에 저장한 값은 그 브라우저를 쓰는 사람이 다 볼 수 있어요.
+    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=488s" target="_blank" rel="noopener">영상 08:08에서 보기</a>
+  </figcaption>
+</figure>
+<p>4번은 누구나 짐작할 수 있는 계정이에요. 슬라이드에 나온 admin / admin, test1234, admin1234 같은 문자열은 쓰면 안 돼요. 5번은 관리자 계정에 이메일이나 휴대폰 문자로 한 번 더 확인하는 2단계 인증을 거는 거예요.</p>
+<figure>
+  <img src="assets/frame-0835.png" alt="4 기본 관리자 계정 지금 바꾸세요 슬라이드. admin / admin, test1234, admin1234 아래에 주황색 물결선">
+  <figcaption>
+    도입부의 맥도날드 사례도 이런 기본 계정에서 시작했어요.
+    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=515s" target="_blank" rel="noopener">영상 08:35에서 보기</a>
   </figcaption>
 </figure>
 </section>
 
 <section id="s5">
   <a class="stamp" href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=530s" target="_blank" rel="noopener">08:50</a>
-  <h2>전송은 HTTPS, 비밀번호는 해시 (13·14번)</h2>
-<p>여기부터 4부, 암호화와 개인정보 처리방침이에요.</p>
-<h3>주소창 자물쇠를 확인해요 (13번)</h3>
-<p>HTTP는 웹에서 통신하는 규약이고, 끝의 S는 Security예요. 그래서 <span class="term" data-term="HTTPS" data-desc="HTTP 통신을 암호화한 규약이에요. 중간에서 누가 엿봐도 비밀번호 같은 내용을 읽을 수 없고, 주소창 자물쇠로 적용 여부를 알 수 있어요.">HTTPS</span>는 암호화된 통신 규약이라고 보면 돼요. 꺼져 있으면 로그인할 때 서버로 보내는 아이디·비밀번호가 암호화 없이 그대로 노출돼요.</p>
-<p>확인은 간단해요. 네이버처럼 주소창에 자물쇠가 보이고 '이 연결은 안전합니다'가 뜨면 돼요. Vercel 같은 배포 플랫폼은 자동으로 적용해 줘요. 반면 맥미니 등으로 직접 서버를 호스팅한다면 수동으로 켜야 해요.</p>
+  <h2>HTTPS와 비밀번호 해시</h2>
+<p>여기부터 4부, 암호화와 개인정보 이야기예요.</p>
+<h3>13번 · 주소창 자물쇠(HTTPS) 켜기</h3>
+<p>HTTP(HyperText Transfer Protocol)는 웹에서 통신하기 위한 규약이고, 뒤에 붙은 S는 Secure예요. HTTPS(HyperText Transfer Protocol Secure)가 아니면 로그인할 때 입력한 아이디·비밀번호가 서버로 가는 길에 암호화 없이 그대로 드러나요. 네이버에 들어가서 주소창에 자물쇠가 보이고 "이 연결은 안전합니다"가 뜨는지 보는 게 확인 방법이에요.</p>
+<p>누가 켜 주느냐는 어디에 배포했느냐에 달려 있어요. 아래 슬라이드 왼쪽처럼 배포 플랫폼은 https와 자물쇠가 자동이에요. 오른쪽처럼 직접 서버를 돌리거나 IP(Internet Protocol)로 접속하게 하면 http 그대로라 사고가 나요. 영상은 Vercel 같은 플랫폼과, 맥미니로 직접 호스팅하는 경우를 예로 들어요.</p>
 <figure>
-  <img src="assets/frame-0958.png" alt="왼쪽 '배포 플랫폼: https 자동, 자물쇠 표시', 오른쪽 '직접 서버·IP: http 그대로, 여기서 사고'를 비교한 슬라이드">
+  <img src="assets/frame-0950.png" alt="배포 플랫폼(https 자동, 자물쇠 표시)과 직접 서버·IP(http 그대로, 여기서 사고)를 비교한 슬라이드">
   <figcaption>
-    배포 플랫폼과 직접 운영하는 서버의 차이예요. 사고는 오른쪽에서 나요.
-    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=598s" target="_blank" rel="noopener">영상 09:58에서 보기</a>
+    직접 서버를 띄웠다면 HTTPS는 손으로 켜야 해요.
+    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=590s" target="_blank" rel="noopener">영상 09:50에서 보기</a>
   </figcaption>
 </figure>
-<h3>비밀번호는 암호화가 아니라 해시예요 (14번)</h3>
-<p><span class="term" data-term="해시" data-desc="입력을 고정된 길이의 값으로 바꾸는 단방향 변환이에요. 원문으로 되돌릴 수 없어서, 비밀번호를 저장하고 비교하는 데 써요.">해시</span>는 어떤 텍스트를 고정된 길이의 다른 텍스트로 바꾸는 거예요. 암호화와 비슷해 보이지만 방향이 달라요.</p>
-<div class="table-scroll">
-  <table>
-    <thead><tr><th></th><th>암호화</th><th>해시</th></tr></thead>
-    <tbody>
-      <tr><td>방향</td><td>양방향 (A → B → A)</td><td>단방향 (A → C, C에서 A로 못 돌아감)</td></tr>
-      <tr><td>되돌리기</td><td>복호화로 원문을 다시 얻어요</td><td>되돌릴 수 없어요</td></tr>
-      <tr><td>비밀번호에</td><td>쓰지 않아요</td><td>이걸 써요</td></tr>
-    </tbody>
-  </table>
-</div>
-<p>해시를 제대로 썼다면 서비스를 만든 사람도 고객 비밀번호를 알 수 없어요. 그게 정상이에요. DB에 비밀번호를 저장한다면 테이블을 직접 열어 보세요. 원문이 그대로 보이면 반드시 해시로 바꿔 저장해야 해요.</p>
+<h3>14번 · 비밀번호는 해시로 저장하기</h3>
+<p>해시는 어떤 텍스트를 고정된 길이의 다른 텍스트로 바꾸는 거예요. 비슷해 보이는 암호화와는 되돌릴 수 있느냐가 달라요. 영상의 A·B·C 설명을 그림으로 옮기면 이래요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 200" role="img" aria-label="암호화는 A를 B로 바꾸고 복호화로 다시 A로 되돌릴 수 있고, 해시는 A를 C로 바꾸면 되돌릴 수 없다는 비교 그림">
+    <defs>
+      <marker id="arrow-enc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker>
+    </defs>
+    <text x="160" y="24" text-anchor="middle">암호화 · 양방향</text>
+    <rect x="30" y="50" width="80" height="50" rx="8" class="c1 cell"/>
+    <text x="70" y="80" text-anchor="middle" class="mono">A</text>
+    <rect x="210" y="50" width="80" height="50" rx="8" class="c1 cell"/>
+    <text x="250" y="80" text-anchor="middle" class="mono">B</text>
+    <path d="M114 64 h92" class="line" marker-end="url(#arrow-enc)"/>
+    <text x="160" y="56" text-anchor="middle" class="sub">암호화</text>
+    <path d="M206 88 h-92" class="line" marker-end="url(#arrow-enc)"/>
+    <text x="160" y="118" text-anchor="middle" class="sub">복호화</text>
+    <text x="160" y="160" text-anchor="middle" class="sub">되돌릴 수 있어요</text>
+    <text x="480" y="24" text-anchor="middle">해시 · 한 방향</text>
+    <rect x="350" y="50" width="80" height="50" rx="8" class="c2 cell"/>
+    <text x="390" y="80" text-anchor="middle" class="mono">A</text>
+    <rect x="530" y="50" width="80" height="50" rx="8" class="c2 cell"/>
+    <text x="570" y="80" text-anchor="middle" class="mono">C</text>
+    <path d="M434 64 h92" class="line" marker-end="url(#arrow-enc)"/>
+    <text x="480" y="56" text-anchor="middle" class="sub">해시</text>
+    <path d="M526 88 h-92" class="line dim"/>
+    <text x="480" y="93" text-anchor="middle" class="bad">✕</text>
+    <text x="480" y="118" text-anchor="middle" class="sub">되돌리기 불가</text>
+    <text x="480" y="160" text-anchor="middle" class="sub">비밀번호는 이쪽으로 저장해요</text>
+  </svg>
+  <figcaption>되돌릴 수 없으니, 서비스를 만든 사람도 고객 비밀번호를 알 수 없는 게 정상이에요.</figcaption>
+</figure>
+<p>그래서 DB에 비밀번호를 저장한다면 테이블을 직접 열어 봐야 해요. 아래 슬라이드처럼 <code>password: hong1234!</code>가 읽힌다면 원문 그대로 저장된 거예요. 슬라이드는 "읽을 수 있으면 → 즉시 사고"라고 적었어요.</p>
 <figure>
-  <img src="assets/frame-1123.png" alt="'DB 테이블을 열어서 눈으로 보세요' 아래 password: hong1234! 예시와 '읽을 수 있으면 → 즉시 사고' 문구가 있는 슬라이드">
+  <img src="assets/frame-1126.png" alt="DB 테이블을 열어서 눈으로 보세요 슬라이드. password: hong1234! 아래에 빨간 글씨로 읽을 수 있으면 즉시 사고">
   <figcaption>
-    비밀번호 칸이 이렇게 읽히면 바로 사고라는 슬라이드예요.
-    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=683s" target="_blank" rel="noopener">영상 11:23에서 보기</a>
+    비밀번호 칸이 사람이 읽을 수 있는 문자라면 해시가 안 된 거예요.
+    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=686s" target="_blank" rel="noopener">영상 11:26에서 보기</a>
   </figcaption>
 </figure>
-<p>AI가 해시 함수를 직접 짜 주는 경우도 있어요. 그러지 말고 <span class="term" data-term="bcrypt" data-desc="비밀번호 저장용으로 만든 해시 방식이에요. 일부러 계산을 느리게 하고 무작위 값(솔트)을 섞어서, 대입 공격을 어렵게 만들어요.">bcrypt</span>처럼 검증된 방식을 써야 해요. 직접 서버를 구축하기보다 검증된 인증 서비스를 쓰는 것도 방법이에요. 슬라이드의 요청문은 Supabase Auth로 옮기는 방법까지 묻고 있어요.</p>
+<p>AI로 작업하다 보면 해시 과정을 직접 짜 주는 경우가 있어요. 영상은 그러지 말고 <span class="term" data-term="bcrypt" data-desc="비밀번호 저장용으로 만든 해시 함수예요. 일부러 계산을 느리게 해서 대입 공격에 드는 시간을 늘려요." data-g="9">bcrypt</span> 같은 검증된 방식을 쓰라고 해요. 아래 요청문은 bcrypt로 바꾸는 것과 함께, 로그인을 Supabase Auth로 옮기는 방법도 물어요. 인증을 직접 만들기보다 검증된 서비스를 쓰는 것도 방법이라는 뜻이에요.</p>
 <figure>
-  <img src="assets/frame-1157.png" alt="'AI에게 이렇게 시키세요' 아래 비밀번호를 bcrypt 해시로 바꾸고 로그인을 Supabase Auth로 옮기는 방법을 묻는 요청문 슬라이드">
+  <img src="assets/frame-1150.png" alt="AI에게 이렇게 시키세요 슬라이드. 비밀번호를 그대로 저장하는 곳이 있는지 전부 찾아서 bcrypt 해시로 바꿔주세요. 그리고 로그인을 Supabase Auth로 옮기는 방법도 알려주세요">
   <figcaption>
-    '비밀번호를 그대로 저장하는 곳이 있는지 전부 찾아서 bcrypt 해시로 바꿔주세요. 그리고 로그인을 Supabase Auth로 옮기는 방법도 알려주세요.'
-    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=717s" target="_blank" rel="noopener">영상 11:57에서 보기</a>
+    '전부 찾아서'가 들어가야 한두 군데만 고치고 끝나지 않아요.
+    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=710s" target="_blank" rel="noopener">영상 11:50에서 보기</a>
   </figcaption>
 </figure>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>OWASP의 비밀번호 저장 가이드는 지금 Argon2id를 첫 번째로 권해요. Argon2id를 쓸 수 없으면 scrypt를, bcrypt는 기존 시스템용으로 둬요. bcrypt를 쓴다면 work factor를 10 이상으로 하고, 대부분 구현에서 입력이 72바이트까지만 반영된다는 점을 알아 둬야 해요. bcrypt도 직접 짠 해시보다는 훨씬 낫지만, 새로 만든다면 Argon2id를 먼저 고려해 보세요.</p>
+  <p>OWASP(Open Web Application Security Project)의 비밀번호 저장 가이드는 Argon2id를 먼저 권하고, 쓸 수 없으면 scrypt를 권해요. bcrypt는 'Argon2와 scrypt를 쓸 수 없는 레거시 시스템에서만' 쓰라고 적혀 있어요. 영상이 말한 핵심(직접 만들지 말고 검증된 해시 함수를 쓰라)은 그대로이고, 새로 만든다면 AI에게 Argon2id를 먼저 요청해 보는 게 좋아요.</p>
   <p class="cite">출처: <a href="https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html" target="_blank" rel="noopener">OWASP Password Storage Cheat Sheet</a></p>
 </aside>
 </section>
 
 <section id="s6">
   <a class="stamp" href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=723s" target="_blank" rel="noopener">12:03</a>
-  <h2>법이 정한 정보와 개인정보 처리방침 (15·16번)</h2>
-<h3>법이 정한 정보는 따로 챙겨요 (15번)</h3>
-<p>저장할 때 반드시 보호해야 하는 정보는 법으로 정해져 있어요. 영상이 꼽는 건 네 가지예요.</p>
-<ol>
-  <li><span class="term" data-term="고유식별정보" data-desc="법이 정한, 한 사람을 고유하게 가리키는 번호예요. 주민등록번호·여권번호·운전면허번호·외국인등록번호가 해당하고 처리 요건이 더 엄격해요.">고유식별정보</span>: 주민등록번호, 여권번호 같은 것</li>
-  <li>비밀번호</li>
-  <li>생체정보</li>
-  <li>계좌번호·카드번호</li>
-</ol>
-<p>근거는 개인정보보호법에 딸린 '안전성 확보조치 기준'이에요. 권고가 아니라 법이 요구하는 사항이에요.</p>
+  <h2>법이 정한 정보와 개인정보 처리방침</h2>
+<h3>15번 · 법이 정한 정보는 따로 보호하기</h3>
+<p>슬라이드 제목은 "법이 정한 정보는 암호화하세요"예요. 아래 화면처럼 저장할 때 암호화 대상으로 네 가지를 꼽아요. <span class="term" data-term="고유식별정보" data-desc="법령이 개인을 고유하게 구별하려고 부여한 번호예요. 주민등록번호, 여권번호, 운전면허번호, 외국인등록번호가 여기에 들어가요." data-g="10">고유식별정보</span>(주민등록번호·여권번호 같은 것), 비밀번호, 생체정보, 계좌번호·카드번호예요.</p>
 <figure>
-  <img src="assets/frame-1230.png" alt="'저장할 때 암호화 대상' 제목 아래 01 고유식별정보, 02 비밀번호, 03 생체정보, 04 계좌번호·카드번호를 나열한 슬라이드">
+  <img src="assets/frame-1229.png" alt="저장할 때 암호화 대상 슬라이드. 01 고유식별정보(주민등록번호, 여권번호 같은 것), 02 비밀번호, 03 생체정보, 04 계좌번호·카드번호">
   <figcaption>
-    슬라이드 제목은 '암호화 대상'이에요. 말로는 네 가지 모두 '해시를 적용하라'고 해서 화면과 말이 어긋나요.
-    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=750s" target="_blank" rel="noopener">영상 12:30에서 보기</a>
+    네 가지 모두 새면 바꾸기 어렵거나 바로 돈과 연결되는 정보예요.
+    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=749s" target="_blank" rel="noopener">영상 12:29에서 보기</a>
   </figcaption>
 </figure>
-<p>여기서 한 번 짚고 갈게요. 화자는 앞의 14번에 이어 이 네 가지도 '암호화가 아니라 해시'라고 말해요. 하지만 슬라이드와 AI 요청문에는 '암호화'라고 적혀 있어요. 실제 기준도 다음 보충 설명처럼 비밀번호만 해시를 요구해요.</p>
+<p>영상은 이게 권고가 아니라 법의 요구라고 강조해요. 다음 슬라이드에 근거가 '개인정보보호법의 안전성 확보조치 기준'이라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-1235.png" alt="이건 권고가 아니라 법에서 요구합니다, 개인정보보호법의 안전성 확보조치 기준이라고 적힌 슬라이드">
+  <figcaption>
+    근거 문서의 이름이 화면에 나와요. 아래 보충 설명에서 원문을 확인했어요.
+    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=755s" target="_blank" rel="noopener">영상 12:35에서 보기</a>
+  </figcaption>
+</figure>
+<p>한 가지 짚을 점이 있어요. 슬라이드는 '암호화'라고 쓰지만, 말로는 "네 가지 모두 해시를 적용해야 한다"고 설명해요. 기준 원문은 둘을 나눠요. 아래 상자를 보세요.</p>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>「개인정보의 안전성 확보조치 기준」(개인정보보호위원회 고시 제2023-6호) 제7조는 이렇게 나눠요. 비밀번호는 복호화되지 않도록 일방향 암호화, 곧 해시로 저장해야 해요. 주민등록번호·여권번호·운전면허번호·외국인등록번호·신용카드번호·계좌번호·생체인식정보는 안전한 암호 알고리즘으로 암호화해서 저장하라고 해요. 이 정보들은 본인 확인이나 결제처럼 원래 값이 다시 필요할 때가 많아서, 해시가 아니라 되돌릴 수 있는 암호화와 키 관리가 맞는 경우가 많아요. 비밀번호와 생체인식정보 같은 인증정보는 네트워크로 주고받을 때도 암호화해야 해요.</p>
+  <p>「개인정보의 안전성 확보조치 기준」 제7조는 비밀번호만 '<span class="term" data-term="복호화" data-en="Decryption" data-desc="암호화한 값을 원래 값으로 되돌리는 거예요. 되돌릴 수 있다는 점이 해시와의 차이예요." data-g="8">복호화</span>되지 아니하도록 일방향 암호화', 즉 해시로 저장하라고 해요. 주민등록번호·여권번호·운전면허번호·외국인등록번호·신용카드번호·계좌번호·생체인식정보는 '안전한 암호 알고리즘으로 암호화'해 저장하라고 해요. 이쪽은 되돌릴 수 있는 암호화도 허용돼요. 카드번호처럼 나중에 원래 값이 필요한 정보도 있으니까요.</p>
+  <p>같은 조 ④항은 개인정보를 인터넷으로 주고받을 때 암호화하라고 정해요. 13번 HTTPS도 법의 요구와 맞닿아 있는 셈이에요. 지금 시행 중인 기준은 개인정보보호위원회 고시 제2026-9호(2026년 7월 1일 시행)예요.</p>
   <p class="cite">출처: <a href="https://www.law.go.kr/행정규칙/개인정보의안전성확보조치기준" target="_blank" rel="noopener">국가법령정보센터 — 개인정보의 안전성 확보조치 기준</a></p>
 </aside>
-<p>더 중요한 건 안 쓸 정보는 아예 받지 않는 거예요. 정말 필요한 것만 받으면 지킬 것도 줄어요. AI에게는 수집하는 개인정보 항목을 전부 뽑고, 없어도 되는 항목을 표시하고, 필요한 항목은 저장할 때 보호되는지 확인해 달라고 하면 돼요.</p>
-<h3>개인정보 처리방침은 의무예요 (16번)</h3>
-<p>시작 전에 영상은 이 내용이 법률 자문이 아니라고 밝혀요. 어떤 정보를 다루느냐에 따라 적용되는 규정이 달라져요. 취미가 아니라 실제 사업으로 키울 거라면 법률 전문가에게 꼭 확인받으라고 해요. 여기서는 최소한 알고 있어야 할 것만 다뤄요.</p>
-<p>개인정보 처리방침은 선택이 아니라 의무이고, 보이는 곳에 게시하는 것까지가 의무예요. 이메일 주소 하나만 받아도 개인정보처리자가 되거든요.</p>
+<p>영상이 "진짜 핵심"이라고 꼽는 건 따로 있어요. 서비스에서 쓰지 않을 정보는 아예 받지 않는 거예요. AI에게 수집하는 개인정보 항목을 전부 뽑게 하고, 없어도 되는 항목을 표시하게 한 뒤, 꼭 필요한 항목은 저장할 때 보호되는지 확인시키면 돼요.</p>
+<h3>16번 · 개인정보 처리방침 만들기</h3>
+<p>시작 전에 영상은 이게 법률 자문이 아니라고 밝혀요. 다루는 정보에 따라 규정이 달라지니, 취미가 아니라 사업으로 키울 거라면 전문가 확인을 꼭 받으라고 해요. 여기서는 최소한 알아야 할 것만 다뤄요.</p>
+<p>개인정보 처리방침은 선택이 아니라 의무이고, 게시하는 것까지 의무예요. 이메일 주소 하나만 받아도 개인정보처리자가 되고, 처리방침을 보이는 곳에 올려야 해요. 아래 슬라이드가 들어갈 내용을 칩으로 늘어놨어요. 수집 항목, 이용 목적, 보유 기간, 제3자 제공, 처리위탁, 파기 절차, 이용자 권리, 보호책임자 연락처예요.</p>
 <figure>
-  <img src="assets/frame-1347.png" alt="'처리방침에 들어가야 하는 내용' 아래 수집 항목, 이용 목적, 보유 기간, 제3자 제공, 처리위탁, 파기 절차, 이용자 권리, 보호책임자 연락처가 나열되고 처리위탁이 강조된 슬라이드">
+  <img src="assets/frame-1346.png" alt="처리방침에 들어가야 하는 내용 슬라이드. 수집 항목, 이용 목적, 보유 기간, 제3자 제공, 처리위탁(주황색 강조), 파기 절차, 이용자 권리, 보호책임자 연락처">
   <figcaption>
-    처리방침에 들어갈 여덟 가지예요. 그중 처리위탁이 강조돼 있어요.
-    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=827s" target="_blank" rel="noopener">영상 13:47에서 보기</a>
+    여덟 개 중 처리위탁만 주황색으로 칠해져 있어요. 다음 화면이 그 이유예요.
+    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=826s" target="_blank" rel="noopener">영상 13:46에서 보기</a>
   </figcaption>
 </figure>
-<p>바이브 코딩에서 특히 놓치기 쉬운 건 <span class="term" data-term="처리위탁" data-desc="개인정보 처리 업무를 외부 업체에 맡기는 거예요. 클라우드 DB나 이메일 발송 서비스를 쓰면 해당돼서, 처리방침에 수탁자와 업무를 적어요.">처리위탁</span>이에요. AI API, 클라우드 DB, 이메일 발송, 분석 도구처럼 외부 서비스에 사용자 정보가 넘어간다면 위탁 항목에 적어야 해요. 어떤 서비스를 쓰는지 본인도 모를 수 있으니 AI에게 정리를 시키면 편해요.</p>
+<p>바이브 코딩에서 특히 놓치는 게 처리위탁이에요. 아래 슬라이드의 네 칩, AI API·클라우드 DB·이메일 발송·분석 도구가 모두 사용자 정보를 다른 회사에 맡기는 경우예요. 이런 도구를 쓴다면 처리방침의 위탁 항목에 적어야 해요.</p>
 <figure>
-  <img src="assets/frame-1409.png" alt="'AI에게 이렇게 시키세요' 아래 코드가 부르는 외부 서비스를 목록으로 뽑아 처리방침 위탁 항목에 적을 수 있게 정리해 달라는 요청문 슬라이드">
+  <img src="assets/frame-1355.png" alt="바이브 코딩에서 특히 놓치는 건 처리위탁 슬라이드. AI API, 클라우드 DB, 이메일 발송, 분석 도구 칩">
   <figcaption>
-    '우리 코드가 부르는 외부 서비스를 전부 목록으로 뽑아주세요. AI API, 데이터베이스, 이메일 발송, 분석 도구까지요. 처리방침 위탁 항목에 적을 수 있게 정리해주세요.'
+    외부 서비스 하나하나가 위탁 항목 한 줄이에요.
+    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=835s" target="_blank" rel="noopener">영상 13:55에서 보기</a>
+  </figcaption>
+</figure>
+<p>무엇을 쓰고 있는지 모르겠다면 AI에게 코드를 뒤져 달라고 하면 돼요. 아래 요청문은 코드가 부르는 외부 서비스를 전부 목록으로 뽑아 처리방침 위탁 항목에 적을 수 있게 정리해 달라는 내용이에요.</p>
+<figure>
+  <img src="assets/frame-1409.png" alt="AI에게 이렇게 시키세요 슬라이드. 우리 코드가 부르는 외부 서비스를 전부 목록으로 뽑아주세요. AI API, 데이터베이스, 이메일 발송, 분석 도구까지요. 처리방침 위탁 항목에 적을 수 있게 정리해주세요">
+  <figcaption>
+    직접 기억해 내는 것보다 코드에서 뽑는 게 빠뜨리지 않아요.
     <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=849s" target="_blank" rel="noopener">영상 14:09에서 보기</a>
   </figcaption>
 </figure>
-<p>4부를 정리하면 이래요. HTTPS를 켜고, 비밀번호는 해시로 저장하고, 법이 정한 정보는 알아볼 수 없게 저장해요. 그리고 처리방침을 써서 게시하되 위탁 항목까지 넣어요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>개인정보 보호법 제30조가 처리방침에 넣을 사항을 정해요. 처리 목적, 처리·보유 기간, 제3자 제공, 파기 절차와 방법, 위탁에 관한 사항, 정보주체의 권리와 행사 방법, 개인정보 보호책임자 연락처 등이에요. 제26조는 위탁하는 업무 내용과 수탁자를 정보주체가 언제든 쉽게 확인할 수 있게 공개하라고 해요. 개인정보보호위원회가 처리방침 작성 지침도 내고 있으니, 실제로 쓸 때는 함께 보는 게 좋아요.</p>
+  <p class="cite">출처: <a href="https://www.law.go.kr/법령/개인정보보호법/제30조" target="_blank" rel="noopener">개인정보 보호법 제30조</a> · <a href="https://www.law.go.kr/법령/개인정보보호법/제26조" target="_blank" rel="noopener">제26조</a></p>
+</aside>
+<p>영상은 4부를 네 줄로 정리하고 마무리해요. 주소창 자물쇠, 비밀번호 해시, 법이 정한 정보 보호, 위탁 항목까지 들어간 처리방침이에요.</p>
+<figure>
+  <img src="assets/frame-1438.png" alt="4부 정리 슬라이드. 13 주소창 자물쇠 켜기, 14 비밀번호는 해시로 저장, 15 법이 정한 정보는 암호화, 16 개인정보처리방침 만들기">
+  <figcaption>
+    4부 체크리스트를 한 화면에 모았어요.
+    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=878s" target="_blank" rel="noopener">영상 14:38에서 보기</a>
+  </figcaption>
+</figure>
 </section>
 
 <section id="s7">
   <a class="stamp" href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=881s" target="_blank" rel="noopener">14:41</a>
   <h2>보너스: OWASP Top 10</h2>
-<p>마지막으로 OWASP Top 10을 소개해요. OWASP는 웹 애플리케이션 보안을 다루는 전 세계 비영리 단체예요. 이곳이 가장 중요한 웹 애플리케이션 취약점 10가지를 골라 발표하는 게 Top 10이에요.</p>
-<p>쓰는 방법은 두 가지예요. 목록을 직접 읽고 하나씩 처리해도 되고, AI에게 이 문서를 참고해 내 서비스의 취약점을 보완해 달라고 해도 돼요.</p>
+<p>마지막 보너스는 OWASP Top 10이에요. OWASP(Open Web Application Security Project)는 전 세계 비영리 보안 단체이고, 웹 애플리케이션 취약점 열 가지를 골라 발표해요. 영상은 구글에서 검색한 뒤 국내 보안 회사가 정리한 'OWASP Top 10 2025: 주요 변경사항' 글을 띄워 보여 줘요.</p>
 <figure>
-  <img src="assets/frame-1456.png" alt="구글에서 'owasp top 10 이란'을 검색한 결과 화면">
+  <img src="assets/frame-1513.png" alt="OWASP Top 10 2025 주요 변경사항이라는 제목의 웹 페이지와 OWASP란 무엇인가 설명 문단에 주황색 밑줄">
   <figcaption>
-    화자가 직접 검색해 보여 주는 장면이에요.
-    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=896s" target="_blank" rel="noopener">영상 14:56에서 보기</a>
+    영상은 이 목록을 직접 보거나, AI에게 참고하게 해서 내 서비스의 취약점을 보완해 달라고 하라고 권해요.
+    <a href="https://www.youtube.com/watch?v=hFa-oqgueLw&amp;t=913s" target="_blank" rel="noopener">영상 15:13에서 보기</a>
   </figcaption>
 </figure>
 <aside class="more">
   <span class="tag">영상에 없는 보충 설명</span>
-  <p>영상은 '매년' 발표한다고 하지만, OWASP 공식 페이지에 올라 있는 판은 2017, 2021, 2025년판이에요. 해마다 나오는 목록은 아니에요. 지금 최신은 2025년판이고, 1위 A01은 Broken Access Control이에요. 이 밖에 A04 Cryptographic Failures(암호화 실패), A07 Authentication Failures(인증 실패)처럼 이번 영상의 3·4부와 겹치는 항목이 많아요.</p>
-  <p class="cite">출처: <a href="https://top10.owasp.org/2025" target="_blank" rel="noopener">OWASP Top 10:2025</a> · <a href="https://owasp.org/www-project-top-ten/" target="_blank" rel="noopener">OWASP Top Ten 프로젝트 페이지</a></p>
+  <p>영상은 '매년' 발표한다고 하지만, 공식 사이트는 2025년판을 여덟 번째 판이라고 소개하고 직전 판은 2021년이에요. 몇 년에 한 번 개정된다고 보면 돼요. 2025년판 1위는 A01 Broken Access Control(접근 통제 실패)이에요. 공식 설명에는 '다른 사람의 고유 식별자를 넣어 남의 계정을 보거나 고치는 것', 'URL을 고쳐 접근 통제를 우회하는 것'이 예로 나와요. 이 문서의 9~11번이 바로 1위 항목이에요.</p>
+  <p class="cite">출처: <a href="https://top10.owasp.org/2025/" target="_blank" rel="noopener">OWASP Top 10:2025</a> · <a href="https://top10.owasp.org/2025/A01_2025-Broken_Access_Control/" target="_blank" rel="noopener">A01:2025 Broken Access Control</a></p>
 </aside>
-<p>영상은 이번에 3·4부를 다뤘고, 1·2부(API 키·환경변수, 데이터베이스 접근 권한)는 이전 영상에 있다고 안내하며 마무리해요.</p>
+<p>영상은 1부(API 키와 환경변수를 다룰 때 주의할 점)와 2부(데이터베이스 접근 권한)가 이전 영상에 있다고 안내하며 끝나요. 16개를 한 번에 보려면 두 편을 함께 보는 게 좋아요.</p>
 </section>
 
 <section id="corrections">
   <h2>자막 표기 바로잡기</h2>
 <aside class="note">
   <span class="tag">자막 관련 참고</span>
-  <p>자동생성 자막이라 영어 용어와 일부 단어가 잘못 받아적혔어요. 화면 슬라이드와 문맥으로 이렇게 바로잡았어요.</p>
+  <p>자동생성 자막이라 받아적기가 틀린 곳이 있어요. 화면 슬라이드와 문맥으로 이렇게 바로잡았어요.</p>
   <div class="table-scroll"><table>
     <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
     <tbody>
-      <tr><td>인간은</td><td>인가는</td><td>01:40, 02:14 부근</td></tr>
+      <tr><td>인간은 / 인가의가</td><td>인가는 / 인가의 &#x27;가&#x27;</td><td>인증·인가 설명 구간 전체</td></tr>
       <tr><td>4원들</td><td>사원들</td><td></td></tr>
-      <tr><td>주의게인가</td><td>주의할 게 인가</td><td></td></tr>
-      <tr><td>제안을 하셔야</td><td>제한을 하셔야</td><td>로그인 시도 횟수 제한</td></tr>
-      <tr><td>개발저 도구</td><td>개발자 도구</td><td></td></tr>
-      <tr><td>차라나는 / 차라는</td><td>차단하는</td><td></td></tr>
-      <tr><td>여드민 / 어드민</td><td>admin(관리자)</td><td></td></tr>
-      <tr><td>보완적으로</td><td>보안적으로</td><td></td></tr>
+      <tr><td>로그인 시도 횟수를 제안</td><td>로그인 시도 횟수를 제한</td><td></td></tr>
+      <tr><td>여드민 토큰</td><td>어드민(관리자) 토큰</td><td></td></tr>
+      <tr><td>보완적으로 안전합니다</td><td>보안적으로 안전합니다</td><td></td></tr>
       <tr><td>HTPS</td><td>HTTPS</td><td></td></tr>
-      <tr><td>버셀</td><td>Vercel</td><td>배포 플랫폼</td></tr>
       <tr><td>암호아 / 암모아</td><td>암호화</td><td></td></tr>
       <tr><td>보호코화</td><td>복호화</td><td></td></tr>
-      <tr><td>문자율</td><td>문자열</td><td></td></tr>
-      <tr><td>비크립트</td><td>bcrypt</td><td></td></tr>
+      <tr><td>비크립트</td><td>bcrypt</td><td>슬라이드 표기</td></tr>
       <tr><td>여건 번호</td><td>여권번호</td><td></td></tr>
-      <tr><td>개시</td><td>게시</td><td>처리방침을 보이는 곳에 올리는 것</td></tr>
       <tr><td>클라우드 DV</td><td>클라우드 DB</td><td></td></tr>
       <tr><td>빌로는</td><td>비밀번호는</td><td></td></tr>
-      <tr><td>비용리 보완 단체</td><td>비영리 보안 단체</td><td></td></tr>
-      <tr><td>탑 10 / 오픈웹 애플리케이션 시큐리티 프로젝트</td><td>OWASP Top 10 / Open Web Application Security Project</td><td></td></tr>
-      <tr><td>쥐되는</td><td>주의할</td><td></td></tr>
+      <tr><td>개시</td><td>게시</td><td>처리방침을 게시하는 것</td></tr>
+      <tr><td>탑 10 / 비용리 보완 단체 / 오픈웹 애플리케이션 시큐리티 프로젝트</td><td>OWASP Top 10 / 비영리 보안 단체 / Open Web Application Security Project</td><td></td></tr>
+      <tr><td>쥐되는 점</td><td>주의할 점</td><td></td></tr>
     </tbody>
   </table></div>
 </aside>
 </section>
 </main>
 
-<div class="tail">
+<div class="tail" id="glossary">
   <h2>이 글에 나온 용어</h2>
-  <div class="table-scroll">
-    <table>
-      <thead><tr><th style="width:30%">용어</th><th>뜻</th></tr></thead>
-      <tbody>
-        <tr><td>인증</td><td>상대가 누구인지 확인하는 절차예요. 로그인처럼 아이디·비밀번호나 신분증으로 &#x27;이 사람이 맞다&#x27;를 가려내요.</td></tr>
-        <tr><td>인가</td><td>확인된 사용자가 무엇을 할 수 있는지 정하는 절차예요. 같은 회원이라도 내 주문만 보고, 관리자만 관리 화면에 들어가게 해요.</td></tr>
-        <tr><td>개발자 도구</td><td>브라우저에 들어 있는 점검 도구예요. 페이지가 어떤 주소로 어떤 요청을 보내는지 누구나 볼 수 있어서, 화면에서 숨긴 기능도 드러나요.</td></tr>
-        <tr><td>JWT</td><td>로그인 정보를 담아 서명한 토큰 형식이에요. 서버가 세션을 따로 저장하지 않아도 돼서 많이 쓰지만, 만료 시간을 넣지 않으면 계속 유효해요.</td></tr>
-        <tr><td>로컬 스토리지</td><td>브라우저에 값을 저장해 두는 공간이에요. 그 페이지의 자바스크립트와 사용자가 언제든 읽을 수 있어서 민감한 토큰을 두면 위험해요.</td></tr>
-        <tr><td>2단계 인증</td><td>비밀번호에 더해 이메일·문자 코드 같은 두 번째 확인을 거치는 방식이에요. 비밀번호가 새어도 바로 뚫리지 않게 막아 줘요.</td></tr>
-        <tr><td>HTTPS</td><td>HTTP 통신을 암호화한 규약이에요. 중간에서 누가 엿봐도 비밀번호 같은 내용을 읽을 수 없고, 주소창 자물쇠로 적용 여부를 알 수 있어요.</td></tr>
-        <tr><td>해시</td><td>입력을 고정된 길이의 값으로 바꾸는 단방향 변환이에요. 원문으로 되돌릴 수 없어서, 비밀번호를 저장하고 비교하는 데 써요.</td></tr>
-        <tr><td>bcrypt</td><td>비밀번호 저장용으로 만든 해시 방식이에요. 일부러 계산을 느리게 하고 무작위 값(솔트)을 섞어서, 대입 공격을 어렵게 만들어요.</td></tr>
-        <tr><td>고유식별정보</td><td>법이 정한, 한 사람을 고유하게 가리키는 번호예요. 주민등록번호·여권번호·운전면허번호·외국인등록번호가 해당하고 처리 요건이 더 엄격해요.</td></tr>
-        <tr><td>처리위탁</td><td>개인정보 처리 업무를 외부 업체에 맡기는 거예요. 클라우드 DB나 이메일 발송 서비스를 쓰면 해당돼서, 처리방침에 수탁자와 업무를 적어요.</td></tr>
-        <tr><td>IDOR</td><td>요청에 든 번호만 바꿔서 남의 데이터에 접근하는 취약점이에요. 서버가 그 데이터의 소유자를 확인하지 않을 때 생겨요.</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-3"><dt>개발자 도구<span class="en">DevTools</span></dt><dd>브라우저에 들어 있는 점검 도구예요. 네트워크 탭에서 화면이 어떤 주소로 요청을 보내는지 누구나 볼 수 있어요.</dd></div>
+    <div class="g" id="g-11"><dt>개인정보 처리방침<span class="en">Privacy policy</span></dt><dd>어떤 개인정보를 왜, 얼마나 오래 처리하는지 이용자에게 알리는 공개 문서예요. 개인정보 보호법이 내용과 공개를 의무로 정해요.</dd></div>
+    <div class="g" id="g-10"><dt>고유식별정보</dt><dd>법령이 개인을 고유하게 구별하려고 부여한 번호예요. 주민등록번호, 여권번호, 운전면허번호, 외국인등록번호가 여기에 들어가요.</dd></div>
+    <div class="g" id="g-5"><dt>로컬 스토리지<span class="en">localStorage</span></dt><dd>브라우저가 사이트별로 값을 저장해 두는 공간이에요. 그 브라우저의 사용자와 페이지 스크립트가 자유롭게 읽을 수 있어서 비밀을 두기엔 맞지 않아요.</dd></div>
+    <div class="g" id="g-8"><dt>복호화<span class="en">Decryption</span></dt><dd>암호화한 값을 원래 값으로 되돌리는 거예요. 되돌릴 수 있다는 점이 해시와의 차이예요.</dd></div>
+    <div class="g" id="g-2"><dt>인가<span class="en">Authorization</span></dt><dd>확인된 사람이 무엇을 보고 할 수 있는지 정하는 절차예요. 바이브 코딩 앱에서 가장 자주 빠지는 부분이에요.</dd></div>
+    <div class="g" id="g-1"><dt>인증<span class="en">Authentication</span></dt><dd>이 사람이 누구인지 확인하는 절차예요. 로그인이 대표적이에요. 통과했다고 모든 걸 볼 수 있는 건 아니에요.</dd></div>
+    <div class="g" id="g-12"><dt>처리위탁</dt><dd>개인정보를 다루는 일을 다른 회사에 맡기는 거예요. AI API나 클라우드 DB에 사용자 정보를 보내는 것도 여기에 들어가서, 처리방침에 적어야 해요.</dd></div>
+    <div class="g" id="g-4"><dt>토큰<span class="en">Token</span></dt><dd>로그인에 성공했다는 증표로 서버가 내주는 값이에요. 요청마다 이걸 보여 주며 로그인 상태를 증명해요. 새면 남이 그 사람 행세를 할 수 있어요.</dd></div>
+    <div class="g" id="g-7"><dt>해시<span class="en">Hash</span></dt><dd>입력을 고정된 길이의 값으로 바꾸는 한 방향 변환이에요. 결과에서 원래 값을 되돌릴 수 없어서 비밀번호 저장에 써요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g" id="g-9"><dt>bcrypt</dt><dd>비밀번호 저장용으로 만든 해시 함수예요. 일부러 계산을 느리게 해서 대입 공격에 드는 시간을 늘려요.</dd></div>
+    <div class="g"><dt>DB</dt><dd>Database</dd></div>
+    <div class="g"><dt>HTTP</dt><dd>HyperText Transfer Protocol</dd></div>
+    <div class="g"><dt>HTTPS</dt><dd>HyperText Transfer Protocol Secure</dd></div>
+    <div class="g"><dt>IP</dt><dd>Internet Protocol</dd></div>
+    <div class="g"><dt>JWT</dt><dd>JSON Web Token</dd></div>
+    <div class="g"><dt>OWASP</dt><dd>Open Web Application Security Project</dd></div>
+    <div class="g"><dt>RFC</dt><dd>Request for Comments</dd></div>
+    <div class="g" id="g-6"><dt>2단계 인증<span class="en">Two-factor authentication</span></dt><dd>비밀번호에 더해 이메일·문자 코드 같은 두 번째 확인을 요구하는 방식이에요. 비밀번호가 새도 바로 뚫리지 않아요.</dd></div>
+  </dl>
 </div>
 
-<div class="tail">
+<div class="tail" id="sources">
   <h2>참고한 곳</h2>
   <ol>
-    <li><a href="https://www.youtube.com/watch?v=hFa-oqgueLw" target="_blank" rel="noopener">원본 영상 — 아는개발자</a></li>
-    <li><a href="https://ian.sh/mcdonalds" target="_blank" rel="noopener">Ian Carroll — Would you like an IDOR with that? (McHire 사고 공개 글)</a></li>
-    <li><a href="https://top10.owasp.org/2025" target="_blank" rel="noopener">OWASP Top 10:2025</a></li>
-    <li><a href="https://owasp.org/www-project-top-ten/" target="_blank" rel="noopener">OWASP Top Ten 프로젝트 페이지</a></li>
-    <li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html" target="_blank" rel="noopener">OWASP Password Storage Cheat Sheet</a></li>
-    <li><a href="https://www.law.go.kr/행정규칙/개인정보의안전성확보조치기준" target="_blank" rel="noopener">국가법령정보센터 — 개인정보의 안전성 확보조치 기준</a></li>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=hFa-oqgueLw" target="_blank" rel="noopener">원본 영상 — 아는개발자, 바이브코딩 앱이 해킹될 수 밖에 없는 이유 (완결)</a></li>
+    <li id="src-2"><a href="https://ian.sh/mcdonalds" target="_blank" rel="noopener">Ian Carroll — McHire(맥도날드 채용 플랫폼) 취약점 공개 글</a></li>
+    <li id="src-3"><a href="https://www.rfc-editor.org/rfc/rfc7519#section-4.1.4" target="_blank" rel="noopener">RFC 7519 — JSON Web Token, 4.1.4 &#x27;exp&#x27; Claim</a></li>
+    <li id="src-4"><a href="https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html" target="_blank" rel="noopener">OWASP Password Storage Cheat Sheet</a></li>
+    <li id="src-5"><a href="https://www.law.go.kr/행정규칙/개인정보의안전성확보조치기준" target="_blank" rel="noopener">국가법령정보센터 — 개인정보의 안전성 확보조치 기준 (개인정보보호위원회 고시 제2026-9호)</a></li>
+    <li id="src-6"><a href="https://www.law.go.kr/법령/개인정보보호법/제30조" target="_blank" rel="noopener">국가법령정보센터 — 개인정보 보호법 제30조(개인정보 처리방침)</a></li>
+    <li id="src-7"><a href="https://www.law.go.kr/법령/개인정보보호법/제26조" target="_blank" rel="noopener">국가법령정보센터 — 개인정보 보호법 제26조(업무위탁)</a></li>
+    <li id="src-8"><a href="https://top10.owasp.org/2025/" target="_blank" rel="noopener">OWASP Top 10:2025</a></li>
+    <li id="src-9"><a href="https://top10.owasp.org/2025/A01_2025-Broken_Access_Control/" target="_blank" rel="noopener">OWASP Top 10:2025 — A01 Broken Access Control</a></li>
   </ol>
 </div>
 
-<footer>2026년 10월 1일에 이 영상을 보고 정리했어요. 원본은 아는개발자 채널에 있어요.</footer>
+<footer>2026년 10월 14일에 이 영상을 보고 정리했어요. 원본은 아는개발자 채널에 있어요.</footer>
 
 </div>
 
-<div id="tip" role="tooltip"></div>
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
 <script>
 (function () {
-  // ── 용어 툴팁 ───────────────────────────────────────
-  // 마우스는 hover, 키보드는 focus, 터치는 tap 으로 연다.
-  // 화면 밖으로 삐져나가지 않게 좌우를 클램프한다.
-  var tip = document.getElementById('tip');
-  var open = null;
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
 
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
   function show(el) {
+    clearTimeout(hideTimer);
     var desc = el.getAttribute('data-desc');
     if (!desc) return;
-    var name = el.getAttribute('data-term') || el.textContent;
+    if (open && open !== el) open.classList.remove('open');
     tip.innerHTML = '';
-    var b = document.createElement('b');
-    b.textContent = name;
-    tip.appendChild(b);
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
     tip.appendChild(document.createTextNode(desc));
-    tip.classList.add('on');
-
-    var r = el.getBoundingClientRect();
-    var t = tip.getBoundingClientRect();
-    var pad = 12;
-    var left = r.left + window.scrollX + r.width / 2 - t.width / 2;
-    left = Math.max(pad, Math.min(left, document.documentElement.clientWidth - t.width - pad));
-    var top = r.top + window.scrollY - t.height - 10;
-    if (r.top - t.height - 10 < 0) top = r.bottom + window.scrollY + 10;
-    tip.style.left = left + 'px';
-    tip.style.top = top + 'px';
-    open = el;
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
   }
-
-  function hide() {
-    tip.classList.remove('on');
-    open = null;
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
   }
 
   document.querySelectorAll('.term').forEach(function (el) {
-    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
-    el.addEventListener('mouseenter', function () { show(el); });
-    el.addEventListener('mouseleave', hide);
-    el.addEventListener('focus', function () { show(el); });
-    el.addEventListener('blur', hide);
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
     el.addEventListener('click', function (e) {
-      e.preventDefault();
-      open === el ? hide() : show(el);
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
     });
   });
 
-  document.addEventListener('click', function (e) {
-    if (open && !e.target.closest('.term')) hide();
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
   });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') hide();
-  });
-  window.addEventListener('scroll', function () { if (open) show(open); }, { passive: true });
-  window.addEventListener('resize', hide);
 
-  // ── 목차 현재 위치 표시 ─────────────────────────────
-  var links = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
-  var map = {};
-  links.forEach(function (a) {
-    var s = document.getElementById(a.getAttribute('href').slice(1));
-    if (s) map[s.id] = a;
-  });
-  var targets = Object.keys(map).map(function (id) { return document.getElementById(id); });
-  if ('IntersectionObserver' in window && targets.length) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (!en.isIntersecting) return;
-        links.forEach(function (a) { a.classList.remove('active'); });
-        map[en.target.id].classList.add('active');
-      });
-    }, { rootMargin: '-10% 0px -75% 0px' });
-    targets.forEach(function (t) { io.observe(t); });
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
   }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
 })();
 </script>
+
 </body>
 </html>
