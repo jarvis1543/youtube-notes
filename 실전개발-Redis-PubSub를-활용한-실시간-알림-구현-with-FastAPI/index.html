@@ -358,14 +358,14 @@
 <p>지난 강의에서는 Redis CLI(Command Line Interface)로 구독과 발행을 직접 쳐 봤어요. 실무에서는 사람이 CLI를 두드리지 않아요. FastAPI 같은 백엔드 서버가 Redis와 붙어서 구독하고 발행해요. 이번 실습은 그 연결을 만들어 보는 거예요.</p>
 <p>학습 목표 상자에는 세 줄이 있어요. 실제 FastAPI 서버 환경에서 Pub/Sub 구조를 설계하기, 비동기 루프로 구독 커넥션을 효율적으로 관리하기, 그리고 SSE(Server-Sent Events)로 서버 이벤트를 브라우저에 밀어 주기예요.</p>
 <figure>
-  <img src="assets/frame-0005.png" alt="패턴 09: 실시간 시스템 알림 - FastAPI와 Pub/Sub 연동 제목 아래 학습 목표 세 줄이 적힌 노션 페이지">
+  <img src="assets/frame-0005.webp" alt="패턴 09: 실시간 시스템 알림 - FastAPI와 Pub/Sub 연동 제목 아래 학습 목표 세 줄이 적힌 노션 페이지">
   <figcaption>세 번째 목표인 SSE는 결과를 눈으로 보려고 붙인 보조 기술이에요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=5s" target="_blank" rel="noopener">영상 00:05에서 보기</a></figcaption>
 </figure>
 <p>SSE는 HTML(HyperText Markup Language) 5에 들어온 기술이에요. 서버가 HTTP(HyperText Transfer Protocol) 연결을 열어 둔 채 데이터를 브라우저로 계속 밀어 주는 단방향 스트리밍이에요. Pub/Sub와는 관계가 없어요. 브라우저가 FastAPI에 접속하면 FastAPI가 Redis를 구독하고, 받은 메시지를 브라우저까지 보여 주려고 쓴 거예요. 브라우저가 서버에서 새 소식을 받는 방법으로는 폴링, SSE, 웹소켓이 있는데, 발표자는 실제로는 폴링이 90% 이상이라고 말해요.</p>
 <h3>Pub/Sub 구조 다시 보기</h3>
 <p>슬라이드의 그림은 왼쪽 Publisher, 가운데 Redis(Pub/Sub Broker)의 Channel 1~3, 오른쪽 Subscriber 세 대로 되어 있어요. 발행자가 채널 하나에 메시지를 <code>PUBLISH</code>하면, 그 채널을 <code>SUBSCRIBE</code>한 구독자 모두에게 '1:N Broadcast'로 퍼져요. 그림 아래에는 'Volatile message delivery', 즉 <span class="term" data-term="휘발성" data-en="Volatile" data-desc="메시지를 어디에도 저장하지 않고 그 순간 연결된 구독자에게만 보내는 성질이에요. 그때 못 받으면 다시 받을 방법이 없어요." data-g="9">휘발성</span> 전달이라고 적혀 있어요.</p>
 <figure>
-  <img src="assets/frame-0208.png" alt="Publisher가 Redis 채널로 PUBLISH하고, 채널을 SUBSCRIBE한 Subscriber 세 대에 1:N Broadcast로 전달되는 Redis Pub/Sub Architecture 그림">
+  <img src="assets/frame-0208.webp" alt="Publisher가 Redis 채널로 PUBLISH하고, 채널을 SUBSCRIBE한 Subscriber 세 대에 1:N Broadcast로 전달되는 Redis Pub/Sub Architecture 그림">
   <figcaption>발행자와 구독자 사이에 직접 연결이 없어요. 둘 다 Redis만 알면 돼요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=128s" target="_blank" rel="noopener">영상 02:08에서 보기</a></figcaption>
 </figure>
 <p>발행자와 구독자는 서로 직접 연결되지 않고 Redis만 거쳐요. 이걸 <span class="term" data-term="느슨한 결합" data-en="Loose coupling" data-desc="두 구성 요소가 서로를 직접 알지 않고 중간 매개(여기선 Redis 채널)만 거쳐 통신하는 상태예요. 한쪽을 늘리거나 바꿔도 다른 쪽을 고칠 필요가 없어요." data-g="1">느슨한 결합</span>, 또는 디커플링이라고 불러요. 구독자가 몇 대로 늘어도 발행자 쪽은 바꿀 게 없어서 확장하기 쉬워요.</p>
@@ -376,7 +376,7 @@
   <h2>구독한 연결은 다른 일을 못 해요</h2>
 <p>CLI에서 구독을 테스트하는 건 아주 간단했어요. 그런데 Java, Node, FastAPI 같은 백엔드 코드에서 Redis Pub/Sub를 붙일 때는 주의할 점이 하나 있어요. 슬라이드의 '왜 백엔드 코드에서 Pub/Sub이 까다로울까요?' 아래 세 줄이 그 이유예요.</p>
 <figure>
-  <img src="assets/frame-0320.png" alt="왜 백엔드 코드에서 Pub/Sub이 까다로울까요 제목 아래 SUBSCRIBE가 블로킹 상태를 만든다는 설명과, 일반 API용 연결과 Pub/Sub 전용 연결로 나누는 해결 방법이 적힌 슬라이드">
+  <img src="assets/frame-0320.webp" alt="왜 백엔드 코드에서 Pub/Sub이 까다로울까요 제목 아래 SUBSCRIBE가 블로킹 상태를 만든다는 설명과, 일반 API용 연결과 Pub/Sub 전용 연결로 나누는 해결 방법이 적힌 슬라이드">
   <figcaption>'해결 방법'의 두 줄, 일반 API(Application Programming Interface)용 연결과 Pub/Sub 전용 연결이 이번 강의 전체를 관통해요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=200s" target="_blank" rel="noopener">영상 03:20에서 보기</a></figcaption>
 </figure>
 <p><code>GET</code>, <code>SET</code> 같은 일반 명령은 요청하면 바로 응답이 오고 끝나요. 반면 <code>SUBSCRIBE</code>를 실행하면 그 연결은 메시지가 올 때까지 기다리는 <span class="term" data-term="블로킹" data-en="Blocking" data-desc="결과가 올 때까지 그 자리에서 멈춰 기다리는 상태예요. 구독한 Redis 연결은 메시지를 기다리느라 다른 명령을 받지 못해요." data-g="2">블로킹</span> 상태가 돼요. 이때부터 연결은 메시지 수신 전용 모드라서, 같은 연결로는 <code>GET</code>이나 <code>SET</code>을 보낼 수 없어요.</p>
@@ -413,7 +413,7 @@
   <h2>실습할 전역 공지 시스템</h2>
 <p>이번에 만들 건 '실시간 전역 공지 시스템'이에요. 슬라이드 그림은 왼쪽부터 Clients(브라우저), Servers(서버 여러 대), 오른쪽 Redis Pub/Sub 순서예요. 브라우저는 서버에 SSE Request를 보내 Event Stream 통로를 열어 두고, 서버들은 Redis 채널을 <code>SUBSCRIBE</code>해요.</p>
 <figure>
-  <img src="assets/frame-0513.png" alt="Clients가 Servers에 SSE Request를 보내 Event Stream을 받고, Servers는 Redis Pub/Sub 채널을 SUBSCRIBE해 Receive Messages로 메시지를 받는 전역 공지 시스템 구조도">
+  <img src="assets/frame-0513.webp" alt="Clients가 Servers에 SSE Request를 보내 Event Stream을 받고, Servers는 Redis Pub/Sub 채널을 SUBSCRIBE해 Receive Messages로 메시지를 받는 전역 공지 시스템 구조도">
   <figcaption>오른쪽 아래 Receive Messages 화살표가 Redis에서 모든 서버로 동시에 들어가요. 서버는 그걸 왼쪽 Event Stream으로 흘려보내기만 해요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=313s" target="_blank" rel="noopener">영상 05:13에서 보기</a></figcaption>
 </figure>
 <p>어느 서버가 메시지를 Redis에 발행하면, Redis는 채널을 구독 중인 모든 서버에 즉시 보내요. 서버들은 열려 있던 SSE 연결로 그 메시지를 브라우저에 전달해요. 발행은 구독 중인 서버 중 하나가 해도 되고, 뒤쪽 관리 도구나 Redis CLI에서 관리자가 직접 해도 돼요.</p>
@@ -438,7 +438,7 @@
   <h2>서버 코드 ①: 연결 풀, 발행, SSE 엔드포인트</h2>
 <p>서버 파일 이름은 <code>pub_sub_server.py</code>예요. 맨 위에서 <code>redis.asyncio</code>를 <code>redis</code>로 가져오고, <span class="term" data-term="lifespan" data-en="FastAPI lifespan" data-desc="FastAPI 앱이 요청을 받기 전 한 번, 종료할 때 한 번 실행되는 함수예요. Redis 연결 풀을 만들고 닫는 곳으로 써요." data-g="4">lifespan</span> 함수에서 서버가 시작할 때 <code>redis.from_url("redis://localhost:6379/0", ...)</code>으로 연결 풀을 만들어 <code>app.state.redis</code>에 넣어요. <code>yield</code> 뒤에서는 서버가 끝날 때 <code>aclose()</code>로 안전하게 닫아요. 이 강의 시리즈에서 계속 써 온 패턴이에요.</p>
 <figure>
-  <img src="assets/frame-0742.png" alt="pub_sub_server.py 상단 코드: asyncio, asynccontextmanager, FastAPI, StreamingResponse, FileResponse, redis.asyncio import와 lifespan 함수에서 Redis 연결 풀 생성">
+  <img src="assets/frame-0742.webp" alt="pub_sub_server.py 상단 코드: asyncio, asynccontextmanager, FastAPI, StreamingResponse, FileResponse, redis.asyncio import와 lifespan 함수에서 Redis 연결 풀 생성">
   <figcaption>빨간 상자가 쳐진 <code>redis.asyncio</code>가 비동기 클라이언트예요. FastAPI의 이벤트 루프를 막지 않고 Redis를 쓸 수 있어요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=462s" target="_blank" rel="noopener">영상 07:42에서 보기</a></figcaption>
 </figure>
 <aside class="more">
@@ -460,7 +460,7 @@
 <h3>발행은 세 줄이면 돼요</h3>
 <p>아래 화면의 <code>send_notice</code>를 보면, <code>request.app.state.redis</code>에서 연결을 하나 가져와요. 여기서는 아직 Pub/Sub 전용이 아니라 일반 명령용 연결이에요. 이걸로 <code>publish(NOTICE_CHANNEL, message)</code>를 부르고, <code>success</code>와 함께 메시지를 받은 구독자 수 <code>received_subscribers</code>를 돌려줘요.</p>
 <figure>
-  <img src="assets/frame-0822.png" alt="NOTICE_CHANNEL을 system:notices로 정의하고, GET /pub_sub가 pub_sub.html을 반환하며, POST /publish-notice가 rd.publish로 메시지를 발행하는 코드">
+  <img src="assets/frame-0822.webp" alt="NOTICE_CHANNEL을 system:notices로 정의하고, GET /pub_sub가 pub_sub.html을 반환하며, POST /publish-notice가 rd.publish로 메시지를 발행하는 코드">
   <figcaption>빨간 상자의 <code>/pub_sub</code>는 HTML만 돌려주는 엔드포인트예요. 실제 발행은 아래 <code>publish-notice</code>의 <code>rd.publish</code> 한 줄이에요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=502s" target="_blank" rel="noopener">영상 08:22에서 보기</a></figcaption>
 </figure>
 <aside class="more">
@@ -472,7 +472,7 @@
 <p><code>/stream-notices</code> 안에는 <code>event_generator()</code>라는 <span class="term" data-term="비동기 제너레이터" data-en="Async generator" data-desc="async def 안에서 yield로 값을 하나씩 내보내는 함수예요. SSE처럼 연결을 열어 둔 채 데이터가 생길 때마다 보내야 할 때 써요." data-g="5">비동기 제너레이터</span>가 정의돼 있어요. SSE는 연결을 열어 둔 채 데이터가 생길 때마다 보내야 해서, 데이터를 계속 만들어 내는 함수가 필요해요. 이 함수 자체는 SSE를 위한 코드예요.</p>
 <p>그 안의 <code>async with request.app.state.redis.pubsub() as pubsub:</code> 한 줄이 앞 섹션에서 말한 연결 분리예요. lifespan에서 만든 같은 풀에서 Pub/Sub 전용 연결을 하나 꺼내요. <code>async with</code>라서 작업이 끝나면 연결이 자동으로 풀에 돌아가요. 그다음 <code>pubsub.subscribe(NOTICE_CHANNEL)</code>로 구독해요.</p>
 <figure>
-  <img src="assets/frame-0936.png" alt="publish-notice 함수의 request.app.state.redis와 rd.publish 줄에 빨간 상자가 쳐져 있고, 아래 stream-notices 엔드포인트의 event_generator와 rd.pubsub() 줄이 이어지는 코드">
+  <img src="assets/frame-0936.webp" alt="publish-notice 함수의 request.app.state.redis와 rd.publish 줄에 빨간 상자가 쳐져 있고, 아래 stream-notices 엔드포인트의 event_generator와 rd.pubsub() 줄이 이어지는 코드">
   <figcaption>위쪽 <code>app.state.redis</code>는 일반 연결, 아래 <code>app.state.redis.pubsub()</code>는 구독 전용 연결이에요. 같은 풀에서 나오지만 쓰임이 달라요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=576s" target="_blank" rel="noopener">영상 09:36에서 보기</a></figcaption>
 </figure>
 </section>
@@ -482,7 +482,7 @@
   <h2>서버 코드 ②: 메시지를 기다리는 루프</h2>
 <p>구독을 걸었으면 이제 메시지를 기다려야 해요. 화면의 <code>while True</code> 루프 안에서 <code>pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)</code>를 기다리고, 그 아래 <code>if message and message['type'] == 'message':</code>를 통과한 것만 <code>data</code>로 꺼내요.</p>
 <figure>
-  <img src="assets/frame-1138.png" alt="event_generator 안에서 pubsub.subscribe 후 try, while True 루프에서 get_message(ignore_subscribe_messages=True, timeout=1.0)로 메시지를 기다리고 type이 message인 것만 data로 꺼내는 코드">
+  <img src="assets/frame-1138.webp" alt="event_generator 안에서 pubsub.subscribe 후 try, while True 루프에서 get_message(ignore_subscribe_messages=True, timeout=1.0)로 메시지를 기다리고 type이 message인 것만 data로 꺼내는 코드">
   <figcaption>메타 메시지를 두 번 거르는 셈이에요. 옵션으로 한 번, <code>type</code> 검사로 한 번 더. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=698s" target="_blank" rel="noopener">영상 11:38에서 보기</a></figcaption>
 </figure>
 <p>두 인자의 뜻은 이래요.</p>
@@ -507,7 +507,7 @@ flowchart TD
 <h3>SSE로 내보내고, 잠깐 쉬고, 정리하기</h3>
 <p>아래 화면의 순서대로 읽으면 돼요. 메시지가 있으면 <code>yield f"data: {data}\n\n"</code>로 SSE 표준 형식에 맞춰 내보내요. 다음 줄의 <code>await request.is_disconnected()</code>가 참이면 <code>break</code>로 루프를 끝내요. 맨 아래 <code>StreamingResponse(event_generator(), media_type="text/event-stream")</code>가 이 제너레이터를 응답으로 돌려줘요. <code>yield</code>와 <code>StreamingResponse</code>는 Pub/Sub와 관계없는 SSE 쪽 코드예요.</p>
 <figure>
-  <img src="assets/frame-1418.png" alt="yield로 SSE 형식 데이터를 보내고, request.is_disconnected()면 break, await asyncio.sleep(0.01), finally에서 pubsub.unsubscribe, 마지막에 StreamingResponse를 반환하는 코드">
+  <img src="assets/frame-1418.webp" alt="yield로 SSE 형식 데이터를 보내고, request.is_disconnected()면 break, await asyncio.sleep(0.01), finally에서 pubsub.unsubscribe, 마지막에 StreamingResponse를 반환하는 코드">
   <figcaption>빨간 동그라미의 SSE 주석 아래 <code>data: …\n\n</code>이 SSE 한 건의 형식이에요. 빈 줄 하나가 메시지 하나의 끝이에요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=858s" target="_blank" rel="noopener">영상 14:18에서 보기</a></figcaption>
 </figure>
 <p><code>await asyncio.sleep(0.01)</code>은 루프를 아주 잠깐 멈춰요. 쉬지 않고 돌면 CPU(Central Processing Unit)를 많이 쓰고 <span class="term" data-term="이벤트 루프" data-en="Event loop" data-desc="비동기 작업들을 번갈아 실행해 주는 엔진이에요. 한 작업이 쉬지 않고 돌면 다른 작업이 실행될 기회를 잃어요." data-g="6">이벤트 루프</span>를 혼자 차지할 수 있어서, 다른 비동기 작업에도 실행 기회를 주려는 거예요. 루프가 끝나면 <code>finally</code>에서 <code>pubsub.unsubscribe(NOTICE_CHANNEL)</code>로 구독을 명시적으로 해제해요.</p>
@@ -518,7 +518,7 @@ flowchart TD
   <h2>클라이언트마다 구독하면 안 되는 이유</h2>
 <p>코드 설명이 끝나자 발표자는 '(주의) Pub/Sub 연결 객체' 상자를 짚어요. 지금 예제는 클라이언트 수만큼, 즉 접속한 브라우저 수만큼 Pub/Sub 연결이 생겨요.</p>
 <figure>
-  <img src="assets/frame-1534.png" alt="(주의) Pub/Sub 연결 객체 제목 아래, 예제는 클라이언트 수만큼 Pub/Sub 연결이 생기며 실무에서는 애플리케이션 시작 시 구독하고 종료 시 해제한다는 두 줄 설명">
+  <img src="assets/frame-1534.webp" alt="(주의) Pub/Sub 연결 객체 제목 아래, 예제는 클라이언트 수만큼 Pub/Sub 연결이 생기며 실무에서는 애플리케이션 시작 시 구독하고 종료 시 해제한다는 두 줄 설명">
   <figcaption>굵은 글씨 두 곳만 기억하면 돼요. '클라이언트 수만큼 연결이 생성'되는 게 문제이고, '애플리케이션 시작 시 생성, 종료 시 해제'가 답이에요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=934s" target="_blank" rel="noopener">영상 15:34에서 보기</a></figcaption>
 </figure>
 <p>브라우저가 하나 들어오면 전용 연결을 만들고 구독하고 <code>get_message</code>로 기다려요. 또 하나 들어오면 또 만들어요. 결과를 한 번에 눈으로 보기 쉬우라고 이렇게 짠 것이고, 사용자가 많아지면 구독 연결도 끝없이 늘어나요. 그래서 실제로는 잘 쓰지 않아요.</p>
@@ -526,7 +526,7 @@ flowchart TD
 <h3>커넥션 독점 문제, 한 번 더</h3>
 <p>'서버 소스 핵심 포인트'의 첫 항목이 커넥션 독점(Connection Monopoly) 문제예요. 문제와 해결이 나란히 정리돼 있어요.</p>
 <figure>
-  <img src="assets/frame-1745.png" alt="커넥션 독점(Connection Monopoly) 문제: lifespan에서 만든 app.state.redis는 여러 API가 공유하는 연결 풀이고, 여기서 SUBSCRIBE하면 GET/SET을 못 한다는 문제와 async with rd.pubsub() as pubsub로 해결한다는 정리">
+  <img src="assets/frame-1745.webp" alt="커넥션 독점(Connection Monopoly) 문제: lifespan에서 만든 app.state.redis는 여러 API가 공유하는 연결 풀이고, 여기서 SUBSCRIBE하면 GET/SET을 못 한다는 문제와 async with rd.pubsub() as pubsub로 해결한다는 정리">
   <figcaption>'해결' 아래 <code>async with rd.pubsub() as pubsub</code> 한 줄이 섹션 4에서 본 바로 그 코드예요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=1065s" target="_blank" rel="noopener">영상 17:45에서 보기</a></figcaption>
 </figure>
 <p>lifespan에서 만든 <code>app.state.redis</code>는 FastAPI의 여러 API가 함께 쓰는 <span class="term" data-term="커넥션 풀" data-en="Connection pool" data-desc="미리 만들어 둔 연결 여러 개를 돌려 쓰는 저장소예요. 여기서 하나를 구독용으로 묶어 두면 다른 API가 쓸 연결이 그만큼 줄어요." data-g="3">커넥션 풀</span>이에요. 여기서 연결 하나를 뽑아 그대로 <code>SUBSCRIBE</code>를 걸면, 그 연결은 메시지 대기 전용이 돼서 <code>GET/SET</code>을 처리하지 못해요. 그래서 <code>rd.pubsub()</code>로 구독 전용 연결을 필요할 때 받아 쓰고, <code>async with</code>로 끝나면 풀에 돌려줘요. 풀의 다른 연결을 방해하지 않게 하는 거예요.</p>
@@ -539,7 +539,7 @@ flowchart TD
 <h3>프론트 코드는 받아서 찍기만 해요</h3>
 <p><code>pub_sub.html</code>의 스크립트는 짧아요. 맨 위에서 지금 접속한 포트를 화면에 표시하고, '// SSE 연결 시작' 주석 아래 <code>new EventSource("/stream-notices")</code>로 SSE 연결을 열어요. <code>onmessage</code>가 불릴 때마다 <code>event.data</code>와 현재 시각을 한 줄로 만들어 로그 영역에 붙이고, 스크롤을 맨 아래로 내려요.</p>
 <figure>
-  <img src="assets/frame-1938.png" alt="pub_sub.html의 script: window.location.port를 표시하고, new EventSource('/stream-notices')로 SSE 연결을 연 뒤 onmessage에서 event.data와 시각을 로그에 추가하고 onerror에서 오류를 출력하는 코드">
+  <img src="assets/frame-1938.webp" alt="pub_sub.html의 script: window.location.port를 표시하고, new EventSource('/stream-notices')로 SSE 연결을 연 뒤 onmessage에서 event.data와 시각을 로그에 추가하고 onerror에서 오류를 출력하는 코드">
   <figcaption>클라이언트는 하는 일이 거의 없어요. 연결을 열고, 오는 대로 화면에 붙여요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=1178s" target="_blank" rel="noopener">영상 19:38에서 보기</a></figcaption>
 </figure>
 <aside class="more">
@@ -550,7 +550,7 @@ flowchart TD
 <h3>테스트 계획</h3>
 <p>실습 가이드는 '다중 서버 Pub/Sub 테스트 (1:N 통신)'이에요. 1단계 상자에 uvicorn 명령 두 줄이 있어요. 같은 <code>pub_sub_server:app</code>을 <code>--port 8000</code>과 <code>--port 8001</code>로 띄워서 서로 다른 웹 애플리케이션 두 대처럼 써요. 2단계는 브라우저로 각 서버의 <code>/pub_sub</code>에 접속해 수신자를 만드는 거예요.</p>
 <figure>
-  <img src="assets/frame-2028.png" alt="실습 가이드: 다중 서버 Pub/Sub 테스트. 1단계 터미널 두 개에서 uvicorn pub_sub_server:app --port 8000 --reload와 --port 8001 --reload 실행, 2단계 localhost:8000/pub_sub와 8001/pub_sub 접속">
+  <img src="assets/frame-2028.webp" alt="실습 가이드: 다중 서버 Pub/Sub 테스트. 1단계 터미널 두 개에서 uvicorn pub_sub_server:app --port 8000 --reload와 --port 8001 --reload 실행, 2단계 localhost:8000/pub_sub와 8001/pub_sub 접속">
   <figcaption>서버가 두 대뿐이지만, Redis 하나를 같이 쓴다는 점에서 실제 분산 환경과 같아요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=1228s" target="_blank" rel="noopener">영상 20:28에서 보기</a></figcaption>
 </figure>
 <div class="table-scroll">
@@ -565,29 +565,29 @@ flowchart TD
 </div>
 <p>3단계는 Swagger UI에서 메시지를 서로 발행해 보는 거예요. '확인 결과' 상자에는 기대하는 결과가 적혀 있어요. 8000번 앱과 8001번 앱에 알림이 동시에 떠야 해요. Redis가 메시지를 보관하지 않고 즉시 모든 구독자에게 밀어 주기 때문이에요. 서버가 100대, 1,000대로 늘어도 같은 채널을 구독하면 모든 사용자에게 실시간으로 보낼 수 있어요.</p>
 <figure>
-  <img src="assets/frame-2118.png" alt="3단계 Swagger로 메시지 발행, 확인 결과: 8000번과 8001번 앱에 동시에 알림이 출력되고, 구독자가 끊기면 그 사이 메시지는 복구되지 않고 유실될 수 있다는 설명">
+  <img src="assets/frame-2118.webp" alt="3단계 Swagger로 메시지 발행, 확인 결과: 8000번과 8001번 앱에 동시에 알림이 출력되고, 구독자가 끊기면 그 사이 메시지는 복구되지 않고 유실될 수 있다는 설명">
   <figcaption>'의미'의 마지막 줄이 중요해요. 구독자가 잠깐 끊기거나 장애가 나면 그 사이 메시지는 복구되지 않아요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=1278s" target="_blank" rel="noopener">영상 21:18에서 보기</a></figcaption>
 </figure>
 <p>Pub/Sub는 휘발성 메시지를 보내요. 한 번 발행된 메시지는 그때 받지 못하면 나중에도 받을 수 없어요. Redis 어디에도 저장되지 않아요.</p>
 <h3>직접 띄워 보기</h3>
 <p>Python 가상 환경이 있는 <code>C:\fastapi-study</code>에서 터미널 두 개를 열고 가상 환경을 켜요. 그다음 위 명령으로 서버를 띄워요. 화면의 위 터미널은 8000번, 아래는 8001번이에요. 둘 다 'Application startup complete' 뒤에 <code>GET /stream-notices</code> 200 OK가 찍혀 있어요. 브라우저가 SSE 연결을 연 흔적이에요.</p>
 <figure>
-  <img src="assets/frame-2323.png" alt="터미널 두 개에서 uvicorn이 각각 127.0.0.1:8000과 127.0.0.1:8001로 실행되고, 둘 다 GET /stream-notices HTTP/1.1 200 OK 로그가 찍힌 화면">
+  <img src="assets/frame-2323.webp" alt="터미널 두 개에서 uvicorn이 각각 127.0.0.1:8000과 127.0.0.1:8001로 실행되고, 둘 다 GET /stream-notices HTTP/1.1 200 OK 로그가 찍힌 화면">
   <figcaption>명령의 모듈 이름은 파일 이름과 같아야 해요. 발표자는 <code>pub_sub_server</code>로 꼭 맞춰 달라고 말해요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=1403s" target="_blank" rel="noopener">영상 23:23에서 보기</a></figcaption>
 </figure>
 <p>크롬 창 두 개를 위아래로 놓고, 각 창 왼쪽에는 <code>/docs</code>, 오른쪽에는 <code>/pub_sub</code>를 열어요. 처음에는 주소를 잘못 넣어 페이지가 안 떴다가 고쳐요. 수신 페이지에는 '실시간 시스템 공지'와 현재 접속 포트(8000, 8001), 그리고 '알림을 기다리는 중…'이 보여요.</p>
 <figure>
-  <img src="assets/frame-2438.png" alt="위 창은 8000번, 아래 창은 8001번. 각 창 왼쪽에 FastAPI Swagger UI, 오른쪽에 실시간 시스템 공지 수신 페이지가 알림을 기다리는 중으로 떠 있는 화면">
+  <img src="assets/frame-2438.webp" alt="위 창은 8000번, 아래 창은 8001번. 각 창 왼쪽에 FastAPI Swagger UI, 오른쪽에 실시간 시스템 공지 수신 페이지가 알림을 기다리는 중으로 떠 있는 화면">
   <figcaption>아직 아무것도 발행하지 않은 상태예요. 두 수신 페이지가 각자 자기 서버에 SSE로 붙어 있어요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=1478s" target="_blank" rel="noopener">영상 24:38에서 보기</a></figcaption>
 </figure>
 <p>위 창(8000번)의 <code>POST /publish-notice</code>에 <code>hello 8000</code>을 넣고 Execute를 누르면, 위아래 수신 페이지에 같은 줄이 바로 찍혀요. 8000번이 자기에게도 보냈고, 8001번도 8000번이 발행한 걸 즉시 받았어요.</p>
 <figure>
-  <img src="assets/frame-2503.png" alt="8000번 Swagger에서 message에 hello 8000을 넣어 실행하자, 8000번과 8001번 수신 페이지 양쪽에 hello 8000이 시각과 함께 찍힌 화면">
+  <img src="assets/frame-2503.webp" alt="8000번 Swagger에서 message에 hello 8000을 넣어 실행하자, 8000번과 8001번 수신 페이지 양쪽에 hello 8000이 시각과 함께 찍힌 화면">
   <figcaption>아래 창은 8001번 서버에 붙어 있는데도 8000번에서 보낸 공지를 받아요. 두 서버 사이를 이어 준 건 Redis 채널뿐이에요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=1503s" target="_blank" rel="noopener">영상 25:03에서 보기</a></figcaption>
 </figure>
 <p>이번에는 8001번에서 발행하고, 위에서 <code>111111</code>, 아래에서 <code>22222</code>를 번갈아 여러 번 보내요. 양쪽 로그가 같은 순서로 쌓여요. 어디서 발행하든 양쪽 모두 실시간으로 받아요.</p>
 <figure>
-  <img src="assets/frame-2553.png" alt="위 창 Swagger에는 111111, 아래 창에는 22222가 입력돼 있고, 두 수신 페이지 로그에 111111과 22222가 같은 순서로 여러 줄 쌓인 화면">
+  <img src="assets/frame-2553.webp" alt="위 창 Swagger에는 111111, 아래 창에는 22222가 입력돼 있고, 두 수신 페이지 로그에 111111과 22222가 같은 순서로 여러 줄 쌓인 화면">
   <figcaption>두 로그의 순서가 똑같아요. 서버가 수십, 수백 대여도 같은 채널을 구독하면 결과는 같아요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=1553s" target="_blank" rel="noopener">영상 25:53에서 보기</a></figcaption>
 </figure>
 </section>
@@ -651,7 +651,7 @@ flowchart TD
 <h3>강의 요약</h3>
 <p>마지막 '요약 및 생각해볼 점' 화면에는 다섯 줄이 있어요. 브로드캐스팅, 커넥션 분리, SSE 활용, 휘발성, 그리고 Pub/Sub를 쓰면 안 되는 곳이에요.</p>
 <figure>
-  <img src="assets/frame-2758.png" alt="요약 및 생각해볼 점: 브로드캐스팅, 커넥션 분리, SSE 활용, Pub/Sub는 메시지를 보관하지 않음, 반드시 처리돼야 하는 주문/결제에는 Redis Streams나 별도 MQ를 고려하라는 다섯 항목">
+  <img src="assets/frame-2758.webp" alt="요약 및 생각해볼 점: 브로드캐스팅, 커넥션 분리, SSE 활용, Pub/Sub는 메시지를 보관하지 않음, 반드시 처리돼야 하는 주문/결제에는 Redis Streams나 별도 MQ를 고려하라는 다섯 항목">
   <figcaption>마지막 줄이 쓸 곳과 안 쓸 곳을 가르는 기준이에요. 놓쳐도 치명적이지 않은 메시지에만 Pub/Sub를 써요. <a href="https://www.youtube.com/watch?v=I6ioHc1yspg&amp;t=1678s" target="_blank" rel="noopener">영상 27:58에서 보기</a></figcaption>
 </figure>
 <ul>
