@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 에이전트가 관용적인 Rust를 쓰게 하는 Symposium</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>AI 에이전트가 관용적인 Rust를 쓰게 하는 Symposium</h1>
+  <p class="lede">크레이트 작성자의 지침을 에이전트에 건네는 도구와 그 실험 결과</p>
+  <div class="meta">
+    <span>Let&#x27;s Get Rusty</span><span class="dot">·</span>
+    <span>영상 05:07</span><span class="dot">·</span>
+    <span>읽는 데 약 7분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=n83pvFuZ5fo" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>에이전트가 Rust에서 헤매는 이유는 두 가지예요. 학습 데이터가 적고, <span class="term" data-term="크레이트" data-en="Crate" data-desc="Rust의 패키지 단위예요. crates.io에 올라가고 Cargo.toml에 적어서 의존성으로 가져와요." data-g="2">크레이트</span> 생태계가 빨리 바뀌어요.</li>
+    <li>Symposium은 워크스페이스의 <span class="term" data-term="의존성" data-en="Dependency" data-desc="프로젝트가 가져다 쓰는 다른 크레이트예요. Symposium은 이 목록을 보고 설치할 지침을 골라요." data-g="6">의존성</span>을 훑고, 그 크레이트에 맞는 <span class="term" data-term="스킬" data-en="Agent skill" data-desc="SKILL.md 파일과 그 폴더로 된 지침 묶음이에요. 에이전트가 필요할 때 컨텍스트로 불러와 따라요." data-g="3">스킬</span>·<span class="term" data-term="훅" data-en="Hook" data-desc="에이전트가 코드를 쓰거나 명령을 실행하는 순간에 끼어들어 돌아가는 검사나 변환이에요. Symposium은 훅이 불릴 때마다 의존성을 다시 확인해요." data-g="4">훅</span>·<span class="term" data-term="MCP 서버" data-en="MCP server" data-desc="에이전트에게 도구와 데이터를 열어 주는 서버예요. MCP라는 공통 규격을 따르므로 여러 에이전트가 같은 서버를 쓸 수 있어요." data-g="5">MCP(Model Context Protocol) 서버</span>를 에이전트에 설치해 줘요.</li>
+    <li>크레이트 작성자는 <code>skills/</code> 폴더에 <code>SKILL.md</code>를 넣고 recommendations 저장소에 플러그인을 등록하면 돼요.</li>
+    <li>Toasty로 비교해 보니 목록 조회는 Symposium 쪽이, 삭제는 오히려 없는 쪽이 더 관용적이었어요.</li>
+    <li>도구는 사람마다 맞는 조합이 달라요. AI(Artificial Intelligence)를 쓰더라도 품질·견고함·보안은 개발자가 지켜야 해요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">에이전트가 Rust에서 헤매는 두 가지 이유</a></li>
+    <li><a href="#s2">Symposium이 하는 일</a></li>
+    <li><a href="#s3">Toasty로 해 본 비교</a></li>
+    <li><a href="#s4">도구보다 중요한 것</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=n83pvFuZ5fo&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>에이전트가 Rust에서 헤매는 두 가지 이유</h2>
+<p>Symposium은 Rust 언어의 주요 설계자이자 메인테이너인 Niko Matsakis가 만든 프로젝트예요. 화면에 뜬 GitHub 프로필이 그의 계정 nikomatsakis예요.</p>
+<figure>
+  <img src="assets/frame-0006.webp" alt="GitHub의 nikomatsakis 프로필 페이지. 이름 Niko Matsakis와 저장소 321개가 보이고 오른쪽에 발표자 얼굴이 작게 들어가 있어요">
+  <figcaption>
+    Symposium을 만든 사람은 Rust를 설계한 사람 중 하나예요. 그래서 이 도구가 주목받아요.
+    <a href="https://www.youtube.com/watch?v=n83pvFuZ5fo&amp;t=6s" target="_blank" rel="noopener">영상 00:06에서 보기</a>
+  </figcaption>
+</figure>
+<p>출발점은 에이전트에게 Rust를 맡길 때 생기는 문제 두 가지예요. 화면 오른쪽에 번호를 붙여 정리돼 있어요. 1번은 Rust가 새 언어라는 점, 2번은 생태계가 계속 바뀐다는 점이에요.</p>
+<figure>
+  <img src="assets/frame-0038.webp" alt="발표자 옆에 1 Rust is a new language, 2 Rust has a evolving ecosystem 두 줄이 주황색 번호와 함께 떠 있는 화면">
+  <figcaption>
+    문제는 언어 자체와 라이브러리 쪽, 두 갈래로 나뉘어요.
+    <a href="https://www.youtube.com/watch?v=n83pvFuZ5fo&amp;t=38s" target="_blank" rel="noopener">영상 00:38에서 보기</a>
+  </figcaption>
+</figure>
+<h3>학습 데이터가 적어요</h3>
+<p>Rust는 C나 C++보다 역사가 짧아서 모델이 배운 Rust 코드가 상대적으로 적어요. 그래서 에이전트가 쓴 코드는 돌아가더라도 <span class="term" data-term="관용적인 코드" data-en="Idiomatic code" data-desc="그 언어 커뮤니티가 자연스럽다고 여기는 방식으로 쓴 코드예요. 돌아가기만 하는 코드와 달리 읽기 쉽고, 라이브러리가 의도한 사용법을 따라요." data-g="1">관용적인 코드</span>가 아닐 때가 많아요. 다른 언어 습관을 Rust 문법으로 옮겨 적은 듯한 코드가 나오는 거예요.</p>
+<h3>크레이트가 빨리 바뀌어요</h3>
+<p>두 번째 문제가 더 실무에 가까워요. 프로젝트에서 쓰는 크레이트도 대부분 새것이고 자주 업데이트돼요. 아래 슬라이드 왼쪽에는 HTTP(Hypertext Transfer Protocol) 요청을 보내는 짧은 코드가, 오른쪽에는 그 결과로 생기는 문제 세 가지가 있어요.</p>
+<figure>
+  <img src="assets/frame-0048.webp" alt="왼쪽에 use request::Client로 시작하는 Rust 코드 상자, 오른쪽에 Outdated APIs, Outdated documentation, Missing new features 세 항목이 빨간 아이콘과 함께 적힌 슬라이드">
+  <figcaption>
+    낡은 API(Application Programming Interface), 낡은 문서, 새 기능 놓치기. 모두 모델이 배운 시점과 지금 라이브러리 사이의 차이에서 생겨요.
+    <a href="https://www.youtube.com/watch?v=n83pvFuZ5fo&amp;t=48s" target="_blank" rel="noopener">영상 00:48에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 에이전트가 아예 옛 버전 크레이트를 골라 쓰는 일도 직접 겪었다고 해요. 그래서 질문을 이렇게 정리해요. 관용적이고, 최신 라이브러리를 쓰고, 팀이 정한 패턴과 관례를 따르는 코드를 LLM(Large Language Model)이 쓰게 하려면 어떻게 해야 할까요? 여기에 답하려는 게 Symposium이에요.</p>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=n83pvFuZ5fo&amp;t=88s" target="_blank" rel="noopener">01:28</a>
+  <h2>Symposium이 하는 일</h2>
+<p>Symposium의 GitHub README 첫 문단이 이 도구를 한 문장으로 설명해요. 파란색으로 강조된 부분이 핵심이에요. 프로젝트에 맞는 <b>skills, hooks, MCP servers</b>를 에이전트에 설치한다는 거예요.</p>
+<figure>
+  <img src="assets/frame-0134.webp" alt="symposium-dev/symposium 저장소 README. crates.io v0.5.1 배지 아래에 Symposium scans a Rust workspace로 시작하는 설명 문단과 cargo agents 서브커맨드 안내가 보여요">
+  <figcaption>
+    지침을 쓰는 건 크레이트 작성자이고, Symposium은 그 지침을 프로젝트에 맞게 골라 배달하는 역할이에요.
+    <a href="https://www.youtube.com/watch?v=n83pvFuZ5fo&amp;t=94s" target="_blank" rel="noopener">영상 01:34에서 보기</a>
+  </figcaption>
+</figure>
+<p>흐름을 그림으로 옮기면 이래요. 왼쪽은 크레이트 작성자가 하는 일, 오른쪽은 그 크레이트를 쓰는 개발자 쪽에서 일어나는 일이에요. 두 줄은 Symposium에서 만나요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 250" role="img" aria-label="크레이트 작성자가 skills 폴더와 recommendations 등록을 하고, Symposium이 워크스페이스 의존성을 스캔해 맞는 스킬과 훅과 MCP 서버를 에이전트에 설치하는 흐름">
+    <defs><marker id="arrow-sym" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="100" y="22" text-anchor="middle" class="sub">크레이트 작성자</text>
+    <rect x="20" y="36" width="160" height="56" rx="10" class="c1 cell"/>
+    <text x="100" y="60" text-anchor="middle">skills/SKILL.md</text>
+    <text x="100" y="80" text-anchor="middle" class="sub">크레이트에 지침 넣기</text>
+    <rect x="20" y="140" width="160" height="56" rx="10" class="c1 cell"/>
+    <text x="100" y="164" text-anchor="middle">recommendations</text>
+    <text x="100" y="184" text-anchor="middle" class="sub">플러그인 등록</text>
+    <path d="M100 94 v42" class="line" marker-end="url(#arrow-sym)"/>
+    <rect x="240" y="88" width="160" height="70" rx="10" class="accent"/>
+    <text x="320" y="116" text-anchor="middle">Symposium</text>
+    <text x="320" y="138" text-anchor="middle" class="sub">의존성과 맞춰 보기</text>
+    <path d="M182 160 L236 132" class="line" marker-end="url(#arrow-sym)"/>
+    <text x="540" y="22" text-anchor="middle" class="sub">내 프로젝트</text>
+    <rect x="460" y="36" width="160" height="56" rx="10" class="c2 cell"/>
+    <text x="540" y="60" text-anchor="middle">Rust 워크스페이스</text>
+    <text x="540" y="80" text-anchor="middle" class="sub">쓰는 크레이트 목록</text>
+    <path d="M458 70 L404 104" class="line" marker-end="url(#arrow-sym)"/>
+    <rect x="460" y="150" width="160" height="80" rx="10" class="c3 cell"/>
+    <text x="540" y="174" text-anchor="middle">AI 에이전트</text>
+    <text x="540" y="196" text-anchor="middle" class="sub">스킬 · 훅</text>
+    <text x="540" y="216" text-anchor="middle" class="sub">MCP 서버</text>
+    <path d="M402 140 L456 176" class="line" marker-end="url(#arrow-sym)"/>
+  </svg>
+  <figcaption>에이전트는 프로젝트가 실제로 쓰는 크레이트의 지침만 받아요. 쓰지 않는 크레이트의 지침은 끼어들지 않아요.</figcaption>
+</figure>
+<h3>크레이트 작성자가 할 일</h3>
+<p>공식 문서의 'Supporting your crate' 페이지가 방법을 설명해요. 강조된 문장대로, 크레이트 소스 안에 <code>skills/</code> 폴더를 만들고 <code>SKILL.md</code> 파일을 넣어요. 그다음 recommendations 저장소에 작은 플러그인 매니페스트를 올려요. 필요하면 <code>Cargo.toml</code>에 메타데이터를 붙여 스킬 폴더 위치 같은 걸 바꿀 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0145.webp" alt="symposium.dev의 Supporting your crate 페이지. Embed skills in your crate 제목 아래 skills/ 디렉터리와 SKILL.md 파일, central recommendations repository를 언급하는 문장이 강조돼 있어요">
+  <figcaption>
+    사용자는 자기가 쓰는 크레이트 버전에 맞는 지침을 받아요. 버전이 바뀌면 지침도 따라 바뀌는 구조예요.
+    <a href="https://www.youtube.com/watch?v=n83pvFuZ5fo&amp;t=105s" target="_blank" rel="noopener">영상 01:45에서 보기</a>
+  </figcaption>
+</figure>
+<p>이미 Symposium을 지원하는 크레이트는 recommendations 저장소에서 볼 수 있어요. 폴더 이름 하나가 크레이트 하나예요. 화면에는 assert-struct, dial9, error-battery-pack, rtk, rust, toasty가 보여요.</p>
+<figure>
+  <img src="assets/frame-0205.webp" alt="recommendations 저장소 파일 목록. .github/workflows 아래로 assert-struct, dial9, error-battery-pack, rtk, rust, toasty 폴더가 있어요">
+  <figcaption>
+    아직은 목록이 짧아요. 지원하는 크레이트가 늘어야 쓸모도 커지는 도구예요.
+    <a href="https://www.youtube.com/watch?v=n83pvFuZ5fo&amp;t=125s" target="_blank" rel="noopener">영상 02:05에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Symposium은 <code>cargo agents</code>라는 Cargo 서브커맨드로 배포돼요. <code>cargo binstall symposium</code>이나 <code>cargo install symposium</code>으로 설치하고, 머신마다 한 번 <code>cargo agents init</code>을 돌려 쓰는 에이전트를 고르면 돼요. README 기준으로 Claude Code, Codex CLI(Command-Line Interface), GitHub Copilot, Kiro, Antigravity CLI는 스킬과 훅을 모두 받고, OpenCode와 Goose는 스킬만 받아요.</p>
+  <p>설정 하나를 에이전트마다 다른 파일(예: Claude Code는 <code>.claude/skills/</code>)로 옮겨 써 주기 때문에, 한 프로젝트에서 팀원마다 다른 에이전트를 써도 돼요.</p>
+  <p class="cite">출처: <a href="https://github.com/symposium-dev/symposium" target="_blank" rel="noopener">symposium-dev/symposium README</a> · <a href="https://symposium.dev/crate-authors/supporting-your-crate.html" target="_blank" rel="noopener">Symposium 문서 — Supporting your crate</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=n83pvFuZ5fo&amp;t=131s" target="_blank" rel="noopener">02:11</a>
+  <h2>Toasty로 해 본 비교</h2>
+<p>recommendations 목록에 있던 Toasty는 Rust용 ORM(Object-Relational Mapping)이에요. 발표자는 Toasty를 한 번도 써 본 적이 없어서, Symposium이 있을 때와 없을 때를 비교하기 좋다고 봤어요. 화면은 Toasty의 README로, 부제가 'The cozy, easy ORM for Rust'예요.</p>
+<figure>
+  <img src="assets/frame-0215.webp" alt="Toasty 크레이트 README. The cozy, easy ORM for Rust 부제와 SQLite/Turso, PostgreSQL, MySQL, DynamoDB를 지원한다는 문장, Using Toasty 절이 보여요">
+  <figcaption>
+    발표자도 처음 쓰는 크레이트라, 에이전트가 받는 지침의 차이가 결과에 그대로 드러나요.
+    <a href="https://www.youtube.com/watch?v=n83pvFuZ5fo&amp;t=135s" target="_blank" rel="noopener">영상 02:15에서 보기</a>
+  </figcaption>
+</figure>
+<p>실험 방법은 단순해요. Codex 에이전트 두 개에게 똑같은 프롬프트로 같은 작업 관리 프로젝트를 만들게 했어요. 한쪽은 Symposium 없이, 다른 쪽은 Symposium을 켜고요. 완성된 두 프로그램은 동작이 같았지만 코드 모양이 달랐어요.</p>
+<h3>목록 조회: Symposium 쪽이 깔끔했어요</h3>
+<p>아래 화면 왼쪽 창이 Symposium 없이 만든 코드(창 제목 without-symposium), 오른쪽이 Symposium을 켠 코드예요. 왼쪽에 강조된 <code>ProjectCommand::List</code> 블록은 <code>toasty::stmt::Query::&lt;toasty::stmt::List&lt;Project&gt;&gt;::all()</code>처럼 쿼리 객체를 만들고 반환 타입까지 직접 적어요. 오른쪽은 주황색으로 표시된 <code>Project::all()</code> 한 번으로 끝나요.</p>
+<figure>
+  <img src="assets/frame-0243.webp" alt="에디터 두 개를 나란히 띄운 화면. 왼쪽 136~142번 줄에 toasty::stmt::Query로 프로젝트 목록을 가져오는 코드가 강조돼 있고, 오른쪽에는 Project::all()로 같은 일을 하는 코드가 있어요">
+  <figcaption>
+    같은 일을 하는데 오른쪽이 한 줄로 끝나요. 모델 타입에 붙은 메서드를 쓰는 쪽이 Toasty가 의도한 사용법이에요.
+    <a href="https://www.youtube.com/watch?v=n83pvFuZ5fo&amp;t=163s" target="_blank" rel="noopener">영상 02:43에서 보기</a>
+  </figcaption>
+</figure>
+<h3>삭제: 오히려 Symposium 없는 쪽이 나았어요</h3>
+<p>그런데 반대 사례도 있었어요. 같은 화면의 <code>ProjectCommand::Delete</code> 블록을 보면, 오른쪽(Symposium)은 강조된 <code>project.tasks().delete()</code>로 그 프로젝트의 작업을 먼저 다 지우고, 다음 줄에서 프로젝트를 지워요. 왼쪽은 강조된 <code>project.delete()</code> 한 줄이 전부예요.</p>
+<figure>
+  <img src="assets/frame-0315.webp" alt="같은 두 에디터 화면. 왼쪽 145번 줄 project.delete().exec가 강조돼 있고, 오른쪽에는 project.tasks().delete()와 Project::filter_by_id(&amp;id).delete()가 두 줄로 이어져 있어요">
+  <figcaption>
+    왼쪽 한 줄이 오른쪽 두 줄과 같은 일을 해요. Toasty가 관계를 따라 하위 작업을 알아서 지워 주기 때문이에요.
+    <a href="https://www.youtube.com/watch?v=n83pvFuZ5fo&amp;t=195s" target="_blank" rel="noopener">영상 03:15에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자 설명으로는, 왼쪽 코드는 Toasty의 <span class="term" data-term="캐스케이드 삭제" data-en="Cascade delete" data-desc="부모 레코드를 지우면 거기 딸린 자식 레코드도 함께 지워지는 동작이에요. 직접 자식을 먼저 지우는 코드를 쓸 필요가 없어져요." data-g="7">캐스케이드 삭제</span>를 써서 프로젝트에 딸린 작업까지 자동으로 지워요. 그러니 이 부분은 지침 없이 만든 쪽이 더 관용적인 코드였던 셈이에요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>명령</th><th>Symposium 없음</th><th>Symposium 있음</th><th>더 나은 쪽</th></tr></thead>
+    <tbody>
+      <tr><td>프로젝트 목록</td><td>쿼리 객체에 <code>all</code>을 부르고 타입을 직접 적음</td><td><code>Project::all()</code> 바로 호출</td><td>Symposium 있음</td></tr>
+      <tr><td>프로젝트 삭제</td><td><code>project.delete()</code> 한 줄, 하위 작업은 캐스케이드로 삭제</td><td>작업을 먼저 지운 뒤 프로젝트 삭제</td><td>Symposium 없음</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>그래서 발표자는 짧은 실험 결과를 '맞을 때도 있고 빗나갈 때도 있다'고 정리해요. 그래도 아이디어 자체는 흥미롭고 Rust 개발에 도움이 될 수 있다고 봐요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Toasty 공식 가이드에 따르면, 부모를 지울 때 자식이 함께 지워지는 건 자식 쪽 외래 키가 필수 값(예: <code>u64</code>)일 때예요. 외래 키가 <code>Option&lt;u64&gt;</code>이면 자식은 남고 키만 <code>None</code>이 돼요. 이 동작은 데이터베이스의 외래 키 제약이 아니라 Toasty의 쿼리 엔진이 스키마를 보고 직접 처리해요.</p>
+  <p>그러니 <code>project.delete()</code> 한 줄로 충분한지는 모델에서 작업의 프로젝트 키를 어떻게 선언했는지에 달려 있어요. 영상은 모델 정의를 보여 주지 않아요.</p>
+  <p class="cite">출처: <a href="https://github.com/tokio-rs/toasty/blob/main/docs/guide/src/relationships.md" target="_blank" rel="noopener">Toasty 가이드 — Relationships</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=n83pvFuZ5fo&amp;t=197s" target="_blank" rel="noopener">03:17</a>
+  <h2>도구보다 중요한 것</h2>
+<p>실험 뒤에 발표자는 도구 이야기를 넓혀요. 자기와 동료들이 겪어 보니, AI 도구와 프레임워크는 어떤 개발자에게는 잘 맞고 다른 개발자에게는 잘 안 맞았대요. 아는 개발자 거의 모두가 자기 스타일에 맞춘 도구, 프레임워크, <span class="term" data-term="하네스" data-en="Harness" data-desc="모델을 감싸서 도구 호출, 파일 편집, 실행 같은 일을 하게 해 주는 실행 틀이에요. Claude Code나 Codex CLI 같은 것을 말해요." data-g="8">하네스</span>, 워크플로 조합을 따로 갖고 있다고 해요.</p>
+<p>발표자도 다른 사람이 AI를 쓰는 방식을 보며 많이 배우지만, 결국 자기 쓰임새에 맞게 고쳐 써요. Symposium도 그렇게 써 보고 판단할 도구 중 하나라는 거예요.</p>
+<h3>결국 지켜야 할 세 가지</h3>
+<p>그가 가장 중요하게 꼽는 건 AI 도구를 쓰면서도 소프트웨어 품질을 높게 지키는 일이에요. 화면 아래에 그 세 가지가 아이콘과 함께 떠요. 품질(Quality), 견고함(Robustness), 보안(Security)이에요.</p>
+<figure>
+  <img src="assets/frame-0414.webp" alt="발표자 아래쪽에 QUALITY, ROBUSTNESS, SECURITY 세 단어가 방패, 코드, 자물쇠 아이콘과 함께 한 줄로 떠 있는 화면">
+  <figcaption>
+    새 도구를 익히되 내가 무엇을 만드는지는 이해하고 있어야 해요. 앞의 삭제 코드처럼 도구가 늘 맞는 건 아니니까요.
+    <a href="https://www.youtube.com/watch?v=n83pvFuZ5fo&amp;t=254s" target="_blank" rel="noopener">영상 04:14에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 시스템 소프트웨어를 만든다면 이게 더 중요하다고 강조해요. 에이전트가 쓴 코드를 그대로 믿기보다, 직접 읽고 판단할 수 있어야 한다는 뜻이에요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 크레이트 이름과 파일 이름이 잘못 받아적힌 곳이 있어요. 화면을 보고 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>a search struct</td><td>assert-struct</td><td>recommendations 저장소의 폴더 이름</td></tr>
+      <tr><td>dial nine</td><td>dial9</td><td>recommendations 저장소의 폴더 이름</td></tr>
+      <tr><td>error battery pack</td><td>error-battery-pack</td><td>recommendations 저장소의 폴더 이름</td></tr>
+      <tr><td>skills.md</td><td>SKILL.md</td><td>Supporting your crate 문서 기준</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-1"><dt>관용적인 코드<span class="en">Idiomatic code</span></dt><dd>그 언어 커뮤니티가 자연스럽다고 여기는 방식으로 쓴 코드예요. 돌아가기만 하는 코드와 달리 읽기 쉽고, 라이브러리가 의도한 사용법을 따라요.</dd></div>
+    <div class="g" id="g-3"><dt>스킬<span class="en">Agent skill</span></dt><dd>SKILL.md 파일과 그 폴더로 된 지침 묶음이에요. 에이전트가 필요할 때 컨텍스트로 불러와 따라요.</dd></div>
+    <div class="g" id="g-6"><dt>의존성<span class="en">Dependency</span></dt><dd>프로젝트가 가져다 쓰는 다른 크레이트예요. Symposium은 이 목록을 보고 설치할 지침을 골라요.</dd></div>
+    <div class="g" id="g-7"><dt>캐스케이드 삭제<span class="en">Cascade delete</span></dt><dd>부모 레코드를 지우면 거기 딸린 자식 레코드도 함께 지워지는 동작이에요. 직접 자식을 먼저 지우는 코드를 쓸 필요가 없어져요.</dd></div>
+    <div class="g" id="g-2"><dt>크레이트<span class="en">Crate</span></dt><dd>Rust의 패키지 단위예요. crates.io에 올라가고 Cargo.toml에 적어서 의존성으로 가져와요.</dd></div>
+    <div class="g" id="g-8"><dt>하네스<span class="en">Harness</span></dt><dd>모델을 감싸서 도구 호출, 파일 편집, 실행 같은 일을 하게 해 주는 실행 틀이에요. Claude Code나 Codex CLI 같은 것을 말해요.</dd></div>
+    <div class="g" id="g-4"><dt>훅<span class="en">Hook</span></dt><dd>에이전트가 코드를 쓰거나 명령을 실행하는 순간에 끼어들어 돌아가는 검사나 변환이에요. Symposium은 훅이 불릴 때마다 의존성을 다시 확인해요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>CLI</dt><dd>Command-Line Interface</dd></div>
+    <div class="g"><dt>HTTP</dt><dd>Hypertext Transfer Protocol</dd></div>
+    <div class="g"><dt>LLM</dt><dd>Large Language Model</dd></div>
+    <div class="g"><dt>MCP</dt><dd>Model Context Protocol</dd></div>
+    <div class="g" id="g-5"><dt>MCP 서버<span class="en">MCP server</span></dt><dd>에이전트에게 도구와 데이터를 열어 주는 서버예요. MCP라는 공통 규격을 따르므로 여러 에이전트가 같은 서버를 쓸 수 있어요.</dd></div>
+    <div class="g"><dt>ORM</dt><dd>Object-Relational Mapping</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=n83pvFuZ5fo" target="_blank" rel="noopener">원본 영상 — Let&#x27;s Get Rusty</a></li>
+    <li id="src-2"><a href="https://github.com/symposium-dev/symposium" target="_blank" rel="noopener">symposium-dev/symposium — GitHub README</a></li>
+    <li id="src-3"><a href="https://symposium.dev/crate-authors/supporting-your-crate.html" target="_blank" rel="noopener">Symposium 문서 — Supporting your crate</a></li>
+    <li id="src-4"><a href="https://github.com/symposium-dev/recommendations" target="_blank" rel="noopener">symposium-dev/recommendations — GitHub</a></li>
+    <li id="src-5"><a href="https://github.com/tokio-rs/toasty/blob/main/docs/guide/src/relationships.md" target="_blank" rel="noopener">Toasty 가이드 — Relationships</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 20일에 이 영상을 보고 정리했어요. 원본은 Let&#x27;s Get Rusty 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
