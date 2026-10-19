@@ -1,0 +1,1233 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>31분 만에 PyTorch 훈련 루프 이해하기</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>31분 만에 PyTorch 훈련 루프 이해하기</h1>
+  <p class="lede">택시 36건으로 다섯 줄 루프를 손으로 풀고 PyTorch에 넘겨요</p>
+  <div class="meta">
+    <span>Zachary Huang</span><span class="dot">·</span>
+    <span>영상 31:55</span><span class="dot">·</span>
+    <span>읽는 데 약 27분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=K1ksiPHfgVs" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>PyTorch 훈련 코드는 다섯 줄이에요. 예측, 손실 재기, <code>backward()</code>, <code>step()</code>, <code>zero_grad()</code>.</li>
+    <li><code>mean</code>, <code>max</code>, <code>sum</code>에 넘기는 <code>dim</code>은 합쳐져 사라지는 축이에요.</li>
+    <li>경사 하강법은 <span class="term" data-term="그래디언트" data-en="Gradient" data-desc="가중치마다 하나씩 있는 손실의 도함수를 모은 거예요. 손실이 가장 빨리 커지는 방향이라, 그 반대로 가면 손실이 줄어요." data-g="6">그래디언트</span>의 반대로 <span class="term" data-term="학습률" data-en="Learning rate" data-desc="그래디언트에 곱하는 작은 수예요. 한 스텝에 얼마나 멀리 갈지 정해요. 너무 크면 지나치고, 너무 작으면 느려요." data-g="7">학습률</span>만큼 걷는 일이에요. 택시 36건으로 1,000번 걸으면 마일당 3.76달러, 기본 5.66달러를 찾아요.</li>
+    <li><code>backward()</code>는 <code>.grad</code>에 더하기만 해요. 그래서 매 스텝 <code>zero_grad()</code>로 비워야 해요.</li>
+    <li><code>torch.optim</code>, <code>nn.Module</code>, <code>nn.Linear</code>, <code>DataLoader</code>는 손으로 하던 일을 하나씩 대신할 뿐, 루프 모양은 그대로예요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">다섯 줄, 택시 데이터, 그리고 텐서</a></li>
+    <li><a href="#s2">텐서 연산: 고르기, 합치기, 바꾸기</a></li>
+    <li><a href="#s3">예측하고 얼마나 틀렸는지 재기</a></li>
+    <li><a href="#s4">손으로 해 보는 경사 하강법</a></li>
+    <li><a href="#s5">Autograd가 기울기를 구하는 방법</a></li>
+    <li><a href="#s6">다섯 줄로 정리한 루프</a></li>
+    <li><a href="#s7">바꿔 끼울 수 있는 것: 옵티마이저, 활성화, 손실</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>다섯 줄, 택시 데이터, 그리고 텐서</h2>
+<p>영상은 PyTorch 훈련 코드라면 어디에나 들어 있는 다섯 줄로 시작해요. 화면 왼쪽 번호 1~5가 각각 예측, 손실 재기, 기울기 구하기, 가중치 업데이트, 기울기 비우기예요. 영상이 끝까지 던지는 질문은 세 가지예요. <code>backward()</code>는 정확히 무엇을 계산하는지, <code>step()</code>은 무엇을 바꾸는지, 왜 굳이 무언가를 비워야 하는지예요.</p>
+<figure>
+  <img src="assets/frame-0015.png" alt="for step in range(1000) 안에 pred = model(m), loss = loss_fn(pred, f), loss.backward(), opt.step(), opt.zero_grad() 다섯 줄과 각 줄의 역할을 적은 슬라이드">
+  <figcaption>
+    이 다섯 줄을 하나씩 손으로 풀어 보는 게 영상 전체의 흐름이에요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=15s" target="_blank" rel="noopener">영상 00:15에서 보기</a>
+  </figcaption>
+</figure>
+
+<p>바로 이어서 결과부터 보여 줘요. 왼쪽 위 작은 표가 요금 36개이고, 가운데 그래프의 초록 점이 승차 한 건씩이에요. 파란 직선이 스텝마다 점들 쪽으로 올라가고, 오른쪽 아래 계기판 두 개가 지금의 <code>w</code>와 <code>b</code> 값이에요. 이 화면은 71번째 스텝이라 손실이 13.34까지 내려와 있어요.</p>
+<figure>
+  <img src="assets/frame-0030.png" alt="택시 요금 표, 마일 대 요금 산점도 위에서 학습 중인 직선, 다섯 줄 코드, step 71과 loss 13.34, w=4.22와 b=3.09 계기판">
+  <figcaption>
+    끝에 가면 이 직선이 미터기 요금표와 거의 같은 기울기를 스스로 찾아요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=30s" target="_blank" rel="noopener">영상 00:30에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>데이터: 뉴욕 택시 36건</h3>
+<p>데이터는 뉴욕시가 공개하는 노란 택시 운행 기록에서 왔어요. 2024년 1월 8일(월), 10일(수), 13일(토) 사흘 동안 2시간 칸마다 첫 번째 평범한 승차를 하나씩 골라서 3 × 12 = 36건이에요. 화면 위쪽 표에서 노란 테두리로 강조된 줄이 이 영상의 대표 승차예요. 월요일 정오에 1.38마일을 가고 11.40달러가 찍혔어요.</p>
+<figure>
+  <img src="assets/frame-0115.png" alt="yellow_tripdata_2024-01.parquet 표의 첫 몇 줄. 첫 줄 2024-01-08 12:00:00, trip_distance 1.38, fare_amount 11.40이 강조돼 있고, 아래에 월·수·토 × 12칸 빈 격자가 있음">
+  <figcaption>
+    고른 기준은 오른쪽 메모에 있어요. 칸마다 첫 평범한 승차, 표준 요금, 카드 결제, 0.5~15마일, 2~60분이에요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=75s" target="_blank" rel="noopener">영상 01:15에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>텐서는 모양이 있는 숫자 격자예요</h3>
+<p>요금을 담는 그릇이 <span class="term" data-term="텐서" data-en="Tensor" data-desc="축이 몇 개든 될 수 있는 숫자 격자예요. PyTorch는 데이터, 가중치, 기울기를 전부 텐서로 다뤄요." data-g="1">텐서</span>예요. 코드는 요일 이름 리스트와 함께 하루당 한 줄씩 리스트를 <code>torch.tensor</code>에 넘겨요. <code>print(fares.shape)</code>는 <code>torch.Size([3, 12])</code>를 찍어요. 오른쪽 큰 글씨 <code>(3, 12)</code>에서 3은 날짜, 12는 시간 칸이에요.</p>
+<figure>
+  <img src="assets/frame-0145.png" alt="days 리스트와 fares = torch.tensor([...]) 코드, 출력 torch.Size([3, 12]), 오른쪽에 1축(12,)과 2축(3,12) 예시, 아래에 월·수·토 3줄 × 12칸 색칠된 요금 격자">
+  <figcaption>
+    축 하나면 한 줄, 축 둘이면 표예요. 아래 격자에서 빨간 칸일수록 비싼 승차예요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=105s" target="_blank" rel="noopener">영상 01:45에서 보기</a>
+  </figcaption>
+</figure>
+<p>격자의 방향 하나하나를 축, 또는 차원(<code>dim</code>)이라고 불러요. PyTorch는 0부터 세요. <code>dim 0</code>은 위에서 아래로 날짜 셋을, <code>dim 1</code>은 왼쪽에서 오른쪽으로 2시간 칸 열둘을 따라가요. <code>shape</code>은 축마다의 크기예요.</p>
+
+<p>데이터가 아직 없을 때는 모양만 정해서 만들어요. 아래 화면 위쪽 여섯 칸이 '모양으로 만들기', 아래 한 칸이 '범위로 만들기'예요. <code>zeros(2, 3)</code>의 2와 3이 모양이에요. <code>dim 0</code>으로 2, 그러니 두 줄이고, <code>dim 1</code>로 3, 그러니 세 칸이에요. <code>full</code>은 모양을 튜플 하나로 받고 그다음 채울 값을 받아요. <code>eye(3)</code>은 대각선만 1인 3 × 3이에요.</p>
+<figure>
+  <img src="assets/frame-0312.png" alt="torch.zeros(2,3), torch.ones(2,3), torch.full((2,3), 7.0), torch.eye(3), torch.rand(2,3), torch.randn(2,3) 결과 격자와 torch.arange(12)가 0부터 11까지 세는 그림">
+  <figcaption>
+    <code>rand</code>는 0과 1 사이, <code>randn</code>은 0 근처 종 모양 난수예요. <code>arange(12)</code>의 12는 빠져요. 파이썬 <code>range(12)</code>와 같아요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=192s" target="_blank" rel="noopener">영상 03:12에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=200s" target="_blank" rel="noopener">03:20</a>
+  <h2>텐서 연산: 고르기, 합치기, 바꾸기</h2>
+<p>요금 표로 할 수 있는 일을 영상은 한 장에 열두 개 모아 보여 줘요. 왼쪽 열이 고르기(pick), 가운데가 합쳐 새 숫자 만들기(combine), 오른쪽이 같은 숫자로 모양만 바꾸기(rearrange)예요. 지금 다 읽을 필요는 없고 하나씩 짚는다고 해요.</p>
+<figure>
+  <img src="assets/frame-0340.png" alt="Twelve operations at once 슬라이드. pick 열에 fares[0], fares[:, 6], fares[:, :3], fares[fares &gt; 30], torch.where, combine 열에 fares.mean(dim=1), fares.max(dim=1), fares * 1.1, keepdim, rearrange 열에 fares.T, reshape(3,4,3), flatten">
+  <figcaption>
+    이 섹션은 이 세 갈래를 차례로 따라가요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=220s" target="_blank" rel="noopener">영상 03:40에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>인덱스로 고르기</h3>
+<p>파이썬 리스트처럼 인덱스로 골라요. <code>fares[0]</code>은 0번 줄, 월요일 요금 열두 개예요. 정수로 고르면 그 축이 사라져서 모양이 <code>(12,)</code>가 돼요. 대괄호 안의 쉼표는 축을 나눠요. 앞이 <code>dim 0</code>, 뒤가 <code>dim 1</code>이고, 콜론 하나는 '그 축 전부'예요. 아래 화면의 노란 세로 칸이 <code>fares[:, 6]</code>, 모든 날의 6번 칸이에요. 칸은 자정부터 2시간씩이니 6번이 정오예요.</p>
+<figure>
+  <img src="assets/frame-0420.png" alt="fares[:, 6] 설명. 요금 격자에서 6번 열(12pm)의 11.4, 13.5, 11.4가 노랗게 강조되고 아래로 (3,) 모양 결과가 떨어지는 그림">
+  <figcaption>
+    슬라이스 <code>fares[:, :3]</code>는 축을 남겨서 <code>(3, 3)</code>이 돼요. 정수 하나는 축을 지우고, 범위는 축을 남겨요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=260s" target="_blank" rel="noopener">영상 04:20에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>조건으로 고르기</h3>
+<p><code>fares &gt; 30</code>은 <code>fares</code>와 같은 모양의 참·거짓 격자를 만들어요. 이런 격자를 <span class="term" data-term="불리언 마스크" data-en="Boolean mask" data-desc="원래 텐서와 같은 모양의 참·거짓 격자예요. 인덱스로 쓰면 참인 칸만 뽑아요." data-g="2">불리언 마스크</span>라고 하고, 영상은 <code>pricey</code>라고 불러요. 화면 위쪽 T/F 격자에서 노란 T 다섯 칸이 30달러 넘는 승차예요. 이걸로 인덱싱하면 그 다섯 개만 뽑히고, <code>torch.where(pricey, 30.0, fares)</code>는 T 칸만 30으로 바꾸고 나머지는 원래 요금을 둬요.</p>
+<figure>
+  <img src="assets/frame-0500.png" alt="pricey (3,12) 불리언 격자의 T 칸 다섯 개가 강조되고, 아래 fares 격자에서 해당 칸이 30.0으로 바뀌는 torch.where 슬라이드">
+  <figcaption>
+    <code>torch.where</code>는 모양을 그대로 둬요. 결과는 여전히 <code>(3, 12)</code>예요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=300s" target="_blank" rel="noopener">영상 05:00에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>dim은 '없어지는 축'이에요</h3>
+<p>하루 평균을 구하려고 영상은 일부러 <code>fares.mean(dim=0)</code>부터 시도해요. 날짜가 <code>dim 0</code>이니까 맞을 것 같지만, 결과는 셋이 아니라 열두 개예요. 화면 아래 빨간 X 옆 줄이 그 결과, 시간 칸마다 평균 하나씩이에요.</p>
+<figure>
+  <img src="assets/frame-0545.png" alt="fares.mean(dim=0)의 결과로 격자 아래에 12개짜리 줄이 생기고 빨간 X 표시, 노란 글씨로 the dim you pass is the axis that gets aggregated away">
+  <figcaption>
+    넘긴 축이 합쳐져 사라지는 축이에요. <code>dim=0</code>은 날짜를 지우고 시간 칸을 남겨요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=345s" target="_blank" rel="noopener">영상 05:45에서 보기</a>
+  </figcaption>
+</figure>
+<p>시간 칸을 없애야 하니 <code>dim=1</code>을 넘겨요. 이번에는 오른쪽 mean 열에 숫자 세 개가 생겨요. 월요일 19.63달러, 수요일 14.32달러, 토요일 16.24달러예요. 화면 아래 계산식처럼 월요일 열두 칸을 더해 12로 나눈 값이에요.</p>
+<figure>
+  <img src="assets/frame-0605.png" alt="fares.mean(dim=1)로 (3,12)가 (3,)이 되어 오른쪽에 19.63, 14.32, 16.24가 생긴 슬라이드. 아래 Monday: (14.2 + 38.0 + ... + 9.3) / 12 = 235.5 / 12 = 19.63">
+  <figcaption>
+    <code>(3, 12) → (3,)</code>, 하루에 하나씩이에요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=365s" target="_blank" rel="noopener">영상 06:05에서 보기</a>
+  </figcaption>
+</figure>
+<p><code>max</code>도 <code>dim=1</code>을 받지만 텐서 두 개를 돌려줘요. 가장 비싼 요금(<code>values</code>)과 그 칸 번호(<code>indices</code>)예요. 화면에서 빨갛게 테두리 친 세 칸이 하루의 최고가예요. 월요일은 오전 10시 45.70달러, 수요일은 새벽 4시 44.30달러, 토요일은 아침 6시 33.80달러예요.</p>
+<figure>
+  <img src="assets/frame-0620.png" alt="max gives values and indices 슬라이드. 월 10am 45.7, 수 4am 44.3, 토 6am 33.8 칸이 강조되고 오른쪽에 values 45.7, 44.3, 33.8과 indices 5, 2, 3">
+  <figcaption>
+    <code>topk(3, dim=1)</code>은 큰 것 세 개를 순서대로 줘요. 이때 <code>dim 1</code>은 사라지지 않고 12에서 3으로 줄어요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=380s" target="_blank" rel="noopener">영상 06:20에서 보기</a>
+  </figcaption>
+</figure>
+<p>여기서 첫 번째 퀴즈가 나와요. <code>fares.max(dim=0).values</code>의 모양은 무엇일까요? 답은 <code>(12,)</code>예요. 날짜 축이 사라지고 시간 칸마다 최고가 하나가 남아요. <code>dim</code>을 주지 않은 <code>fares.max()</code>만 숫자 하나를 줘요.</p>
+
+<h3>모양만 바꾸기</h3>
+<p>세 번째 갈래는 숫자는 그대로 두고 모양만 바꿔요. 화면 왼쪽 세로 표가 <code>fares.T</code>, 시간 칸 열둘이 줄이 되고 날짜가 열이 된 <code>(12, 3)</code>이에요. 가운데 <code>fares.reshape(3, 4, 3)</code>은 하루를 밤·아침·오후·저녁 네 구간으로 나눠요. 여기에 <code>.mean(dim=2)</code>를 하면 구간 평균이 남아요. 월요일 밤 승차는 평균 약 32달러였고, 저녁은 10달러가 안 됐어요. 화면 가운데 맨 윗줄의 night 세 칸(14.2, 38.0, 43.6)과 evening 세 칸(8.6, 10.7, 9.3)을 보면 왜 그런지 바로 보여요.</p>
+<figure>
+  <img src="assets/frame-0805.png" alt="Rearranging 슬라이드. 위에 (3,12) 요금 격자, 왼쪽에 fares.T (12,3) 세로 표, 가운데에 night·morning·afternoon·evening 네 구간 × 3칸으로 나눈 fares.reshape(3,4,3), 오른쪽에 .T, reshape().mean(dim=2), flatten() 코드">
+  <figcaption>
+    칸마다 색과 숫자가 그대로 따라다녀요. 바뀌는 건 모양뿐이에요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=485s" target="_blank" rel="noopener">영상 08:05에서 보기</a>
+  </figcaption>
+</figure>
+<p><code>flatten()</code>은 반대로 36개를 한 줄로 펴요. 월요일, 수요일, 토요일 순서예요. 바로 다음 섹션에서 마일과 요금을 짝지을 때 이걸 써요.</p>
+
+<p>마지막으로 실무 코드에서 자주 보는 연산을 <code>(2, 3)</code> 격자 하나로 모아 보여 줘요. 노란 테두리 칸이 지금 설명 중인 연산이에요.</p>
+<figure>
+  <img src="assets/frame-0914.png" alt="More tensor operations 카드. x = torch.arange(6.0).reshape(2,3)에 대해 sum(dim=0), x @ x.T, view(3,2), unsqueeze(0), gather(1, idx), argmax(dim=1), x * x, permute(1,0), squeeze(0), clamp(min=1, max=4)의 결과 격자">
+  <figcaption>
+    <code>sum</code>과 <code>argmax</code>도 <code>mean</code>, <code>max</code>처럼 축 하나를 지워요. 각 칸 오른쪽 아래가 결과 모양이에요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=554s" target="_blank" rel="noopener">영상 09:14에서 보기</a>
+  </figcaption>
+</figure>
+<p>나머지도 한 줄씩 정리할게요. <code>x @ x.T</code>는 행렬곱이라 행과 열을 곱해 더해요. 화면의 <code>0·0 + 1·1 + 2·2 = 5</code>가 그 한 칸이에요. <code>x * x</code>는 칸끼리 곱해요. <code>view</code>는 <code>reshape</code>처럼 모양을, <code>permute</code>는 <code>.T</code>처럼 축 순서를 바꿔요. <code>unsqueeze</code>와 <code>squeeze</code>는 크기 1인 축을 넣고 빼요. <code>gather</code>는 줄마다 인덱스로 한 칸씩 고르고, <code>clamp</code>는 모든 숫자를 범위 안으로 잘라요.</p>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=565s" target="_blank" rel="noopener">09:25</a>
+  <h2>예측하고 얼마나 틀렸는지 재기</h2>
+<p>모델은 먼저 추측하면서 배워요. 그래서 세 번째 정류장은 예측이에요. 승차 기록에는 간 거리도 있으니, 요금과 같은 모양의 마일 표를 하나 더 만들어요. 둘 다 <code>flatten</code>하면 '마일이 들어가고 요금이 나오는' 36쌍이 돼요. 영상은 이걸 <code>m</code>과 <code>f</code>라고 불러요. <code>torch.stack([m, f], dim=1)</code>은 둘을 새 축으로 나란히 세워 <code>(36, 2)</code> 표를 만들고, <code>torch.cat</code>은 끝에 이어 붙여 72개짜리 한 줄을 만들어요.</p>
+
+<h3>정답이 이미 있는 실험</h3>
+<p>뉴욕 택시에는 공식 요금표가 있어요. 화면 위 파란 상자가 그 요금표예요. 노랗게 강조된 두 줄이 기본 3.00달러, 그리고 1/5마일마다 70센트예요. 1마일은 1/5마일 다섯 개니까 마일당 3.50달러예요. 규칙을 이미 알고 있으니, 모델이 36건만 보고 이 규칙을 찾는지 확인할 수 있어요.</p>
+<figure>
+  <img src="assets/frame-1025.png" alt="Can a model find the meter's rule? 슬라이드. Standard Metered Fare 요금표 캡처에 $3.00 initial charge와 Plus 70 cents per 1/5 mile이 강조되고, 아래 마일 대 요금 산점도와 to start: $3.00">
+  <figcaption>
+    거의 모든 점이 요금표 직선보다 위에 있어요. 이유는 다음 섹션 끝에서 나와요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=625s" target="_blank" rel="noopener">영상 10:25에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>숫자 두 개짜리 직선</h3>
+<p>모델은 가장 단순한 직선이에요. 화면의 식 <code>F̂ = w·m + b</code>에서 <code>w</code>는 가중치, 마일당 가격이라 직선의 기울기를 정해요. <code>b</code>는 편향, 기본요금이라 직선을 위로 들어 올려요. 모델이 배우는 숫자를 통틀어 가중치라고 부르고, PyTorch에서는 파라미터라고 해요. 이런 직선 모델을 <span class="term" data-term="선형 회귀" data-en="Linear regression" data-desc="입력과 출력 사이를 직선(가중치 × 입력 + 편향)으로 맞추는 가장 단순한 모델이에요." data-g="4">선형 회귀</span>라고 해요.</p>
+<figure>
+  <img src="assets/frame-1105.png" alt="F-hat = w m + b 식 아래 w: a weight, the price per mile, how steep the line is와 b: a bias, the price to start, lifts the line 설명, 오른쪽에 산점도와 아래쪽 파란 점선">
+  <figcaption>
+    오른쪽 아래 점선이 출발점 <code>w=1, b=0</code>이에요. 1마일에 1달러, 기본요금 0달러라는 게으른 추측이라 모든 점보다 한참 아래에 있어요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=665s" target="_blank" rel="noopener">영상 11:05에서 보기</a>
+  </figcaption>
+</figure>
+
+<p>월요일 정오 승차로 하나만 손으로 계산해요. 화면 왼쪽 아래 식처럼 <code>1 × 1.38 + 0 = 1.38</code>달러예요. 오른쪽 확대창에서 초록 동그라미가 실제 요금 11.40달러이고, 파란 선 위 점이 1.38달러 추측이에요. 빗나간 값(miss)은 '추측 − 실제'로 정의해요. 1.38 − 11.40 = −10.02, 약 10달러 모자라요.</p>
+<figure>
+  <img src="assets/frame-1125.png" alt="One prediction, by hand 슬라이드. 마일 표와 요금 표에서 월요일 12pm 칸 1.38과 11.40이 강조되고 guess: 1 × 1.38 + 0 = 1.38, 오른쪽에 Monday noon magnified 확대창">
+  <figcaption>
+    부호가 중요해요. 추측이 낮으면 miss가 음수예요. 경사 하강법에서 이 부호가 방향을 정해요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=685s" target="_blank" rel="noopener">영상 11:25에서 보기</a>
+  </figcaption>
+</figure>
+
+<p>나머지 35건도 같은 한 줄 <code>pred = w * m + b</code>로 한 번에 계산해요. 화면 왼쪽 세로 열이 36개 마일, 가운데 작은 상자 <code>1</code>과 <code>0</code>이 <code>w</code>와 <code>b</code>, 그 오른쪽 파란 열이 36개 예측이에요. 숫자 하나뿐인 <code>w</code>와 <code>b</code>를 모든 승차에 다시 쓰는데, 이걸 <span class="term" data-term="브로드캐스팅" data-en="Broadcasting" data-desc="모양이 다른 텐서끼리 계산할 때 작은 쪽을 늘린 것처럼 재사용하는 규칙이에요. 숫자 하나인 w를 36건 전부에 곱할 수 있는 이유예요." data-g="3">브로드캐스팅</span>이라고 해요.</p>
+<figure>
+  <img src="assets/frame-1205.png" alt="All 36 at once 슬라이드. 36개 마일 열 × 1 + 0 = 36개 예측 열, 오른쪽에 미스 막대, 코드 pred = w * m + b, pred[6] = 1.38 × 1 + 0 = 1.38 Monday noon, as by hand, (36,) × one number + one number → (36,)">
+  <figcaption>
+    수식은 예측을 <code>F̂</code>로, 코드는 <code>pred</code>로 불러요. 오른쪽 빨간 막대가 전부 같은 쪽을 향해요. 지금은 모든 추측이 낮아요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=725s" target="_blank" rel="noopener">영상 12:05에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>손실: 얼마나 틀렸는지를 숫자 하나로</h3>
+<p>36개 miss를 숫자 하나로 바꿔야 해요. 그냥 평균 내는 게 먼저 떠오르는 방법이에요. 지금은 모든 점이 직선 위에 있어서 상쇄될 게 없지만, 직선이 점들 사이를 지나기 시작하면 +5와 −5가 서로 지워져요. 나쁜 직선도 평균이 0이 될 수 있어요. 그래서 하나하나 제곱해요. 월요일 정오의 −10.02는 제곱하면 100.40이에요.</p>
+<figure>
+  <img src="assets/frame-1305.png" alt="The mean squared error 슬라이드. pred, f, err, err**2 네 열, 코드 loss = ((pred - f) ** 2).mean(), add up the 36 squares: 9,432.56, 9,432.56 ÷ 36 = loss = 262.02">
+  <figcaption>
+    오른쪽 아래 빨간 상자가 출발 직선의 손실 262.02예요. 크게 빗나가니 크게 나와요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=785s" target="_blank" rel="noopener">영상 13:05에서 보기</a>
+  </figcaption>
+</figure>
+<p>제곱 36개를 더하면 9,432.56이고, 36으로 나누면 262.02예요. 이게 <span class="term" data-term="평균제곱오차" data-en="Mean squared error" data-desc="빗나간 값을 하나하나 제곱해 평균 낸 손실이에요. 부호가 상쇄되지 않고, 큰 실수를 더 무겁게 봐요." data-g="5">평균제곱오차</span>예요. 두 번째 퀴즈는 제곱의 성질을 물어요. 한 직선은 한 건을 6달러 빗나가고, 다른 직선은 세 건을 2달러씩 빗나가요. 빗나간 총액은 둘 다 6달러지만 손실은 앞쪽이 커요. 6 × 6 = 36이고, 4 + 4 + 4 = 12이기 때문이에요. 제곱은 큰 실수 하나를 작은 실수 여럿보다 훨씬 무겁게 봐요.</p>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=857s" target="_blank" rel="noopener">14:17</a>
+  <h2>손으로 해 보는 경사 하강법</h2>
+<p><code>w</code>와 <code>b</code>를 어느 쪽으로 옮겨야 손실이 줄어들까요? 답은 손실의 도함수에 있어요. 가중치마다 하나씩 있는 도함수를 모은 게 그래디언트예요. <code>∂L/∂w</code>는 <code>b</code>를 고정하고 <code>w</code>만 움직일 때 손실이 얼마나 빨리 변하는지, 즉 <code>w</code> 방향의 손실 기울기예요. 가중치가 둘이니 그래디언트도 숫자 두 개예요.</p>
+<p>아래 화면의 두 그래프가 그 뜻이에요. 왼쪽은 <code>b</code>를 0에 두고 <code>w</code>만 바꿀 때의 손실, 오른쪽은 <code>w</code>를 1에 두고 <code>b</code>만 바꿀 때의 손실이에요. 각 그래프의 점이 출발점이고, 그 점에서의 기울기가 그래디언트의 한 칸이에요.</p>
+<figure>
+  <img src="assets/frame-1437.png" alt="What is a gradient? 슬라이드. only w moves (b held at 0) 손실 곡선과 only b moves (w held at 1) 손실 곡선에 각각 start 점, 아래에 the gradient = (∂L/∂w, ...)">
+  <figcaption>
+    두 곡선 모두 출발점에서 내려가는 쪽이 오른쪽이에요. 둘 다 올려야 손실이 줄어요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=877s" target="_blank" rel="noopener">영상 14:37에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>연쇄 법칙으로 두 도함수 구하기</h3>
+<p>있는 재료는 두 개예요. 예측은 <code>w·m + b</code>이고, 손실은 miss 제곱의 평균이에요. <code>x²</code>의 도함수는 <code>2x</code>니까 miss 제곱 하나의 도함수는 '2 × miss'예요. <code>w</code>를 1 움직이면 예측은 그 승차의 마일만큼, <code>b</code>를 1 움직이면 1만큼 움직여요. 둘을 곱해서 36건 평균을 내면 끝이에요. 이게 <span class="term" data-term="연쇄 법칙" data-en="Chain rule" data-desc="합성된 함수의 도함수는 단계마다의 도함수를 곱한 것과 같다는 미분 규칙이에요. backward()가 그래프를 거꾸로 걸으며 하는 일이 이거예요." data-g="8">연쇄 법칙</span>이고, 영상에 나오는 미적분은 이 한 조각뿐이에요.</p>
+<figure>
+  <img src="assets/frame-1517.png" alt="Computing ∂L/∂w and ∂L/∂b 슬라이드. 한 승차 i에 대해 ∂/∂w (F̂i − Fi)² = 2(F̂i − Fi)·mi, ∂F̂i/∂b = 1, 아래에 ∂L/∂w = 2/36 Σ(F̂i − Fi)mi, ∂L/∂b = 2/36 Σ(F̂i − Fi), 코드 err = pred - f, dw = 2 * (err * m).mean(), db = 2 * err.mean()">
+  <figcaption>
+    아래 코드 세 줄이 위 수식 그대로예요. 곧 Autograd가 이 계산을 대신해 줘서 외울 필요는 없다고 해요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=917s" target="_blank" rel="noopener">영상 15:17에서 보기</a>
+  </figcaption>
+</figure>
+<p>다시 월요일 정오 승차로 손 계산을 해요. <code>w</code> 쪽 항은 <code>2 × (−10.02) × 1.38 = −27.66</code>, <code>b</code> 쪽 항은 마일이 없으니 <code>2 × (−10.02) = −20.04</code>예요. 화면 오른쪽 노란 두 열이 36건 각각의 항이고, 맨 아래가 그 평균이에요.</p>
+<figure>
+  <img src="assets/frame-1557.png" alt="One ride, then all 36 슬라이드. Monday's noon ride mi = 1.38, Fi = 11.40, miss −10.02, this ride's term in ∂L/∂w: 2 × (−10.02) × 1.38 = −27.66, in ∂L/∂b: 2 × (−10.02) = −20.04, 평균 ∂L/∂w = −126.21, ∂L/∂b = −27.56, 오른쪽에 36개 항 두 열">
+  <figcaption>
+    36건 평균이 <code>∂L/∂w = −126.21</code>, <code>∂L/∂b = −27.56</code>이에요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=957s" target="_blank" rel="noopener">영상 15:57에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>어느 쪽으로, 얼마나</h3>
+<p>가중치가 둘뿐이라 손실을 지도로 그릴 수 있어요. 가로가 <code>w</code>, 세로가 <code>b</code>이고, 곡선 하나가 같은 손실 높이예요. 가운데 초록 별이 바닥, 손실이 가장 낮은 곳이에요. 큰 모델은 가중치가 수백만 개라 이런 지도를 못 그려요. 그래서 지도 대신 그래디언트를 따라가요.</p>
+<figure>
+  <img src="assets/frame-1617.png" alt="Downhill: raise w and b 슬라이드. w-b 평면 위 등고선, 가운데 lowest loss 별 the bottom, 오른쪽 메모 2 numbers: a map we can draw, millions: follow the gradient">
+  <figcaption>
+    출발점에서 두 도함수가 모두 음수예요. 그러니 <code>w</code>와 <code>b</code>를 둘 다 올리면 내려가요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=977s" target="_blank" rel="noopener">영상 16:17에서 보기</a>
+  </figcaption>
+</figure>
+<p>얼마나 움직일지가 남아요. 도함수만큼 통째로 움직이면 <code>w</code>가 1 − (−126.21) = 127.21이 돼요. 화면 가운데 빨간 취소선 줄이 그 실패이고, 오른쪽 그래프 위 빨간 X가 차트 밖으로 날아간 자리예요. 그래서 그래디언트에 작은 학습률 0.01을 곱해요. 그리고 그래디언트의 <b>반대</b> 방향으로 가요.</p>
+<figure>
+  <img src="assets/frame-1657.png" alt="One step downhill 슬라이드. a full step: w = 1 − (−126.21) = 127.21 취소선, each number: new = old − lr × gradient, w = 1 − 0.01 × (−126.21) = 2.262, b = 0 − 0.01 × (−27.56) = 0.276, 오른쪽 산점도에 빨간 X와 위로 올라간 직선">
+  <figcaption>
+    '새 값 = 옛 값 − 학습률 × 그래디언트'. 한 스텝 만에 <code>w = 2.262</code>, <code>b = 0.276</code>이 되고 직선이 점들 쪽으로 들려요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1017s" target="_blank" rel="noopener">영상 16:57에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>반복하면 생기는 일: b가 기어가요</h3>
+<p>같은 학습률로 100번 반복해요. 화면 가운데 지도에서 하얀 경로가 출발점에서 오른쪽으로 쭉 뻗었다가 꺾여요. <code>w</code>가 초반에 확 올라가서 바닥을 지나쳐요(w overshoots). 모자란 <code>b</code>를 대신 메우려는 거예요. 오른쪽 아래 막대를 보면 <code>w</code>는 4.106으로 목표 3.76을 넘었고, <code>b</code>는 3.712로 목표 5.66에 한참 못 미쳐요.</p>
+<figure>
+  <img src="assets/frame-1800.png" alt="A hundred steps 슬라이드. step 100, 손실 지도 위 경로가 w=4.106, b=3.712에서 멈춤, w overshoots 표시, 오른쪽에 출력 1 2.262 0.276 / 10 4.523 1.099 / 100 4.106 3.712, w와 b 진행 막대, b crawls: fixed later, by a better optimizer">
+  <figcaption>
+    <code>b</code>의 도함수가 작은 이유가 오른쪽에 적혀 있어요. <code>w</code>는 오차를 '마일만큼', <code>b</code>는 '1만큼'만 바꿔요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1080s" target="_blank" rel="noopener">영상 18:00에서 보기</a>
+  </figcaption>
+</figure>
+<p><code>b</code>도 결국 도착해요. 스텝이 더 필요할 뿐이고, 영상은 마지막 섹션에서 이 문제를 고치는 <span class="term" data-term="옵티마이저" data-en="Optimizer" data-desc="가중치를 들고 있다가 .grad를 보고 가중치를 옮겨 주는 객체예요. 어떻게 옮길지가 SGD, Adam 같은 종류마다 달라요." data-g="10">옵티마이저</span>를 보여 줘요. 1,000번 돌리면 이렇게 돼요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>스텝</th><th><code>w</code> (마일당)</th><th><code>b</code> (기본)</th><th>손실</th></tr></thead>
+    <tbody>
+      <tr><td>0 (출발)</td><td>1</td><td>0</td><td>262.02</td></tr>
+      <tr><td>1</td><td>2.262</td><td>0.276</td><td>—</td></tr>
+      <tr><td>10</td><td>4.523</td><td>1.099</td><td>—</td></tr>
+      <tr><td>100</td><td>4.106</td><td>3.712</td><td>—</td></tr>
+      <tr><td>1,000</td><td>3.76</td><td>5.66</td><td>10.15</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>마일당 3.76달러, 기본 5.66달러예요. 아래 화면 왼쪽 그래프에서 실선이 찾은 직선, 점선이 요금표(마일당 3.50, 기본 3.00)예요. 기울기는 가깝고, 기본요금은 더 높게 나왔어요. 영상은 그 이유 하나를 요금표에서 찾아요. 오른쪽 아래 요금표 캡처에 빨간 밑줄 친 부분이 '느린 교통에서는 60초마다'예요. 막히면 미터기가 시간으로 요금을 매기니, 느린 승차는 마일만으로 계산한 것보다 비싸요.</p>
+<figure>
+  <img src="assets/frame-1837.png" alt="Found: about $3.76 a mile plus $5.66 슬라이드. found 3.76 m + 5.66 실선과 card 3.50 m + 3.00 점선이 그려진 산점도, 손실 지도, step 1,000 loss 10.15 down from 262.02, w = 3.76, b = 5.66 계기판, 요금표 캡처, 아래 that's training: predict → the loss → the gradient → step">
+  <figcaption>
+    훈련이란 '예측 → 손실 → 그래디언트 → 한 걸음'의 반복이에요. 화면 맨 아래 네 칸이 그 순서예요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1117s" target="_blank" rel="noopener">영상 18:37에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상이 쓴 <code>fare_amount</code> 열은 TLC(Taxi and Limousine Commission) 데이터 사전에서 '미터기가 계산한 시간·거리 요금'으로 정의돼요. MTA(Metropolitan Transportation Authority) 세금(<code>mta_tax</code>)이나 각종 할증(<code>extra</code>), 팁은 따로 열이 있어요. 그러니 기본요금이 3달러보다 높게 나온 건 할증이 섞여서가 아니에요. 영상이 말한 시간 요금 쪽이 더 그럴듯한 설명이에요.</p>
+  <p>지금 TLC 요금 안내 페이지에도 기본 3.00달러, 시속 12마일 넘게 달릴 때 1/5마일마다 70센트, 느린 교통이나 정차 중에는 60초마다 70센트로 적혀 있어요. 할증은 그 아래에 따로 더해요.</p>
+  <p class="cite">출처: <a href="https://www.nyc.gov/assets/tlc/downloads/pdf/data_dictionary_trip_records_yellow.pdf" target="_blank" rel="noopener">NYC TLC — Yellow Taxi 데이터 사전 (PDF)</a> · <a href="https://www.nyc.gov/site/tlc/passengers/taxi-fare.page" target="_blank" rel="noopener">NYC TLC — Taxi Fare</a></p>
+</aside>
+<p>세 번째 퀴즈는 부호를 물어요. 어떤 승차의 예측이 너무 높아서 miss가 양수예요. 이 승차는 <code>w</code>를 어느 쪽으로 밀까요? 답은 '아래'예요. 그 승차의 <code>∂L/∂w</code> 항은 2 × miss × 마일로 양수이고, 그래디언트의 반대로 가니 <code>w</code>가 내려가요. 출발점에서 <code>w</code>가 올라간 건 모든 승차가 너무 낮아서 항이 전부 음수였기 때문이에요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1170s" target="_blank" rel="noopener">19:30</a>
+  <h2>Autograd가 기울기를 구하는 방법</h2>
+<p>손으로는 그래디언트를 구하고 그 반대로 1,000번 걸었어요. 가중치가 백만 개면 이 도함수를 누가 구할까요? 여섯 번째 정류장 Autograd가 그 답이에요.</p>
+
+<h3>계산을 기록해 그래프로 만들어요</h3>
+<p><code>w</code>와 <code>b</code>를 <code>requires_grad=True</code>로 만들면 PyTorch는 둘에서 출발한 계산을 모두 기록하기 시작해요. 연산 하나가 노드 하나이고, 노드를 이은 기록을 <span class="term" data-term="계산 그래프" data-en="Computational graph" data-desc="requires_grad가 켜진 텐서에서 출발한 연산을 노드로 이은 기록이에요. backward()가 이 기록을 거꾸로 따라가요." data-g="9">계산 그래프</span>라고 해요. 아래 화면에서 <code>w</code>와 <code>m</code>이 <code>MulBackward0</code>로, 거기에 <code>b</code>가 더해져 <code>AddBackward0</code>로 가요. 이어서 <code>f</code>를 빼고(<code>SubBackward0</code>), 제곱하고(<code>PowBackward0</code>), 평균을 내서(<code>MeanBackward0</code>) 오른쪽 위 손실 262.02에 도착해요.</p>
+<figure>
+  <img src="assets/frame-2015.png" alt="Each operation, a node 슬라이드. requires_grad=True인 w와 b 노드에서 MulBackward0, AddBackward0, SubBackward0, PowBackward0, MeanBackward0을 거쳐 loss 262.02로 가는 그래프, pred.grad_fn = AddBackward0 라벨, 왼쪽 아래 코드">
+  <figcaption>
+    그래프는 '손실이 어떻게 만들어졌는지'의 기록이에요. 노드 이름은 거꾸로 돌아갈 때 할 일로 붙어요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1215s" target="_blank" rel="noopener">영상 20:15에서 보기</a>
+  </figcaption>
+</figure>
+<p>각 결과 텐서의 <code>grad_fn</code>은 자기를 만든 노드를 기억해요. 화면 위 라벨처럼 <code>pred.grad_fn</code>은 <code>AddBackward0</code>예요. <code>loss.backward()</code>는 이 그래프를 손실에서 <code>w</code>, <code>b</code>까지 거꾸로 걸으며 <code>w.grad</code>에 −126.21, <code>b.grad</code>에 −27.56을 채워요. 손으로 구한 값과 똑같아요.</p>
+
+<h3>노드마다 국소 도함수를 곱해요</h3>
+<p>거꾸로 가는 길에 노드마다 자기 몫의 국소 도함수를 곱해요. 평균의 1/36은 잠시 빼고 월요일 정오 승차 하나만 봐요. 화면 그래프 아래 노드마다 <code>× 1/36</code>, <code>× 2 × miss</code>, <code>× 1</code>, <code>× 1</code>, <code>× m = 1.38</code>이 적혀 있어요. 이걸 다 곱하면 <code>w</code> 쪽이 −27.66, <code>b</code> 쪽이 −20.04예요. 앞 섹션에서 손으로 구한 승차 하나의 항과 같아요.</p>
+<figure>
+  <img src="assets/frame-2100.png" alt="The chain rule, node by node 슬라이드. 그래프 노드마다 국소 도함수가 적혀 있고, to w: 2 × (−10.02) × 1 × 1 × 1.38 = −27.66, to b: 2 × (−10.02) × 1 × 1 = −20.04, 오른쪽에 승차별 항 막대와 add the 36, ÷ 36 = −126.21, −27.56">
+  <figcaption>
+    승차마다 자기 곱이 있고, 평균이 그것들을 합쳐요. 연쇄 법칙을 PyTorch가 대신 해 주는 거예요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1260s" target="_blank" rel="noopener">영상 21:00에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>backward()는 더해요</h3>
+<p>훈련 루프에서는 <code>backward()</code>가 스텝마다 돌아요. 그렇다면 손실을 다시 계산하고 <code>backward()</code>를 한 번 더 부르면, 새 그래디언트가 옛것을 덮어쓸까요, 더해질까요? 화면 가운데 상자가 이 질문(replace? / add?)이에요.</p>
+<figure>
+  <img src="assets/frame-2115.png" alt="backward() adds 슬라이드. 코드 loss = ((w * m + b - f) ** 2).mean(), loss.backward(), print(w.grad), 오른쪽에 1st backward() −126.21과 2nd backward() 상자, 가운데 a second backward(): what happens to w.grad? replace? add? 선택지">
+  <figcaption>
+    답은 '더해요'예요. 두 번째 호출 뒤 <code>w.grad</code>는 −126.21이 아니라 −252.42예요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1275s" target="_blank" rel="noopener">영상 21:15에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상은 PyTorch 공식 문서의 <code>Tensor.backward</code> 설명을 그대로 띄워요. 노란 테두리 친 문장이 핵심이에요. 이 함수는 그래디언트를 leaf에 누적하니 <code>.grad</code>를 0으로 만들거나 <code>None</code>으로 둬야 할 수도 있다고 적혀 있어요. leaf는 우리가 직접 만든 <code>w</code>, <code>b</code> 같은 텐서예요.</p>
+<figure>
+  <img src="assets/frame-2145.png" alt="Clear the gradients 슬라이드. torch.Tensor.backward 문서 캡처에서 This function accumulates gradients in the leaves - you might need to zero .grad attributes or set them to None before calling it 문장이 강조되고, 아래 코드 w.grad, b.grad = None, None과 .grad −252.42 → None, −55.12 → None">
+  <figcaption>
+    그래서 업데이트가 끝날 때마다 기울기를 비워요. 영상의 손 루프는 둘 다 <code>None</code>으로 둬요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1305s" target="_blank" rel="noopener">영상 21:45에서 보기</a>
+  </figcaption>
+</figure>
+<blockquote>
+  <p>This function accumulates gradients in the leaves - you might need to zero .grad attributes or set them to None before calling it.</p>
+  <p>이 함수는 그래디언트를 leaf에 누적해요. 호출하기 전에 .grad를 0으로 만들거나 None으로 둬야 할 수 있어요.</p>
+  <cite>— PyTorch 문서, 영상 21:30</cite>
+</blockquote>
+
+<h3>업데이트는 기록하지 않아요</h3>
+<p>규칙이 하나 더 있어요. 업데이트는 모델의 계산이 아니니 그래프에 기록되면 안 돼요. 그냥 업데이트하면 기록 중인 텐서의 숫자를 제자리에서 덮어쓰게 돼서 에러가 나요. 그래서 업데이트는 <code>torch.no_grad()</code> 안에서 해요. 이렇게 짠 Autograd 루프는 '손실 계산 → <code>backward()</code> → <code>no_grad</code> 안에서 가중치 옮기기 → 기울기 비우기' 순서이고, 출력은 손 루프와 숫자 하나 다르지 않아요.</p>
+<pre><code class="language-python">w = torch.tensor(1.0, requires_grad=True)
+b = torch.tensor(0.0, requires_grad=True)
+for step in range(1, 1001):
+    loss = ((w * m + b - f) ** 2).mean()
+    loss.backward()                  # w.grad, b.grad 채우기
+    with torch.no_grad():            # 업데이트는 기록하지 않기
+        w -= lr * w.grad
+        b -= lr * b.grad
+    w.grad, b.grad = None, None      # 다음 스텝을 위해 비우기</code></pre>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1349s" target="_blank" rel="noopener">22:29</a>
+  <h2>다섯 줄로 정리한 루프</h2>
+<p>마지막 정류장은 <code>torch.optim</code>과 <code>nn.Module</code>로 정리한 루프예요. <code>nn</code>은 neural network의 줄임이에요. 앞의 루프는 아직 가중치를 하나하나 손으로 옮기고 비워요. PyTorch에서 이건 옵티마이저의 일이에요.</p>
+
+<h3>torch.optim이 업데이트를 맡아요</h3>
+<p>가장 단순한 옵티마이저가 <code>torch.optim.SGD</code>, 평범한 경사 하강법이에요. 화면 가운데 하이라이트 줄처럼 가중치 목록과 학습률을 넘겨요. 오른쪽 그림은 <code>backward()</code>가 채운 <code>.grad</code>를 옵티마이저가 가져다 쓴다는 뜻이에요. 보라색 상자로 묶인 부분, 즉 <code>no_grad</code> 안의 업데이트와 비우기가 '옵티마이저의 일(the optimizer's job)'로 넘어가요.</p>
+<figure>
+  <img src="assets/frame-2309.png" alt="torch.optim does the update 슬라이드. opt = torch.optim.SGD([w, b], lr=lr) 줄이 강조되고 plain gradient descent, crawl and all과 lr = 0.01, from the loop by hand 메모, 보라 상자 안의 with torch.no_grad() 업데이트와 w.grad, b.grad = None, None에 the optimizer's job 라벨, 오른쪽 w, b의 .grad −126.21, −27.56">
+  <figcaption>
+    손 루프와 숫자가 똑같도록 일부러 평범한 SGD(Stochastic Gradient Descent)를 써요. <code>b</code>가 기어가는 것까지 그대로예요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1389s" target="_blank" rel="noopener">영상 23:09에서 보기</a>
+  </figcaption>
+</figure>
+<p>SGD는 stochastic gradient descent, 확률적 경사 하강법의 줄임이에요. 이름의 '확률적'은 이 섹션 끝에서 나오는 무작위 배치에서 왔어요. <code>opt.step()</code>은 모든 가중치를 옮기고, <code>opt.zero_grad()</code>는 모든 <code>.grad</code>를 비워요.</p>
+
+<h3>nn.Module이 가중치를 찾아 줘요</h3>
+<p>실제 모델은 가중치가 수백만 개라 목록으로 넘길 수가 없어요. 화면 오른쪽 작은 칸 무더기가 그 '수백만 개'이고, 아래 <code>opt = torch.optim.SGD([w, b], lr=lr)</code>가 '지금까지는 하나하나 손으로 넘겼다'는 표시예요. 그래서 PyTorch 모델의 기본 클래스인 <code>nn.Module</code>을 상속해요. 영상의 모델 이름은 <code>FareModel</code>이에요.</p>
+<figure>
+  <img src="assets/frame-2329.png" alt="nn.Module keeps track 슬라이드. class FareModel(nn.Module) 코드에서 self.w = nn.Parameter(torch.tensor(1.0)), self.b = nn.Parameter(torch.tensor(0.0)), def forward(self, m): return self.w * m + self.b, 오른쪽에 millions of weights 격자와 so far: every weight handed over by hand">
+  <figcaption>
+    가중치는 <code>self</code>에 <code>nn.Parameter</code>로 둬요. <code>requires_grad</code>가 이미 켜진 텐서예요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1409s" target="_blank" rel="noopener">영상 23:29에서 보기</a>
+  </figcaption>
+</figure>
+<p>그러면 <code>model.parameters()</code>가 가중치를 전부 찾아 줘요. <code>forward</code>는 입력이 출력이 되는 방법을 적은 메서드이고, <code>model(m)</code>으로 부르면 돌아요. 마일 36개가 들어가고 예측 36개가 나와요. <code>nn.Module</code>은 안에 중첩된 층 속까지 가중치를 찾아 주는 컨테이너예요. 층은 <code>nn.Linear</code>처럼 자기 가중치를 가진 부품이에요.</p>
+<p>아래 화면은 층 두 개를 중첩한 더 큰 모델 <code>TwoLayers</code>예요. <code>first = nn.Linear(1, 4)</code>는 가중치 4개와 편향 4개, <code>second = nn.Linear(4, 1)</code>는 가중치 4개와 편향 1개를 가져요. 노란 칸을 세면 13개이고, 맨 아래 '13 parameters found, by name'이 그 결과예요.</p>
+<figure>
+  <img src="assets/frame-2409.png" alt="What nn.Module gives every model 슬라이드. net = TwoLayers() 컨테이너 안에 first = nn.Linear(1, 4)의 first.weight 4칸, first.bias 4칸, second = nn.Linear(4, 1)의 second.weight 4칸, second.bias 1칸, 아래 13 parameters found, by name">
+  <figcaption>
+    모든 모델은 가중치 이름 나열, 개수 세기, 저장 같은 도구도 함께 얻어요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1449s" target="_blank" rel="noopener">영상 24:09에서 보기</a>
+  </figcaption>
+</figure>
+<p>평균제곱오차도 내장돼 있어요. <code>nn.MSELoss()</code>가 손실 함수를 만들고, 예측과 정답(실제 요금)을 넣어 부르면 262.02가 다시 나와요.</p>
+
+<h3>다섯 줄이 하는 일</h3>
+<p>이제 처음의 다섯 줄을 전부 알아요. 영상이 처음에 던진 세 질문의 답을 한 장에 모으면 이래요. 아래 그림의 값은 출발점 <code>w=1, b=0</code>에서 첫 스텝을 돌 때의 숫자예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 680 230" role="img" aria-label="다섯 줄이 각각 바꾸는 값. model(m)은 pred, loss_fn은 loss 262.02, backward는 .grad에 −126.21과 −27.56을 더하고, step은 w와 b를 2.262와 0.276으로, zero_grad는 .grad를 None으로">
+    <defs><marker id="arrow-five" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-five"></g>
+  </svg>
+  <figcaption><code>backward()</code>는 <code>.grad</code>만, <code>step()</code>은 가중치만 바꿔요. <code>.grad</code>에 더하기만 하니, 다음 스텝 전에 <code>zero_grad()</code>가 비워 줘야 해요.</figcaption>
+</figure>
+<p>네 번째 퀴즈가 여기서 나와요. 다섯 줄에서 <code>opt.zero_grad()</code>를 지우면 어떻게 될까요? 답은 '기울기가 쌓여 스텝이 커지고 지나쳐요'예요. 2번째 스텝의 <code>.grad</code>에는 1번째 스텝의 그래디언트가 더해져 있고, 옛 그래디언트는 영영 지워지지 않아요. 옛 그래디언트가 계속 밀어서 <code>w</code>는 다섯 스텝 만에 바닥을 지나 8을 넘어요. 에러는 나지 않아요. PyTorch는 기꺼이 계속 더해요. 가중치가 지워지지도 않아요. <code>zero_grad()</code>는 <code>.grad</code>만 비우기 때문이에요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상 화면의 'every .grad → None'은 현재 PyTorch의 기본 동작과 같아요. <code>Optimizer.zero_grad(set_to_none=True)</code>가 기본값이라 0으로 채우지 않고 <code>None</code>으로 둬요. 문서는 이 방식이 대체로 메모리를 덜 쓰지만 동작이 조금 다르다고 적어요. 예를 들어 <code>.grad</code>를 직접 읽어 계산하는 코드는 0 대신 <code>None</code>을 만나요.</p>
+  <p class="cite">출처: <a href="https://docs.pytorch.org/docs/stable/generated/torch.optim.Optimizer.zero_grad.html" target="_blank" rel="noopener">PyTorch 문서 — Optimizer.zero_grad</a></p>
+</aside>
+<p>손 루프와 다섯 줄을 나란히 놓으면 일이 한 줄씩 맞아떨어져요. 화면 가운데 동그라미 번호가 짝이에요. 오른쪽 열이 PyTorch가 대신해 주는 것, 맨 아래 초록 줄이 결과예요. 둘 다 <code>w=1, b=0</code>에서 출발해 3.76과 5.66에 도착해요.</p>
+<figure>
+  <img src="assets/frame-2609.png" alt="By hand vs the five lines 표. the start, the loop, 1 predict pred = w * m + b ↔ pred = model(m), 2 the loss err = pred - f ↔ loss_fn(pred, f), 3 the gradient dw, db 수식 ↔ loss.backward(), 4 the step ↔ opt.step(), 5 clear # nothing ↔ opt.zero_grad(), the result (3.76, 5.66) = 3.76 5.66">
+  <figcaption>
+    5번 줄이 재미있어요. 손 루프는 비울 게 없어요. <code>dw</code>, <code>db</code>를 매번 새로 계산하기 때문이에요. 비우기는 <code>backward()</code>가 더하기 때문에 생긴 일이에요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1569s" target="_blank" rel="noopener">영상 26:09에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>쓰고, 저장하고, 다시 불러오기</h3>
+<p>학습한 모델을 쓸 때는 <code>backward()</code>를 부르지 않으니 <code>torch.no_grad()</code>로 기록을 꺼요. 화면 오른쪽 위 상자의 정확한 가중치는 마일당 3.7556, 기본 5.658이에요. 이 값이면 1마일은 약 9.41달러, 5마일은 24.44달러, 10마일은 43.21달러예요. 타기 전에 대략 얼마 나올지 알 수 있어요.</p>
+<figure>
+  <img src="assets/frame-2629.png" alt="Using the model 슬라이드. with torch.no_grad(): print(model(torch.tensor([1.0, 5.0, 10.0]))) 코드, model 상자에 w = 3.7556, b = 5.658, recording paused: no new graph, 아래에 the trained line: fare = 3.7556 × miles + 5.658 산점도">
+  <figcaption>
+    '기록 일시정지: 새 그래프 없음'. 예측만 할 땐 그래프를 만들 이유가 없어요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1589s" target="_blank" rel="noopener">영상 26:29에서 보기</a>
+  </figcaption>
+</figure>
+<p><code>state_dict()</code>는 학습된 가중치를 이름별로 담아요. 화면 오른쪽 표의 <code>'w': 3.7556</code>, <code>'b': 5.6580</code>이에요. <code>torch.save</code>가 이걸 <code>fare_model.pt</code> 파일로 쓰고, 왼쪽 아래 1과 0에서 출발하는 새 <code>FareModel</code>이 <code>load_state_dict</code>로 다시 불러와요.</p>
+<figure>
+  <img src="assets/frame-2649.png" alt="state_dict: the weights by name 슬라이드. torch.save(model.state_dict(), 'fare_model.pt'), copy = FareModel(), copy.load_state_dict(torch.load('fare_model.pt')) 코드, 학습된 model에서 state_dict 표 'w' 3.7556, 'b' 5.6580으로, torch.save 화살표로 fare_model.pt 파일, 아래 w = 1, b = 0인 copy 상자">
+  <figcaption>
+    파일에 들어가는 건 모델 코드가 아니라 이름 붙은 숫자예요. 그래서 같은 클래스를 먼저 만들고 숫자를 채워요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1609s" target="_blank" rel="noopener">영상 26:49에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>nn.Linear와 모양 에러</h3>
+<p>사실 우리 모델은 PyTorch에 이미 들어 있어요. <code>nn.Linear(1, 1)</code>은 입력 하나에 가중치를 곱하고 편향을 더하는 층이에요. 숫자 하나가 들어가고 하나가 나와요. 그런데 마일 36개짜리 한 줄을 넣으면 실패해요. 마지막 축을 승차 한 건의 입력으로 읽어서, 입력이 36개인 승차 한 건처럼 보이기 때문이에요. <code>m[:, None]</code>으로 마지막에 새 축을 넣으면 한 줄이 '한 칸짜리 예시 36개'인 열이 돼요.</p>
+<figure>
+  <img src="assets/frame-2749.png" alt="One example per row 슬라이드. x = m[:, None] (36, 1) 열 @ W.T (1, 1) 3.7556 + b (1,) 5.658 = pred (36, 1), 강조된 Mon noon 1.38 × 3.7556 + 5.658 = 10.84, 오른쪽 코드 lin = nn.Linear(1, 1), opt = torch.optim.SGD(lin.parameters(), lr=0.01), step 1000 loss 10.15">
+  <figcaption>
+    <code>nn.Linear</code> 안은 행렬곱이에요. (36, 1) 열 × (1, 1) 가중치 + 편향이 예측 36개가 돼요. 월요일 정오는 10.84달러로 예측해요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1669s" target="_blank" rel="noopener">영상 27:49에서 보기</a>
+  </figcaption>
+</figure>
+<p>같은 다섯 줄이 작은 난수 출발점(화면의 −0.0075와 0.536)에서 다시 3.76과 5.66까지 데려가요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p><code>nn.Linear</code> 문서의 입력 모양은 <code>(*, H_in)</code>이에요. 앞쪽 <code>*</code>는 몇 개의 축이든 될 수 있고, 마지막 축 크기만 <code>in_features</code>와 같아야 해요. 영상이 말한 '마지막 축을 한 건의 입력으로 읽는다'가 이 규칙이에요. 그래서 <code>(36,)</code>은 안 되고 <code>(36, 1)</code>은 돼요.</p>
+  <p class="cite">출처: <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Linear.html" target="_blank" rel="noopener">PyTorch 문서 — torch.nn.Linear</a></p>
+</aside>
+
+<h3>DataLoader와 에폭</h3>
+<p>데이터가 너무 커서 한 번에 못 쓰면 <code>DataLoader</code>가 섞은 배치로 나눠 줘요. <code>TensorDataset</code>이 승차마다 마일과 요금을 짝지어요. 앞에서 본 <code>stack</code>과 같은 일이에요. 그다음 로더가 36쌍을 12개씩 나눠요. 화면 가운데 batch 1~3 세 열이 그 배치이고, 위 'reshuffled every epoch'처럼 매번 순서가 바뀌어요.</p>
+<figure>
+  <img src="assets/frame-2829.png" alt="Epochs 슬라이드. 36 pairs 열을 batch 1, 2, 3으로 12개씩 나눈 그림, reshuffled every epoch, 코드 loader = DataLoader(TensorDataset(m[:, None], f[:, None]), batch_size=12, shuffle=True), for epoch in range(300): for x, y in loader: 다섯 줄, epoch 99 step 296, 아래 300 epochs × 3 batches = 900 steps">
+  <figcaption>
+    배치 세 개를 한 바퀴 도는 게 1 에폭이에요. 왼쪽 아래 손실 지도에서 경로가 조금씩 흔들리는 게 무작위 배치 때문이에요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1709s" target="_blank" rel="noopener">영상 28:29에서 보기</a>
+  </figcaption>
+</figure>
+<p>다섯 줄은 배치마다 한 번, 마일 12개 <code>x</code>와 요금 12개 <code>y</code>로 돌아요. 300 <span class="term" data-term="에폭" data-en="Epoch" data-desc="데이터 전체를 한 바퀴 다 쓰는 단위예요. 36건을 12개씩 배치 셋으로 나누면 1 에폭이 3 스텝이에요." data-g="12">에폭</span>이면 900 스텝이고, 결과는 3.75와 5.69 근처예요. 이 무작위 배치가 확률적 경사 하강법의 '확률적'이에요.</p>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1721s" target="_blank" rel="noopener">28:41</a>
+  <h2>바꿔 끼울 수 있는 것: 옵티마이저, 활성화, 손실</h2>
+<p>다섯 줄 루프에서 메뉴처럼 골라 바꿀 수 있는 부분이 셋 있어요. 옵티마이저, 모델, 손실이에요. 영상은 이 셋을 빠르게 훑어요.</p>
+
+<h3>옵티마이저: b가 기어가는 문제를 고쳐요</h3>
+<p>지금 학습률에서 평범한 SGD는 <code>b</code>가 기어가는 탓에 551스텝이 걸려요. <span class="term" data-term="모멘텀" data-en="Momentum" data-desc="최근 스텝의 이동을 일부 이어 받아 속도를 붙이는 방식이에요. 작은 기울기도 쌓이면 빨리 움직여요." data-g="11">모멘텀</span>은 최근 스텝의 속도를 이어 받고 오래된 것은 흐려지게 둬요. 그래서 <code>b</code>의 작은 밀기가 쌓여 속도가 붙고, 100스텝이면 돼요. Adam은 가중치마다 따로 보폭을 정해요. <code>b</code>의 작은 도함수도 제 크기의 한 걸음을 얻어서 88스텝이면 돼요.</p>
+<p>아래 화면은 같은 손실 지도 위에서 여덟 가지 옵티마이저가 첫 300스텝 동안 간 길이에요. 각 칸 왼쪽 아래 동그라미가 출발점 <code>w=1, b=0</code>, 가운데 별이 최저점이에요. 오른쪽 위 배지는 <code>w</code>와 <code>b</code>가 정답 근처(맨 위 조건)에 들어올 때까지 걸린 스텝 수예요. 학습률은 옵티마이저마다 따로 맞춘 값이에요.</p>
+<figure>
+  <img src="assets/frame-2926.png" alt="torch.optim: eight ways to take the step 슬라이드. SGD 551 steps, momentum 100, Nesterov 62, Adagrad 50, RMSprop 158, Adam 88, AdamW 552, NAdam 31 steps 배지와 각자의 경로, 설정 코드, 한 줄 설명. 아래 also in torch.optim: Adadelta, Adamax, RAdam, ASGD, Rprop, SparseAdam, LBFGS">
+  <figcaption>
+    SGD 칸의 'b crawls' 화살표가 앞 섹션의 그 문제예요. momentum 칸의 지그재그는 속도가 붙어 지나쳤다 돌아오는 모습이에요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1766s" target="_blank" rel="noopener">영상 29:26에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>옵티마이저</th><th>화면의 설정</th><th>스텝 수</th><th>화면의 한 줄 설명</th></tr></thead>
+    <tbody>
+      <tr><td>SGD</td><td><code>lr=0.01</code></td><td>551</td><td>경사를 곧장 내려가요. b가 기어가요</td></tr>
+      <tr><td>momentum</td><td><code>SGD(lr=0.01, momentum=0.9)</code></td><td>100</td><td>최근 스텝의 속도를 유지해요</td></tr>
+      <tr><td>Nesterov</td><td><code>SGD(..., nesterov=True)</code></td><td>62</td><td>한 걸음 앞을 보는 모멘텀</td></tr>
+      <tr><td>Adagrad</td><td><code>lr=3.0</code></td><td>50</td><td>지난 기울기가 컸던 가중치는 보폭을 줄여요</td></tr>
+      <tr><td>RMSprop</td><td><code>lr=0.1</code></td><td>158</td><td>Adagrad와 비슷하지만 옛 기울기를 잊어요</td></tr>
+      <tr><td>Adam</td><td><code>lr=0.5</code></td><td>88</td><td>가중치마다 자기 보폭. b도 제 크기의 걸음을 얻어요</td></tr>
+      <tr><td>AdamW</td><td><code>lr=0.5, weight_decay=0.01</code></td><td>552</td><td>Adam에 0 쪽으로 살짝 당기는 힘을 더해요</td></tr>
+      <tr><td>NAdam</td><td><code>lr=1.0</code></td><td>31</td><td>Nesterov식으로 앞을 보는 Adam</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>바꾸는 건 <code>opt = ...</code> 한 줄이고 루프는 그대로예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>PyTorch의 <code>torch.optim.Adam</code> 문서는 알고리즘의 원전으로 Kingma와 Ba의 논문 'Adam: A Method for Stochastic Optimization'을 가리켜요. 이 비교의 스텝 수는 이 영상의 작은 문제(가중치 2개, 36건)에서 각자 맞춘 학습률로 잰 값이라, 큰 모델에서도 같은 순서가 나온다는 뜻은 아니에요.</p>
+  <p class="cite">출처: <a href="https://docs.pytorch.org/docs/stable/generated/torch.optim.Adam.html" target="_blank" rel="noopener">PyTorch 문서 — torch.optim.Adam</a> · <a href="https://arxiv.org/abs/1412.6980" target="_blank" rel="noopener">Kingma &amp; Ba, Adam 논문 (arXiv 1412.6980)</a></p>
+</aside>
+
+<h3>모델: 활성화 함수로 선을 꺾어요</h3>
+<p>선형 층은 직선만 만들어요. 그런데 어떤 데이터는 굽어 있어요. 시간대별 택시 속도가 그래요. 밤에는 빠르고 한낮에는 느려요. 층 사이의 모든 숫자에 작은 함수, 즉 <span class="term" data-term="활성화 함수" data-en="Activation function" data-desc="층 사이의 모든 숫자에 적용하는 작은 비선형 함수예요. 이게 있어야 층을 쌓았을 때 직선이 아닌 모양을 만들 수 있어요." data-g="13">활성화 함수</span>를 하나 끼우면 선이 꺾일 수 있어요. 활성화 없이 선형 층 두 개를 이어 붙이면 여전히 직선이에요.</p>
+<p>아래 화면 왼쪽이 다섯 가지 활성화 함수, 오른쪽이 실험이에요. 운행 기록에서 2시간 칸마다 평균 속도를 구하고, 시간대를 넣으면 사흘의 속도를 내는 모델을 맞춰요. 오른쪽 아래 세 줄이 비교한 모델이에요. <code>nn.Linear(1, 3)</code> 하나, <code>Linear</code> 둘을 그냥 이은 것, 그리고 가운데 <code>nn.ReLU()</code>를 끼운 것이에요.</p>
+<figure>
+  <img src="assets/frame-3031.png" alt="Activations: how a model bends 슬라이드. 왼쪽에 nn.ReLU, nn.GELU, nn.Sigmoid, nn.Tanh, nn.Softmax(dim=-1) 그래프와 x = −2, −1, 0, 1, 2에 대한 출력, 오른쪽에 시간대별 택시 속도(mph) 산점도 quick at night, slow at midday와 ReLU 모델의 굽은 선, 아래 the worst miss, in mph: straight 7.1 막대">
+  <figcaption>
+    파란 굽은 선이 ReLU 하나를 끼운 모델이에요. 직선 모델은 최대 7.1mph 빗나가고, ReLU를 넣으면 1.62mph로 줄어요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1831s" target="_blank" rel="noopener">영상 30:31에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>활성화</th><th>하는 일</th><th>x = −2, −1, 0, 1, 2일 때</th></tr></thead>
+    <tbody>
+      <tr><td><code>nn.ReLU()</code></td><td>음수를 0으로, 나머지는 그대로</td><td>0, 0, 0, 1, 2</td></tr>
+      <tr><td><code>nn.GELU()</code></td><td>부드러운 ReLU. 0 아래로 살짝 내려가요</td><td>−0.05, −0.16, 0, 0.84, 1.95</td></tr>
+      <tr><td><code>nn.Sigmoid()</code></td><td>모든 수를 0과 1 사이로 눌러요</td><td>0.12, 0.27, 0.5, 0.73, 0.88</td></tr>
+      <tr><td><code>nn.Tanh()</code></td><td>−1과 1 사이로 눌러요</td><td>−0.96, −0.76, 0, 0.76, 0.96</td></tr>
+      <tr><td><code>nn.Softmax(dim=-1)</code></td><td>한 줄을 합이 1인 확률로 바꿔요</td><td>0.01, 0.03, 0.09, 0.23, 0.64</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3>손실: 무엇을 예측하느냐로 골라요</h3>
+<p>손실도 고를 수 있어요. 숫자를 맞힐 땐 평균제곱오차(MSE(Mean Squared Error))를 써요. 큰 실수에 가산점을 주기 싫으면 L1, 둘을 섞은 게 Huber예요. 범주를 고를 땐 교차 엔트로피, 예·아니오에는 이진 교차 엔트로피를 써요.</p>
+<p>아래 화면 왼쪽 세 칸이 숫자용 손실이에요. 학습한 직선은 월요일 정오를 −0.56, 월요일 오전 10시를 −13.23 빗나가요. 화면 맨 위 줄의 예측 [10.84, 32.47]과 정답 [11.40, 45.70]의 차이예요. 각 칸의 그래프에서 흰 점 두 개가 이 두 승차의 위치예요.</p>
+<figure>
+  <img src="assets/frame-3126.png" alt="Loss functions: how wrong, measured five ways 슬라이드. For numbers: nn.MSELoss 87.67, nn.L1Loss 6.90, nn.HuberLoss 6.44와 각 계산식, For categories: nn.CrossEntropyLoss 0.417 (점수 [2, 1, 0.1]을 softmax로 0.659, 0.242, 0.099로 바꾸고 −log 0.659), nn.BCEWithLogitsLoss 0.3711 (score 0.8 → yes 0.69 → −log 0.69)">
+  <figcaption>
+    MSE에서는 10시 승차 하나가 175.03으로 손실을 거의 다 차지해요. L1과 Huber에서는 그렇게까지 튀지 않아요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1886s" target="_blank" rel="noopener">영상 31:26에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>손실</th><th>정오 (−0.56)</th><th>10시 (−13.23)</th><th>두 건 평균</th></tr></thead>
+    <tbody>
+      <tr><td><code>nn.MSELoss()</code> — 제곱</td><td>0.31</td><td>175.03</td><td>87.67</td></tr>
+      <tr><td><code>nn.L1Loss()</code> — 크기 그대로</td><td>0.56</td><td>13.23</td><td>6.90</td></tr>
+      <tr><td><code>nn.HuberLoss()</code> — 작으면 제곱의 절반, 크면 크기 − ½</td><td>0.16</td><td>12.73</td><td>6.44</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>화면 오른쪽은 범주용 손실이에요. 교차 엔트로피 칸은 '어느 요일 승차인가' 문제를 꾸며서 점수 [2, 1, 0.1]을 softmax로 확률 0.659, 0.242, 0.099로 바꿔요. 정답(월요일)의 확률에 −log를 씌운 0.417이 손실이에요. 이진 교차 엔트로피 칸은 '이 승차가 30달러를 넘나'라는 예·아니오 문제로 0.3711을 내요. 숫자용 손실은 한 줄로 바꿔 끼우고, 루프는 바뀌지 않아요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>화면에 나온 <code>nn.BCEWithLogitsLoss</code>는 시그모이드와 <code>BCELoss</code>를 한 클래스에 합친 손실이에요. 그래서 0.8 같은 날 점수를 그대로 넣어요. 문서는 시그모이드를 따로 거친 뒤 <code>BCELoss</code>를 쓰는 것보다 수치적으로 더 안정적이라고 적어요.</p>
+  <p><code>nn.HuberLoss</code>는 제곱과 직선이 바뀌는 경계 <code>delta</code>의 기본값이 1.0이에요. 영상의 '작으면 제곱의 절반, 크면 크기에서 ½을 뺀 값'은 이 기본값일 때의 식이에요.</p>
+  <p class="cite">출처: <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.BCEWithLogitsLoss.html" target="_blank" rel="noopener">PyTorch 문서 — BCEWithLogitsLoss</a> · <a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.HuberLoss.html" target="_blank" rel="noopener">PyTorch 문서 — HuberLoss</a></p>
+</aside>
+
+<h3>전체 그림</h3>
+<p>영상은 처음에 약속한 보드 한 장으로 끝나요. 위 두 줄의 여섯 칸이 텐서, 텐서 연산, 예측, 손실 함수, 경사 하강법, Autograd이고, 아래 넓은 칸이 전문가의 루프예요. 아래 표의 왼쪽 열은 손으로 쓴 코드, 가운데 열은 다섯 줄, 오른쪽 열은 PyTorch가 대신해 주는 일이에요.</p>
+<figure>
+  <img src="assets/frame-3136.png" alt="PyTorch, the whole loop 보드. 1 Tensors, 2 Tensor operations, 3 Predict, 4 The loss function, 5 Gradient descent, 6 Autograd 여섯 칸과 7 The professional loop 표에 predict, measure the loss, compute gradients, update weights, clear gradients 다섯 줄의 from scratch / the professional way 대응">
+  <figcaption>
+    텐서가 숫자를 담고, 손실이 틀린 정도를 말하고, Autograd가 기울기를 구하고, 경사 하강법이 가중치를 옮겨요. 다섯 줄은 그걸 묶은 것뿐이에요.
+    <a href="https://www.youtube.com/watch?v=K1ksiPHfgVs&amp;t=1896s" target="_blank" rel="noopener">영상 31:36에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 영어 자막이라 함수 이름과 숫자가 많이 어긋나 있어요. 화면의 코드와 숫자를 기준으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>fairs / Fars</td><td>fares</td><td>요금 텐서 이름</td></tr>
+      <tr><td>1.38 m for $1140</td><td>1.38마일, $11.40</td><td>월요일 정오 승차</td></tr>
+      <tr><td>Torch. 2 3 / Torch.1&#x27;s / Torch.fall / torch. 3</td><td>torch.zeros(2, 3) / torch.ones / torch.full / torch.eye(3)</td><td></td></tr>
+      <tr><td>torch.rand n / Torch. A range</td><td>torch.randn / torch.arange</td><td></td></tr>
+      <tr><td>Torch. Pricey 30 and fairs</td><td>torch.where(pricey, 30.0, fares)</td><td></td></tr>
+      <tr><td>Top K</td><td>topk</td><td></td></tr>
+      <tr><td>fairs domax / fairs.mmax</td><td>fares.max</td><td></td></tr>
+      <tr><td>Fars has shape 3x2</td><td>fares has shape (3, 12)</td><td>첫 번째 퀴즈</td></tr>
+      <tr><td>$1963 / $1624 / 4570</td><td>$19.63 / $16.24 / $45.70</td><td></td></tr>
+      <tr><td>350 a mile / 376 a mile and 566</td><td>$3.50 / $3.76, $5.66</td><td></td></tr>
+      <tr><td>DL by DW = -26.21</td><td>∂L/∂w = −126.21</td><td>화면과 뒤의 w.grad 값으로 확인</td></tr>
+      <tr><td>mole backward</td><td>MulBackward0</td><td></td></tr>
+      <tr><td>intorad / dotgrad / fillgrad</td><td>.grad</td><td></td></tr>
+      <tr><td>torch.nograd / ngrad</td><td>torch.no_grad()</td><td></td></tr>
+      <tr><td>nn.m module / nodule / fair model</td><td>nn.Module / FareModel</td><td></td></tr>
+      <tr><td>NN loss / NNMS loss</td><td>nn.MSELoss()</td><td></td></tr>
+      <tr><td>Opt.EP / Opt.0 / zero grade</td><td>opt.step() / opt.zero_grad()</td><td></td></tr>
+      <tr><td>State direct</td><td>state_dict</td><td></td></tr>
+      <tr><td>NN.linear linear one. One</td><td>nn.Linear(1, 1)</td><td></td></tr>
+      <tr><td>1mm ride cost about $941 / 4321 / $1084</td><td>1마일 $9.41 / $43.21 / $10.84</td><td></td></tr>
+      <tr><td>plane SGD</td><td>plain SGD</td><td></td></tr>
+      <tr><td>Realu / railu / gel / tan</td><td>ReLU / GELU / tanh</td><td></td></tr>
+      <tr><td>Hoover</td><td>Huber</td><td></td></tr>
+      <tr><td>Monday&#x27;s 10:00 ride by -3.23</td><td>−13.23</td><td>화면: 예측 32.47, 정답 45.70</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-9"><dt>계산 그래프<span class="en">Computational graph</span></dt><dd>requires_grad가 켜진 텐서에서 출발한 연산을 노드로 이은 기록이에요. backward()가 이 기록을 거꾸로 따라가요.</dd></div>
+    <div class="g" id="g-6"><dt>그래디언트<span class="en">Gradient</span></dt><dd>가중치마다 하나씩 있는 손실의 도함수를 모은 거예요. 손실이 가장 빨리 커지는 방향이라, 그 반대로 가면 손실이 줄어요.</dd></div>
+    <div class="g" id="g-11"><dt>모멘텀<span class="en">Momentum</span></dt><dd>최근 스텝의 이동을 일부 이어 받아 속도를 붙이는 방식이에요. 작은 기울기도 쌓이면 빨리 움직여요.</dd></div>
+    <div class="g" id="g-2"><dt>불리언 마스크<span class="en">Boolean mask</span></dt><dd>원래 텐서와 같은 모양의 참·거짓 격자예요. 인덱스로 쓰면 참인 칸만 뽑아요.</dd></div>
+    <div class="g" id="g-3"><dt>브로드캐스팅<span class="en">Broadcasting</span></dt><dd>모양이 다른 텐서끼리 계산할 때 작은 쪽을 늘린 것처럼 재사용하는 규칙이에요. 숫자 하나인 w를 36건 전부에 곱할 수 있는 이유예요.</dd></div>
+    <div class="g" id="g-4"><dt>선형 회귀<span class="en">Linear regression</span></dt><dd>입력과 출력 사이를 직선(가중치 × 입력 + 편향)으로 맞추는 가장 단순한 모델이에요.</dd></div>
+    <div class="g" id="g-12"><dt>에폭<span class="en">Epoch</span></dt><dd>데이터 전체를 한 바퀴 다 쓰는 단위예요. 36건을 12개씩 배치 셋으로 나누면 1 에폭이 3 스텝이에요.</dd></div>
+    <div class="g" id="g-8"><dt>연쇄 법칙<span class="en">Chain rule</span></dt><dd>합성된 함수의 도함수는 단계마다의 도함수를 곱한 것과 같다는 미분 규칙이에요. backward()가 그래프를 거꾸로 걸으며 하는 일이 이거예요.</dd></div>
+    <div class="g" id="g-10"><dt>옵티마이저<span class="en">Optimizer</span></dt><dd>가중치를 들고 있다가 .grad를 보고 가중치를 옮겨 주는 객체예요. 어떻게 옮길지가 SGD, Adam 같은 종류마다 달라요.</dd></div>
+    <div class="g" id="g-1"><dt>텐서<span class="en">Tensor</span></dt><dd>축이 몇 개든 될 수 있는 숫자 격자예요. PyTorch는 데이터, 가중치, 기울기를 전부 텐서로 다뤄요.</dd></div>
+    <div class="g" id="g-5"><dt>평균제곱오차<span class="en">Mean squared error</span></dt><dd>빗나간 값을 하나하나 제곱해 평균 낸 손실이에요. 부호가 상쇄되지 않고, 큰 실수를 더 무겁게 봐요.</dd></div>
+    <div class="g" id="g-7"><dt>학습률<span class="en">Learning rate</span></dt><dd>그래디언트에 곱하는 작은 수예요. 한 스텝에 얼마나 멀리 갈지 정해요. 너무 크면 지나치고, 너무 작으면 느려요.</dd></div>
+    <div class="g" id="g-13"><dt>활성화 함수<span class="en">Activation function</span></dt><dd>층 사이의 모든 숫자에 적용하는 작은 비선형 함수예요. 이게 있어야 층을 쌓았을 때 직선이 아닌 모양을 만들 수 있어요.</dd></div>
+    <div class="g"><dt>MSE</dt><dd>Mean Squared Error</dd></div>
+    <div class="g"><dt>MTA</dt><dd>Metropolitan Transportation Authority</dd></div>
+    <div class="g"><dt>SGD</dt><dd>Stochastic Gradient Descent</dd></div>
+    <div class="g"><dt>TLC</dt><dd>Taxi and Limousine Commission</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=K1ksiPHfgVs" target="_blank" rel="noopener">원본 영상 — Zachary Huang, Give me 31 minutes, I will make PyTorch click forever</a></li>
+    <li id="src-2"><a href="https://www.nyc.gov/assets/tlc/downloads/pdf/data_dictionary_trip_records_yellow.pdf" target="_blank" rel="noopener">NYC TLC — Yellow Taxi 운행 기록 데이터 사전 (PDF)</a></li>
+    <li id="src-3"><a href="https://www.nyc.gov/site/tlc/passengers/taxi-fare.page" target="_blank" rel="noopener">NYC TLC — Taxi Fare (요금 안내)</a></li>
+    <li id="src-4"><a href="https://docs.pytorch.org/docs/stable/generated/torch.Tensor.backward.html" target="_blank" rel="noopener">PyTorch 문서 — torch.Tensor.backward</a></li>
+    <li id="src-5"><a href="https://docs.pytorch.org/docs/stable/generated/torch.optim.Optimizer.zero_grad.html" target="_blank" rel="noopener">PyTorch 문서 — Optimizer.zero_grad</a></li>
+    <li id="src-6"><a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Linear.html" target="_blank" rel="noopener">PyTorch 문서 — torch.nn.Linear</a></li>
+    <li id="src-7"><a href="https://docs.pytorch.org/docs/stable/generated/torch.optim.Adam.html" target="_blank" rel="noopener">PyTorch 문서 — torch.optim.Adam</a></li>
+    <li id="src-8"><a href="https://arxiv.org/abs/1412.6980" target="_blank" rel="noopener">Kingma &amp; Ba — Adam: A Method for Stochastic Optimization (arXiv 1412.6980)</a></li>
+    <li id="src-9"><a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.BCEWithLogitsLoss.html" target="_blank" rel="noopener">PyTorch 문서 — BCEWithLogitsLoss</a></li>
+    <li id="src-10"><a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.HuberLoss.html" target="_blank" rel="noopener">PyTorch 문서 — HuberLoss</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 19일에 이 영상을 보고 정리했어요. 원본은 Zachary Huang 채널에 있어요. 화면의 코드와 숫자는 슬라이드에서 그대로 옮겼어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+(() => {
+  const g = document.getElementById('fig-five');
+  if (!g) return;
+  const steps = [
+    ['model(m)', '예측', 'pred가 생겨요', '정오 1.38'],
+    ['loss_fn(pred, f)', '손실 재기', 'loss가 생겨요', '262.02'],
+    ['loss.backward()', '기울기 구하기', '.grad에 더해요', '−126.21 / −27.56'],
+    ['opt.step()', '가중치 옮기기', 'w, b가 바뀌어요', '2.262 / 0.276'],
+    ['opt.zero_grad()', '기울기 비우기', '.grad를 비워요', 'None'],
+  ];
+  const W = 124, GAP = 15, Y = 20, H = 150;
+  steps.forEach(([code, role, what, val], i) => {
+    const x = i * (W + GAP);
+    const cx = x + W / 2;
+    g.append(el('rect', { x, y: Y, width: W, height: H, rx: 10, class: `c${i + 1} cell` }));
+    g.append(el('text', { x: cx, y: Y + 26, 'text-anchor': 'middle', class: 'mono', 'font-size': 11 }, code));
+    g.append(el('text', { x: cx, y: Y + 56, 'text-anchor': 'middle' }, `${i + 1}. ${role}`));
+    g.append(el('line', { x1: x + 14, y1: Y + 74, x2: x + W - 14, y2: Y + 74, class: 'line' }));
+    g.append(el('text', { x: cx, y: Y + 98, 'text-anchor': 'middle', class: 'sub' }, what));
+    g.append(el('text', { x: cx, y: Y + 126, 'text-anchor': 'middle', class: 'mono', 'font-size': 11 }, val));
+    if (i < steps.length - 1)
+      g.append(el('path', { d: `M${x + W + 1} ${Y + 56} h${GAP - 3}`, class: 'line', 'marker-end': 'url(#arrow-five)' }));
+  });
+  const x1 = W / 2, x5 = 4 * (W + GAP) + W / 2, yb = Y + H;
+  g.append(el('path', { d: `M${x5} ${yb + 2} v18 H${x1} v-16`, class: 'line', fill: 'none', 'marker-end': 'url(#arrow-five)' }));
+  g.append(el('text', { x: (x1 + x5) / 2, y: yb + 36, 'text-anchor': 'middle', class: 'sub' }, '다음 스텝으로 (1,000번 반복)'));
+})();
+</script>
+</body>
+</html>

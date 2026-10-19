@@ -1,0 +1,850 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>하이퍼프레임즈 새 연출 다섯 가지, 직접 렌더해 본 결과</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>하이퍼프레임즈 새 연출 다섯 가지, 직접 렌더해 본 결과</h1>
+  <p class="lede">셰이더 배경, 카메라 화면, 박자 분석, 화면 휘기, 3D 제목의 쓰는 법과 걸리는 점</p>
+  <div class="meta">
+    <span>Solostack</span><span class="dot">·</span>
+    <span>영상 01:58</span><span class="dot">·</span>
+    <span>읽는 데 약 7분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=dggaf94BcBw" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li><span class="term" data-term="셰이더" data-en="Shader" data-desc="GPU가 화면의 픽셀 하나하나를 계산해서 그리는 작은 프로그램이에요. 여기서는 액체 금속이나 빛줄기처럼 계속 움직이는 배경을 그려요." data-g="1">셰이더</span> 배경 36종은 캔버스 태그에 이름 한 줄로 켜져요. 다만 영상 하나에 셰이더는 하나만 돌아서, 둘 이상이면 장면마다 따로 <span class="term" data-term="렌더" data-en="Render" data-desc="코드로 짠 장면을 실제 영상 파일로 뽑아내는 과정이에요. 효과가 무거울수록 영상 길이보다 오래 걸려요." data-g="2">렌더</span>해 붙여야 해요.</li>
+    <li>filmed-screen은 화면을 모니터 앞에서 카메라로 찍은 것처럼 바꿔 줘요. 7초짜리 렌더에 27초가 걸렸어요.</li>
+    <li><code>hyperframes audio</code>는 90초 곡에서 빠르기 116 BPM(Beats Per Minute), 박자 160개, 분위기 바뀌는 구간 네 개를 1초 남짓 만에 찾아 줘요.</li>
+    <li>화면을 물결처럼 휘는 효과는 속성 하나로 걸리지만 6초 렌더에 22초가 걸려요.</li>
+    <li>3D 제목 다섯 종 중 유리 구슬·유리 조각·잎사귀는 한글이 되고, 금속 글자와 <span class="term" data-term="와이어프레임" data-en="Wireframe" data-desc="면을 칠하지 않고 모서리 선만으로 입체를 그린 모습이에요. 포털 제목은 이 선으로 된 공간 안에 글자를 띄워요." data-g="4">와이어프레임</span> 포털은 영어만 돼요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">HyperFrames와 셰이더 배경</a></li>
+    <li><a href="#s2">카메라로 찍은 화면과 박자 분석</a></li>
+    <li><a href="#s3">화면 휘기와 3D 제목</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=dggaf94BcBw&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>HyperFrames와 셰이더 배경</h2>
+<p>HyperFrames는 HeyGen이 GitHub에 공개한 영상 도구예요. 첫 화면의 레포 설명이 이 도구를 한 줄로 보여 줘요. 'Write HTML. Render video. Built for agents.', 즉 HTML(HyperText Markup Language)로 장면을 쓰면 영상이 나오고, AI(Artificial Intelligence) 에이전트가 다루기 좋게 만들었다는 뜻이에요. 그 아래 숫자가 영상을 찍을 때의 GitHub 별 수예요.</p>
+<figure>
+  <img src="assets/frame-0012.png" alt="HeyGen HyperFrames 레포 설명 'Write HTML. Render video. Built for agents.'와 별 65,979개, Apache-2.0 표시">
+  <figcaption>
+    별이 6만 5천 개를 넘을 만큼 많이 쓰는 도구예요.
+    <a href="https://www.youtube.com/watch?v=dggaf94BcBw&amp;t=12s" target="_blank" rel="noopener">영상 00:12에서 보기</a>
+  </figcaption>
+</figure>
+<p>업데이트가 아주 잦아요. 왼쪽 목록은 v0.8.148부터 v0.8.158까지가 10월 11일에서 14일 사이에 하루 두세 번씩 올라온 모습이에요. 오른쪽 큰 숫자는 10월 2일부터 17일까지 52번 업데이트됐다는 뜻이에요. 음성으로는 쉰네 번이라고 해서, 화면과 두 번 차이가 나요.</p>
+<figure>
+  <img src="assets/frame-0015.png" alt="v0.8.148부터 v0.8.158까지 버전과 날짜 목록, 오른쪽에 '52번 업데이트 10/2 → 10/17'">
+  <figcaption>
+    보름 사이에 쉰 번 넘게 버전이 올라갔어요.
+    <a href="https://www.youtube.com/watch?v=dggaf94BcBw&amp;t=15s" target="_blank" rel="noopener">영상 00:15에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상이 고른 새 연출 다섯 가지를 들어온 날짜 순서로 놓으면 이래요. 영상은 최근 것부터 소개하지만, 3D 제목과 화면 휘기는 9월에 먼저 들어왔어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 190" role="img" aria-label="9월 19일부터 10월 15일까지 다섯 가지 새 연출이 들어온 날짜">
+    <g id="fig-timeline"></g>
+  </svg>
+  <figcaption>날짜는 영상 화면의 '추가' 표시에서 옮겼어요. 색은 아래 그림과 표에서도 같은 기능을 가리켜요.</figcaption>
+</figure>
+
+<h3>움직이는 셰이더 배경</h3>
+<p>첫 번째로 소개하는 건 셰이더 배경 36종이에요. 10월 7일과 9일에 들어왔어요. 쓰는 법은 캔버스 태그에 <code>data-shader</code>로 이름 하나를 적는 게 전부예요. 아래 화면 위쪽 줄이 빛줄기 배경 <code>Godrays</code>를 켠 코드고, 그 아래 줄 <code>data-shader-props</code>에서 빛 색 <code>rayColor</code>를 초록(<code>#22c55e</code>)으로 바꿨어요. 뒤에 깔린 초록 빛줄기가 그 결과예요.</p>
+<figure>
+  <img src="assets/frame-0030.png" alt="초록 빛줄기 배경 위에 canvas data-shader='Godrays'와 data-shader-props rayColor #22c55e 코드 두 줄">
+  <figcaption>
+    이름 한 줄로 켜고, 속성 한 줄로 색과 위치를 바꿔요.
+    <a href="https://www.youtube.com/watch?v=dggaf94BcBw&amp;t=30s" target="_blank" rel="noopener">영상 00:30에서 보기</a>
+  </figcaption>
+</figure>
+<p>걸리는 점이 하나 있어요. 영상 하나에서는 셰이더가 하나만 돌아가요. 아래 화면은 셰이더 두 개를 넣은 실제 렌더 결과예요. 오른쪽 목록을 보면 0~3초 LiquidMetal에는 '금속이 보임' 체크가 붙어 있어요. 3~6초 Godrays 구간은 왼쪽 화면처럼 까맣게만 나왔어요.</p>
+<figure>
+  <img src="assets/frame-0033.png" alt="'셰이더 2개 넣은 실제 렌더' 화면. 왼쪽은 검은 화면, 오른쪽에 0~3초 LiquidMetal 체크, 3~6초 Godrays 항목">
+  <figcaption>
+    두 번째 셰이더는 화면에 나오지 않았어요.
+    <a href="https://www.youtube.com/watch?v=dggaf94BcBw&amp;t=33s" target="_blank" rel="noopener">영상 00:33에서 보기</a>
+  </figcaption>
+</figure>
+<p>그래서 셰이더를 둘 이상 쓰려면 장면마다 따로 렌더해서 이어 붙여야 해요. 영상이 말한 두 방식을 나란히 놓으면 차이가 분명해요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 220" role="img" aria-label="셰이더 두 개를 한 영상에 넣었을 때와 장면마다 따로 렌더해 붙였을 때 비교">
+    <defs><marker id="arrow-join" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="20" y="28" class="sub">(a) 한 영상에 셰이더 두 개</text>
+    <rect x="20" y="40" width="180" height="56" rx="8" class="c1 cell"/>
+    <text x="110" y="64" text-anchor="middle">LiquidMetal</text>
+    <text x="110" y="84" text-anchor="middle" class="sub">0~3초 · 보여요</text>
+    <rect x="200" y="40" width="180" height="56" rx="8" class="bad"/>
+    <text x="290" y="64" text-anchor="middle">Godrays</text>
+    <text x="290" y="84" text-anchor="middle" class="sub">3~6초 · 까매요</text>
+    <text x="20" y="138" class="sub">(b) 장면마다 따로 렌더해서 이어 붙이기</text>
+    <rect x="20" y="150" width="150" height="56" rx="8" class="c1 cell"/>
+    <text x="95" y="174" text-anchor="middle">LiquidMetal</text>
+    <text x="95" y="194" text-anchor="middle" class="sub">렌더 1</text>
+    <rect x="200" y="150" width="150" height="56" rx="8" class="c1 cell"/>
+    <text x="275" y="174" text-anchor="middle">Godrays</text>
+    <text x="275" y="194" text-anchor="middle" class="sub">렌더 2</text>
+    <path d="M352 178 h56" class="line" marker-end="url(#arrow-join)"/>
+    <rect x="412" y="150" width="200" height="56" rx="8" class="box accent"/>
+    <text x="512" y="174" text-anchor="middle">이어 붙인 영상</text>
+    <text x="512" y="194" text-anchor="middle" class="sub">둘 다 보여요</text>
+  </svg>
+  <figcaption>렌더 한 번에는 셰이더 하나만 넣는다고 생각하면 돼요.</figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=dggaf94BcBw&amp;t=38s" target="_blank" rel="noopener">00:38</a>
+  <h2>카메라로 찍은 화면과 박자 분석</h2>
+<h3>filmed-screen: 모니터를 카메라로 찍은 것처럼</h3>
+<p>두 번째는 10월 12일에 나온 filmed-screen이에요. 평범한 화면을 모니터에 띄워 두고 카메라로 찍은 것처럼 바꿔 줘요. 아래 화면 위쪽 배지가 '전 · 원래 화면'에서 '후 · filmed-screen'으로 넘어가는 순간이에요. 원래는 반듯하던 'Paper, ink &amp; yellow.' 페이지가 비스듬하게 보이기 시작해요.</p>
+<figure>
+  <img src="assets/frame-0044.png" alt="'전 · 원래 화면'과 '후 · filmed-screen' 배지, 비스듬히 보이는 Paper, ink & yellow 웹 페이지">
+  <figcaption>
+    전과 후가 같은 페이지라서 무엇이 달라졌는지 바로 보여요.
+    <a href="https://www.youtube.com/watch?v=dggaf94BcBw&amp;t=44s" target="_blank" rel="noopener">영상 00:44에서 보기</a>
+  </figcaption>
+</figure>
+<p>몇 초 뒤에는 효과가 더 뚜렷해져요. 왼쪽 위 배지 '기울기'와 '곡면'이 이 장면에서 일어나는 일이에요. 화면이 기울고, 가장자리가 살짝 휘고, 초점이 맞은 글자 밖은 흐려져요.</p>
+<figure>
+  <img src="assets/frame-0047.png" alt="'기울기', '곡면' 배지와 함께 크게 기울고 휜 Paper, ink & yellow 화면, 아래쪽은 흐릿함">
+  <figcaption>
+    <span class="term" data-term="초점 밖" data-en="Depth of field" data-desc="카메라 초점이 맞은 곳만 선명하고 앞뒤는 흐려지는 현상이에요. filmed-screen은 이걸 흉내 내서 진짜로 찍은 느낌을 내요." data-g="3">초점 밖</span>이 흐려져서 진짜 카메라로 찍은 느낌이 나요.
+    <a href="https://www.youtube.com/watch?v=dggaf94BcBw&amp;t=47s" target="_blank" rel="noopener">영상 00:47에서 보기</a>
+  </figcaption>
+</figure>
+<p>글자를 치는 장면에서는 카메라가 새로 쳐진 글자 쪽으로 따라가요. 대신 무거워요. 아래 화면 가운데 상자의 두 막대가 영상 길이 7초와 렌더 시간 27초를 비교한 거예요. 오른쪽에는 'rendered in 27.2s'라는 실제 출력이 보여요.</p>
+<figure>
+  <img src="assets/frame-0053.png" alt="'하이퍼프레임즈로' 글자를 치는 터미널 화면 위에 '영상 길이 7초', '렌더 27초', 'rendered in 27.2s' 상자">
+  <figcaption>
+    영상 길이의 네 배쯤 걸렸어요.
+    <a href="https://www.youtube.com/watch?v=dggaf94BcBw&amp;t=53s" target="_blank" rel="noopener">영상 00:53에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 문서는 filmed-screen을 '실험(Experimental)' 단계로 표시해요. 이 효과는 Chrome의 HTML-in-Canvas 기능을 쓰고, 렌더할 때 스크린샷 캡처를 워커 하나로만 돌려서 렌더가 느릴 수 있다고 적어 뒀어요. 영상에서 렌더가 오래 걸린 이유와 맞아요.</p>
+  <p class="cite">출처: <a href="https://github.com/heygen-com/hyperframes/blob/main/docs/catalog/components/filmed-screen.mdx" target="_blank" rel="noopener">HyperFrames 공식 문서 — Filmed Screen</a></p>
+</aside>
+
+<h3>박자 분석: 음악에 맞춰 화면 바꾸기</h3>
+<p>세 번째는 10월 15일에 들어온 박자 분석 명령 <code>hyperframes audio</code>예요. 이 영상의 배경 음악을 넣어 봤어요. 아래 화면의 파형 밑 결과 칸을 보면 90초 곡을 1.09초 만에 분석했어요. <code>"bpm": 116</code>은 분당 116박이라는 뜻이고, <code>"beats"</code>에는 박자 160개의 시각(0.175초, 0.695초, 1.215초…)이 들어 있어요. <code>"sections"</code>는 분위기가 바뀌는 구간이에요. A는 0초, B는 15.0초, C는 33.7초, D는 83.0초에서 시작해요.</p>
+<figure>
+  <img src="assets/frame-0105.png" alt="'박자 분석 10/15 추가 hyperframes audio' 화면. 파형과 bpm 116, beats 160개, sections A 0s B 15.0s C 33.7s D 83.0s 결과">
+  <figcaption>
+    빠르기, 박자, 구간을 한 번에 받아요.
+    <a href="https://www.youtube.com/watch?v=dggaf94BcBw&amp;t=65s" target="_blank" rel="noopener">영상 01:05에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상은 이 결과를 그대로 편집에 썼어요. 지금 보고 있는 이 영상의 화면 전환 타이밍이 모두 이 박자에 맞춰져 있다고 해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 CLI(Command-Line Interface) 문서를 보면 <code>audio</code> 명령은 기본으로 시작점·소리 크기 같은 값을 재고, 박자(<code>beats</code>), 빠르기(<code>bpm</code>), 구간(<code>sections</code>)은 <code>--only</code>로 요청할 때만 계산해요. 구간 글자는 비슷한 소리가 이어지는 묶음마다 붙고, 앞에 나온 부분이 다시 나오면 같은 글자를 다시 써요. 박자만 필요하면 박자 파일을 바로 써 주는 <code>hyperframes beats</code> 명령도 있어요.</p>
+  <p class="cite">출처: <a href="https://github.com/heygen-com/hyperframes/blob/main/docs/packages/cli.mdx" target="_blank" rel="noopener">HyperFrames 공식 문서 — CLI</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=dggaf94BcBw&amp;t=69s" target="_blank" rel="noopener">01:09</a>
+  <h2>화면 휘기와 3D 제목</h2>
+<h3>화면 자체를 휘는 효과</h3>
+<p>네 번째는 화면 자체를 휘는 효과예요. 화면 위쪽 배지에 '9/23 추가'와 속성 이름 <code>data-vfx-chain</code>이 보여요. 먼저 효과를 걸기 전 화면이에요. 'LOUD, BORDERED, A LITTLE CROOKED.'라는 굵은 글자와 분홍·하늘색 도형이 반듯하게 놓여 있어요.</p>
+<figure>
+  <img src="assets/frame-0112.png" alt="'화면을 휘는 효과 9/23 추가 data-vfx-chain' 배지와 반듯한 LOUD, BORDERED, A LITTLE CROOKED. 페이지">
+  <figcaption>
+    효과를 걸기 전의 원래 화면이에요.
+    <a href="https://www.youtube.com/watch?v=dggaf94BcBw&amp;t=72s" target="_blank" rel="noopener">영상 01:12에서 보기</a>
+  </figcaption>
+</figure>
+<p>위쪽 코드 줄처럼 <code>data-vfx-chain</code> 안에 <code>wave-warp</code> 노드를 하나 넣으면, 같은 화면이 물결처럼 휘어요. 글자뿐 아니라 위아래 테두리와 도형까지 함께 출렁이다가 원래 모양으로 돌아와요. 6초짜리를 렌더하는 데 22초가 걸렸어요.</p>
+<figure>
+  <img src="assets/frame-0115.png" alt="div data-vfx-chain nodes wave-warp 코드 줄 아래, 글자와 도형이 물결처럼 휘어진 같은 페이지">
+  <figcaption>
+    이미지가 아니라 실제 화면 전체가 휘어요.
+    <a href="https://www.youtube.com/watch?v=dggaf94BcBw&amp;t=75s" target="_blank" rel="noopener">영상 01:15에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p><code>data-vfx-chain</code> 문서를 보면 <code>wave-warp</code>처럼 자기 화면의 픽셀을 읽어야 하는 효과는 렌더할 때 워커 하나에 고정돼요. filmed-screen과 마찬가지로 렌더가 영상 길이보다 몇 배 걸리는 이유예요.</p>
+  <p class="cite">출처: <a href="https://github.com/heygen-com/hyperframes/blob/main/docs/guides/vfx-chain.mdx" target="_blank" rel="noopener">HyperFrames 공식 문서 — VFX chain</a></p>
+</aside>
+
+<h3>3D 제목 다섯 종과 한글 지원</h3>
+<p>다섯 번째는 3D 제목이에요. 9월 19일과 28일에 제목 연출 블록 다섯 개가 한꺼번에 들어왔어요. 아래 화면 맨 앞 세 칸이 금속 글자('FORGE'), 유리 구슬('PRISM'), 유리 조각('SHATTERED')이에요.</p>
+<figure>
+  <img src="assets/frame-0127.png" alt="'3D 제목 9/19 · 9/28 추가 블록 5종' 배지와 금속 글자 FORGE, 유리 구슬 PRISM, 유리 조각 SHATTERED 세 칸">
+  <figcaption>
+    같은 제목이라도 재질에 따라 분위기가 크게 달라요.
+    <a href="https://www.youtube.com/watch?v=dggaf94BcBw&amp;t=87s" target="_blank" rel="noopener">영상 01:27에서 보기</a>
+  </figcaption>
+</figure>
+<p>나머지 둘은 잎사귀(canopy-part-title)와 와이어프레임 포털(wireframe-portal-title)이에요. 아래는 포털이에요. 선으로만 그린 공간 안에 외곽선 글자 'NO EXIT'가 떠 있어요.</p>
+<figure>
+  <img src="assets/frame-0139.png" alt="'와이어프레임 포털 · wireframe-portal-title' 배지와 격자선 공간 가운데 외곽선 글자 NO EXIT">
+  <figcaption>
+    이 포털이 한글에서 막히는 블록이에요.
+    <a href="https://www.youtube.com/watch?v=dggaf94BcBw&amp;t=99s" target="_blank" rel="noopener">영상 01:39에서 보기</a>
+  </figcaption>
+</figure>
+<p>한글 제목을 넣어 본 결과가 이 화면이에요. 유리 구슬('하이퍼프레임즈'), 유리 조각('유리 조각'), 잎사귀('새 연출')에는 초록 체크가 붙었어요. 오른쪽 아래 포털 칸은 빨간 X와 함께 글자가 전부 '?'로 나왔어요. 맨 아래 작은 글씨는 금속 글자가 블록 설명부터 'Basic Latin only'(영문만)라고 적혀 있다는 메모예요.</p>
+<figure>
+  <img src="assets/frame-0145.png" alt="'한글 넣어 보면' 네 칸. 유리 구슬, 유리 조각, 잎사귀는 체크, 포털은 물음표로 나오며 X, 아래에 금속 글자 Basic Latin only 메모">
+  <figcaption>
+    한글 제목이 필요하면 유리 구슬, 유리 조각, 잎사귀 중에서 골라요.
+    <a href="https://www.youtube.com/watch?v=dggaf94BcBw&amp;t=105s" target="_blank" rel="noopener">영상 01:45에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>다섯 가지 한눈에 보기</h3>
+<p>마지막 화면은 소개한 기능을 한데 모아 '전부 <span class="term" data-term="오픈소스" data-en="Open source" data-desc="코드를 누구나 보고 고치고 쓸 수 있게 공개한 소프트웨어예요. 라이선스 조건만 지키면 돈을 내지 않아도 돼요." data-g="5">오픈소스</span>'라고 정리해요. 왼쪽 위 배지가 라이선스 <span class="term" data-term="Apache-2.0" data-en="Apache License 2.0" data-desc="상업적으로 써도 되고 고쳐서 배포해도 되는 너그러운 오픈소스 라이선스예요. 저작권 고지와 라이선스 사본만 함께 두면 돼요." data-g="6">Apache-2.0</span>이에요. 따로 결제하지 않고 써 볼 수 있다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0148.png" alt="'전부 오픈소스 Apache-2.0' 제목 아래 filmed-screen, 셰이더 배경, 박자 분석, 화면 휘기, 잎사귀 제목, 유리 조각 제목 여섯 칸">
+  <figcaption>
+    영상에서 본 효과를 모아 둔 마지막 화면이에요.
+    <a href="https://www.youtube.com/watch?v=dggaf94BcBw&amp;t=108s" target="_blank" rel="noopener">영상 01:48에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상에서 나온 값만 표로 모으면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>기능</th><th>들어온 날</th><th>쓰는 법</th><th>걸리는 점</th></tr></thead>
+    <tbody>
+      <tr><td>셰이더 배경 36종</td><td>10/7 · 10/9</td><td><code>&lt;canvas data-shader="이름"&gt;</code></td><td>영상 하나에 셰이더 하나만 돌아요</td></tr>
+      <tr><td>filmed-screen</td><td>10/12</td><td>화면을 감싸는 컴포넌트</td><td>7초 렌더에 27초</td></tr>
+      <tr><td>박자 분석</td><td>10/15</td><td><code>hyperframes audio</code></td><td>90초 곡 분석에 1.09초</td></tr>
+      <tr><td>화면 휘기</td><td>9/23</td><td><code>data-vfx-chain</code> (<code>wave-warp</code>)</td><td>6초 렌더에 22초</td></tr>
+      <tr><td>3D 제목 5종</td><td>9/19 · 9/28</td><td>제목 블록</td><td>금속 글자·포털은 영어만 돼요</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 이름과 철자가 잘못 받아적힌 곳이 있어요. 화면 글자를 기준으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>하이퍼프레임지</td><td>HyperFrames (하이퍼프레임즈)</td><td>HeyGen의 오픈소스 영상 도구</td></tr>
+      <tr><td>기타별</td><td>GitHub 별</td><td>레포 별 개수</td></tr>
+      <tr><td>필름드 스크린</td><td>filmed-screen</td><td>화면 위 배지 표기</td></tr>
+      <tr><td>쉐이더</td><td>셰이더 (shader)</td><td></td></tr>
+      <tr><td>랜더</td><td>렌더 (render)</td><td></td></tr>
+      <tr><td>잎사기</td><td>잎사귀</td><td>canopy-part-title 블록</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-2"><dt>렌더<span class="en">Render</span></dt><dd>코드로 짠 장면을 실제 영상 파일로 뽑아내는 과정이에요. 효과가 무거울수록 영상 길이보다 오래 걸려요.</dd></div>
+    <div class="g" id="g-1"><dt>셰이더<span class="en">Shader</span></dt><dd>GPU가 화면의 픽셀 하나하나를 계산해서 그리는 작은 프로그램이에요. 여기서는 액체 금속이나 빛줄기처럼 계속 움직이는 배경을 그려요.</dd></div>
+    <div class="g" id="g-5"><dt>오픈소스<span class="en">Open source</span></dt><dd>코드를 누구나 보고 고치고 쓸 수 있게 공개한 소프트웨어예요. 라이선스 조건만 지키면 돈을 내지 않아도 돼요.</dd></div>
+    <div class="g" id="g-4"><dt>와이어프레임<span class="en">Wireframe</span></dt><dd>면을 칠하지 않고 모서리 선만으로 입체를 그린 모습이에요. 포털 제목은 이 선으로 된 공간 안에 글자를 띄워요.</dd></div>
+    <div class="g" id="g-3"><dt>초점 밖<span class="en">Depth of field</span></dt><dd>카메라 초점이 맞은 곳만 선명하고 앞뒤는 흐려지는 현상이에요. filmed-screen은 이걸 흉내 내서 진짜로 찍은 느낌을 내요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g" id="g-6"><dt>Apache-2.0<span class="en">Apache License 2.0</span></dt><dd>상업적으로 써도 되고 고쳐서 배포해도 되는 너그러운 오픈소스 라이선스예요. 저작권 고지와 라이선스 사본만 함께 두면 돼요.</dd></div>
+    <div class="g"><dt>BPM</dt><dd>Beats Per Minute</dd></div>
+    <div class="g"><dt>CLI</dt><dd>Command-Line Interface</dd></div>
+    <div class="g"><dt>HTML</dt><dd>HyperText Markup Language</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=dggaf94BcBw" target="_blank" rel="noopener">원본 영상 — Solostack</a></li>
+    <li id="src-2"><a href="https://github.com/heygen-com/hyperframes" target="_blank" rel="noopener">HyperFrames GitHub 레포 (heygen-com/hyperframes)</a></li>
+    <li id="src-3"><a href="https://github.com/heygen-com/hyperframes/blob/main/docs/catalog/components/filmed-screen.mdx" target="_blank" rel="noopener">HyperFrames 공식 문서 — Filmed Screen</a></li>
+    <li id="src-4"><a href="https://github.com/heygen-com/hyperframes/blob/main/docs/packages/cli.mdx" target="_blank" rel="noopener">HyperFrames 공식 문서 — CLI (audio, beats 명령)</a></li>
+    <li id="src-5"><a href="https://github.com/heygen-com/hyperframes/blob/main/docs/guides/vfx-chain.mdx" target="_blank" rel="noopener">HyperFrames 공식 문서 — VFX chain</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 19일에 이 영상을 보고 정리했어요. 원본은 Solostack 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+(() => {
+  const g = document.getElementById('fig-timeline');
+  if (!g) return;
+  // [label, date text, colour index]
+  const items = [
+    ['3D 제목', '9/19 · 9/28', 5],
+    ['화면 휘기', '9/23', 4],
+    ['셰이더 배경', '10/7 · 10/9', 1],
+    ['filmed-screen', '10/12', 2],
+    ['박자 분석', '10/15', 3],
+  ];
+  const y = 100;
+  g.append(el('line', { x1: 30, y1: y, x2: 610, y2: y, class: 'line' }));
+  items.forEach(([name, date, c], i) => {
+    const x = 70 + i * 125;
+    g.append(el('circle', { cx: x, cy: y, r: 7, class: `c${c} cell` }));
+    const top = i % 2 === 0;
+    const by = top ? 30 : 122;
+    g.append(el('rect', { x: x - 56, y: by, width: 112, height: 50, rx: 8, class: `c${c} cell` }));
+    g.append(el('text', { x, y: by + 21, 'text-anchor': 'middle' }, name));
+    g.append(el('text', { x, y: by + 40, 'text-anchor': 'middle', class: 'sub' }, date));
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude와 Three.js로 3D 모션 그래픽 만들기</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Claude와 Three.js로 3D 모션 그래픽 만들기</h1>
+  <p class="lede">몇 센트로 스튜디오급 3D 영상을 만드는 프롬프트와 원리를 짚어요</p>
+  <div class="meta">
+    <span>Matt Penny | Applied AI</span><span class="dot">·</span>
+    <span>영상 12:19</span><span class="dot">·</span>
+    <span>읽는 데 약 14분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=CCUSpJkAfgU" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>프롬프트는 장면마다 무엇이 언제 일어나는지 초 단위로 적고, Three.js를 쓰라고 분명히 말해요.</li>
+    <li>고급스러운 느낌은 <span class="term" data-term="글래스모피즘" data-en="Glassmorphism" data-desc="서리 낀 유리처럼 반투명한 판 뒤로 배경이 흐릿하게 비치는 디자인 스타일이에요. 층이 겹쳐 보여서 깊이감과 고급스러운 느낌을 줘요." data-g="2">글래스모피즘</span>, 장면 사이를 날아다니는 카메라, <span class="term" data-term="셰이더" data-en="Shader" data-desc="GPU에서 돌면서 화면의 점 하나하나의 색과 밝기를 계산하는 작은 프로그램이에요. 반사, 빛 번짐, 입자 같은 효과를 실시간으로 그릴 수 있어요." data-g="3">셰이더</span> 효과에서 나와요.</li>
+    <li>원리는 웹사이트와 같아요. AI(Artificial Intelligence)가 코드를 쓰고, <span class="term" data-term="헤드리스" data-en="Headless browser" data-desc="화면 창을 띄우지 않고 뒤에서만 도는 브라우저예요. 페이지를 실제로 그리기 때문에 코드로 스크린샷을 찍어 영상 프레임으로 쓸 수 있어요." data-g="4">헤드리스</span> 브라우저에서 띄워 1초에 60번 찍은 화면을 영상으로 이어 붙여요.</li>
+    <li>15초 RAG(Retrieval-Augmented Generation) 설명 영상 한 편에 3만 7천 토큰, API(Application Programming Interface) 요금으로 74센트였어요. 같은 길이를 Seedance 2.5로 만들면 1.5달러예요.</li>
+    <li>체크리스트는 다섯 가지예요. Three.js와 셰이더, '전문적이고 세련되게', <span class="term" data-term="쇼릴" data-en="Showreel" data-desc="영상 작업자가 자기 대표작을 짧게 모아 만든 포트폴리오 영상이에요. 취업이나 수주 때 실력을 보여 주려고 써요." data-g="7">쇼릴</span>, 3D 카메라 무빙, <span class="term" data-term="검증 루프" data-en="Verification loop" data-desc="모델이 만든 결과를 스스로 다시 확인하고 고치게 하는 단계예요. 여기서는 정지 화면을 보고 요소 겹침이나 작은 글자를 잡아내는 일을 말해요." data-g="8">검증 루프</span>예요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">프롬프트에 무엇을 담았나요</a></li>
+    <li><a href="#s2">화면 뒤에서는 이렇게 돌아가요</a></li>
+    <li><a href="#s3">RAG 데모와 비용 계산</a></li>
+    <li><a href="#s4">경사하강법 데모와 쓸 곳</a></li>
+    <li><a href="#s5">지구본 데모와 프롬프트 체크리스트</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>프롬프트에 무엇을 담았나요</h2>
+<p>영상은 완성된 결과물부터 보여 줘요. 아래 화면의 네 칸이 이 영상에서 차례로 소개할 데모예요. 할 일 카드가 떠 있는 보라색 장면, 금속 공이 놓인 세로 화면, 종이 질감 위의 신경망, 어두운 배경의 지구본이에요. 발표자는 이 모든 게 코드일 뿐이라고 강조해요. 비싼 이미지 모델이나 영상 생성 모델도, After Effects도, 코딩이나 디자인 지식도 필요 없다고 해요. 코드는 Claude가, 3D 효과는 Three.js가 맡고, 사람은 원하는 걸 설명하기만 하면 돼요.</p>
+<figure>
+  <img src="assets/frame-0008.png" alt="네 가지 3D 데모 장면을 2×2로 놓고 아래에 'using Claude and Three.js'라고 적은 화면">
+  <figcaption>네 장면 모두 영상 파일이 아니라 코드로 그린 거예요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=8s" target="_blank" rel="noopener">영상 00:08에서 보기</a></figcaption>
+</figure>
+
+<h3>첫 번째 데모: 아이디어에서 앱까지</h3>
+<p>첫 데모는 'Claude Code로 아이디어에서 앱까지'를 설명하는 15초 영상이에요. 아래는 두 번째 장면 Plan it이에요. 할 일 다섯 개가 적힌 카드가 서리 낀 유리처럼 반투명해서, 뒤쪽 별빛 입자가 흐릿하게 비쳐요. 발표자는 이런 카메라 움직임과 유리 효과, 비쳐 보이는 요소 덕분에 Claude가 보통 만드는 평평한 <span class="term" data-term="모션 그래픽" data-en="Motion graphics" data-desc="글자, 도형, 아이콘 같은 그래픽 요소를 움직여서 만든 영상이에요. 실사 촬영 없이 개념을 설명하거나 영상에 효과를 얹을 때 많이 써요." data-g="1">모션 그래픽</span>보다 훨씬 고급스럽다고 봐요.</p>
+<figure>
+  <img src="assets/frame-0051.png" alt="보라색 우주 배경에 STEP 02 Plan it 제목과, 할 일 다섯 개가 적힌 반투명 유리 카드가 겹쳐 있는 장면">
+  <figcaption>카드가 여러 장 겹친 채 깊이감 있게 놓여 있어요. 3D 공간이라서 가능한 연출이에요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=51s" target="_blank" rel="noopener">영상 00:51에서 보기</a></figcaption>
+</figure>
+
+<h3>프롬프트는 장면과 시간을 쪼개서 써요</h3>
+<p>이 데모를 만든 프롬프트 전체가 화면에 나와요. 오른쪽 위 태그 네 개가 발표자가 짚는 요점이에요. Be specific(구체적으로), Each scene(장면마다), Timings(시간), Three.js예요. 첫 줄에서 15초, 1920×1080, 60fps라는 규격과 Three.js, 글래스모피즘 스타일을 정해요. 그 아래 1~5번이 장면별 설명이고, 장면마다 괄호 안에 초 단위 시간이 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-0106.png" alt="THE PROMPT 제목 아래 두 단으로 적힌 영어 프롬프트. 규격, World, 카메라, 장면 1~5, Throughout, Finish 문단으로 나뉨">
+  <figcaption>글자를 읽을 수 있을 만큼 크게 나와요. 장면 다섯 개에 각각 시간대와 화면 속 움직임이 적혀 있어요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=66s" target="_blank" rel="noopener">영상 01:06에서 보기</a></figcaption>
+</figure>
+<p>프롬프트에 적힌 장면 다섯 개를 시간 순서로 옮기면 이래요. 9.5초와 10초 사이처럼 장면 사이에는 카메라가 빠르게 다음 장면으로 넘어가요. 프롬프트는 이걸 '장면 안에서는 천천히 떠다니고, 장면 사이에서는 빠르게 휙 이동한다'고 적어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 660 190" role="img" aria-label="첫 번째 데모 프롬프트의 장면 다섯 개를 0초부터 15초까지 시간 막대로 나타낸 그림">
+    <g id="fig-timeline"></g>
+  </svg>
+  <figcaption>시간대가 정해져 있으니 모델이 장면 길이를 멋대로 정하지 않아요. 발표자가 말한 '무엇이 언제 일어나는지'가 바로 이 부분이에요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=66s" target="_blank" rel="noopener">영상 01:06에서 보기</a></figcaption>
+</figure>
+<p>프롬프트에는 렌더링 방법도 적혀 있어요. 'Playwright와 ffmpeg로 한 프레임씩 MP4로 렌더링하고, 모든 애니메이션을 시간 값 t로 움직여서 결과가 매번 같게 하라'는 문장이에요. 이 방식은 다음 섹션에서 다시 나와요.</p>
+
+<h3>고급스러움을 만드는 두 가지</h3>
+<p>첫째는 글래스모피즘이에요. 화면 왼쪽에 'Frosted glass panes', 그 아래 '뒤에 있는 걸 흐리게 비추는 반투명한 층'이라는 설명이 붙어 있어요. 가운데 반투명한 판 뒤로 보라색 공이 흐릿하게 비쳐요. 예전엔 에이전시가 Blender나 After Effects로 만들어야 해서 비쌌던 효과인데, 이제 Claude가 코드로 만들어요.</p>
+<figure>
+  <img src="assets/frame-0152.png" alt="PREMIUM GLASS STYLE, Glassmorphic 제목 옆에 보라색 공들과 반투명한 유리판이 겹쳐 있는 슬라이드">
+  <figcaption>판 뒤에 있는 공이 흐릿하게 비치는 게 글래스모피즘의 핵심이에요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=112s" target="_blank" rel="noopener">영상 01:52에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>첫 데모 프롬프트는 유리판을 'MeshPhysicalMaterial with transmission'으로 만들라고 적어요. Three.js 공식 문서에 따르면 MeshPhysicalMaterial의 transmission 값은 빛이 물체를 통과하는 정도예요. 단순히 opacity로 투명하게 만들면 반사가 약해지는데, transmission은 유리처럼 얇고 투명한 면을 더 사실적으로 표현하는 방법이라고 설명해요.</p>
+  <p class="cite">출처: <a href="https://threejs.org/docs/pages/MeshPhysicalMaterial.html" target="_blank" rel="noopener">Three.js 공식 문서 — MeshPhysicalMaterial</a></p>
+</aside>
+<p>둘째는 카메라 움직임이에요. 아래 슬라이드에서 점선이 카메라가 지나가는 길이고, 그 끝에 작은 카메라가 판 사이를 지나고 있어요. 발표자는 이게 슬라이드쇼처럼 화면이 바뀌는 것과 다르다고 해요. 카메라가 요소 사이를 실제로 날아다니니 진짜 3D 공간처럼 보여요.</p>
+<figure>
+  <img src="assets/frame-0216.png" alt="WHY IT FEELS PREMIUM, Camera movement 제목 아래 보라색 판 여러 장 사이로 점선 경로를 따라 움직이는 카메라 그림">
+  <figcaption>장면을 갈아 끼우지 않고 카메라를 옮겨요. 3D 공간이 있다는 느낌이 여기서 나와요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=136s" target="_blank" rel="noopener">영상 02:16에서 보기</a></figcaption>
+</figure>
+
+<h3>가장 중요한 건 모델이에요</h3>
+<p>발표자는 프롬프트보다 모델이 더 중요하다고 해요. 여러 회사의 모델을 다 시험해 봤는데, 녹화 시점엔 Opus 5.5가 이런 모션 그래픽에 가장 좋았다고 해요. Anthropic 모델 중에서도 Sonnet 5.5와 눈에 띄게 차이가 나고, OpenAI 모델보다도 낫다고 봐요. 이건 발표자가 직접 써 보고 내린 판단이에요.</p>
+<blockquote>
+  <p>Opus 5.5 is the best model from any provider to create these sort of motion graphics with.</p>
+  <p>이런 모션 그래픽을 만들 때는 어느 회사 것을 통틀어 Opus 5.5가 가장 좋은 모델이에요.</p>
+  <cite>— 영상 02:08</cite>
+</blockquote>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=164s" target="_blank" rel="noopener">02:44</a>
+  <h2>화면 뒤에서는 이렇게 돌아가요</h2>
+<p>두 번째 데모는 'LLM이 글을 쓰는 방법'을 설명하는 세로 영상이에요. 아래 화면 가운데의 세로 화면을 보면, 맨 위에 'The cat sat on the'라는 문장이 있고 그 아래 Predict 단계가 나와요. 금속 공 옆의 막대들이 다음에 올 단어 후보(mat, floor, sofa)의 확률이에요. 바닥에 공이 비치는 반사와 3D 카메라 각도가 들어가 있어요.</p>
+<figure>
+  <img src="assets/frame-0312.png" alt="EXAMPLE 02 LIQUID METAL 라벨 아래 어두운 세로 화면. Predict 제목, 검은 금속 공, mat·floor·sofa 확률 막대가 보임">
+  <figcaption>세로 비율이라 숏폼에 바로 쓸 수 있어요. 프롬프트만 바꾸면 정사각형이나 가로로도 만들어요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=192s" target="_blank" rel="noopener">영상 03:12에서 보기</a></figcaption>
+</figure>
+<p>발표자도 아쉬운 점을 짚어요. 글자가 좀 작고, LLM(Large Language Model) 원리를 설명하는 방식도 프롬프트를 고치면 더 나아질 것 같대요. 그래도 3D 표현은 꽤 좋다고 봐요.</p>
+
+<h3>전부 코드예요</h3>
+<p>발표자가 예전 영상에서 모션 그래픽을 만들 때는 HyperFrames나 Remotion을 썼어요. 이번엔 둘 다 쓰지 않았지만 과정은 거의 같아요. 오른쪽 카드 세 장이 요점이에요. 모든 요소를 코드로 쓰고, 고급 웹사이트와 똑같으며, 움직이는 요소와 3D 장면까지 만든다는 거예요.</p>
+<figure>
+  <img src="assets/frame-0352.png" alt="HOW IT ACTUALLY WORKS, It's all code 제목 아래 Every element is written in code, Just like a high-end website, Moving elements + 3D scenes 세 줄">
+  <figcaption>웹사이트에서 움직이는 3D 요소를 보는 것과 같은 원리예요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=232s" target="_blank" rel="noopener">영상 03:52에서 보기</a></figcaption>
+</figure>
+<p>코드가 영상이 되는 과정은 네 단계예요. 아래 화면 맨 아래에 번호와 함께 나와요. AI writes code(AI가 코드를 써요), Hidden browser(보이지 않는 브라우저에서 띄워요), Screenshot(화면을 찍어요), Stitch(이어 붙여요). 오른쪽 위 큰 숫자 60은 1초에 찍는 스크린샷 수예요. 가운데 점선 안의 보라색 칸 하나하나가 프레임이에요.</p>
+<figure>
+  <img src="assets/frame-0408.png" alt="60 SCREENSHOTS / SECOND 문구와 보라색 프레임 여러 칸이 이어진 필름 띠, 아래에 AI writes code, Hidden browser, Screenshot, Stitch 네 단계">
+  <figcaption>브라우저 화면을 1초에 60번 찍어 이으면 60fps 영상이 돼요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=248s" target="_blank" rel="noopener">영상 04:08에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>첫 데모 프롬프트의 'Playwright와 ffmpeg로 한 프레임씩 렌더링하라'는 문장이 이 네 단계를 그대로 가리켜요. Playwright는 브라우저를 코드로 조종하는 도구로, 화면 없이(헤드리스) 페이지를 띄우고 page.screenshot()으로 화면을 찍을 수 있어요. ffmpeg는 이렇게 찍은 이미지들을 영상 파일로 묶는 데 흔히 써요.</p>
+  <p>프롬프트가 '모든 애니메이션을 시간 값 t로 움직이라'고 한 이유도 여기 있어요. 실시간으로 재생되는 애니메이션은 스크린샷 한 장을 찍는 데 걸린 시간만큼 앞으로 가 버려요. 대신 '지금은 t = 1.5초'처럼 시간을 직접 넣어 주면 프레임마다 정확한 장면이 나오고, 다시 렌더링해도 결과가 같아요.</p>
+  <p class="cite">출처: <a href="https://playwright.dev/docs/screenshots" target="_blank" rel="noopener">Playwright 공식 문서 — Screenshots</a> · <a href="https://ffmpeg.org/ffmpeg.html" target="_blank" rel="noopener">ffmpeg 공식 문서</a></p>
+</aside>
+
+<h3>Three.js와 셰이더</h3>
+<p>Three.js는 웹 개발 쪽에서 오래 써 온 프레임워크예요. 아래 슬라이드 제목처럼 원래 3D 웹사이트를 만들려고 만든 거예요. 왼쪽 브라우저 창 안에 보라색 매듭 모양 3D 물체가 떠 있어요. 이 모션 그래픽은 결국 애니메이션을 넣고 녹화한 웹사이트라서, 웹사이트에 3D를 만들 수 있으면 영상에도 만들 수 있어요. 영상 속 3D는 전부 Three.js 덕분이에요.</p>
+<figure>
+  <img src="assets/frame-0416.png" alt="THREE.JS 라벨과 'Three.js was built for creating 3D websites.' 제목 아래, 브라우저 창 안에 보라색 매듭 모양 3D 물체">
+  <figcaption>웹사이트용 도구를 영상에 쓰는 셈이에요. 그래서 '녹화하는 웹사이트'라는 원리가 중요해요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=256s" target="_blank" rel="noopener">영상 04:16에서 보기</a></figcaption>
+</figure>
+<p>반사, 빛 번짐, 입자 같은 효과는 셰이더가 맡아요. 아래 슬라이드 제목이 'GPU가 그리는 효과'이고, 예시 두 개가 Reflections(크롬 공에 비친 반사)와 Particles(소용돌이 모양 입자)예요. 셰이더는 컴퓨터의 GPU(Graphics Processing Unit)를 써서 이런 고급스러운 느낌을 만들어요.</p>
+<figure>
+  <img src="assets/frame-0448.png" alt="Shaders, Effects drawn by your GPU 제목 아래 Reflections 카드(크롬 공)와 Particles 카드(소용돌이 입자)">
+  <figcaption>두 번째 데모의 반사와 첫 데모의 입자가 모두 셰이더 효과예요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=288s" target="_blank" rel="noopener">영상 04:48에서 보기</a></figcaption>
+</figure>
+<p>그래서 프롬프트에 '적절한 곳에 셰이더도 써 줘'라고 적어 두라고 해요. 똑똑한 모델이면 어디에 셰이더를 쓸지 스스로 알아내요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Three.js 공식 문서는 셰이더를 'GLSL로 쓴, GPU에서 도는 작은 프로그램'이라고 설명해요. 기본 재질로 안 되는 효과가 필요할 때 ShaderMaterial로 직접 셰이더를 써 넣을 수 있어요. RAG 데모 프롬프트에 나오는 'custom GLSL gradient shader', 'fresnel shader' 같은 표현이 바로 이걸 쓰라는 지시예요.</p>
+  <p class="cite">출처: <a href="https://threejs.org/docs/pages/ShaderMaterial.html" target="_blank" rel="noopener">Three.js 공식 문서 — ShaderMaterial</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=340s" target="_blank" rel="noopener">05:40</a>
+  <h2>RAG 데모와 비용 계산</h2>
+<p>세 번째 데모는 RAG를 설명해요. RAG는 머리로 잡기 어려운 개념인데, 3D로 펼치면 벡터가 어떻게 움직이는지 한눈에 보여요. 발표자는 이게 보기 좋을 뿐 아니라 사람들이 개념을 이해하는 데도 실제로 더 낫다고 해요. 아래는 마지막 장면이에요. 문서 조각이 색깔별 점 무리(분류별 묶음)로 흩어져 있고, 오른쪽 파란 구가 언어 모델이에요. 그 위 카드가 모델이 만든 답이에요. 'Settings → Security로 가서 Reset password를 누르라'는 내용이에요.</p>
+<figure>
+  <img src="assets/frame-0554.png" alt="HOW RAG WORKS 화면. Answers grounded in your own documents 제목, 색색의 점 무리, 파란 구 모양 언어 모델 위로 답변 카드가 떠 있음">
+  <figcaption>점 하나하나가 문서 조각이고, 가까운 점끼리 비슷한 뜻이에요. 질문에 가까운 점을 찾아 답을 만드는 흐름이 3D로 보여요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=354s" target="_blank" rel="noopener">영상 05:54에서 보기</a></figcaption>
+</figure>
+<p>이 데모의 프롬프트도 화면에 나와요. 오른쪽 위에 'How RAG works · clay demo'라고 적혀 있어요. 첫 데모와 같은 틀이에요. 첫 문단에서 규격과 렌더링 방법을 정하고, Style 문단에서 부드러운 점토 질감과 조명을 정해요. 가운데 단의 1~5번이 장면이에요. Intro, Embed(문서 카드 12장이 3D 의미 공간에서 점 220개로 흩어져요), Search(질문이 검색창에 들어가 가장 가까운 점 3개를 찾아요), Generate, Close예요.</p>
+<figure>
+  <img src="assets/frame-0602.png" alt="THE PROMPT, How RAG works clay demo. 세 단으로 적힌 영어 프롬프트에 Style, Story, 장면 1~5, Finish 문단">
+  <figcaption>장면 이름이 RAG의 단계(<span class="term" data-term="임베딩" data-en="Embedding" data-desc="글을 숫자 벡터로 바꿔 의미가 비슷한 글끼리 가까이 놓이게 하는 거예요. RAG는 이 거리로 질문과 가까운 문서를 찾아요." data-g="5">임베딩</span>, 검색, 생성)와 그대로 겹쳐요. 개념의 순서를 장면 순서로 옮긴 거예요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=362s" target="_blank" rel="noopener">영상 06:02에서 보기</a></figcaption>
+</figure>
+
+<h3>15초 한 편에 얼마가 들까요</h3>
+<p>발표자는 이미 AI 구독을 하고 있다면 거의 공짜라고 해요. 아래 화면에 계산이 다 나와요. 이 RAG 영상에 3만 7천 토큰이 들었고, Opus 5.5는 100만 토큰에 20달러예요. 곱하면 API 요금으로 74센트인데, 화면에서는 이 숫자에 줄을 그어요. 아래 보라색 띠가 Claude 구독제 기준이에요. 한 편에 약 5센트, 가장 싼 요금제로 일주일에 400편이에요.</p>
+<figure>
+  <img src="assets/frame-0644.png" alt="WHAT ONE 15-SECOND VIDEO COSTS. 37,000 TOKENS, $20 PER MILLION OPUS 5.5, 줄 그어진 74¢ API PRICE, 아래 보라색 띠에 WITH A CLAUDE SUBSCRIPTION ≈5¢, 400 videos a week on the cheapest plan">
+  <figcaption>74센트는 API 요금, 5센트는 발표자가 구독제로 따져 본 값이에요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=404s" target="_blank" rel="noopener">영상 06:44에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Anthropic 공식 요금표에서 Claude Opus 5.5는 입력 100만 토큰에 4달러, 출력 100만 토큰에 20달러예요. 영상은 3만 7천 토큰을 모두 출력 요금으로 계산했어요. 3만 7천 × 20달러 ÷ 100만 = 0.74달러라서 숫자는 맞아요. 실제 청구액은 입력과 출력 토큰이 어떻게 나뉘었는지에 따라 달라요.</p>
+  <p>구독제는 토큰마다 돈을 내는 방식이 아니에요. '한 편에 5센트', '일주일에 400편'은 발표자가 구독료와 사용량으로 따져 본 추정치예요. 영상에서는 계산 과정까지는 보여 주지 않아요.</p>
+  <p class="cite">출처: <a href="https://docs.claude.com/en/docs/about-claude/pricing" target="_blank" rel="noopener">Claude 공식 문서 — Pricing</a></p>
+</aside>
+<p>Claude가 없어도 이 방법은 쓸 수 있어요. ChatGPT 같은 다른 서비스로도 되지만, 효과가 덜하고 원하는 걸 얻으려면 프롬프트를 더 잘 써야 한다고 해요.</p>
+
+<h3>영상 생성 모델과 비교하면</h3>
+<p>발표자는 영상 생성 모델 Seedance 2.5와 비교해요. 지금 가장 좋은 모델 중 하나인데, 가장 싸게 잡아도 1초에 10센트예요. 15초면 1.5달러예요. 아래 화면 왼쪽의 납작한 보라색 판이 Claude의 5센트이고, 오른쪽에 높이 쌓인 흰 판이 Seedance의 1.5달러예요. 그래서 30배 싸다는 거예요.</p>
+<figure>
+  <img src="assets/frame-0724.png" alt="THE SAVING, 30× cheaper 제목. 5¢ CLAUDE라고 적힌 납작한 보라색 판 옆에 $1.50 SEEDANCE라고 적힌 높은 흰 판 더미">
+  <figcaption>판 높이가 비용이에요. 화면 아래 작은 글씨로 'Seedance가 더 많은 걸 할 수 있지만, 모션 그래픽에는 이게 더 싼 방법'이라고 덧붙여요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=444s" target="_blank" rel="noopener">영상 07:24에서 보기</a></figcaption>
+</figure>
+<p>수정까지 생각하면 차이가 더 커요. Claude와 Three.js는 코드만 고치면 되니 몇 번을 고쳐도 몇 푼이에요. 아래 화면에서 Claude 쪽은 Edit 세 번에 'pennies'예요. Seedance 2.5는 고칠 때마다 1.5달러가 붙어서 세 번이면 4.5달러예요. 오른쪽 흰 판 더미가 세 개로 늘었어요.</p>
+<figure>
+  <img src="assets/frame-0748.png" alt="EVERY CHANGE YOU MAKE. Claude + Three.js는 Edit 세 번에 pennies, Seedance 2.5는 +$1.50 세 번에 $4.50. 오른쪽에 흰 판 더미 세 개">
+  <figcaption>영상 생성 모델은 고칠 때마다 처음부터 다시 만들어요. 코드는 고친 부분만 다시 렌더링하면 돼요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=468s" target="_blank" rel="noopener">영상 07:48에서 보기</a></figcaption>
+</figure>
+<p>영상에 나온 숫자를 한 표로 모으면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>만드는 방법</th><th>15초 한 편</th><th>세 번 고치면</th></tr></thead>
+    <tbody>
+      <tr><td>Claude + Three.js (API 요금)</td><td>74센트</td><td>몇 푼 더</td></tr>
+      <tr><td>Claude + Three.js (구독제, 발표자 계산)</td><td>약 5센트</td><td>몇 푼 더</td></tr>
+      <tr><td>Seedance 2.5 (1초 10센트)</td><td>1.5달러</td><td>4.5달러 더</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>물론 이 방법으로 Seedance 2.5가 하는 걸 다 할 수는 없어요. 발표자의 결론은 모션 그래픽만큼은 이 방법이 더 싸고, 과정도 더 낫다는 거예요.</p>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=472s" target="_blank" rel="noopener">07:52</a>
+  <h2>경사하강법 데모와 쓸 곳</h2>
+<p>네 번째 데모는 분위기가 달라요. 종이 같은 배경에 점무늬가 깔려 있어요. 주제는 <span class="term" data-term="경사하강법" data-en="Gradient descent" data-desc="손실이 줄어드는 방향(기울기의 반대쪽)으로 가중치를 조금씩 고쳐 가는 학습 방법이에요. 곡면의 낮은 곳을 향해 한 걸음씩 내려가는 모습으로 자주 그려요." data-g="6">경사하강법</span>, 그러니까 신경망이 학습하는 방식이에요. 01 Guess 장면에서 고양이 그림을 넣으면 신경망이 처음엔 dog라는 틀린 답을 내요. 아래 03 Step downhill 장면에서는 파란 등고선 곡면 위의 분홍 점이 기울기를 따라 아래로 내려가요. 오른쪽 아래 작은 그래프가 단계마다 줄어드는 손실이에요.</p>
+<figure>
+  <img src="assets/frame-0816.png" alt="HOW A NEURAL NETWORK LEARNS 화면의 03 Step downhill 장면. 등고선이 그려진 파란 3D 곡면 위 분홍 점, 오른쪽 아래 LOSS / STEP 그래프">
+  <figcaption>점이 곡면의 낮은 곳으로 갈수록 손실 그래프가 내려가요. 글로 읽으면 추상적인 개념이 움직임으로 보여요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=496s" target="_blank" rel="noopener">영상 08:16에서 보기</a></figcaption>
+</figure>
+<p>발표자는 자신이 난독증이 심하다고 말해요. 그래서 글을 읽는 것보다 그림과 애니메이션으로 작동 방식을 보는 게 훨씬 잘 이해된다고 해요. 과정을 설명하는 데 이 방식이 좋은 이유예요.</p>
+
+<h3>어디에 쓸 수 있나요</h3>
+<p>발표자는 쓸 곳에 거의 한계가 없다고 해요. 아래 화면의 카드 여섯 장이 영상에서 꼽은 쓸 곳이에요. 왼쪽 위부터 Social media, Short-form, Podcast clips, Client-call clips, Explainers, Launches예요.</p>
+<figure>
+  <img src="assets/frame-0928.png" alt="WHAT YOU CAN USE IT FOR, Basically no limits 제목 아래 Social media, Short-form, Podcast clips, Client-call clips, Explainers, Launches 보라색 카드 여섯 장">
+  <figcaption>발표자가 직접 쓰는 곳과 다른 사람들이 실제로 쓰는 곳이 섞여 있어요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=568s" target="_blank" rel="noopener">영상 09:28에서 보기</a></figcaption>
+</figure>
+<ul>
+  <li><b>소셜 미디어, 숏폼</b>: 발표자는 이 영상에 나온 모션 그래픽도 거의 다 이 방법으로 만들었어요. 예전엔 편집자에게 맡기면 비쌌는데, 이제는 거의 공짜예요.</li>
+  <li><b>팟캐스트 클립</b>: 팟캐스트를 잘라 클립을 만들고 모션 그래픽을 얹어서, 소셜 미디어에서 더 눈길을 끌게 해요.</li>
+  <li><b>고객 통화 클립</b>: 고객과의 화상 통화에서 흥미로운 부분을 골라 모션 그래픽을 붙이고 소셜 미디어에 올려요.</li>
+  <li><b>설명 영상, 출시 영상</b>: 제품을 내놓거나 소프트웨어, 회사, 서비스에 새 기능을 소개할 때 써요.</li>
+</ul>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=565s" target="_blank" rel="noopener">09:25</a>
+  <h2>지구본 데모와 프롬프트 체크리스트</h2>
+<p>마지막 데모는 인터넷이 메시지를 어떻게 보내는지 보여 줘요. 어두운 배경에 푸른 지구본이 있고, 장면은 Split(메시지를 번호 붙은 작은 패킷으로 쪼개요), Route(패킷마다 자기 길로 라우터를 거쳐 가요), Reassemble(순서 없이 도착한 패킷을 다시 맞춰요)로 이어져요. 아래는 Route 장면이에요. 런던 근처에서 번호 붙은 패킷들이 출발하고, 오른쪽 아래 작은 표가 라우터 기록이에요.</p>
+<figure>
+  <img src="assets/frame-0934.png" alt="NETWORKING 101 화면의 02 Route 장면. 푸른 지구본 위 유럽 부근에 번호 붙은 노란 패킷 상자들, 오른쪽 아래 ROUTER LOG 표">
+  <figcaption>발표자는 지구본 위 대륙과 위치를 Claude가 다 맞게 그린 점에서 모델의 똑똑함이 보인다고 해요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=574s" target="_blank" rel="noopener">영상 09:34에서 보기</a></figcaption>
+</figure>
+
+<h3>얼마나 자세히 써야 할까요</h3>
+<p>원하는 결과가 얼마나 정해져 있는지에 따라 달라요. 아래 화면 왼쪽 카드는 '딱 정한 게 있다면 아주 구체적으로', 오른쪽 카드는 '아이디어에 열려 있다면 느슨하게'예요. 오른쪽 카드에는 'Opus 5.5 같은 똑똑한 모델이라면'이라는 조건이 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-1020.png" alt="HOW MUCH DETAIL TO GIVE, Specific or open? 제목 아래 두 카드. 왼쪽 Be really specific, 오른쪽 Keep it relaxed와 With a smart model like Opus 5.5 배지, 'Come up with three ideas in text. I'll pick one.' 예시">
+  <figcaption>오른쪽 카드 아래 예시 문장처럼, 아이디어 세 개를 글로 먼저 받고 고르는 방법도 있어요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=620s" target="_blank" rel="noopener">영상 10:20에서 보기</a></figcaption>
+</figure>
+<p>느슨하게 맡길 때는 '정말 좋은 아이디어를 하나 내 줘'라고만 해도 돼요. 이미 찍어 둔 영상이 있다면 그 위에 얹을 3D 모션 그래픽을 만들어 달라고 해도 되고요. 발표자는 이렇게 해도 결과가 놀라울 만큼 좋다고 해요.</p>
+
+<h3>프롬프트에 꼭 넣을 다섯 가지</h3>
+<p>그래도 빠뜨리면 안 되는 게 있어요. 아래 화면의 체크리스트 다섯 줄이에요.</p>
+<figure>
+  <img src="assets/frame-1124.png" alt="ALWAYS INCLUDE, The prompt checklist 제목 아래 다섯 줄. 01 Use Three.js + shaders, 02 Make it professional and sleek, 03 Your showreel for a dream job, 04 3D camera moves + moving elements, 05 Run a verification loop">
+  <figcaption>1번과 4번은 3D 표현을, 2번과 3번은 완성도를, 5번은 실수를 잡는 장치예요. <a href="https://www.youtube.com/watch?v=CCUSpJkAfgU&amp;t=684s" target="_blank" rel="noopener">영상 11:24에서 보기</a></figcaption>
+</figure>
+<ol class="steps">
+  <li><b>Three.js와 셰이더를 쓰라고 해요</b> — 3D이면서 고급스러운 느낌을 원하면 둘 다 꼭 적어요.</li>
+  <li><b>'전문적이고 세련되게 만들어 줘'라고 해요</b> — 단순한 말인데 실제로 결과가 꽤 달라져요.</li>
+  <li><b>꿈의 직장에 내는 쇼릴이라고 해요</b> — '정말 원하는 모션 그래픽 직무에 지원하는 거라고 생각하고 멋진 쇼릴을 만들어 줘'라고 적어요. 발표자도 좀 이상하다고 인정하지만, 이렇게 하면 결과가 나아졌대요. 예전에 AI에게 '세계 최고의 소프트웨어 엔지니어인 척해'라고 하던 것과 비슷해요.</li>
+  <li><b>카메라도, 요소도 3D로 움직이게 해요</b> — 카메라가 장면 사이를 도는 것뿐 아니라 장면 안의 요소도 움직이게 해요. 발표자는 이게 품질을 한 단계 올린다고 해요. AI 그래픽에서 잘 안 보이는 연출이라 눈에 띄어요.</li>
+  <li><b>검증 루프를 돌리게 해요</b> — 만든 결과를 스스로 다시 보게 해요. 요소가 겹치지 않는지, 글자가 너무 작지 않은지 확인하고 실수를 없앤 뒤에 내보내요.
+    <span class="done">첫 데모 프롬프트 끝의 '글자를 화면 안에 읽기 좋게 두고, 전체를 렌더링하기 전에 장면마다 정지 화면을 확인하라'는 문장이 이 역할이에요</span></li>
+</ol>
+<p>발표자는 몇 달 전만 해도 이런 건 AI로 만들 수 없었고, 맡기면 수천 달러가 들었을 거라고 말하며 직접 해 보라고 권해요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 영어 자막이라 이름이 잘못 받아적힌 곳이 있어요. 화면 글자와 공식 문서로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>3.js</td><td>Three.js</td><td>화면 슬라이드 표기</td></tr>
+      <tr><td>Sonic 5.5</td><td>Sonnet 5.5</td><td>Anthropic 모델 이름</td></tr>
+      <tr><td>Astra 6</td><td>(확인 못 함)</td><td>발표자가 비교한 다른 모델. 화면에 나오지 않아 이름을 확정하지 못했어요</td></tr>
+      <tr><td>SeeDance 2.5</td><td>Seedance 2.5</td><td>화면 슬라이드 표기</td></tr>
+      <tr><td>a small model like Opus 5.5</td><td>a smart model like Opus 5.5</td><td>화면 배지 표기</td></tr>
+      <tr><td>show reel</td><td>showreel</td><td>화면 체크리스트 표기</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-8"><dt>검증 루프<span class="en">Verification loop</span></dt><dd>모델이 만든 결과를 스스로 다시 확인하고 고치게 하는 단계예요. 여기서는 정지 화면을 보고 요소 겹침이나 작은 글자를 잡아내는 일을 말해요.</dd></div>
+    <div class="g" id="g-6"><dt>경사하강법<span class="en">Gradient descent</span></dt><dd>손실이 줄어드는 방향(기울기의 반대쪽)으로 가중치를 조금씩 고쳐 가는 학습 방법이에요. 곡면의 낮은 곳을 향해 한 걸음씩 내려가는 모습으로 자주 그려요.</dd></div>
+    <div class="g" id="g-2"><dt>글래스모피즘<span class="en">Glassmorphism</span></dt><dd>서리 낀 유리처럼 반투명한 판 뒤로 배경이 흐릿하게 비치는 디자인 스타일이에요. 층이 겹쳐 보여서 깊이감과 고급스러운 느낌을 줘요.</dd></div>
+    <div class="g" id="g-1"><dt>모션 그래픽<span class="en">Motion graphics</span></dt><dd>글자, 도형, 아이콘 같은 그래픽 요소를 움직여서 만든 영상이에요. 실사 촬영 없이 개념을 설명하거나 영상에 효과를 얹을 때 많이 써요.</dd></div>
+    <div class="g" id="g-3"><dt>셰이더<span class="en">Shader</span></dt><dd>GPU에서 돌면서 화면의 점 하나하나의 색과 밝기를 계산하는 작은 프로그램이에요. 반사, 빛 번짐, 입자 같은 효과를 실시간으로 그릴 수 있어요.</dd></div>
+    <div class="g" id="g-7"><dt>쇼릴<span class="en">Showreel</span></dt><dd>영상 작업자가 자기 대표작을 짧게 모아 만든 포트폴리오 영상이에요. 취업이나 수주 때 실력을 보여 주려고 써요.</dd></div>
+    <div class="g" id="g-5"><dt>임베딩<span class="en">Embedding</span></dt><dd>글을 숫자 벡터로 바꿔 의미가 비슷한 글끼리 가까이 놓이게 하는 거예요. RAG는 이 거리로 질문과 가까운 문서를 찾아요.</dd></div>
+    <div class="g" id="g-4"><dt>헤드리스<span class="en">Headless browser</span></dt><dd>화면 창을 띄우지 않고 뒤에서만 도는 브라우저예요. 페이지를 실제로 그리기 때문에 코드로 스크린샷을 찍어 영상 프레임으로 쓸 수 있어요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>GPU</dt><dd>Graphics Processing Unit</dd></div>
+    <div class="g"><dt>LLM</dt><dd>Large Language Model</dd></div>
+    <div class="g"><dt>RAG</dt><dd>Retrieval-Augmented Generation</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=CCUSpJkAfgU" target="_blank" rel="noopener">원본 영상 — Matt Penny | Applied AI, Claude + Three.js = Premium 3D Motion Graphics</a></li>
+    <li id="src-2"><a href="https://threejs.org/docs/pages/MeshPhysicalMaterial.html" target="_blank" rel="noopener">Three.js 공식 문서 — MeshPhysicalMaterial</a></li>
+    <li id="src-3"><a href="https://threejs.org/docs/pages/ShaderMaterial.html" target="_blank" rel="noopener">Three.js 공식 문서 — ShaderMaterial</a></li>
+    <li id="src-4"><a href="https://playwright.dev/docs/screenshots" target="_blank" rel="noopener">Playwright 공식 문서 — Screenshots</a></li>
+    <li id="src-5"><a href="https://ffmpeg.org/ffmpeg.html" target="_blank" rel="noopener">ffmpeg 공식 문서</a></li>
+    <li id="src-6"><a href="https://docs.claude.com/en/docs/about-claude/pricing" target="_blank" rel="noopener">Claude 공식 문서 — Pricing</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 19일에 이 영상을 보고 정리했어요. 원본은 Matt Penny | Applied AI 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+(() => {
+  const g = document.getElementById('fig-timeline');
+  if (!g) return;
+  const X0 = 30, PX = 40; // 1초 = 40px
+  const x = (t) => X0 + t * PX;
+  const scenes = [
+    [0, 3, 'Describe it', '채팅창에 요청'],
+    [3, 6, 'Plan it', '할 일 카드 5장'],
+    [6, 9.5, 'Build it', '코드 편집기'],
+    [10, 12.5, 'Ship it', '완성된 앱'],
+    [12.5, 15, 'Reveal', '전체를 한눈에'],
+  ];
+  scenes.forEach(([a, b, name, sub], i) => {
+    const w = (b - a) * PX - 4;
+    g.append(el('rect', { x: x(a) + 2, y: 30, width: w, height: 74, rx: 8, class: `c${i + 1} cell` }));
+    g.append(el('text', { x: x(a) + 2 + w / 2, y: 62, 'text-anchor': 'middle' }, name));
+    g.append(el('text', { x: x(a) + 2 + w / 2, y: 84, 'text-anchor': 'middle', class: 'sub', 'font-size': 11 }, sub));
+  });
+  g.append(el('text', { x: x(9.75), y: 22, 'text-anchor': 'middle', class: 'sub', 'font-size': 11 }, '휙 이동'));
+  g.append(el('line', { x1: x(0), y1: 122, x2: x(15), y2: 122, class: 'axis' }));
+  [0, 3, 6, 9.5, 12.5, 15].forEach((t) => {
+    g.append(el('line', { x1: x(t), y1: 118, x2: x(t), y2: 126, class: 'axis' }));
+    g.append(el('text', { x: x(t), y: 142, 'text-anchor': 'middle', class: 'mono', 'font-size': 11 }, `${t}초`));
+  });
+  g.append(el('text', { x: x(7.5), y: 172, 'text-anchor': 'middle', class: 'sub' }, '15초 · 1920×1080 · 60fps · 장면 안에서는 천천히, 장면 사이에서는 빠르게'));
+})();
+</script>
+</body>
+</html>
