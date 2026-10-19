@@ -1,0 +1,1008 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pstack: Cursor 엔지니어가 AI로 코드를 내보내는 방식</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>pstack: Cursor 엔지니어가 AI로 코드를 내보내는 방식</h1>
+  <p class="lede">Lauren Tan의 스킬 묶음을 개발 6단계 지도 위에서 하나씩 봐요</p>
+  <div class="meta">
+    <span>Eric Tech</span><span class="dot">·</span>
+    <span>영상 14:56</span><span class="dot">·</span>
+    <span>읽는 데 약 19분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=4wBVuj2an8E" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>pstack의 기획 스킬은 새 프로젝트가 아니라 이미 코드가 있는 <span class="term" data-term="브라운필드" data-en="Brownfield project" data-desc="이미 코드가 쌓여 있는 프로젝트를 말해요. 빈 땅에서 시작하는 그린필드와 달리, 기존 코드가 왜 그렇게 짜였는지부터 알아야 손댈 수 있어요." data-g="1">브라운필드</span> 프로젝트를 이해하는 데 맞춰져 있어요.</li>
+    <li>설계와 테스트에서는 Opus, GPT(Generative Pre-trained Transformer), Grok에 같은 일을 맡기는 <span class="term" data-term="팬아웃" data-en="Fan-out" data-desc="한 작업을 여러 에이전트나 모델에 동시에 나눠 보내는 방식이에요. 결과를 다시 하나로 모으는 단계와 짝을 이뤄요." data-g="2">팬아웃</span>으로 결과를 비교하고 보고서 하나로 합쳐요. 다른 스킬 모음과 가장 다른 점이에요.</li>
+    <li>구현 단계는 <span class="term" data-term="AI 슬롭" data-en="AI slop" data-desc="AI가 코드나 글에 습관처럼 덧붙이는 군더더기예요. 쓸데없는 주석, 의미 없는 try/catch, any 타입 같은 것들이 여기 들어가요." data-g="3">AI(Artificial Intelligence) 슬롭</span>을 지우는 데 힘을 줘요. 주석까지 지우는 건 AI가 코드보다 틀린 주석을 믿는 일을 막으려는 거예요.</li>
+    <li>배포는 PR(Pull Request)을 <span class="term" data-term="머지" data-en="Merge" data-desc="작업 브랜치의 변경을 기준 브랜치에 합치는 일이에요. 그 사이 다른 사람이 같은 곳을 바꿨다면 충돌이 생겨요." data-g="6">머지</span>까지 끌고 가는 스킬이 촘촘하지만, 유지보수 단계에는 스킬이 없어요.</li>
+    <li>원칙을 <span class="term" data-term="시스템 프롬프트" data-en="System prompt" data-desc="대화 전체에 깔려 매 요청마다 모델이 읽는 지시문이에요. 길수록 매번 쓰는 토큰이 늘어요." data-g="7">시스템 프롬프트</span>에 넣지 않고 스킬로 나눠 색인만 둬요. 메시지마다 상관없는 규칙에 토큰을 쓰지 않기 위해서예요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">pstack과 기획 단계</a></li>
+    <li><a href="#s2">설계: 여러 모델에게 같은 설계를 시켜요</a></li>
+    <li><a href="#s3">구현: 테스트 먼저, 그리고 군더더기 지우기</a></li>
+    <li><a href="#s4">테스트: 실제 앱에서 증명하고, 일부러 깨 봐요</a></li>
+    <li><a href="#s5">배포와 유지보수</a></li>
+    <li><a href="#s6">언제든 쓰는 스킬과 원칙</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>pstack과 기획 단계</h2>
+<p>pstack은 Lauren Tan이 평소 쓰는 워크플로, 스킬, 원칙을 한 저장소에 모아 공개한 거예요. 화자는 링크드인과 React 팀 페이지를 보여 주며 그를 Cursor 엔지니어이자 React 코어 팀 멤버로 소개해요. 이 영상은 pstack의 스킬을 하나씩 짚고, 화자가 이전에 리뷰한 다른 스킬 모음과 무엇이 다른지 비교해요.</p>
+<p>아래 화면은 화자가 자기 사이트 super-board에 직접 그린 pstack 지도예요. 맨 위에 pstack의 한 줄 소개 'if you want to go fast, go deep first'가 있고, 그 아래로 Plan, Design, Build, Test 단계가 칸으로 나뉘어 있어요. 칸마다 'START' 표시가 붙은 상자부터 화살표를 따라가면 그 워크플로의 스킬 순서가 돼요.</p>
+<figure>
+  <img src="assets/frame-0020.webp" alt="pstack map 페이지. 제목 옆에 Cursor plugin 0.15.17 / pstack-claude port 0.9.82 버전 표시가 있고, 아래에 Plan, Design, Build, Test 단계별 스킬 상자가 화살표로 이어져 있다">
+  <figcaption>
+    이 지도는 pstack 공식 문서가 아니라 화자가 정리한 것이에요. 단계 구분도 화자의 AI 개발 6단계를 따른 거예요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=20s" target="_blank" rel="noopener">영상 00:20에서 보기</a>
+  </figcaption>
+</figure>
+<p>화자는 pstack을 세 덩어리로 나눠 봐요. 단계마다 스킬을 엮은 <b>workflows</b>, 개별 기능인 <b>skills</b>, 코드를 쓸 때 따르는 <b>principles</b>예요. 영상도 이 순서로 단계별 워크플로를 먼저 보고, 끝에 원칙을 다뤄요.</p>
+<figure>
+  <img src="assets/frame-0041.webp" alt="Lauren Tan의 캐릭터 아이콘에서 workflows, skills, principles 세 가지로 가지가 뻗은 그림">
+  <figcaption>
+    워크플로는 스킬을 순서대로 엮은 것이고, 원칙은 어느 단계에서든 꺼내 쓰는 규칙이에요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=41s" target="_blank" rel="noopener">영상 00:41에서 보기</a>
+  </figcaption>
+</figure>
+<p>지도 전체를 표 하나로 옮기면 이래요. 화면은 단계마다 나눠 보여 주지만, 한눈에 보면 스킬이 테스트와 배포 쪽에 몰려 있고 유지보수 칸이 비어 있다는 게 드러나요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>단계</th><th>워크플로</th><th>스킬 (순서대로)</th></tr></thead>
+    <tbody>
+      <tr><td>1 기획</td><td>코드부터 배우기</td><td><code>how</code> → <code>why</code> → <code>teach</code></td></tr>
+      <tr><td></td><td>큰 작업 계획하기</td><td><code>figure-it-out</code> → <code>show-me-your-work</code></td></tr>
+      <tr><td>2 설계</td><td>코드 모양 정하기</td><td><code>architect</code> → <code>arena</code> → <code>interrogate</code></td></tr>
+      <tr><td>3 구현</td><td>테스트 먼저 쓰기</td><td><code>tdd</code> → <code>typescript-best-practices</code></td></tr>
+      <tr><td></td><td><span class="term" data-term="diff" data-en="Diff" data-desc="두 버전 사이에서 바뀐 줄만 모은 것이에요. 여기서는 main 브랜치와 작업 중인 브랜치의 차이를 말해요." data-g="4">diff</span> 정리하기</td><td><code>deslop</code> → <code>no-comments</code></td></tr>
+      <tr><td>4 테스트</td><td>실제 앱에서 증명하기</td><td><code>create-verification-skill</code> → <code>swarm</code></td></tr>
+      <tr><td></td><td>변경과 숫자 검증하기</td><td><code>blast-radius</code> → <code>benchmark-checklist</code></td></tr>
+      <tr><td></td><td>diff 공격하기</td><td><code>interrogate</code> → <code>thermo-nuclear-code-quality-review</code></td></tr>
+      <tr><td>5 배포</td><td>PR 머지하기</td><td><code>make-pr-easy-to-review</code> → <code>babysit</code> → <code>fix-merge-conflicts</code> → <code>get-pr-comments</code> → <code>fix-ci</code></td></tr>
+      <tr><td>6 유지보수</td><td>없음</td><td>지도에 이 단계 스킬이 없어요</td></tr>
+    </tbody>
+  </table>
+</div>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>pstack 원본은 Cursor의 공식 플러그인 저장소 <code>cursor/plugins</code> 안 <code>pstack</code> 폴더에 있어요. Cursor에서는 <code>/add-plugin pstack</code>으로 설치하고, Claude Code에서는 <code>/plugin marketplace add cursor/plugins</code> 뒤에 <code>/plugin install pstack@cursor-plugins</code>로 설치해요. README에서 Lauren Tan은 자신을 poteto라고 소개하고, Meta·Netflix·Cursor에서 일했으며 React 코어 팀에서 React Compiler를 만든다고 적어요.</p>
+  <p class="cite">출처: <a href="https://github.com/cursor/plugins/tree/main/pstack" target="_blank" rel="noopener">cursor/plugins — pstack README</a></p>
+</aside>
+<h3>기획: 이미 있는 코드를 이해하는 데 맞춰져 있어요</h3>
+<p>기획 칸에는 워크플로가 두 개 있어요. 위쪽 'Learn the code first'는 <code>how</code>(코드가 어떻게 돌아가는지), <code>why</code>(왜 이렇게 만들었는지), <code>teach</code>(둘을 엮어 쉽게 설명)로 이어져요. 아래쪽 'Plan a big or unattended job'은 <code>figure-it-out</code>에서 <code>show-me-your-work</code>로 가요. 화자는 이 구성이 브라운필드 프로젝트용이라고 짚어요.</p>
+<figure>
+  <img src="assets/frame-0100.webp" alt="Plan 단계 칸. Learn the code first 아래 how, why, teach 상자가 세로로 이어지고, Plan a big or unattended job 아래 figure-it-out에서 show-me-your-work로 화살표가 간다">
+  <figcaption>
+    두 워크플로 모두 '무엇을 새로 만들까'보다 '지금 있는 코드가 어떤가'에서 출발해요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=60s" target="_blank" rel="noopener">영상 01:00에서 보기</a>
+  </figcaption>
+</figure>
+<p>화면 예시로 보면 차이가 분명해요. <code>/teach</code> 카드의 위쪽 how 줄은 <code>checkout()</code> → <code>charge()</code> → <code>db.orders</code>라는 호출 순서를 보여 주고, 아래쪽 why 줄은 그 순서의 이유 'charge first, no orphans'를 적어요. 먼저 결제하고 나서 주문을 저장해야 결제 없는 주문이 남지 않는다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0130.webp" alt="/teach 카드. how 줄에 checkout(), charge(), db.orders가 화살표로 이어지고, why 줄에 charge first, no orphans라는 이유가 체크 표시와 함께 적혀 있다">
+  <figcaption>
+    how는 '무슨 일이 일어나나', why는 '왜 그 순서인가'를 답해요. teach는 이 둘을 한 번에 풀어 줘요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=90s" target="_blank" rel="noopener">영상 01:30에서 보기</a>
+  </figcaption>
+</figure>
+<p>큰 작업은 <code>figure-it-out</code>이 왼쪽처럼 번호 붙은 작은 티켓 여섯 개('Cart model', 'Payment API', 'Checkout UI', 'Test the flow', 'Receipt email', 'Update docs')로 쪼개요. 오른쪽 검은 창 <code>decisions.md</code>는 <code>show-me-your-work</code>가 그 과정의 결정을 적어 둘 파일이에요.</p>
+<figure>
+  <img src="assets/frame-0140.webp" alt="/figure-it-out과 /show-me-your-work 태그 아래 1번 Cart model부터 6번 Update docs까지 티켓 여섯 개가 있고, 오른쪽에 비어 있는 decisions.md 파일 창이 있다">
+  <figcaption>
+    쪼갠 티켓과 결정 기록이 함께 남아서, 사람이 자리를 비운 사이에 돌린 작업도 나중에 따라가 볼 수 있어요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=100s" target="_blank" rel="noopener">영상 01:40에서 보기</a>
+  </figcaption>
+</figure>
+<p>화자는 이 기획 스킬을 쓰지 않겠다고 해요. Lauren Tan은 기획 단계에 크게 힘을 주지 않고, 대규모 마이그레이션처럼 기존 앱을 크게 바꾸는 일에 맞춰져 있다는 거예요. 혼자 처음부터 앱을 만드는 사람이라면 Matt Pocock 스킬이나 Superpowers를 더 믿는다고 해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>pstack README에는 '왜 기획 스킬이 없나요?'라는 절이 따로 있어요. Cursor의 plan mode로 충분하고, 본인은 기획을 믿지 않으며 'the best spec is code'라고 적어요. 기획이 필요하면 <code>poteto-mode</code>가 다루지만 기본값은 아니라고 해요. 화자가 '기획에 크게 힘을 주지 않는다'고 본 것과 같은 이야기예요.</p>
+  <p class="cite">출처: <a href="https://github.com/cursor/plugins/tree/main/pstack#why-are-there-no-planning-skills" target="_blank" rel="noopener">cursor/plugins — pstack README, why are there no planning skills?</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=130s" target="_blank" rel="noopener">02:10</a>
+  <h2>설계: 여러 모델에게 같은 설계를 시켜요</h2>
+<p>설계 단계는 코드를 한 줄도 쓰기 전에 구현의 모양을 정하는 곳이에요. 워크플로는 'Settle the code shape' 하나예요. 아래 화면처럼 먼저 타입과 인터페이스를 상자로 그려요. <code>type Order</code>가 <code>interface PaymentGateway</code>의 <code>charge(order) → Receipt</code>로 이어지고, 그 결과가 <code>type Receipt</code>가 돼요. 오른쪽 <code>checkout.ts</code>에는 그 모양대로 타입 선언이 채워져 있어요.</p>
+<figure>
+  <img src="assets/frame-0222.webp" alt="Design 카드. 왼쪽에 type Order, interface PaymentGateway, type Receipt 상자가 위에서 아래로 이어지고, 오른쪽 checkout.ts 창에 같은 타입 선언 코드가 있다">
+  <figcaption>
+    <code>architect</code>의 설명이 'sketch types, then write code'예요. 함수 몸통보다 타입이 먼저예요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=142s" target="_blank" rel="noopener">영상 02:22에서 보기</a>
+  </figcaption>
+</figure>
+<p>지도에서 보면 세 스킬이 세로로 이어져요. <code>architect</code>가 스케치하면 <code>arena</code>가 여러 모델과 에이전트에게 같은 설계를 동시에 맡겨 서로 다른 안을 받아요(build rival versions, pick best). 결과가 모이면 <code>interrogate</code>가 판정 역할의 모델을 세워 안들을 평가하고, 하나의 설계 보고서로 합쳐요.</p>
+<figure>
+  <img src="assets/frame-0246.webp" alt="Design Stage 2 칸. architect, arena, interrogate 상자가 위에서 아래로 화살표로 이어지고 오른쪽에 Build Stage 3 칸이 일부 보인다">
+  <figcaption>
+    <code>arena</code>가 팬아웃으로 안을 여러 개 받고, <code>interrogate</code>가 그걸 하나로 모아요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=166s" target="_blank" rel="noopener">영상 02:46에서 보기</a>
+  </figcaption>
+</figure>
+<p>화자가 다른 스킬과 가장 다르다고 꼽은 게 이 부분이에요. 왼쪽 'my pick'은 모델 하나(one model)에서 답 하나(one answer)가 나오는 구조예요. 오른쪽 pstack은 Opus, GPT, Grok이 각자 결과를 내고, 점선을 따라 report 칸으로 모여요. report 칸에는 types, flow, tests처럼 모델마다 잘한 부분이 들어가요.</p>
+<figure>
+  <img src="assets/frame-0306.webp" alt="my pick 대 pstack 비교 카드. 왼쪽은 one model에서 one answer로 화살표 하나, 오른쪽은 Opus, GPT, Grok 세 아이콘에서 점선이 report 칸의 types, flow, tests 항목으로 이어진다">
+  <figcaption>
+    모델마다 강한 부분이 달라서, 비교해서 좋은 부분만 고르면 한 모델의 답보다 나아진다는 게 pstack의 생각이에요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=186s" target="_blank" rel="noopener">영상 03:06에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=196s" target="_blank" rel="noopener">03:16</a>
+  <h2>구현: 테스트 먼저, 그리고 군더더기 지우기</h2>
+<p>구현 단계에는 워크플로가 두 개예요. 'Write it test-first'는 <code>tdd</code>에서 <code>typescript-best-practices</code>로, 'Clean up the diff'는 <code>deslop</code>에서 <code>no-comments</code>로 이어져요.</p>
+<h3>세 가지 TDD 스킬 비교</h3>
+<p>TDD(Test-Driven Development) 스킬은 여러 곳에 있어서, 화자는 pstack·Matt Pocock·Superpowers의 TDD 스킬을 한 표로 비교해 뒀어요. 위쪽 탭(Overall, Quick bug fix, New feature solo, Strict team discipline …)을 누르면 상황별로 어느 스킬이 Best인지 바뀌어요. 아래 화면은 'Strict team discipline' 탭이라 Superpowers 열에 Best가 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-0357.webp" alt="Test-first coding (TDD) 비교 표. tdd (pstack), tdd (Matt Pocock), test-driven-development (Superpowers) 세 열과 WHEN, STRICT, STEPS, ASKS YOU?, OUTPUT, BEST SIZE 행이 있고, Strict team discipline 탭이 선택되어 Superpowers 열이 Best로 강조되어 있다">
+  <figcaption>
+    전체 기준(Overall)의 Best는 Matt Pocock 쪽이에요. 화면 문구는 'Agreed test spots keep tests useful, not heavy'예요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=237s" target="_blank" rel="noopener">영상 03:57에서 보기</a>
+  </figcaption>
+</figure>
+<p>표의 내용을 우리말로 옮기면 이래요. pstack의 <code>tdd</code>는 가장 가볍고, Superpowers는 가장 엄격해요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>항목</th><th>pstack <code>tdd</code></th><th>Matt Pocock <code>tdd</code></th><th>Superpowers <code>test-driven-development</code></th></tr></thead>
+    <tbody>
+      <tr><td>언제</td><td>쉬운 테스트가 있는 버그</td><td>기능이나 수정, 테스트 먼저</td><td>모든 기능과 수정</td></tr>
+      <tr><td>엄격함</td><td>느슨함, 나쁜 테스트는 건너뜀</td><td>매 라운드 규칙을 지킴</td><td>예외 없음</td></tr>
+      <tr><td>단계</td><td>테스트 → 실패 확인 → 수정 → 재실행</td><td>테스트 지점 합의, 한 조각씩</td><td>실패 → 통과 → 정리 → 반복</td></tr>
+      <tr><td>사람에게 묻나</td><td>안 물음, 증거를 보여 줌</td><td>어디를 테스트할지 물음</td><td>테스트를 건너뛸 때만</td></tr>
+      <tr><td>결과물</td><td>버그 하나에 테스트 하나</td><td>정리 후에도 살아남는 테스트</td><td>테스트 + 체크리스트</td></tr>
+      <tr><td>맞는 크기</td><td>아주 작은 버그 수정</td><td>조각이 많은 기능</td><td>어떤 크기든, 엄격한 팀</td></tr>
+      <tr><td>속도</td><td>가장 빠름</td><td>중간, 먼저 합의</td><td>가장 느림, 테스트 전부 실행</td></tr>
+      <tr><td>특징</td><td>나쁜 테스트보다 테스트 없는 게 나음</td><td>테스트를 한꺼번에 먼저 쓰지 않음</td><td>코드를 먼저 썼다면 지움</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>TypeScript 규칙 강제하기</h3>
+<p>Lauren Tan은 React 쪽 사람이고 React 코드는 대부분 TypeScript라서, 화자는 <code>typescript-best-practices</code>가 따로 있다고 설명해요. 화면 예시는 <code>let total: any</code>, <code>let user: any</code>, <code>let tags: any</code> 세 줄이에요. <code>any</code>마다 빨간 X가 붙어요.</p>
+<figure>
+  <img src="assets/frame-0416.webp" alt="/typescript-best-practices 카드. total.ts 창에 any 타입으로 선언한 변수 세 줄이 있고, 각 any가 주황색으로 강조되고 줄 끝에 빨간 X 표시가 있다">
+  <figcaption>
+    타입을 <code>any</code>로 뭉개면 타입 검사가 하는 일이 없어져요. 이 스킬은 AI가 그렇게 쓰지 못하게 막아요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=256s" target="_blank" rel="noopener">영상 04:16에서 보기</a>
+  </figcaption>
+</figure>
+<h3>deslop: AI 슬롭 걷어내기</h3>
+<p><code>deslop</code>은 먼저 <code>main</code>과 지금 브랜치(<code>feat/checkout</code>)의 diff를 봐요. 오른쪽 목록 'slop it hunts'가 찾는 대상이에요. extra comments, try / catch, error exceptions, any without types, deep nesting 다섯 가지예요. 왼쪽 diff에서는 <code>throw new Error("checkout failed")</code> 줄이 빨갛게 표시돼 있어요. 지금 error exceptions 항목에 걸린 줄이에요.</p>
+<figure>
+  <img src="assets/frame-0436.webp" alt="main에서 feat/checkout으로 가는 diff. 왼쪽에 checkout 함수 코드가 있고 throw new Error 줄이 빨간색, 오른쪽에 extra comments와 try/catch는 체크, error exceptions는 주황색으로 진행 중, any without types와 deep nesting은 아직 남은 목록이 있다">
+  <figcaption>
+    목록을 위에서부터 하나씩 확인해요. 체크된 두 개는 이미 정리했다는 표시예요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=276s" target="_blank" rel="noopener">영상 04:36에서 보기</a>
+  </figcaption>
+</figure>
+<p>스킬 카드의 'HOW IT WORKS'는 네 단계예요. main과의 diff를 확인하고, 군더더기(주석, 이상한 try/catch, <code>any</code> 캐스트, 깊은 중첩)를 지우고, 동작은 그대로 두고, 한두 문장 요약을 줘요. 동작이 그대로인지는 테스트를 돌려 확인해요.</p>
+<figure>
+  <img src="assets/frame-0456.webp" alt="deslop 스킬 카드. WHEN TO USE IT에 AI 코드를 커밋하기 직전, 이상한 try/catch나 any 캐스트가 보일 때, 동작 변화 없이 diff를 줄이고 싶을 때 세 줄이 있고, HOW IT WORKS에 네 단계가 번호로 적혀 있다">
+  <figcaption>
+    '동작은 그대로(keeps behavior the same)'가 핵심이에요. 정리하다 기능을 바꾸면 안 돼요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=296s" target="_blank" rel="noopener">영상 04:56에서 보기</a>
+  </figcaption>
+</figure>
+<h3>주석을 지우는 이유</h3>
+<p>pstack에는 <code>no-comments</code>라는 스킬이 따로 있어요. 화자는 그 이유를 아래 두 줄로 설명해요. 주석은 'returns A'라고 하는데 실제 코드는 <code>return B;</code>예요. 이럴 때 AI는 코드 대신 주석을 믿을 때가 있어요. 주석을 없애면 AI가 소음 없이 코드 자체를 읽게 돼요.</p>
+<figure>
+  <img src="assets/frame-0506.webp" alt="total.ts 창에 // returns A 주석과 그 아래 return B; 코드 한 줄이 있다">
+  <figcaption>
+    주석과 코드가 어긋나는 순간, 주석은 설명이 아니라 AI를 헷갈리게 하는 정보가 돼요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=306s" target="_blank" rel="noopener">영상 05:06에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=333s" target="_blank" rel="noopener">05:33</a>
+  <h2>테스트: 실제 앱에서 증명하고, 일부러 깨 봐요</h2>
+<p>테스트 단계 칸에는 워크플로가 세 개 있어요. 'Prove it on the real app'(<code>create-verification-skill</code> → <code>swarm</code>), 'Vet the change and the number'(<code>blast-radius</code> → <code>benchmark-checklist</code>), 'Attack the diff'(<code>interrogate</code> → <code>thermo-nuclear-code-quality-review</code>)예요. 영상은 첫째와 셋째만 자세히 다루고, 가운데 워크플로는 지도에만 보여요.</p>
+<figure>
+  <img src="assets/frame-0545.webp" alt="Test Stage 4 칸. Prove it on the real app, Vet the change and the number, Attack the diff 세 워크플로가 각각 상자 두 개로 이어져 있고 오른쪽에 Deploy Stage 5 칸이 보인다">
+  <figcaption>
+    가운데 <code>blast-radius</code>는 '이 변경이 무엇을 깨뜨릴 수 있나', <code>benchmark-checklist</code>는 '속도 숫자가 맞나'를 봐요. 지도에 적힌 설명이에요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=345s" target="_blank" rel="noopener">영상 05:45에서 보기</a>
+  </figcaption>
+</figure>
+<h3>실제 앱에서 증명하기</h3>
+<p><code>create-verification-skill</code>은 TDD 스킬과 하는 일이 달라요. TDD가 기능·단위 테스트를 쓴다면, 이건 앱을 사용자처럼 실행해 보는 <span class="term" data-term="엔드투엔드 검증" data-en="End-to-end verification" data-desc="앱을 실제로 띄우고 사용자가 쓰듯 처음부터 끝까지 동작을 확인하는 검증이에요. 함수 하나를 보는 단위 테스트보다 준비할 게 많아요." data-g="5">엔드투엔드 검증</span>을 맡아요. 이름 그대로 테스트를 바로 쓰는 게 아니라 <b>검증 스킬을 만들어 주는 스킬</b>이에요. 엔드투엔드 테스트는 데이터베이스와 서버를 띄우고 사용자가 앱을 여는 방식까지 갖춰야 돌아가요. 그 절차를 매번 에이전트가 새로 알아내게 두지 않고, 스킬 파일로 남겨 두는 거예요.</p>
+<p>카드의 'HOW IT WORKS' 다섯 단계를 보면 흐름이 보여요. 사람에게 묻는 대신 저장소를 읽어 실행 방법을 파악하고, <code>verify-&lt;app&gt;/SKILL.md</code>를 써요. 노란 표시가 그 파일에 들어가는 절이에요. Launch(실행), Doctor(문제 진단), Drive(사용자 동작 재현), Evidence(증거 수집), Cleanup(임시 DB(Database)·서버 정리), Helpers(보조 함수)예요. 이어서 기능마다 파일 하나씩 <code>features/</code> 폴더를 만들고, 자기 단계를 한 번 끝까지 돌려 본 뒤, 유지보수 스킬을 알려 줘요.</p>
+<figure>
+  <img src="assets/frame-0633.webp" alt="create-verification-skill 카드. 에이전트가 실행해 보지도 않고 된다고 할 때, 변경의 영상·스크린숏 증거가 필요할 때 쓰라는 안내와, HOW IT WORKS 다섯 단계가 적혀 있고 2단계의 Launch, Doctor, Drive, Evidence, Cleanup, Helpers가 노랗게 강조되어 있다">
+  <figcaption>
+    맨 위 '에이전트가 실행해 보지도 않고 된다고 계속 우길 때'가 이 스킬을 꺼낼 때예요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=393s" target="_blank" rel="noopener">영상 06:33에서 보기</a>
+  </figcaption>
+</figure>
+<p>다음 <code>swarm</code>은 이 검증을 에이전트 하나가 처음부터 끝까지 하지 않게 해요. 첫 화면은 에이전트 하나가 열두 칸짜리 작업을 네 칸째 처리하고 있는 모습이에요. 혼자 하면 이렇게 하나씩 차례로 해야 해요.</p>
+<figure>
+  <img src="assets/frame-0657.webp" alt="swarm 태그 아래 로봇 아이콘 하나와 열두 칸 진행 막대가 있고, 앞의 네 칸만 검게 채워져 있다">
+  <figcaption>
+    에이전트 하나가 앱 실행부터 페이지별 테스트까지 혼자 다 맡는 모습이에요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=417s" target="_blank" rel="noopener">영상 06:57에서 보기</a>
+  </figcaption>
+</figure>
+<p>바로 뒤 화면에서는 모델이 다른 에이전트 세 개가 각자 맡은 부분을 끝내고(체크 표시) <code>report.md</code> 하나로 모여요. 아래 문구 'Fan out N parallel workers, drain them, and return one report'가 이 스킬의 정의예요.</p>
+<figure>
+  <img src="assets/frame-0709.webp" alt="report.md 카드. 서로 다른 모델 아이콘이 붙은 로봇 세 개에 모두 체크 표시가 있고, 아래에 Fan out N parallel workers, drain them, and return one report 문구가 있다">
+  <figcaption>
+    설계 단계의 <code>arena</code>와 모양이 같아요. 이번에는 같은 일을 여러 번 하는 게 아니라 일을 나눠 맡겨요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=429s" target="_blank" rel="noopener">영상 07:09에서 보기</a>
+  </figcaption>
+</figure>
+<h3>diff를 일부러 깨 보기</h3>
+<p>'Attack the diff'는 설계 단계의 <code>interrogate</code>를 다시 써요. 이번에는 main과 기능 브랜치의 diff를 보고, 여러 모델이 그 변경을 깨뜨릴 방법을 찾아요. 이어지는 <code>thermo-nuclear-code-quality-review</code>는 한 겹 더 혹독한 리뷰예요. 화면 설명은 '큰 단순화를 밀어붙이는 구조 리뷰'예요. 파일이 1000줄을 넘게 커질 때, 조건문이 스파게티처럼 쌓일 때 쓰라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0755.webp" alt="thermo-nuclear-code-quality-review 카드 일부. 1000줄을 넘게 커질 때, 조건문이 스파게티처럼 쌓일 때 쓰라는 안내와 harsh review of structure that pushes for big simplifications 설명, 예시 명령이 보인다">
+  <figcaption>
+    화자도 이름이 어디서 왔는지는 모르겠다고 해요. 하는 일은 '더 단순하게 리팩터링할 수 있나'를 끝까지 묻는 거예요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=475s" target="_blank" rel="noopener">영상 07:55에서 보기</a>
+  </figcaption>
+</figure>
+<p>화자는 이 스킬이 전에 채널에서 리뷰한 ponytail 스킬과 비슷하다고 해요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=498s" target="_blank" rel="noopener">08:18</a>
+  <h2>배포와 유지보수</h2>
+<p>배포 단계는 테스트를 마친 변경을 PR로 올려 머지까지 가져가는 곳이에요. 워크플로 'Get the PR merged'는 다섯 스킬이 위에서 아래로 이어져요. 맨 아래 기울임 글씨는 지도가 다루지 않는 범위를 적은 메모예요. 배포(rollout), 롤백, 출시 후 모니터링 스킬은 없고, babysit과 shipping은 머지에서 끝난다고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0852.webp" alt="Deploy 칸의 Get the PR merged 워크플로. make-pr-easy-to-review, babysit, fix-merge-conflicts, get-pr-comments, fix-ci 다섯 상자가 세로로 이어지고, 아래에 Not covered: No deploy, rollout, rollback or post-release monitoring skills 메모가 있다. 오른쪽 칸에는 No skills for this stage in pstack map이라고 적혀 있다">
+  <figcaption>
+    이름은 '배포'지만 실제로는 머지까지예요. 머지 뒤의 일은 이 지도 밖이에요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=532s" target="_blank" rel="noopener">영상 08:52에서 보기</a>
+  </figcaption>
+</figure>
+<p>다섯 스킬이 하는 일을 순서대로 정리하면 이래요.</p>
+<ol class="steps">
+  <li><b><code>make-pr-easy-to-review</code></b> — 리뷰하는 사람이 읽기 쉽게 PR을 다듬어요. 화자는 PR 작성 방식은 사람마다 달라서, 자기 super-board에도 따로 스타일이 있다고 해요. 참고용으로 보라는 뜻이에요.</li>
+  <li><b><code>babysit</code></b> — 머지될 때까지 PR을 지켜봐요.</li>
+  <li><b><code>fix-merge-conflicts</code></b> — 머지하려는 순간 동료가 먼저 머지해서 생긴 충돌을 풀고 빌드를 다시 확인해요.</li>
+  <li><b><code>get-pr-comments</code></b> — 리뷰 댓글을 모아 할 일 목록으로 바꿔요.</li>
+  <li><b><code>fix-ci</code></b> — 실패한 CI(Continuous Integration) 검사를 고쳐요.</li>
+</ol>
+<h3>유지보수 칸은 비어 있어요</h3>
+<p>여섯 번째 단계는 문제를 모아 다시 기획으로 돌려보내는 곳이에요. pstack 쪽(오른쪽)은 'stage 6' 자리가 비어 있어요. 화자는 왼쪽처럼 자기 super-board의 <code>/super-collect</code>를 대안으로 들어요. Sentry, PostHog, GitHub에서 에러·이탈·이슈를 모아 Backlog로 넣는 구조예요.</p>
+<figure>
+  <img src="assets/frame-0930.webp" alt="my pick 대 pstack 비교 카드. 왼쪽은 super-board의 /super-collect가 Sentry, PostHog, GitHub에서 error, drop-off, issue를 모아 Backlog에 넣는 그림이고, 오른쪽 pstack은 stage 6 자리가 빈 칸으로 표시되어 있다">
+  <figcaption>
+    유지보수 단계가 필요하면 pstack 밖에서 채워야 해요. 화자는 이 칸을 자기 도구로 채워요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=570s" target="_blank" rel="noopener">영상 09:30에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상 지도에는 pstack 스킬처럼 그려져 있지만, 지금 pstack 폴더에 없는 스킬이 있어요. <code>deslop</code>, <code>thermo-nuclear-code-quality-review</code>, <code>make-pr-easy-to-review</code>, <code>fix-merge-conflicts</code>, <code>get-pr-comments</code>, <code>fix-ci</code>, <code>what-did-i-get-done</code>는 같은 저장소의 <code>cursor-team-kit</code> 플러그인에 들어 있어요. pstack README도 <code>poteto-mode</code>가 참조하는 <code>deslop</code>은 cursor-team-kit에 있다며, 전부 쓰려면 함께 설치하라고 해요. <code>babysit</code>은 <code>poteto-mode</code>의 플레이북 이름으로 들어 있어요.</p>
+  <p class="cite">출처: <a href="https://github.com/cursor/plugins/tree/main/pstack#not-shipped-here" target="_blank" rel="noopener">pstack README — not shipped here</a> · <a href="https://github.com/cursor/plugins/tree/main/cursor-team-kit" target="_blank" rel="noopener">cursor/plugins — cursor-team-kit</a></p>
+</aside>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=712s" target="_blank" rel="noopener">11:52</a>
+  <h2>언제든 쓰는 스킬과 원칙</h2>
+<p>여섯 단계 밖에, 개발 중 언제든 꺼내 쓰는 스킬이 따로 있어요. 지도에서는 'Anytime' 줄이에요. 맨 앞 Router 칸의 <code>poteto-mode</code>는 'pick and run right playbook'이에요. 어떤 스킬을 써야 할지 모를 때 문제를 설명하면, 맞는 스킬을 골라 실행해 줘요. 그 옆 Setup and help 칸의 <code>setup-pstack</code>은 일마다 쓸 모델을 고르는 설정 스킬이에요.</p>
+<figure>
+  <img src="assets/frame-1154.webp" alt="Anytime 줄. Router 칸에 poteto-mode, pick and run right playbook 상자가 있고, Setup and help 칸에 setup-pstack, choose models for each job 상자와 잘린 poteto-help 상자가 있다">
+  <figcaption>
+    처음 쓴다면 <code>poteto-mode</code> 하나만 기억해도 나머지 스킬로 길을 찾아가요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=714s" target="_blank" rel="noopener">영상 11:54에서 보기</a>
+  </figcaption>
+</figure>
+<p>나머지는 글쓰기, pstack 자체를 키우는 스킬이에요. Writing 칸에는 문서를 쓰는 <code>technical-writing</code>과 글에서 AI 말투를 걷어내는 <code>unslop</code>이 있어요. 'Improve pstack over time' 칸의 <code>reflect</code>는 작업에서 배운 걸 스킬로 남기고, <code>correct</code>는 반복되는 실수를 아예 못 하게 만들어요. <code>automate-me</code>는 내 작업 방식으로 나만의 모드 스킬을 만들어요. Extras 칸의 <code>make-bot-ui</code>는 Cursor 전용이에요.</p>
+<figure>
+  <img src="assets/frame-1209.webp" alt="Anytime 줄의 오른쪽 부분. Writing 칸에 technical-writing과 unslop, Improve pstack over time 칸에 reflect, correct, automate-me, maintain-verification-skill, Extras (Cursor only) 칸에 make-bot-ui 상자가 있다">
+  <figcaption>
+    pstack을 쓰면서 pstack을 고쳐 나가는 스킬까지 들어 있어요. 스킬 묶음을 고정된 도구가 아니라 자라는 것으로 보는 거예요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=729s" target="_blank" rel="noopener">영상 12:09에서 보기</a>
+  </figcaption>
+</figure>
+<p>화자가 가장 마음에 들어 한 건 'Catch up and plain talk' 칸이에요. <code>recall</code>은 하던 일을 다시 짜 맞추고, <code>ketchup</code>은 마지막 메시지 이후 대화를 요약하고, <code>bro</code>는 방금 답을 쉽게 다시 말하고, <code>what-did-i-get-done</code>은 최근 커밋을 정리해요. 다른 프로젝트를 하다 돌아왔을 때 지금까지 무슨 일이 있었는지 떠올리기 좋다고 해요.</p>
+<figure>
+  <img src="assets/frame-1214.webp" alt="Catch up and plain talk 칸. recall (rebuild what you were doing), ketchup (recap chat since last message), bro (repeat last reply simply), what-did-i-get-done (summarize recent commits) 네 상자가 있다">
+  <figcaption>
+    맥락을 자주 바꾸는 사람에게 쓸모 있는 칸이에요. 네 개 모두 '무엇을 했었나'를 다시 보여 주는 스킬이에요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=734s" target="_blank" rel="noopener">영상 12:14에서 보기</a>
+  </figcaption>
+</figure>
+<h3>원칙은 왜 시스템 프롬프트가 아니라 스킬일까요</h3>
+<p>pstack에는 원칙이 아주 많아요. 화자는 이걸 시스템 프롬프트 하나에 몰아넣지 않은 이유를 설명해요. 아래 화면 왼쪽이 긴 <code>system-prompt.md</code>이고, 오른쪽 위 tokens 막대가 거의 다 찼어요. 메시지를 보낼 때마다 이 파일을 통째로 읽기 때문이에요. 지금 하는 일과 상관없는 규칙에도 토큰을 쓰게 돼요.</p>
+<figure>
+  <img src="assets/frame-1259.webp" alt="왼쪽에 줄이 많은 system-prompt.md 문서, 오른쪽에 거의 가득 찬 tokens 막대와 메시지 말풍선 세 개, 그 아래 입력창이 있다">
+  <figcaption>
+    메시지가 쌓일수록 tokens 막대가 차요. 원칙이 많을수록 매번 내는 비용도 커져요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=779s" target="_blank" rel="noopener">영상 12:59에서 보기</a>
+  </figcaption>
+</figure>
+<p>pstack은 원칙을 스킬 여러 개로 나누고, 언제 어떤 원칙을 꺼낼지 적은 색인만 둬요. 화면은 시스템 프롬프트 쪽만 보여 줘서, 화자가 말로 설명한 두 방식을 나란히 그렸어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 240" role="img" aria-label="시스템 프롬프트에 원칙을 모두 넣으면 메시지마다 전부 읽고, 스킬로 나누고 색인만 두면 필요한 원칙 하나만 연다는 비교">
+    <defs>
+      <marker id="arrow-sp-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker>
+      <marker id="arrow-sp-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker>
+    </defs>
+    <text x="160" y="22" text-anchor="middle">(a) 시스템 프롬프트에 몰아넣기</text>
+    <rect class="box" x="20" y="44" width="130" height="150" rx="10"/>
+    <text x="85" y="70" text-anchor="middle" class="mono" style="font-size:11px">system-prompt.md</text>
+    <text x="85" y="118" text-anchor="middle">원칙 전부</text>
+    <text x="85" y="140" text-anchor="middle" class="sub">한 파일에</text>
+    <rect class="cell bad" x="190" y="44" width="120" height="42" rx="8"/>
+    <text x="250" y="62" text-anchor="middle">메시지 1</text>
+    <text x="250" y="78" text-anchor="middle" class="sub">전부 읽음</text>
+    <rect class="cell bad" x="190" y="98" width="120" height="42" rx="8"/>
+    <text x="250" y="116" text-anchor="middle">메시지 2</text>
+    <text x="250" y="132" text-anchor="middle" class="sub">전부 읽음</text>
+    <rect class="cell bad" x="190" y="152" width="120" height="42" rx="8"/>
+    <text x="250" y="170" text-anchor="middle">메시지 3</text>
+    <text x="250" y="186" text-anchor="middle" class="sub">전부 읽음</text>
+    <path class="line" d="M152 70 L186 65" marker-end="url(#arrow-sp-a)"/>
+    <path class="line" d="M152 119 L186 119" marker-end="url(#arrow-sp-a)"/>
+    <path class="line" d="M152 168 L186 173" marker-end="url(#arrow-sp-a)"/>
+    <text x="165" y="222" text-anchor="middle" class="sub">상관없는 규칙에도 매번 토큰을 써요</text>
+    <line class="line dim" x1="325" y1="10" x2="325" y2="230"/>
+    <text x="482" y="22" text-anchor="middle">(b) 스킬로 나누고 색인만 두기</text>
+    <rect class="accent" x="340" y="94" width="96" height="60" rx="10"/>
+    <text x="388" y="120" text-anchor="middle">색인</text>
+    <text x="388" y="138" text-anchor="middle" class="sub">언제 무엇을</text>
+    <rect class="box" x="466" y="40" width="164" height="34" rx="8"/>
+    <text x="548" y="61" text-anchor="middle" class="mono" style="font-size:11px">experience-first</text>
+    <rect class="cell ok ring" x="466" y="86" width="164" height="34" rx="8"/>
+    <text x="548" y="107" text-anchor="middle" class="mono" style="font-size:11px">attack-the-premise</text>
+    <rect class="box" x="466" y="132" width="164" height="34" rx="8"/>
+    <text x="548" y="153" text-anchor="middle" class="mono" style="font-size:11px">type-system-discipline</text>
+    <rect class="box" x="466" y="178" width="164" height="34" rx="8"/>
+    <text x="548" y="199" text-anchor="middle" class="mono" style="font-size:11px">model-the-domain</text>
+    <path class="line" d="M438 116 L462 105" marker-end="url(#arrow-sp-b)"/>
+    <text x="482" y="232" text-anchor="middle" class="sub">지금 필요한 원칙 하나만 열어요</text>
+  </svg>
+  <figcaption>규칙의 양은 같아요. 달라지는 건 매번 읽는 양이에요. 원칙 이름은 영상 지도에 있는 것만 썼고, 어떤 원칙이 열리는지는 예시예요.</figcaption>
+</figure>
+<h3>attack-the-premise: 고치기를 멈추고 전제를 의심해요</h3>
+<p>원칙이 너무 많아서, 화자는 자기 super-board에 없는 것 중 쓸모 있는 두 가지만 골라요. 'Keep it small' 묶음은 이미 리뷰한 ponytail 스킬과 비슷해서 건너뛰어요. 'Design the shape' 묶음에서 고른 게 가운데 왼쪽 <code>attack-the-premise</code>예요. 상자 설명은 'question the shared assumption'이에요.</p>
+<figure>
+  <img src="assets/frame-1324.webp" alt="Principles: Design the shape 칸. foundational-thinking, redesign-from-first-principles, attack-the-premise, experience-first, exhaust-the-design-space 상자가 있고 attack-the-premise에 커서가 올라가 있다. 오른쪽에 Code structure 칸이 일부 보인다">
+  <figcaption>
+    같은 묶음의 다른 원칙들은 데이터 모양을 먼저 정하거나, 대안 2~3개를 비교하라고 해요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=804s" target="_blank" rel="noopener">영상 13:24에서 보기</a>
+  </figcaption>
+</figure>
+<p>이 원칙이 막으려는 상황이 아래 그림이에요. AI가 버그를 고쳐도(fix) 여전히 고장(still broken)이고, 또 고쳐도 또 고장이에요. 화살표가 원을 그리며 돌아요. AI가 이 버그를 영영 못 고치는 것처럼 느껴지는 루프예요.</p>
+<figure>
+  <img src="assets/frame-1336.webp" alt="가운데 로봇 아이콘을 중심으로 fix 상자 두 개와 still broken 상자 두 개가 화살표로 원을 그리며 이어진 그림">
+  <figcaption>
+    수정이 실패할 때마다 같은 방향으로 다시 고치면 이 원을 벗어나지 못해요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=816s" target="_blank" rel="noopener">영상 13:36에서 보기</a>
+  </figcaption>
+</figure>
+<p>원칙은 이 고리를 끊어요. bug에서 바로 다음 수정(more fixes)으로 가지 않고, 'right track?'에서 멈춰 전제(the premise)를 의심해요. 아래 따옴표 문장 'suspect the premise, not the fixes'가 이 원칙의 요약이에요. 화자는 이 원칙을 자기 super-board에도 넣겠다고 해요.</p>
+<figure>
+  <img src="assets/frame-1348.webp" alt="bug 상자에서 right track? 갈림길로 이어지고, 회색 more fixes 쪽이 아니라 주황색 the premise 쪽으로 선이 강조되어 있다. 아래에 suspect the premise, not the fixes 문구가 있다">
+  <figcaption>
+    수정이 틀린 게 아니라, 모든 수정이 함께 믿고 있던 가정이 틀렸을 수 있어요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=828s" target="_blank" rel="noopener">영상 13:48에서 보기</a>
+  </figcaption>
+</figure>
+<h3>type-system-discipline: 불가능한 상태를 타입으로 막아요</h3>
+<p>두 번째로 고른 건 'Code structure &amp; safety' 묶음의 <code>type-system-discipline</code>이에요. 카드의 'WHAT IT IS' 줄은 'Make the compiler reject impossible states'예요. 타입이 있는 언어에서 타입이나 함수 시그니처를 설계할 때 쓰라고 적혀 있고, 위쪽 태그를 보면 Claude Code, Cursor, Codex에서 모두 쓸 수 있어요.</p>
+<figure>
+  <img src="assets/frame-1412.webp" alt="type-system-discipline 스킬 카드. Anytime, Claude Code, Cursor, Codex 태그가 있고, WHEN TO USE IT에 You design types or a signature in a typed language, WHAT IT IS에 Make the compiler reject impossible states가 노랗게 강조되어 있다">
+  <figcaption>
+    규칙을 사람이 지키게 두지 않고, 컴파일러가 거부하게 만드는 게 요점이에요.
+    <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=852s" target="_blank" rel="noopener">영상 14:12에서 보기</a>
+  </figcaption>
+</figure>
+<p>화자의 예시는 결제예요. 결제 하나가 '결제 완료'이면서 동시에 '대기 중'일 수는 없어요. 변수가 여러 상태를 가질 수 있을 때, 이런 <span class="term" data-term="불가능한 상태" data-en="Impossible states" data-desc="실제로는 있을 수 없는 값 조합이에요. 결제 완료이면서 대기 중인 결제처럼요. 타입으로 이런 조합을 아예 만들 수 없게 막을 수 있어요." data-g="8">불가능한 상태</span>는 아예 만들어지지 않게 해야 한다는 거예요. 화자는 이 원칙도 자기 super-board에 넣겠다고 해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>pstack README에 따르면 원칙은 스물네 개이고, 원칙 하나가 짧은 스킬 하나예요. <code>poteto-mode</code>가 이 원칙의 색인을 품고 있어서 작업을 시작할 때 읽고, 필요할 때 원칙 전체 파일을 열어요. 영상이 말한 '색인' 방식이 이거예요.</p>
+  <p><code>attack-the-premise</code>의 공식 규칙은 영상보다 구체적이에요. '같은 전제를 공유한 수정이 두 번 이상 같은 관문에서 실패하면, 전제를 한 문장으로 적고 직접 시험한 다음에 다음 수정을 쓰라'고 해요. <code>type-system-discipline</code>은 불가능한 상태를 표현할 수 없게 만들고, 외부 데이터는 경계에서 파싱하고, 모든 경우를 빠짐없이 처리하라고 적어요.</p>
+  <p class="cite">출처: <a href="https://github.com/cursor/plugins/tree/main/pstack#principles" target="_blank" rel="noopener">pstack README — principles</a> · <a href="https://github.com/cursor/plugins/blob/main/pstack/skills/principle-attack-the-premise/SKILL.md" target="_blank" rel="noopener">principle-attack-the-premise SKILL.md</a> · <a href="https://github.com/cursor/plugins/blob/main/pstack/skills/principle-type-system-discipline/SKILL.md" target="_blank" rel="noopener">principle-type-system-discipline SKILL.md</a></p>
+</aside>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 이름과 스킬 이름이 잘못 받아적힌 곳이 있어요. 화면에 적힌 이름으로 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>P Stack, P-Stack, Piece That</td><td>pstack</td><td></td></tr>
+      <tr><td>Lauren 10</td><td>Lauren Tan</td><td>pstack 제작자, GitHub 이름은 poteto</td></tr>
+      <tr><td>Sue Power</td><td>Superpowers</td><td>Jesse Vincent의 스킬 모음</td></tr>
+      <tr><td>Superboard, Super Board</td><td>super-board</td><td>화자가 만든 스킬 모음과 사이트</td></tr>
+      <tr><td>D-slop</td><td>deslop</td><td></td></tr>
+      <tr><td>CDD skill</td><td>TDD 스킬</td><td></td></tr>
+      <tr><td>potato mode</td><td>poteto-mode</td><td>Router 스킬</td></tr>
+      <tr><td>main gaining skill</td><td>maintain skill (maintain-verification-skill)</td><td></td></tr>
+      <tr><td>co-construction safety</td><td>Code structure &amp; safety</td><td>원칙 묶음 이름</td></tr>
+      <tr><td>thermonuclear code quality review</td><td>thermo-nuclear-code-quality-review</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-6"><dt>머지<span class="en">Merge</span></dt><dd>작업 브랜치의 변경을 기준 브랜치에 합치는 일이에요. 그 사이 다른 사람이 같은 곳을 바꿨다면 충돌이 생겨요.</dd></div>
+    <div class="g" id="g-8"><dt>불가능한 상태<span class="en">Impossible states</span></dt><dd>실제로는 있을 수 없는 값 조합이에요. 결제 완료이면서 대기 중인 결제처럼요. 타입으로 이런 조합을 아예 만들 수 없게 막을 수 있어요.</dd></div>
+    <div class="g" id="g-1"><dt>브라운필드<span class="en">Brownfield project</span></dt><dd>이미 코드가 쌓여 있는 프로젝트를 말해요. 빈 땅에서 시작하는 그린필드와 달리, 기존 코드가 왜 그렇게 짜였는지부터 알아야 손댈 수 있어요.</dd></div>
+    <div class="g" id="g-7"><dt>시스템 프롬프트<span class="en">System prompt</span></dt><dd>대화 전체에 깔려 매 요청마다 모델이 읽는 지시문이에요. 길수록 매번 쓰는 토큰이 늘어요.</dd></div>
+    <div class="g" id="g-5"><dt>엔드투엔드 검증<span class="en">End-to-end verification</span></dt><dd>앱을 실제로 띄우고 사용자가 쓰듯 처음부터 끝까지 동작을 확인하는 검증이에요. 함수 하나를 보는 단위 테스트보다 준비할 게 많아요.</dd></div>
+    <div class="g" id="g-2"><dt>팬아웃<span class="en">Fan-out</span></dt><dd>한 작업을 여러 에이전트나 모델에 동시에 나눠 보내는 방식이에요. 결과를 다시 하나로 모으는 단계와 짝을 이뤄요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g" id="g-3"><dt>AI 슬롭<span class="en">AI slop</span></dt><dd>AI가 코드나 글에 습관처럼 덧붙이는 군더더기예요. 쓸데없는 주석, 의미 없는 try/catch, any 타입 같은 것들이 여기 들어가요.</dd></div>
+    <div class="g"><dt>CI</dt><dd>Continuous Integration</dd></div>
+    <div class="g"><dt>DB</dt><dd>Database</dd></div>
+    <div class="g" id="g-4"><dt>diff<span class="en">Diff</span></dt><dd>두 버전 사이에서 바뀐 줄만 모은 것이에요. 여기서는 main 브랜치와 작업 중인 브랜치의 차이를 말해요.</dd></div>
+    <div class="g"><dt>GPT</dt><dd>Generative Pre-trained Transformer</dd></div>
+    <div class="g"><dt>PR</dt><dd>Pull Request</dd></div>
+    <div class="g"><dt>TDD</dt><dd>Test-Driven Development</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=4wBVuj2an8E" target="_blank" rel="noopener">원본 영상 — Eric Tech, Pstack: How a Cursor Engineer Ships Code With AI</a></li>
+    <li id="src-2"><a href="https://github.com/cursor/plugins/tree/main/pstack" target="_blank" rel="noopener">cursor/plugins — pstack README</a></li>
+    <li id="src-3"><a href="https://github.com/cursor/plugins/tree/main/cursor-team-kit" target="_blank" rel="noopener">cursor/plugins — cursor-team-kit</a></li>
+    <li id="src-4"><a href="https://github.com/cursor/plugins/blob/main/pstack/skills/principle-attack-the-premise/SKILL.md" target="_blank" rel="noopener">pstack — principle-attack-the-premise SKILL.md</a></li>
+    <li id="src-5"><a href="https://github.com/cursor/plugins/blob/main/pstack/skills/principle-type-system-discipline/SKILL.md" target="_blank" rel="noopener">pstack — principle-type-system-discipline SKILL.md</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 20일에 이 영상을 보고 정리했어요. 원본은 Eric Tech 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

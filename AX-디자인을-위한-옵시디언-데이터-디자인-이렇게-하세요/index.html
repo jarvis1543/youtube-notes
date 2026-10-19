@@ -1,0 +1,1231 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AX 디자인을 위한 옵시디언 데이터 디자인</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>AX 디자인을 위한 옵시디언 데이터 디자인</h1>
+  <p class="lede">디자인 지식을 에이전트가 읽는 마크다운 위키로 옮기는 법을 짚어요</p>
+  <div class="meta">
+    <span>유훈식 교수 : 에이전트경험(AX)디자인</span><span class="dot">·</span>
+    <span>영상 50:15</span><span class="dot">·</span>
+    <span>읽는 데 약 31분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=JHHAooenH7w" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>디자인을 AI(Artificial Intelligence) 에이전트에게 맡기려면, 먼저 디자이너의 지식을 에이전트가 읽고 쓰는 <span class="term" data-term="LLM Wiki" data-en="LLM Wiki" data-desc="사람이 자료를 넣으면 LLM이 요약·교차 참조·갱신까지 맡아 키워 가는 마크다운 위키예요. 안드레 카파시가 2026년 4월 아이디어 파일로 공개했어요." data-g="1">LLM(Large Language Model) Wiki</span>로 옮겨야 해요.</li>
+    <li>옵시디언을 고르는 이유는 <span class="term" data-term="마크다운" data-en="Markdown" data-desc="#, * 같은 기호 몇 개로 제목·강조·목록·표를 적는 평문 문법이에요. 사람도 읽기 쉽고 LLM도 적은 토큰으로 구조를 읽어서, 영상은 이를 AI의 모국어라고 불러요." data-g="4">마크다운</span> 기본 형식, 로컬 저장, 노트 간 링크, 플러그인·웹 클리퍼·CLI(Command Line Interface) 연결이에요.</li>
+    <li>HTML(HyperText Markup Language)을 마크다운으로 바꾸면 <span class="term" data-term="토큰" data-en="Token" data-desc="LLM이 글을 잘게 나눠 처리하는 단위예요. 요금과 처리 속도, 한 번에 넣을 수 있는 양이 모두 토큰 수로 정해져요." data-g="5">토큰</span>이 평균 65%, 많게는 90%까지 줄어요. 비용·속도·정확도가 함께 좋아져요.</li>
+    <li>위키의 뼈대는 스키마·룰·인덱스·로그 네 파일이에요. 이것만 있어도 에이전트가 알아서 데이터를 관리하기 시작해요.</li>
+    <li>UX(User Experience) 지식은 철학 → 심리학 → 방법론 → 가이드 → 모델링 데이터 → 로우 데이터 여섯 층으로 쌓아요. 이 시스템을 설계하는 사람이 AX(Agent Experience) 디자이너예요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">사람이 아니라 AI를 위한 세컨드 브레인</a></li>
+    <li><a href="#s2">마크다운이 AI의 모국어인 이유</a></li>
+    <li><a href="#s3">나만 가진 로컬 데이터가 경쟁력</a></li>
+    <li><a href="#s4">링크·그래프 뷰·Bases·캔버스</a></li>
+    <li><a href="#s5">플러그인·웹 클리퍼·CLI로 에이전트와 잇기</a></li>
+    <li><a href="#s6">LLM Wiki의 뼈대, 파일 네 개</a></li>
+    <li><a href="#s7">디자인 지식을 여섯 층으로 쌓기</a></li>
+    <li><a href="#s8">UX 디자이너에서 AX 디자이너로</a></li>
+    <li><a href="#s9">채팅 질문에 답하며</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>사람이 아니라 AI를 위한 세컨드 브레인</h2>
+<p>지금까지 <span class="term" data-term="세컨드 브레인" data-en="Second Brain" data-desc="머릿속 지식과 메모를 밖에 쌓아 두고 다시 꺼내 쓰는 개인 지식 저장소예요. 이 영상은 그 관리자를 사람에서 AI로 바꾸자고 해요." data-g="2">세컨드 브레인</span>은 사람이 다시 꺼내 보려고 만들었어요. 이 세미나는 방향을 바꾸자고 해요. 이제는 AI 에이전트가 읽고 쓰고 관리하는 세컨드 브레인을 만들자는 거예요. 강연자는 AI 네이티브 조직이나 디자인 시스템을 만든다는 말이 결국 'AI가 일을 잘할 수 있는 환경을 깔아 주는 일'이라고 정리해요.</p>
+<p>출발점은 안드레 카파시의 LLM Wiki예요. 슬라이드 위쪽 설명은 카파시가 2026년 4월 GitHub gist로 이 패턴을 공개했다고 적어요. 핵심은 역할을 바꾸는 거예요. 사람은 날것의 자료를 넣고, 요약·교차 참조·최신 상태 유지 같은 장부 정리는 LLM이 맡아요. 아래 트윗 캡처에는 '코드나 앱 대신 아이디어만 공유하면 상대의 에이전트가 맞춰 만든다'는 아이디어 파일 개념이 보여요.</p>
+<figure>
+  <img src="assets/frame-0042.webp" alt="'AI 에이전트 시대, LLM Wiki 개념의 제시(안드레 카파시)' 슬라이드. 위에는 설명 문단, 아래에는 카파시 사진과 'idea file'을 소개하는 트윗 캡처">
+  <figcaption>
+    밑줄 친 마지막 문장이 요점이에요. 세컨드 브레인에서 가장 귀찮던 유지보수 노동을 에이전트에게 넘긴다는 거예요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=42s" target="_blank" rel="noopener">영상 00:42에서 보기</a>
+  </figcaption>
+</figure>
+<h3>왜 옵시디언인가요</h3>
+<p>카파시는 LLM Wiki를 소개하면서 옵시디언을 직접 언급했어요. 강연자도 옵시디언이 꼭 필요한 건 아니라고 먼저 말해요. 다만 본인을 포함해 써 본 사람 대부분이 LLM Wiki를 꾸리기에 옵시디언이 가장 잘 갖춰져 있다고 느낀다고 해요. 무료이고, 웬만한 운영체제에 다 깔려요.</p>
+<p>아래 슬라이드가 옵시디언을 한 문단으로 정리해요. 2020년 3월 30일에 처음 공개됐고, 모든 노트는 사용자가 정한 로컬 폴더인 '<span class="term" data-term="볼트" data-en="Vault" data-desc="옵시디언이 노트를 저장하는 내 컴퓨터의 폴더예요. 안에 든 건 평범한 .md 파일이라 다른 에디터나 에이전트도 그대로 열어요." data-g="3">볼트</span>'에 .md 평문 파일로 저장돼요. 오른쪽 앱 화면은 볼트 안에서 로컬 LLM과 대화하는 플러그인을 띄운 예시예요.</p>
+<figure>
+  <img src="assets/frame-0152.webp" alt="'옵시디언 개요' 슬라이드. 왼쪽에 보라색 옵시디언 로고, 오른쪽에 Your Smart Second Brain 플러그인이 열린 옵시디언 앱 화면">
+  <figcaption>
+    밑줄 친 문장처럼, 지식이 표준 포맷(마크다운)과 표준 저장소(파일)에 있어서 어떤 에이전트든 따로 연동하지 않고 바로 읽고 쓸 수 있어요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=112s" target="_blank" rel="noopener">영상 01:52에서 보기</a>
+  </figcaption>
+</figure>
+<p>공동 창업자 시다 리와 에리카 쉬는 사용자 요청을 분석하다가, 사람들이 지식을 구조화된 목록보다 서로 연결된 상태로 찾는다는 걸 봤다고 해요. 코로나 격리 기간이던 2020년, 기존 노트 도구로는 한계가 있다고 보고 연결 중심의 도구를 만들기로 했어요. 처음부터 LLM Wiki를 노린 건 아니지만, 연결을 강조한 설계가 AI 시대에 와서 에이전트에게 훨씬 자연스러운 환경이 됐다는 게 강연자의 설명이에요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>카파시의 원문은 세 층을 나눠요. 원본 자료(raw sources)는 LLM이 읽기만 하고 고치지 않아요. 위키는 LLM이 전부 맡아 써요. 스키마는 <code>CLAUDE.md</code>나 <code>AGENTS.md</code> 같은 설정 문서로, 위키 구조와 작업 규칙을 알려 줘요. 원문은 'Obsidian is the IDE; the LLM is the programmer; the wiki is the codebase'라고 비유해요. 옵시디언은 편집기, LLM은 프로그래머, 위키는 코드베이스라는 뜻이에요.</p>
+  <p class="cite">출처: <a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">Andrej Karpathy — LLM Wiki (GitHub gist)</a></p>
+</aside>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>옵시디언 공식 소개 페이지에는 시다 리가 공동 창업자 겸 CTO(Chief Technology Officer), 에리카 쉬가 공동 창업자 겸 COO(Chief Operating Officer)로 나와요. 에리카 쉬가 2020년에 자기 노트를 위해 옵시디언을 시작했다고 적혀 있어요. 지금 CEO(Chief Executive Officer)는 스테프 앙고(Steph Ango)예요.</p>
+  <p class="cite">출처: <a href="https://obsidian.md/about" target="_blank" rel="noopener">Obsidian — About</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=168s" target="_blank" rel="noopener">02:48</a>
+  <h2>마크다운이 AI의 모국어인 이유</h2>
+<p>옵시디언을 쓰는 첫 번째 이유는 마크다운이 기본 형식이라서예요. 강연자는 마크다운을 'AI 에이전트의 모국어'라고 불러요. 한글·워드·PPT(PowerPoint)·구글 독스는 사람이 보기 좋게 GUI(Graphical User Interface)로 꾸민 형식이에요. 에이전트에게는 그런 꾸밈보다 빨리 읽고 쓸 수 있는 평문이 더 맞아요.</p>
+<p>아래 슬라이드 왼쪽이 마크다운 원문, 오른쪽이 렌더링된 모습이에요. <code>#Lorem ipsum</code>은 큰 제목이 되고, 별표 두 개로 감싼 <code>**nostrud exercitation**</code>은 굵은 글씨가 되고, 세로 막대로 나눈 줄은 표가 돼요. 사람 눈에는 오른쪽처럼, AI 눈에는 왼쪽처럼 보인다고 생각하면 돼요.</p>
+<figure>
+  <img src="assets/frame-0428.webp" alt="'마크다운이란 무엇인가?' 슬라이드. 왼쪽 검은 편집기에 마크다운 원문, 오른쪽에 같은 내용이 제목·코드·표·목록으로 렌더링된 화면">
+  <figcaption>
+    원문 상태로도 구조가 한눈에 읽혀요. 사람이 읽는 문서와 기계가 파싱하는 데이터가 한 파일로 합쳐져요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=268s" target="_blank" rel="noopener">영상 04:28에서 보기</a>
+  </figcaption>
+</figure>
+<p>마크다운은 2004년에 존 그루버와 애런 스워츠가 만들었어요. 슬라이드는 그루버가 블로그 Daring Fireball에서 공개했고, 스워츠가 문법 설계에 깊이 관여했다고 적어요. 당시엔 웹 글쓰기에 HTML 태그를 손으로 쳐야 했어요. 둘은 사람이 쓰기 편하면서 기계가 읽기 좋은 문법을 만들자고 했어요. 강연자는 그게 20년 뒤 인간과 AI를 잇는 언어가 됐다고 봐요.</p>
+<figure>
+  <img src="assets/frame-0528.webp" alt="'마크다운을 만든 사람들' 슬라이드. 존 그루버와 애런 스워츠의 사진이 나란히 있고 위에 마크다운의 탄생과 CommonMark·GFM 표준화 과정을 설명한 문단">
+  <figcaption>
+    문단 중간의 CommonMark(2014)가 강연자가 말한 '2014년부터 작업하기 시작했다'는 부분이에요. 그루버가 공식 표준화를 거부해서 커뮤니티가 그 공백을 메웠어요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=328s" target="_blank" rel="noopener">영상 05:28에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>그루버의 공식 마크다운 페이지는 설계 목표를 '가능한 한 읽기 쉽게'라고 적어요. 마크다운 문서는 태그를 붙인 티가 나지 않는 평문 그대로 출판할 수 있어야 한다는 거예요. 같은 페이지의 감사 글에서 애런 스워츠의 문법 설계 피드백에 큰 공을 돌려요.</p>
+  <p class="cite">출처: <a href="https://daringfireball.net/projects/markdown/" target="_blank" rel="noopener">Daring Fireball — Markdown</a></p>
+</aside>
+<h3>정부 문서도 마크다운으로</h3>
+<p>강연자는 AI를 많이 쓰는 사람에게 한글 파일이 가장 괴롭다고 말해요. 워드나 PPT는 시간이 걸려도 AI가 읽기는 하는데, HWP(Hangul Word Processor)는 잘 못 읽어요. 아래 슬라이드에 두 기사가 있어요. 왼쪽은 국가AI전략위원회가 문서를 마크다운 형식으로 쓰겠다는 기사, 오른쪽은 공공 문서가 HWPX(Hangul Word Processor XML)로 우선 전환된다는 기사예요.</p>
+<figure>
+  <img src="assets/frame-0648.webp" alt="'마크다운을 표준으로 사용하기 시작한 AI 네이티브 시대' 슬라이드. 아래에 '국가AI전략위, 문서 작성도 AI 친화적으로…마크다운 형식 도입' 기사와 ''hwp 첨부 파일' 역사 속으로' 기사 캡처">
+  <figcaption>
+    강연자는 공공 부문은 변화가 느릴 수밖에 없지만, 회사는 지금부터 문서 표준을 마크다운으로 옮겨 가야 한다고 봐요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=408s" target="_blank" rel="noopener">영상 06:48에서 보기</a>
+  </figcaption>
+</figure>
+<h3>토큰이 줄면 비용·속도·품질이 같이 좋아져요</h3>
+<p>마크다운이 중요한 가장 실용적인 이유는 효율이에요. 이제 디자인을 직접 하지 않고 AI 에이전트에게 맡기니, 직원을 뽑듯 모델을 골라요. Opus 5 같은 상위 모델은 일을 잘하지만 비싸고 때로 느려요. 성능 차이가 크지 않은데 값이 10분의 1인 중국 모델을 쓸지 고민하는 것도 결국 비용 때문이에요. 개인은 차이가 작아도, 회사가 커지면 토큰 사용량이 엄청나게 늘어요.</p>
+<p>아래 막대그래프가 그 차이를 보여 줘요. 회색이 HTML, 보라색이 마크다운 토큰이에요. 블로그 글(Cloudflare 예시)은 16,000 토큰 가량이 3,000 남짓으로, 이커머스 페이지(SearchCans 예시)는 40,000 토큰 가량이 2,000 남짓으로 줄어요.</p>
+<figure>
+  <img src="assets/frame-0728.webp" alt="'마크다운의 핵심 장점' 슬라이드. 'Token Consumption: HTML vs Markdown (2026 Benchmarks)' 막대그래프에 블로그 글과 이커머스 페이지의 HTML·마크다운 토큰 수 비교">
+  <figcaption>
+    슬라이드 본문은 평균 65%, 최대 90% 감소라고 적고, 강연자는 말로 '거의 80%'라고 해요. 그래프 출처는 슬라이드 아래 링크의 업체 블로그예요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=448s" target="_blank" rel="noopener">영상 07:28에서 보기</a>
+  </figcaption>
+</figure>
+<p>토큰이 줄면 세 가지가 함께 좋아져요. 처리할 양이 적으니 빨라지고, 같은 <span class="term" data-term="컨텍스트 윈도우" data-en="Context window" data-desc="모델이 한 번에 읽고 기억할 수 있는 토큰의 최대치예요. 같은 내용을 적은 토큰으로 담으면 더 많은 자료를 함께 넣을 수 있어요." data-g="6">컨텍스트 윈도우</span>에 더 많은 내용을 담을 수 있어요. 의미 없는 태그가 빠지니 데이터를 더 정확히 읽어서 결과 품질도 올라가요. 그래서 강연자는 디자인 관련 데이터를 전부 마크다운으로 바꿔 관리해야 AI 네이티브 디자인이 된다고 말해요.</p>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=564s" target="_blank" rel="noopener">09:24</a>
+  <h2>나만 가진 로컬 데이터가 경쟁력</h2>
+<p>두 번째 특징은 데이터가 내 컴퓨터에 남는다는 거예요. 클로드·GPT(Generative Pre-trained Transformer)·코덱스에 자료를 올려 일하면, 프롬프트와 결과는 그 서비스 안에 흩어져요. 나중에 검색해서 다시 꺼내 쓰긴 해도 자산으로 쌓이지는 않아요.</p>
+<p>강연자는 이게 점점 더 문제가 된다고 봐요. 최고 성능 모델은 나오자마자 전 세계 누구나 큰돈 없이 써요. 디자인 결과물도 만들기 쉬워지고, AI로 쉽게 따라 할 수 있어요. 그러면 남는 건 나만의 독창성과 브랜드 가치예요. 그걸 받쳐 주는 게 남들은 갖지 않은 고유한 디자인 데이터라는 거예요.</p>
+<p>아래 슬라이드 그림이 이 주장을 한 장으로 보여 줘요. 왼쪽 회색 덩어리는 '생성형 AI(LLM)의 범용적 결과물', 가운데 톱니 장치를 거쳐 오른쪽에 색색의 보석인 '디자이너의 고유한 지식망'이 나와요. 아래 상자에는 범용 결과물이 쏟아지는 지금 디자이너의 차별점은 '나만의 고유한 관점'과 '맥락이 담긴 지식'뿐이라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-1008.webp" alt="'옵시디언의 특징(2): 로컬우선 데이터 자산화' 슬라이드. 회색 블록이 톱니 장치를 지나 여러 색 보석으로 바뀌는 그림과 '나만의 고유한 관점과 맥락이 담긴 지식'을 강조한 상자">
+  <figcaption>
+    슬라이드 본문은 볼트가 에이전트에게 'cd로 그냥 들어갈 수 있는 디렉터리'라는 점도 짚어요. 클라우드 서비스처럼 인증이나 요청 제한을 넘을 필요가 없어요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=608s" target="_blank" rel="noopener">영상 10:08에서 보기</a>
+  </figcaption>
+</figure>
+<p>슬라이드는 이 원칙을 <span class="term" data-term="로컬 우선" data-en="Local-first" data-desc="데이터를 서비스 서버가 아니라 내 기기에 먼저 저장하는 설계예요. 서비스가 사라져도 파일은 남고, 에이전트가 인증 없이 바로 접근해요." data-g="7">로컬 우선</span>이라고 불러요. 옵시디언은 기본으로 모든 데이터를 로컬에 저장해요. 돈을 내면 온라인으로 공유할 수도 있지만 기본은 로컬이에요. 개인과 회사가 이런 데이터를 꾸준히 모아야, 똑같은 에이전트 모델을 써도 우리만의 결과를 낼 수 있다는 게 이 절의 결론이에요.</p>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=690s" target="_blank" rel="noopener">11:30</a>
+  <h2>링크·그래프 뷰·Bases·캔버스</h2>
+<p>세 번째 특징은 노트 사이의 링크예요. 창업자들이 처음부터 강조한 '연결 중심'이 여기서 살아나요. 데이터를 목록이나 계층으로 나누는 것보다, 지식 하나가 주어졌을 때 그와 관련된 지식이 무엇인지 아는 게 더 중요하다는 거예요.</p>
+<p>아래 슬라이드가 두 구조를 나란히 놓아요. 왼쪽 '계층형 폴더 구조'에는 X, 오른쪽 '연결 중심 구조'에는 O가 붙어 있어요. 오른쪽 그물 그림 옆에는 제2의 뇌(Second Brain), <span class="term" data-term="백링크" data-en="Backlink" data-desc="다른 노트가 지금 노트를 가리키는 링크예요. 옵시디언은 이를 자동으로 모아 보여 줘서 링크가 양방향으로 작동해요." data-g="9">백링크</span>(양방향 링크), <span class="term" data-term="그래프 뷰" data-en="Graph view" data-desc="옵시디언에서 노트를 점으로, 링크를 선으로 그려 볼트 전체 연결을 보여 주는 화면이에요. 허브 노트와 고립된 노트가 한눈에 보여요." data-g="8">그래프 뷰</span>(Graph View) 세 가지 설명이 달려 있어요.</p>
+<figure>
+  <img src="assets/frame-1130.webp" alt="'옵시디언의 특징(3): 데이터간 링크 연결(그래프 뷰)' 슬라이드. 왼쪽에 폴더가 계단식으로 내려가는 계층형 구조, 오른쪽에 점과 선이 그물처럼 이어진 연결 중심 구조">
+  <figcaption>
+    밑줄 친 문장이 요점이에요. 사람은 그래프 뷰로 생각의 지형을 보고, 에이전트는 같은 그래프를 추론하는 길로 써요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=690s" target="_blank" rel="noopener">영상 11:30에서 보기</a>
+  </figcaption>
+</figure>
+<p>강연자는 에이전트에게 실제로 일을 시켜 보면 차이가 크다고 해요. A 문서 하나만 주고 폴더 전체 권한을 주면, 에이전트가 볼트 안에서 관련 자료를 찾아 읽어요. 관련 문서가 미리 링크로 이어져 있으니 모든 문서를 읽을 필요 없이 중요한 것부터 빨리 봐요. 효율도 결과물 품질도 좋아져요.</p>
+<p>아래는 강연자의 실제 볼트 그래프 뷰예요. 가운데 <code>USER_RESEARCH</code> 노드를 누르자 보라색 선으로 이어진 노트들만 밝아져요. 주위에 <code>SKL-usability-testing</code>, <code>SKL-empathy-map</code>, <code>SKL-user-journey-map</code>, <code>SKL-interview-guide</code>처럼 리서치 관련 스킬 노트가 모여 있어요. 왼쪽 파일 트리에는 00_시스템, 01_원천_라이브러리, 02_방법론_SKILL, 02_UX 같은 폴더가 보여요.</p>
+<figure>
+  <img src="assets/frame-1318.webp" alt="옵시디언 그래프 뷰에서 USER_RESEARCH 노드를 선택해 연결된 리서치 스킬 노트들이 보라색 선으로 강조된 화면">
+  <figcaption>
+    인덱스나 UX 핵심 파일처럼 거의 모든 노트와 이어진 허브가 있고, 리서치·여정 지도처럼 주제별로 묶인 덩어리가 있어요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=798s" target="_blank" rel="noopener">영상 13:18에서 보기</a>
+  </figcaption>
+</figure>
+<h3>Bases: 노트를 표로 모아 보기</h3>
+<p>옵시디언은 2025년 5월부터 내장 데이터베이스인 Bases를 내놨어요. 노션 데이터베이스처럼 노트를 표로 모아 걸러 보고 정렬할 수 있어요. 아래 슬라이드의 Lexicon 표는 용어 노트들을 name·definition·related_terms·pronunciation 열로 늘어놓은 예시예요.</p>
+<figure>
+  <img src="assets/frame-1354.webp" alt="'옵시디언의 특징(4): Bases — 내장 데이터베이스' 슬라이드. 아래에 COPQ, CTQ, DMAIC 같은 약어를 이름·정의·관련 용어 열로 정리한 Lexicon 표">
+  <figcaption>
+    표의 각 행은 결국 노트 하나이고, 열은 노트 머리의 속성이에요. 그래서 마크다운을 버리지 않고 구조화된 데이터를 얻어요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=834s" target="_blank" rel="noopener">영상 13:54에서 보기</a>
+  </figcaption>
+</figure>
+<p>강연자는 표 형태가 마크다운보다 에이전트가 읽기 조금 불편하다고 인정해요. 그래도 CLI로 Bases를 조작할 수 있어서, 필요하면 이런 데이터베이스 층도 함께 운영할 수 있다고 해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Bases는 1.9.0 데스크톱 얼리 액세스(2025년 5월 21일)에서 코어 플러그인으로 처음 나왔어요. 데이터는 로컬 마크다운 파일과 노트 머리의 속성에 그대로 있고, 보기 설정은 .base 파일로 저장돼요. 지금 도움말은 표 말고도 목록·카드·칸반·지도 보기를 지원한다고 적어요.</p>
+  <p class="cite">출처: <a href="https://obsidian.md/changelog/2025-05-21-desktop-v1.9.0/" target="_blank" rel="noopener">Obsidian 1.9.0 변경 기록</a> · <a href="https://obsidian.md/help/bases" target="_blank" rel="noopener">Obsidian 도움말 — Bases</a></p>
+</aside>
+<h3>캔버스: 공간에 펼쳐 놓고 생각하기</h3>
+<p>사람이 생각을 정리할 땐 캔버스도 써요. 아래 예시는 하마를 주제로 위키 문서, 하마 사진, 짧은 글 카드들을 펼쳐 놓고 선으로 이은 화면이에요. 이미지까지 포함해 무엇과 무엇이 이어지는지 보여 줄 수 있어요.</p>
+<figure>
+  <img src="assets/frame-1448.webp" alt="'옵시디언의 특징(5): 캔버스' 슬라이드. 하마 위키 문서, 하마 사진 두 장, Herbert·Henrietta라는 이름의 글 카드가 선으로 이어진 캔버스 화면">
+  <figcaption>
+    슬라이드는 캔버스가 공개된 JSON(JavaScript Object Notation) 형식으로 저장돼서, 에이전트도 배치를 읽고 직접 만들 수 있다고 덧붙여요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=888s" target="_blank" rel="noopener">영상 14:48에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>캔버스 파일 형식은 JSON Canvas라는 이름으로 공개돼 있어요. 확장자는 .canvas이고, 원래 옵시디언을 위해 만들어졌지만 MIT(Massachusetts Institute of Technology) 라이선스로 어느 앱이든 가져다 쓸 수 있어요.</p>
+  <p class="cite">출처: <a href="https://jsoncanvas.org/" target="_blank" rel="noopener">JSON Canvas</a></p>
+</aside>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=900s" target="_blank" rel="noopener">15:00</a>
+  <h2>플러그인·웹 클리퍼·CLI로 에이전트와 잇기</h2>
+<p>옵시디언의 또 다른 강점은 플러그인 생태계예요. 기본으로 깔린 코어 플러그인이 있고, 누구나 만들어 올리는 커뮤니티 플러그인이 있어요. 피그마 플러그인처럼 사람들이 직접 만들어 공유하고 내려받아 써요.</p>
+<p>아래 슬라이드 본문에는 Dataview, Templater, Excalidraw, Tasks·Kanban, Zotero 연동 같은 대표 플러그인과, 'Karpathy LLM Wiki' 플러그인·MCP(Model Context Protocol) 플러그인 같은 AI 쪽 플러그인이 나열돼 있어요. 아래 설정 창에서는 Advanced Tables, Better Word Count, Calendar, Dataview를 켜고 끌 수 있어요.</p>
+<figure>
+  <img src="assets/frame-1540.webp" alt="'옵시디언의 특징(7): 커뮤니티 플러그인' 슬라이드. 옵시디언 설정의 Community plugins 탭에 Advanced Tables, Calendar, Dataview 등이 토글과 함께 나열된 화면">
+  <figcaption>
+    끝의 밑줄 문장이 주의점이에요. 커뮤니티 플러그인은 공식 보안 감사를 받지 않으니, 특히 API(Application Programming Interface) 키를 다루는 AI 플러그인은 믿을 만한지 확인하고 써야 해요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=940s" target="_blank" rel="noopener">영상 15:40에서 보기</a>
+  </figcaption>
+</figure>
+<p>강연자도 어디까지 있는지 다 모를 정도로 많다고 해요. 그때그때 필요한 기능을 찾아 세팅하고 시험해 봐야 하지만, 그만큼 자유도가 높아요. 요즘은 <span class="term" data-term="바이브 코딩" data-en="Vibe coding" data-desc="원하는 걸 말로 설명하고 AI가 코드를 쓰게 하는 개발 방식이에요. 영상은 필요한 플러그인이나 에이전트를 이렇게 직접 만든다고 해요." data-g="11">바이브 코딩</span>으로 필요한 플러그인을 직접 만들어 쓰기도 쉬워졌어요.</p>
+<h3>웹 클리퍼로 웹 자료를 바로 담기</h3>
+<p>웹 클리퍼는 옵시디언이 만든 브라우저 확장 프로그램이에요. 웹에서 괜찮은 글을 발견하면, 그 페이지를 마크다운으로 읽어 와 볼트에 바로 넣어 줘요. 크롬 웹 스토어에서 '웹 클리퍼'로 찾으면 나와요.</p>
+<figure>
+  <img src="assets/frame-1620.webp" alt="'옵시디언 활용 도구: 웹 클리퍼(Web Clipper)' 슬라이드. 'Highlight and save the web.' 문구와 클립 모양 아이콘의 Obsidian Web Clipper 소개 이미지">
+  <figcaption>
+    슬라이드 설명은 웹 클리퍼가 페이지를 마크다운으로 바꿔 저장해서, LLM Wiki의 원천 자료를 모으는 입구가 된다고 해요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=980s" target="_blank" rel="noopener">영상 16:20에서 보기</a>
+  </figcaption>
+</figure>
+<p>강연자는 자기 브런치 글 'AX 디자인의 시작 옵시디언'을 클리핑해 보여 줘요. 확장 버튼을 누르면 페이지 내용이 마크다운으로 읽히고, 추가 버튼을 누르면 옵시디언이 열리며 글이 들어가요. 아래 화면 위쪽 경로가 <code>Clippings / AX 디자인의 시작 옵시디언</code>이에요. 웹에서 본 글이 그림까지 포함해 볼트 안 노트가 됐어요.</p>
+<figure>
+  <img src="assets/frame-1720.webp" alt="옵시디언에 클리핑된 'AX 디자인의 시작 옵시디언' 노트. 'AX 디자인을 위한 초석: LLM Wiki 디자인' 제목 아래 본문과 도식 이미지가 보이는 화면">
+  <figcaption>
+    오른쪽 아래 상태 표시줄에 1,248개 단어가 찍혀 있어요. 긴 글도 버튼 두 번으로 볼트에 들어와요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1040s" target="_blank" rel="noopener">영상 17:20에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>카파시의 LLM Wiki 원문도 옵시디언 웹 클리퍼를 '웹 기사를 마크다운으로 바꿔 주는 확장 프로그램'이라며, 원본 자료를 빨리 모으는 데 아주 쓸모 있다고 추천해요.</p>
+  <p class="cite">출처: <a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">Andrej Karpathy — LLM Wiki</a> · <a href="https://obsidian.md/clipper" target="_blank" rel="noopener">Obsidian Web Clipper</a></p>
+</aside>
+<h3>CLI로 에이전트에게 조종석 열어 주기</h3>
+<p>2026년 2월 27일에는 옵시디언 CLI가 나왔어요. 터미널 명령으로 옵시디언을 다룰 수 있게 된 거예요. 강연자가 좋다고 보는 점은 클로드 코드 같은 도구를 볼트에 연결해 쓰기 쉬워졌다는 거예요.</p>
+<figure>
+  <img src="assets/frame-1800.webp" alt="'옵시디언 활용 도구: Obsidian CLI' 슬라이드. 아래에 옵시디언 안에서 터미널을 열어 Vim 튜토리얼 화면이 실행된 모습">
+  <figcaption>
+    밑줄 문장처럼, 그동안 파일을 직접 고치는 비공식 경로만 있던 에이전트에게 공식 조종석이 생겼다는 점이 의미가 커요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1080s" target="_blank" rel="noopener">영상 18:00에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 변경 기록에서 CLI는 1.12 데스크톱 공개판(2026년 2월 27일, v1.12.4)의 새 기능 첫 줄에 올라 있어요. 도움말은 CLI를 쓰려면 1.12 설치 파일이 필요하고, 옵시디언 앱이 켜져 있어야 한다고 적어요. 설정 → 일반 → 명령줄 인터페이스에서 켜요.</p>
+  <p class="cite">출처: <a href="https://obsidian.md/changelog/2026-02-27-desktop-v1.12.4/" target="_blank" rel="noopener">Obsidian 1.12 Desktop (Public)</a> · <a href="https://obsidian.md/help/cli" target="_blank" rel="noopener">Obsidian 도움말 — CLI</a></p>
+</aside>
+<h3>강연자가 실제로 쓰는 방식</h3>
+<p>강연자는 여러 도구를 같이 써요. 하나는 VS(Visual Studio) Code에서 LLM Wiki 폴더를 열고, 클로드 코드나 코덱스 확장을 붙이는 방식이에요. 아래 화면 왼쪽 탐색기에 <code>[5] LLM WIKI</code> 폴더가 열려 있고 그 안에 .claude, .obsidian, 00_시스템, 01_원천_라이브러리가 보여요. 오른쪽 위 아이콘 두 개가 클로드와 코덱스 확장이에요.</p>
+<figure>
+  <img src="assets/frame-1920.webp" alt="VS Code 탐색기에 LLM WIKI 폴더가 열려 있고 클리핑 폴더 안에 CLP-001, CLP-002, CLP-003 마크다운 파일이 보이는 화면">
+  <figcaption>
+    옵시디언 볼트가 그냥 폴더라서 VS Code에서도 똑같이 열려요. 클리핑 노트는 <code>CLP-001</code>처럼 번호가 붙어 있어요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1160s" target="_blank" rel="noopener">영상 19:20에서 보기</a>
+  </figcaption>
+</figure>
+<p>다른 하나는 PC(Personal Computer)에 깐 클로드 앱에 폴더 권한을 주고 일을 시키는 방식이에요. 아래 화면의 요청은 '폴더 안에 있는 사용성 평가 관련 자료를 찾아서 AI 기반 온라인 사용성 평가 계획을 세우고, 컴퓨터 유즈 방식으로 크롬에서 아래 사이트를 평가하고 보고서를 작성해'예요. 아래에 Claude in Chrome이 42분째 일하는 중이라고 떠 있어요.</p>
+<figure>
+  <img src="assets/frame-2020.webp" alt="클로드 데스크톱 앱에서 'AI 디자인 사용성 평가' 대화가 열려 있고, 폴더 자료로 사용성 평가를 하라는 요청과 Claude in Chrome 사용 중 표시가 보이는 화면">
+  <figcaption>
+    위키 폴더 권한만 주면 에이전트가 그 안의 방법론 자료를 꺼내 쓰고, 브라우저 조작까지 이어서 해요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1220s" target="_blank" rel="noopener">영상 20:20에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1230s" target="_blank" rel="noopener">20:30</a>
+  <h2>LLM Wiki의 뼈대, 파일 네 개</h2>
+<p>이제 본론인 LLM Wiki 구축이에요. 강연자는 구조화가 가장 중요하다고 말해요. 정답이 있는 건 아니에요. 에이전트와 같이 일할 때 가장 효과적인 구조, 팀이라면 파일을 운영하기 좋은 구조를 써 보면서 찾아가면 돼요. 그래도 처음에 꼭 만들면 좋은 파일이 네 가지 있다고 해요. 인덱스, 로그, 룰, 스키마예요. 이 넷만 있어도 에이전트가 알아서 데이터를 관리하기 시작한대요.</p>
+<p>아래 슬라이드가 넷을 한 장에 놓아요. 칸마다 Index(전체 지도), Log(역사책), Rule(헌법), Schema(명세서)라는 별명과 한 줄 설명이 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-2110.webp" alt="'LLM Wiki를 구축할 때 가장 중요한 파일 4가지: Index, Log, Rule, Schema' 슬라이드. 지도·쌓인 블록·화살표 회로·격자 상자 그림 아래에 각각 전체 지도, 역사책, 헌법, 명세서라고 적힌 네 칸">
+  <figcaption>
+    위 문단처럼 이 네 파일은 LLM이 위키에 들어왔을 때 가장 먼저 읽는 마스터 가이드예요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1270s" target="_blank" rel="noopener">영상 21:10에서 보기</a>
+  </figcaption>
+</figure>
+<h3>스키마: 판단의 방향을 주는 철학</h3>
+<p>강연자는 스키마를 데이터 파일을 운영하는 전체 철학이라고 설명해요. 인생을 모두 규칙으로 정할 수 없듯, 위키 운영도 모든 상황을 규칙으로 못 박을 수 없어요. 처음 보는 상황에서 결정을 내리게 해 주는 건 철학과 방향성이라는 거예요. 그래서 스키마는 룰보다 큰 범위예요.</p>
+<p>그런데 화면의 슬라이드는 조금 다르게 적어요. 아래 슬라이드는 스키마를 '데이터의 구조와 틀을 정의하는 명세서'라고 설명해요. 예를 들어 '컴포넌트 리서치' 노트에는 작성일·플랫폼·상태·태그 속성이 꼭 들어가야 한다고 정해 주는 문서라는 거예요. 그림도 어지러운 메모가 <code>SCHEMA</code> 격자를 지나 Platform·Status 같은 라벨이 붙은 상자로 정리되는 모습이에요.</p>
+<figure>
+  <img src="assets/frame-2130.webp" alt="'첫 번째 파일: Schema의 역할' 슬라이드. 손글씨 메모 더미가 SCHEMA라고 적힌 격자 틀을 지나 Date, Platform: iOS, Status: Done 라벨이 붙은 정육면체들로 정리되는 그림">
+  <figcaption>
+    슬라이드의 스키마는 노트 머리의 속성과 본문 뼈대를 통일하는 틀이에요. 강연자가 말로 설명한 '철학'과는 초점이 달라요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1290s" target="_blank" rel="noopener">영상 21:30에서 보기</a>
+  </figcaption>
+</figure>
+<p>강연자가 연 실제 볼트의 <code>SCHEMA</code> 문서는 말로 한 설명 쪽이에요. 제목이 '<code>SCHEMA</code> — LLM Wiki 운영 헌법'이고, 첫 문단에 '에이전트는 이 볼트에서 작업하기 전에 이 문서를 먼저 읽는다'고 적혀 있어요. 아래 '1. 핵심 철학' 표에 원칙 다섯 개가 보여요. 지식의 복리, AI 중심 유지보수, 역추적성, 무결성(린팅), 신뢰도 모델링이에요.</p>
+<figure>
+  <img src="assets/frame-2250.webp" alt="옵시디언에서 연 'SCHEMA — LLM Wiki 운영 헌법' 문서. 원칙·의미·실천 세 열의 '핵심 철학' 표에 지식의 복리, AI 중심 유지보수, 역추적성, 무결성, 신뢰도 모델링이 적혀 있어요">
+  <figcaption>
+    무결성 줄이 강연자가 강조한 부분이에요. LLM Wiki는 파일이 많을수록 좋은 게 아니라 품질이 중요해서, 모순되거나 안 쓰는 파일을 주기적으로 정리해요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1370s" target="_blank" rel="noopener">영상 22:50에서 보기</a>
+  </figcaption>
+</figure>
+<h3>룰: 철학을 운영 규칙으로</h3>
+<p>철학이 정해지면 실제로 어떻게 운영할지 규칙을 만들어요. 에이전트가 파일을 직접 만들고 지우고 고치니, 파일에 ID(Identifier)를 어떻게 붙일지, 어떤 표식과 색을 쓸지, 특정 경우에 파일을 어떻게 다룰지를 정해 두는 거예요. 이 규칙도 사람이 다 쓰지 않아요. 큰 맥락만 프롬프트로 주고 에이전트가 스스로 만들게 해요.</p>
+<p>아래 <code>RULE</code> 문서 첫 줄이 스키마와 룰의 관계를 정확히 말해 줘요. '<code>SCHEMA</code>가 무엇을/왜라면, 이 문서는 어떻게 이름 붙이고 연결하는가를 정의한다.' 그 아래 ID 형식은 <code>{PREFIX}-{SEQ}</code>이고, 예시로 RPT-001, INT-01, ENT-llm-wiki, PER-A가 있어요. 프리픽스 표에는 <code>ART</code>(아티클), <code>CLP</code>(웹 클리핑), <code>DOC</code>(표준·논문·PDF(Portable Document Format))가 보여요.</p>
+<figure>
+  <img src="assets/frame-2330.webp" alt="옵시디언에서 연 'RULE — 제목·ID·연결 규칙' 문서. ID 체계와 형식 {PREFIX}-{SEQ}, PREFIX·유형·계층·예시 ID 열의 프리픽스 표">
+  <figcaption>
+    'ID는 불변'이라는 줄이 눈여겨볼 곳이에요. 파일 이름이 바뀌어도 <span class="term" data-term="프런트매터" data-en="Frontmatter" data-desc="마크다운 파일 맨 위에 id, status 같은 속성을 적어 두는 머리 영역이에요. Bases 표의 열과 RULE의 ID가 여기서 나와요." data-g="10">프런트매터</span>의 id는 그대로라서 링크가 끊기지 않아요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1410s" target="_blank" rel="noopener">영상 23:30에서 보기</a>
+  </figcaption>
+</figure>
+<p>정리하면 이렇게 돼요. 슬라이드와 실제 볼트에서 스키마와 룰의 별명이 서로 바뀌어 있어요. 이 문서는 강연자가 말로 설명하고 실제로 쓰는 쪽을 따라요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>파일</th><th>슬라이드의 설명</th><th>강연자의 설명과 실제 볼트</th></tr></thead>
+    <tbody>
+      <tr><td>Schema</td><td>명세서. 노트의 메타데이터와 본문 구조를 정하는 틀</td><td>운영 헌법. 무엇을·왜 하는지 정하는 철학</td></tr>
+      <tr><td>Rule</td><td>헌법. 프롬프트 엔지니어링 행동 지침</td><td>제목·ID·연결 규칙. 어떻게 이름 붙이고 잇는지</td></tr>
+      <tr><td>Index</td><td>전체 지도. 도메인과 맥락의 최단 경로</td><td>지식 지도(Map of Content). 볼트의 진입점</td></tr>
+      <tr><td>Log</td><td>역사책. 타임라인과 의사결정의 맥락</td><td>변경 이력 로그</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>인덱스: 위키 전체의 목차</h3>
+<p>파일이 1,000개, 2,000개, 3,000개로 늘면 목차가 필요해요. 인덱스는 대분류·중분류·소분류와 그 내용을 텍스트 한 장에 모아, 위키가 어떻게 생겼는지 한눈에 보여 줘요. 도서관에서 색인이 있으면 책을 빨리 찾듯, 이 지식 지도를 주면 에이전트가 데이터베이스에 빠르게 접근해요.</p>
+<p>아래 슬라이드 오른쪽 그림은 Index에서 Target Document까지 굵은 파란 길 하나로 바로 가는 'Shortest Path'를 그려요. 왼쪽 설명은 인덱스가 없으면 수백 개 노트를 전부 뒤져야 해서 연산 비용과 시간이 크게 든다고 적어요.</p>
+<figure>
+  <img src="assets/frame-2350.webp" alt="'세 번째 파일: Index의 역할' 슬라이드. Index 아이콘에서 Target Document까지 Shortest Path와 O(1) Access라고 표시된 파란 길이 이어진 그림">
+  <figcaption>
+    핵심은 제목만 늘어놓지 않고, 섹션마다 목적을 짧은 설명과 링크로 잇는 거예요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1430s" target="_blank" rel="noopener">영상 23:50에서 보기</a>
+  </figcaption>
+</figure>
+<p>실제 <code>INDEX</code> 문서 머리에는 읽는 순서가 적혀 있어요. '새로 합류한 사람/AI는 <code>SCHEMA</code>(헌법) → Rule(명명·연결 규칙) → 이 문서 순으로 읽는다. 모든 변경 이력은 log에 기록된다.' 아래 '0. 시스템 운영 파일' 목록이 네 파일을 한 줄씩 소개해요.</p>
+<figure>
+  <img src="assets/frame-2410.webp" alt="옵시디언에서 연 'INDEX — 지식 지도(Map of Content)' 문서. 볼트 진입점 설명과 SCHEMA, Rule, index, log 네 시스템 운영 파일 목록, 그 아래 '1. 계층 지도'">
+  <figcaption>
+    네 파일이 서로를 링크로 가리켜요. 에이전트가 어느 파일로 들어와도 나머지를 찾아가요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1450s" target="_blank" rel="noopener">영상 24:10에서 보기</a>
+  </figcaption>
+</figure>
+<h3>로그: 바뀐 것을 모두 남기는 기록</h3>
+<p>로그는 어떤 변경과 업데이트가 있었는지 한 파일에 쌓는 기록이에요. 어디까지 작업했는지 남길 뿐 아니라, 중간에 있었던 실수와 문제도 기억하게 해 줘요. 그래서 운영할수록 효율이 올라가요. 강연자는 로그를 남기는 방식을 아예 시스템으로 만들어 두라고 권해요.</p>
+<p>아래 슬라이드 그림에서 가로 시간선 위 세 점에 Author: Human / Purpose: Draft / Status: v1.0, Author: AI / Purpose: Refine / v1.1, Author: Human / Purpose: Pivot / v2.0 라벨이 붙어 있어요. 아래쪽 벽돌 벽이 '역사적 맥락 방어선'으로, 엉뚱한 결과물을 튕겨 내요.</p>
+<figure>
+  <img src="assets/frame-2430.webp" alt="'네 번째 파일: Log의 역할' 슬라이드. 시간선 위 세 시점에 작성자·목적·버전 라벨이 있고, 아래에 '역사적 맥락 방어선' 벽이 '엉뚱한 결과물' 화살표를 막는 그림">
+  <figcaption>
+    누가 왜 바꿨는지가 남아 있으면, 에이전트가 과거 결정을 거슬러 엉뚱한 방향으로 가는 걸 막을 수 있어요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1470s" target="_blank" rel="noopener">영상 24:30에서 보기</a>
+  </figcaption>
+</figure>
+<p>아래 그림은 강연자 볼트의 <code>INDEX</code> 문서가 알려 주는 흐름을 한 줄로 옮긴 거예요. 에이전트는 작업 전에 앞의 세 파일을 차례로 읽고, 작업한 뒤 바뀐 것을 log에 남겨요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 680 220" role="img" aria-label="SCHEMA, Rule, index를 차례로 읽고 에이전트가 작업한 뒤 log에 남기는 흐름">
+    <defs><marker id="arrow-files" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-files"></g>
+  </svg>
+  <figcaption>네 파일 중 셋은 읽는 쪽, log만 쓰는 쪽이에요. 강연자는 이 넷만 관리해도 디자인 데이터베이스 운영에 큰 도움이 된다고 해요.</figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>카파시의 원문에도 같은 뼈대가 있어요. 스키마는 <code>CLAUDE.md</code>나 <code>AGENTS.md</code> 같은 문서로, 위키 구조와 규칙과 작업 흐름을 알려 줘요. index.md는 위키 전체의 카탈로그로, 질문을 받으면 LLM이 먼저 읽고 관련 페이지로 들어가요. log.md는 언제 무엇을 했는지 덧붙이기만 하는 시간순 기록이에요. 원문은 수백 페이지 규모까지는 인덱스만으로 임베딩 기반 RAG(Retrieval-Augmented Generation) 없이도 잘 돌아간다고 해요. 강연자의 구성은 여기에 이름·연결 규칙을 따로 떼어 Rule 파일을 더한 셈이에요.</p>
+  <p class="cite">출처: <a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">Andrej Karpathy — LLM Wiki</a></p>
+</aside>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1550s" target="_blank" rel="noopener">25:50</a>
+  <h2>디자인 지식을 여섯 층으로 쌓기</h2>
+<p>디자인 작업은 결국 UX/UI, 건축, 패션 같은 어떤 도메인에 속해요. 그리고 그 도메인에는 깊은 지식이 필요해요. 강연자는 AX 디자인 시대에도 UX가 중요하다고 강조해요. 다만 이제 UX를 사람이 직접 하는 게 아니라 에이전트에게 맡기니, 에이전트가 잘하도록 지식의 구조를 잘 만들어 줘야 한다는 거예요. 상위의 철학부터 구체적인 실행 데이터까지요.</p>
+<p>아래 슬라이드의 피라미드가 그 여섯 층이에요. 꼭대기 1. 철학부터 2. 심리학, 3. 방법론, 4. 가이드, 5. 모델링 데이터, 맨 아래 6. 로우 데이터까지 내려와요. 왼쪽 아래로 향한 화살표는 '방향성 통제', 오른쪽 위로 향한 화살표는 '구체적 증명'이에요.</p>
+<figure>
+  <img src="assets/frame-2705.webp" alt="'UX/UI 디자이너를 위한 데이터 구조 설계: 철학적 단계에서 구체적 단계까지' 슬라이드. 여섯 층 피라미드 양옆에 '방향성 통제' 아래 화살표와 '구체적 증명' 위 화살표">
+  <figcaption>
+    위층은 아래층의 방향을 정하고, 아래층은 위층의 근거가 돼요. 슬라이드 왼쪽 라벨에 '5. 모델링 데이터'가 한 번 더 붙어 있는데, 층은 여섯 개예요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1625s" target="_blank" rel="noopener">영상 27:05에서 보기</a>
+  </figcaption>
+</figure>
+<p>강연자의 볼트는 이 여섯 층을 그대로 폴더로 나눠 둬요. 아래 그림은 화면에 나온 폴더 이름과 노트를 층별로 모은 거예요. 피라미드 슬라이드와 볼트 화면을 한데 놓으면, 슬라이드의 층이 실제로 어떤 파일이 되는지 보여요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 680 340" role="img" aria-label="철학, 심리학, 방법론, 가이드, 모델링 데이터, 로우 데이터 여섯 층과 각 층의 볼트 폴더 이름, 노트 예">
+    <defs><marker id="arrow-layers" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-layers"></g>
+  </svg>
+  <figcaption>층 번호가 폴더 번호와 같아요. 노트 이름의 <code>PHIL</code>·<code>SKL</code>·<code>DSN</code> 접두사는 <code>RULE</code> 문서의 ID 체계를 따른 거예요.</figcaption>
+</figure>
+<h3>1. 철학: 사용자 중심 디자인</h3>
+<p>철학 층에는 사용자 중심 디자인 같은 가치관을 넣어요. 사용자 중심 디자인이 무엇이고, 디자인할 때 왜 이걸 고려해야 하는지를 언어로 정리해 알려 줘요. 강연자는 아마존의 '고객 집착' 철학도 같은 맥락으로 넣었다고 해요. 모든 활동이 고객에게 어떻게 도움이 되는지 계속 따지는 철학이에요.</p>
+<p>아래 슬라이드 왼쪽은 나침반 그림과 함께 핵심 목적을 '근본적인 가치관과 북극성 지표 정의'라고 적어요. 오른쪽 아래 'AI 프롬프트 예시' 칸이 쓰임새를 보여 줘요. '이 시안이 겉모습만 화려한 것이 아니라, 우리의 사용자 중심 디자인 철학 본질에 부합하는가 스스로 검증해 줘.'</p>
+<figure>
+  <img src="assets/frame-2755.webp" alt="'1. 철학적 단계: 사용자 중심 디자인' 슬라이드. 왼쪽에 나침반 그림과 핵심 목적·AI 활용법, 오른쪽에 철학.md 화면과 AI 프롬프트 예시">
+  <figcaption>
+    철학 문서는 에이전트에게 '검증 엔진'이에요. 개선 방향을 물을 때 이 최상위 문서를 꼭 참조하게 해요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1675s" target="_blank" rel="noopener">영상 27:55에서 보기</a>
+  </figcaption>
+</figure>
+<p>실제 볼트의 <code>PHIL-user-centered-design</code> 문서는 이 노트가 지식 피라미드의 '최상단(헌법)'이라고 밝혀요. 아래 북극성 지표 항목에 '예뻐졌다가 아니라 쉬워졌다 / 빨라졌다 / 덜 헤맨다로 성공을 측정한다'는 줄이 있어요. 왼쪽 트리 빨간 점선 안에 <code>PHIL-amazon-customer-obsession</code>도 보여요.</p>
+<figure>
+  <img src="assets/frame-2820.webp" alt="옵시디언에서 연 'USER_CENTERED_DESIGN — 사용자 중심 디자인(철학)' 문서. 선언과 북극성 지표 절, 왼쪽 트리의 01_철학_사용자중심디자인 폴더가 빨간 점선으로 표시">
+  <figcaption>
+    첫 문단에 '어떤 인터페이스 개선·평가 요청에도 먼저 이 노트를 참조하라'는 지시가 들어 있어요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1700s" target="_blank" rel="noopener">영상 28:20에서 보기</a>
+  </figcaption>
+</figure>
+<h3>2. 심리학: UX 심리학 이론</h3>
+<p>두 번째 층은 UX 심리학이에요. 보통 UX 심리학 책이나 대학원에서 배우는 이론들이에요. 운동 제어, 의사 결정, 인지 부하, 감정, 시지각, 멘탈 모델처럼 사람이 가진 여러 심리 구조를 다뤄요. 예전엔 디자이너가 공부해서 머릿속에만 갖고 있던 것을 이제 에이전트에게도 알려 주는 거예요.</p>
+<p>아래 슬라이드 왼쪽 '개념 구조'는 UX Psychology 둘레에 Fitts, Jakob, Miller, Gestalt, Hick 다섯 법칙을 놓아요. 오른쪽 '실행 예시'는 AI가 화면 시안을 보고 '위반: 피츠의 법칙 - 타깃의 크기가 너무 작고 도달 거리가 멀어 인지적 부하 발생'이라고 짚는 모습이에요.</p>
+<figure>
+  <img src="assets/frame-2845.webp" alt="'2. 심리학적 단계: UX 심리학 이론' 슬라이드. 왼쪽에 UX Psychology를 둘러싼 Fitts, Jakob, Miller, Gestalt, Hick, 오른쪽에 와이어프레임을 본 AI가 피츠의 법칙 위반을 경고하는 그림">
+  <figcaption>
+    심리학 문서는 에이전트가 시안을 평가하거나 와이어프레임의 논리를 따질 때 쓰는 근거가 돼요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1725s" target="_blank" rel="noopener">영상 28:45에서 보기</a>
+  </figcaption>
+</figure>
+<p>볼트에서는 02_심리학_UX심리학 아래가 다시 01_운동제어_상호작용, 02_의사결정, 03_인지부하_기억, 04_경험_감정기억, 05_시지각, 06_멘탈모델_학습, 07_동기_행동으로 나뉘어 있어요. 아래 화면은 02_의사결정 안의 <span class="term" data-term="힉스의 법칙" data-en="Hick&#x27;s law" data-desc="선택지가 많고 복잡할수록 결정에 걸리는 시간이 로그 비율로 늘어난다는 UX 심리학 법칙이에요. 메뉴를 묶고 단계로 나누라는 조언의 근거예요." data-g="12">힉스의 법칙</span> 문서(<code>SKL-hicks-law</code>)예요. 정식 정의 <code>RT = a + b · log₂(n + 1)</code>과 함께 '선택지를 줄여라'가 아니라 '선택을 묶고 단계로 나눠라'가 정확한 함의라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-2910.webp" alt="옵시디언에서 연 'HICKS_LAW — 힉스의 법칙(Hick's Law)' 문서. 핵심 개념에 반응 시간 공식, 왼쪽 트리에 02_심리학_UX심리학의 하위 폴더 일곱 개가 빨간 점선으로 표시">
+  <figcaption>
+    문서 끝에 <code>SKL-millers-law</code> 링크가 있어요. 심리학 노트끼리도 서로 이어져 있어요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1750s" target="_blank" rel="noopener">영상 29:10에서 보기</a>
+  </figcaption>
+</figure>
+<p>강연자는 여기서 한 번 짚어요. 모든 이론을 다 넣을 필요는 없어요. 중요한 건 디자이너 자신이 그 내용을 이해하고, UX/UI를 설계할 때 어디서 중요한지 알고 있는 데이터로 연결하는 거예요. 개념을 모르면서 시키기만 해서는 안 된다는 거예요. 웹에서 가져올 수도 있지만, 무엇이 중요한지 로컬 맥락을 만들어 주면 에이전트가 그 중요도를 갖고 일해요.</p>
+<h3>3. 방법론: <code>SKILL.md</code>로 만들기</h3>
+<p>세 번째 층은 지금까지 해 온 UX 방법론을 스킬 마크다운으로 만드는 거예요. 강연자는 2020년부터 큰 인기를 끈 UX 라이팅도 이제는 규칙을 스킬로 정리해 언어 모델에 맡길 수 있게 됐다고 예를 들어요. 맥락 질문법(contextual inquiry), 포커스 그룹 인터뷰 같은 리서치 방법과, 어피니티 다이어그램이나 인터뷰 분석 같은 분석 방법을 모두 스킬로 가르쳐요.</p>
+<p>아래 슬라이드는 <code>SKILL.md</code> 문서가 담긴 Skill 폴더에서 세 화면(대화, 격자 UI(User Interface), 코드)으로 화살표가 뻗는 그림이에요. 위 설명은 사용자 인터뷰 진행법, 사용성 테스트 가이드라인, 휴리스틱 평가 기준, 카드 소팅 프로세스가 각각 독립적인 <code>SKILL</code> 문서가 된다고 적어요.</p>
+<figure>
+  <img src="assets/frame-3025.webp" alt="'3. 방법론적 단계: 방법론들을 SKILL md로 만들기' 슬라이드. name과 description이 적힌 SKILL.md 문서가 든 Skill 폴더에서 대화창·격자 화면·코드 창 세 개로 화살표가 이어지는 그림">
+  <figcaption>
+    <code>SKILL.md</code> 맨 위의 name과 description 두 줄이 에이전트가 이 스킬을 언제 꺼낼지 판단하는 단서예요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1825s" target="_blank" rel="noopener">영상 30:25에서 보기</a>
+  </figcaption>
+</figure>
+<p>아래 화면은 볼트의 <code>SKL-interview-analysis</code> 문서예요. 속성 칸의 purpose는 '사용자 인터뷰 원천 데이터를 실행 가능한 인사이트로 전환하는 분석 파이프라인'이고, source_method는 Contentsquare의 5단계 인터뷰 분석 프레임워크예요. 본문은 여러 건의 인터뷰 원문을 패턴·테마·인사이트로 합성하는 일을 에이전트가 일관되게 하도록 안내한다고 적어요.</p>
+<figure>
+  <img src="assets/frame-3230.webp" alt="옵시디언에서 연 SKL-interview-analysis 문서. type이 skill-master, skill_name이 Interview Analysis, source_url이 contentsquare.com 가이드로 적힌 속성 칸과 'SKILL — INTERVIEW_ANALYSIS' 본문">
+  <figcaption>
+    방법론 스킬에도 출처 링크를 달아 둬요. 모든 인사이트를 원천 발화로 되짚을 수 있게(역추적성) 하려는 거예요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1950s" target="_blank" rel="noopener">영상 32:30에서 보기</a>
+  </figcaption>
+</figure>
+<h3>4. 가이드: <code>DESIGN.md</code>로 만들기</h3>
+<p>분석한 데이터는 모델링을 거쳐 가이드라인이 돼요. 이것도 지금은 스킬 마크다운이나 디자인 마크다운으로 만들어요. 예전엔 시각 컴포넌트로만 운영했지만, 이제는 텍스트로도 디자인 규칙을 전할 수 있어요. 두 가지를 함께 주면 에이전트에게 훨씬 정확하게 알려 줄 수 있어서, 강연자는 마크다운과 함께 클로드 디자인 같은 도구도 같이 쓴다고 해요.</p>
+<p>아래 슬라이드가 그 '함께'를 보여 줘요. 왼쪽 '시각적 컴포넌트'에는 Active, Inactive, Hover 세 버튼이 있고, 오른쪽 '<code>DESIGN.md</code>'에는 같은 세 상태가 글로 적혀 있어요. 예를 들어 Hover는 '마우스 오버 시 10% 명도 증가 및 2px 그림자 적용'이에요.</p>
+<figure>
+  <img src="assets/frame-3115.webp" alt="'4. 가이드 단계: 디자인 가이드를 DESIGN md로 만들기' 슬라이드. 왼쪽에 Active, Inactive, Hover 버튼, 오른쪽에 같은 상태를 설명한 '# Button Component States' 마크다운">
+  <figcaption>
+    오른쪽 아래 설명처럼, 정리된 텍스트 가이드가 있으면 LLM이 시각 시안과 어긋나지 않는 코드 명세를 만들어요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1875s" target="_blank" rel="noopener">영상 31:15에서 보기</a>
+  </figcaption>
+</figure>
+<h3>5. 모델링 데이터: 페르소나와 여정 지도</h3>
+<p>로우 데이터를 분석하면 <span class="term" data-term="페르소나" data-en="Persona" data-desc="리서치 데이터를 바탕으로 만든 대표 사용자의 가상 인물이에요. 영상은 에이전트가 작업 내내 이 인물을 기준으로 삼는지 검수하게 하라고 해요." data-g="13">페르소나</span>, <span class="term" data-term="고객 여정 지도" data-en="Customer journey map" data-desc="고객이 서비스를 알고 쓰고 떠나기까지의 단계와 그때의 행동·감정을 한 장에 그린 지도예요. 줄여서 CJM이라고 해요." data-g="14">고객 여정 지도</span>처럼 고객에 대한 모델이 나와요. 예전엔 이게 워드·PPT·PDF로 폴더에 저장되고 끝났어요. 출력해서 팀 벽에 붙여 놓고 일했죠. 이제는 모델 자체를 에이전트에게 넣어 줘요. 그러면 '이 페르소나를 끝까지 유지하면서 작업하라'고 하고, 에이전트가 지키는지 계속 검수하게 할 수 있어요.</p>
+<p>아래 슬라이드 그림에서 위의 <code>Persona.md</code>와 <code>CJM.md</code>(여정 지도) 두 문서가, 아래 여섯 묶음의 '로우 데이터 소스(인터뷰, UT 등)'와 가는 선으로 촘촘히 이어져 있어요.</p>
+<figure>
+  <img src="assets/frame-3205.webp" alt="'5. 모델링 데이터 단계' 슬라이드. 위쪽 Persona.md와 CJM.md(여정 지도)가 아래쪽 여섯 묶음의 로우 데이터 소스와 많은 선으로 이어진 그림">
+  <figcaption>
+    모델 문서 하나가 여러 원천 자료에 기대고 있어요. 그래서 모델의 근거를 원자료까지 따라갈 수 있어요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1925s" target="_blank" rel="noopener">영상 32:05에서 보기</a>
+  </figcaption>
+</figure>
+<h3>6. 로우 데이터: 버리지 말고 쌓기</h3>
+<p>예전엔 로우 데이터를 한 번 쓰면 폴더에 버려졌어요. 에이전트는 사람보다 훨씬 많은 데이터를 빨리 읽으니 쌓아 둘수록 쓸모가 커져요. 강연자는 한 도메인의 사용자 데이터를 10년 전부터 해마다 모아 간다고 생각해 보라고 해요. 그걸 에이전트가 읽으면 동향을 분석하고 변화를 이해할 수 있어요.</p>
+<p>아래는 06_로우데이터 폴더의 <code>SKL-voc-tickets</code> 문서예요. 고객 문의·리뷰 원문을 그대로 모으는 노트이고, 메타데이터에 수집 기간 2026-06-01~06-24, 지원 티켓 312건·앱스토어 리뷰 184건·SNS(Social Network Service) 멘션 97건, 총 표본 593건이 적혀 있어요. 왼쪽 트리 빨간 점선 안에는 01_인터뷰_원천, 02_관찰_테스트_원천, 03_설문_행동_원천, 04_데스크리서치_레퍼런스가 보여요.</p>
+<figure>
+  <img src="assets/frame-3255.webp" alt="옵시디언에서 연 'VOC_TICKETS — VOC·고객문의·리뷰 원천' 문서. 수집 기간, 채널별 건수, 총 표본 593건, 수집 도구가 적힌 메타데이터와 06_로우데이터 하위 폴더 트리">
+  <figcaption>
+    원문은 고치지 않고 그대로(verbatim) 두고, 채널·날짜·감정 태그만 붙여요. 이 원문이 기회 지도와 인사이트 보고서의 근거가 돼요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=1975s" target="_blank" rel="noopener">영상 32:55에서 보기</a>
+  </figcaption>
+</figure>
+<p>이 절의 결론은 데이터가 힘인 시대라는 거예요. 개인의 디자인 역량도 중요하지만, 조직으로 보면 디자인을 위한 데이터를 얼마나 많이, 얼마나 좋은 품질로, 얼마나 우리만의 오리지널로 갖고 있느냐가 중요해졌어요. 로우 데이터까지 관리하면 프로젝트를 할 때마다 데이터가 복리로 쌓여 점점 강한 자산이 돼요.</p>
+</section>
+
+<section id="s8">
+  <a class="stamp" href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=2028s" target="_blank" rel="noopener">33:48</a>
+  <h2>UX 디자이너에서 AX 디자이너로</h2>
+<p>마무리로 강연자는 디자이너의 역할 변화를 정리해요. AI가 나오면서 한 사람이 10명, 100명 몫을 할 수 있게 됐어요. UX 디자인 하나만 하는 게 아니라 리서치, 디자인, 개발, 프로덕트 디자인, 비즈니스 모델 평가까지 한 사람이 묶어서 할 수 있어요. 그래서 한 명이 100인분을 하게 해 주는 AI 에이전트 디자인 시스템, 곧 AX 디자인이 중요해졌다는 거예요. 조직과 내 업무 시스템을 함께 바꿔야 한다고 봐요.</p>
+<p>아래 슬라이드 표는 디자인 150년을 여덟 단계로 나눠요. 맨 아래 두 줄이 지금 이야기예요. ⑦ AI디자인(2022~2025)은 촉발 기술이 생성형 AI, 디자인 단위가 '개인의 위임', 대표 도구가 미드저니·커서·v0예요. ⑧ AX디자인(2025~)은 에이전트·MCP·AGI(Artificial General Intelligence)가 촉발하고, 디자인 단위가 '조직의 전환', 대표 도구가 LLM Wiki·에이전트 OS(Operating System)·eval이에요.</p>
+<figure>
+  <img src="assets/frame-3428.webp" alt="'디자인 150년의 역사와 발전사: AX 디자인의 등장' 표. 디자인의 탄생부터 산업·시각·UX·BX/CX·프로덕트·AI·AX 디자인까지 여덟 단계를 시기, 촉발 기술, 새 병목, 디자인 단위, 대표 도구 열로 정리">
+  <figcaption>
+    '새 병목' 열을 따라 내려가면 형태 → 메시지 → 사용 흐름 → 경험 → 지시와 감별 → 판단의 시스템화로 바뀌어요. AX 단계의 병목은 사람의 판단을 시스템으로 옮기는 일이에요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=2068s" target="_blank" rel="noopener">영상 34:28에서 보기</a>
+  </figcaption>
+</figure>
+<h3>UX 인력은 많아지고, 인터페이스는 보이지 않게</h3>
+<p>강연자는 UX 디자인이 덜 중요해졌다는 게 절대 아니라고 못 박아요. 다만 산업 상황이 달라졌어요. 강연자가 20년 전 UX를 처음 했을 땐, UX 리서치를 한 번만 해 봤어도 삼성·엘지 같은 대기업이 출신 학교를 따지지 않고 바로 뽑아 갔대요. 지금은 전국 디자인 대학에 UX 과정이 있고, 코로나 시기에 인력을 대거 뽑았어요. 여기에 AI로 한 사람의 생산성이 올라갔어요.</p>
+<p>인터페이스도 눈에 보이지 않는 쪽으로 가요. 앞으로는 내가 물건을 직접 찾지 않고 에이전트에게 '이런 게 필요해'라고 하면 알아서 찾아 사 줘요. 그러면 디자인하는 대상이 AI와 AI 사이의 소통이 되고, UX의 역할도 윤리 같은 더 상위의 영역으로 옮겨 가요. 그래서 예전만큼 UX/UI 디자이너가 많이 필요하지 않고, 대신 AX 디자인 시스템을 만들 디자이너가 필요하다는 거예요.</p>
+<p>아래 슬라이드가 'UX 디자이너 → AX 디자이너'의 일을 네 칸으로 그려요. 1. 설계(브랜드 원칙, 색상·타이포, 컴포넌트, 인터랙션 기준을 데이터로 구조화), 2. AI가 이해하고 생성하도록 설계(학습 자산과 규칙·가이드를 생성형 AI에 연결), 3. 운영하고 개선(배포·피드백·분석·업데이트를 도는 순환), 그리고 결과(빠른 확장과 일관된 경험)예요.</p>
+<figure>
+  <img src="assets/frame-3648.webp" alt="'UX 디자인에서 AX 디자인으로' 슬라이드. 'UX 디자이너 → AX 디자이너' 제목 아래 설계, AI가 이해하고 생성하도록 설계, 운영하고 개선, 결과의 네 칸 흐름도">
+  <figcaption>
+    첫 칸 맨 아래 '데이터로 구조화 (Design Tokens, Schema)'가 이 세미나 전체가 말한 일이에요. AX 디자이너는 화면보다 그 화면을 만드는 데이터와 규칙을 설계해요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=2208s" target="_blank" rel="noopener">영상 36:48에서 보기</a>
+  </figcaption>
+</figure>
+<h3>첫 단계는 LLM Wiki</h3>
+<p>강연자는 AX 시스템을 만드는 여러 작업 중 가장 먼저가 LLM Wiki 시스템이라고 말해요. 프롬프트 하나를 넣어도 그게 데이터와 자산으로 기록에 남고, 그걸로 회사와 개인의 가치를 만들어 가야 한다는 거예요. 아래 '6단계 제안' 슬라이드에서도 01번이 'LLM Wiki 시스템 구축'이에요.</p>
+<figure>
+  <img src="assets/frame-3728.webp" alt="'AI 네이티브 디자인 시스템 구축 6단계 제안' 슬라이드. LLM Wiki 시스템 구축, SKILL.md, DESIGN.md, Midjourney 이미지 소스 제작, 바이브 코딩, 자율형 에이전트 운영의 여섯 카드와 '지속적인 개선과 진화' 순환 화살표">
+  <figcaption>
+    02·03번이 앞 절의 방법론(<code>SKILL.md</code>)·가이드(<code>DESIGN.md</code>) 층이에요. 06번에서 01번으로 돌아오는 화살표처럼 이 과정은 한 번으로 끝나지 않아요.
+    <a href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=2248s" target="_blank" rel="noopener">영상 37:28에서 보기</a>
+  </figcaption>
+</figure>
+<p>디자인 데이터 시스템을 설계하는 게 디자이너의 중요한 역할이고, 그걸 마크다운으로 만들어 에이전트를 붙여 쓰기 좋은 도구가 옵시디언이라는 말로 본론을 마쳐요. 아직 안 써 봤다면 오늘 설치해서 세팅해 보라고 권해요.</p>
+</section>
+
+<section id="s9">
+  <a class="stamp" href="https://www.youtube.com/watch?v=JHHAooenH7w&amp;t=2322s" target="_blank" rel="noopener">38:42</a>
+  <h2>채팅 질문에 답하며</h2>
+<p>본론 뒤에는 라이브 채팅 질문에 답해요. 이 시간 동안 화면에는 세미나 표지만 떠 있어서, 질문과 답을 표로 정리했어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>질문</th><th>강연자의 답</th></tr></thead>
+    <tbody>
+      <tr><td>UX/UI 말고 다른 디자인 분야에도 통하나요?</td><td>LLM Wiki 설계, 바이브 코딩으로 에이전트 만들기, 그래픽 요소 디자인, 자율형 에이전트 운영이라는 큰 틀은 건축이든 패션이든 같아요. 다만 지식 체계는 그 분야를 아는 사람만 만들 수 있어요. 강연자도 패션 디자인 지식은 못 만든다고 해요.</td></tr>
+      <tr><td>제조·방산·출판은요?</td><td>제조는 3D 도구를 쓰고 실제 양산·출력 과정이 있어서 조금 늦게 가요. 2D나 이미지는 빨리 바뀌는데 3D는 품질도 아직 시간이 걸려요. 그래도 데이터를 관리하고 에이전트에게 맡기는 관점의 변화는 같을 거라고 봐요.</td></tr>
+      <tr><td>AI 경험(에이전틱 익스피리언스) 디자인은 어떻게 보세요?</td><td>AI 대 AI, AI와 사람의 소통을 설계하는 일이라 중요해요. 다만 점점 눈에 안 보이는 일이 많아져서, 시각 디자이너보다 개발이나 데이터 사이언스를 했던 사람이 더 잘 맞을 수 있다고 해요. 에이전트 50개가 어떻게 일하고 어디서 에러가 났는지 한눈에 보는 전광판처럼, 에이전트가 일하는 방식을 설계하는 건 AX 디자인에 들어간다고 봐요.</td></tr>
+      <tr><td>도면 같은 자료도 LLM Wiki가 편한가요?</td><td>LLM Wiki는 마크다운 기반이라 텍스트를 빨리 읽고 쓰는 데 강해요. 요즘 모델이 이미지도 꽤 정확히 읽지만, 이미지 파일에는 큰 이점이 없어요. 텍스트와 같은 폴더에 두고 함께 운영할 수는 있어요.</td></tr>
+    </tbody>
+  </table>
+</div>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>카파시의 원문도 이미지를 따로 다뤄요. 클리핑한 글의 이미지를 로컬에 내려받아 두면 LLM이 직접 볼 수 있지만, LLM은 이미지가 섞인 마크다운을 한 번에 읽지 못한다고 해요. 글을 먼저 읽고, 참조된 이미지를 따로 보게 하는 우회 방법을 권해요. 도면 위주 자료에 이점이 적다는 강연자의 답과 같은 방향이에요.</p>
+  <p class="cite">출처: <a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">Andrej Karpathy — LLM Wiki</a></p>
+</aside>
+<h3>더 높은 품질을 위한 AI</h3>
+<p>끝으로 강연자는 디자이너의 책임을 이야기해요. 요즘 디자인은 오히려 품질이 떨어졌다고 봐요. 주변 포스터는 ChatGPT 이미지 모델로 쉽게 만든 그래픽 투성이고, 미리캔버스 같은 도구로 만든 포스터도 타이포그래피를 진지하게 고민하던 시절에 비하면 아쉬워요. 바이브 코딩이 쉬워지면서 UX 고민 없는 앱이 수백 개씩 쏟아져요.</p>
+<p>그래서 신진서 9단 이야기를 꺼내요. 10년 동안 AI와 싸우고 같이 공부한 지금의 신진서는 당시 알파고와 붙어도 이길 거라는 인터뷰였어요. 디자인도 AI에 지식을 계속 넣고 모델을 다듬어, 3년·5년·10년 뒤에는 사람이 못 하던 수준까지 올라가야 AI를 쓰는 의미가 있다고 해요. 더 멋지고, 사람에게 더 이롭고, 더 높은 품질의 디자인을 만드는 게 AI 시대 디자이너의 역할이라는 말로 라이브를 마쳐요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 이름과 영어 용어가 잘못 받아적힌 곳이 많아요. 화면의 슬라이드와 문서를 보고 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>안드레카시, 안드레 카파시</td><td>Andrej Karpathy (안드레 카파시)</td><td></td></tr>
+      <tr><td>LM 위키, LM 유키, LLM 유키, LM뮤 위키</td><td>LLM Wiki</td><td></td></tr>
+      <tr><td>옵시디어, 옵션디, 웹시전, 옵시디엄</td><td>Obsidian (옵시디언)</td><td></td></tr>
+      <tr><td>시다리</td><td>Shida Li (시다 리)</td><td>옵시디언 공동 창업자</td></tr>
+      <tr><td>에리카슈</td><td>Erica Xu (에리카 쉬)</td><td>옵시디언 공동 창업자</td></tr>
+      <tr><td>좋은 그루버, 존버</td><td>John Gruber (존 그루버)</td><td></td></tr>
+      <tr><td>에런스워츠, 에런 스위치</td><td>Aaron Swartz (애런 스워츠)</td><td></td></tr>
+      <tr><td>AA 에이전트</td><td>AI 에이전트</td><td></td></tr>
+      <tr><td>페이블 5</td><td>Fable 5 (추정)</td><td>오퍼스 5와 함께 말한 상위 모델 이름</td></tr>
+      <tr><td>오퍼스 5</td><td>Opus 5</td><td>클로드 앱 화면에 표시</td></tr>
+      <tr><td>옵션 웹 클리퍼</td><td>Obsidian Web Clipper</td><td></td></tr>
+      <tr><td>유원식 브런치</td><td>유훈식 브런치</td><td>강연자 본인의 브런치</td></tr>
+      <tr><td>난리지, 난리즈</td><td>날리지 (knowledge)</td><td></td></tr>
+      <tr><td>메서달러지, 메서로지</td><td>방법론 (methodology)</td><td></td></tr>
+      <tr><td>컨텍스트 인qu리</td><td>콘텍스추얼 인쿼리 (contextual inquiry)</td><td></td></tr>
+      <tr><td>유저 전위맵, 고객 여전 맵</td><td>사용자 여정 지도 (user journey map)</td><td></td></tr>
+      <tr><td>운동제</td><td>운동 제어</td><td>화면 폴더명 01_운동제어_상호작용</td></tr>
+      <tr><td>심리약, 심략</td><td>심리학</td><td></td></tr>
+      <tr><td>플럭 디자인</td><td>프로덕트 디자인</td><td></td></tr>
+      <tr><td>자유령 에이전트</td><td>자율형 에이전트</td><td>6단계 슬라이드의 표기</td></tr>
+      <tr><td>오픈클로</td><td>OpenClaw (추정)</td><td></td></tr>
+      <tr><td>미드 전위</td><td>Midjourney (미드저니)</td><td></td></tr>
+      <tr><td>채치에서 이미지 2.0 모델</td><td>ChatGPT 이미지 모델 (추정)</td><td></td></tr>
+      <tr><td>미리 캠버스</td><td>미리캔버스</td><td></td></tr>
+      <tr><td>정광판</td><td>전광판</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-14"><dt>고객 여정 지도<span class="en">Customer journey map</span></dt><dd>고객이 서비스를 알고 쓰고 떠나기까지의 단계와 그때의 행동·감정을 한 장에 그린 지도예요. 줄여서 CJM이라고 해요.</dd></div>
+    <div class="g" id="g-8"><dt>그래프 뷰<span class="en">Graph view</span></dt><dd>옵시디언에서 노트를 점으로, 링크를 선으로 그려 볼트 전체 연결을 보여 주는 화면이에요. 허브 노트와 고립된 노트가 한눈에 보여요.</dd></div>
+    <div class="g" id="g-7"><dt>로컬 우선<span class="en">Local-first</span></dt><dd>데이터를 서비스 서버가 아니라 내 기기에 먼저 저장하는 설계예요. 서비스가 사라져도 파일은 남고, 에이전트가 인증 없이 바로 접근해요.</dd></div>
+    <div class="g" id="g-4"><dt>마크다운<span class="en">Markdown</span></dt><dd>#, * 같은 기호 몇 개로 제목·강조·목록·표를 적는 평문 문법이에요. 사람도 읽기 쉽고 LLM도 적은 토큰으로 구조를 읽어서, 영상은 이를 AI의 모국어라고 불러요.</dd></div>
+    <div class="g" id="g-11"><dt>바이브 코딩<span class="en">Vibe coding</span></dt><dd>원하는 걸 말로 설명하고 AI가 코드를 쓰게 하는 개발 방식이에요. 영상은 필요한 플러그인이나 에이전트를 이렇게 직접 만든다고 해요.</dd></div>
+    <div class="g" id="g-9"><dt>백링크<span class="en">Backlink</span></dt><dd>다른 노트가 지금 노트를 가리키는 링크예요. 옵시디언은 이를 자동으로 모아 보여 줘서 링크가 양방향으로 작동해요.</dd></div>
+    <div class="g" id="g-3"><dt>볼트<span class="en">Vault</span></dt><dd>옵시디언이 노트를 저장하는 내 컴퓨터의 폴더예요. 안에 든 건 평범한 .md 파일이라 다른 에디터나 에이전트도 그대로 열어요.</dd></div>
+    <div class="g" id="g-2"><dt>세컨드 브레인<span class="en">Second Brain</span></dt><dd>머릿속 지식과 메모를 밖에 쌓아 두고 다시 꺼내 쓰는 개인 지식 저장소예요. 이 영상은 그 관리자를 사람에서 AI로 바꾸자고 해요.</dd></div>
+    <div class="g" id="g-6"><dt>컨텍스트 윈도우<span class="en">Context window</span></dt><dd>모델이 한 번에 읽고 기억할 수 있는 토큰의 최대치예요. 같은 내용을 적은 토큰으로 담으면 더 많은 자료를 함께 넣을 수 있어요.</dd></div>
+    <div class="g" id="g-5"><dt>토큰<span class="en">Token</span></dt><dd>LLM이 글을 잘게 나눠 처리하는 단위예요. 요금과 처리 속도, 한 번에 넣을 수 있는 양이 모두 토큰 수로 정해져요.</dd></div>
+    <div class="g" id="g-13"><dt>페르소나<span class="en">Persona</span></dt><dd>리서치 데이터를 바탕으로 만든 대표 사용자의 가상 인물이에요. 영상은 에이전트가 작업 내내 이 인물을 기준으로 삼는지 검수하게 하라고 해요.</dd></div>
+    <div class="g" id="g-10"><dt>프런트매터<span class="en">Frontmatter</span></dt><dd>마크다운 파일 맨 위에 id, status 같은 속성을 적어 두는 머리 영역이에요. Bases 표의 열과 RULE의 ID가 여기서 나와요.</dd></div>
+    <div class="g" id="g-12"><dt>힉스의 법칙<span class="en">Hick&#x27;s law</span></dt><dd>선택지가 많고 복잡할수록 결정에 걸리는 시간이 로그 비율로 늘어난다는 UX 심리학 법칙이에요. 메뉴를 묶고 단계로 나누라는 조언의 근거예요.</dd></div>
+    <div class="g"><dt>AGI</dt><dd>Artificial General Intelligence</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>AX</dt><dd>Agent Experience</dd></div>
+    <div class="g"><dt>CEO</dt><dd>Chief Executive Officer</dd></div>
+    <div class="g"><dt>CLI</dt><dd>Command Line Interface</dd></div>
+    <div class="g"><dt>COO</dt><dd>Chief Operating Officer</dd></div>
+    <div class="g"><dt>CTO</dt><dd>Chief Technology Officer</dd></div>
+    <div class="g"><dt>GPT</dt><dd>Generative Pre-trained Transformer</dd></div>
+    <div class="g"><dt>GUI</dt><dd>Graphical User Interface</dd></div>
+    <div class="g"><dt>HTML</dt><dd>HyperText Markup Language</dd></div>
+    <div class="g"><dt>HWP</dt><dd>Hangul Word Processor</dd></div>
+    <div class="g"><dt>HWPX</dt><dd>Hangul Word Processor XML</dd></div>
+    <div class="g"><dt>ID</dt><dd>Identifier</dd></div>
+    <div class="g"><dt>JSON</dt><dd>JavaScript Object Notation</dd></div>
+    <div class="g"><dt>LLM</dt><dd>Large Language Model</dd></div>
+    <div class="g" id="g-1"><dt>LLM Wiki<span class="en">LLM Wiki</span></dt><dd>사람이 자료를 넣으면 LLM이 요약·교차 참조·갱신까지 맡아 키워 가는 마크다운 위키예요. 안드레 카파시가 2026년 4월 아이디어 파일로 공개했어요.</dd></div>
+    <div class="g"><dt>MCP</dt><dd>Model Context Protocol</dd></div>
+    <div class="g"><dt>MIT</dt><dd>Massachusetts Institute of Technology</dd></div>
+    <div class="g"><dt>OS</dt><dd>Operating System</dd></div>
+    <div class="g"><dt>PC</dt><dd>Personal Computer</dd></div>
+    <div class="g"><dt>PDF</dt><dd>Portable Document Format</dd></div>
+    <div class="g"><dt>PPT</dt><dd>PowerPoint</dd></div>
+    <div class="g"><dt>RAG</dt><dd>Retrieval-Augmented Generation</dd></div>
+    <div class="g"><dt>SNS</dt><dd>Social Network Service</dd></div>
+    <div class="g"><dt>UI</dt><dd>User Interface</dd></div>
+    <div class="g"><dt>UX</dt><dd>User Experience</dd></div>
+    <div class="g"><dt>VS</dt><dd>Visual Studio</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=JHHAooenH7w" target="_blank" rel="noopener">원본 영상 — 유훈식 교수 : 에이전트경험(AX)디자인</a></li>
+    <li id="src-2"><a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">Andrej Karpathy — LLM Wiki (GitHub gist)</a></li>
+    <li id="src-3"><a href="https://obsidian.md/about" target="_blank" rel="noopener">Obsidian — About</a></li>
+    <li id="src-4"><a href="https://daringfireball.net/projects/markdown/" target="_blank" rel="noopener">Daring Fireball — Markdown</a></li>
+    <li id="src-5"><a href="https://obsidian.md/changelog/2025-05-21-desktop-v1.9.0/" target="_blank" rel="noopener">Obsidian 1.9.0 Desktop (Early access) 변경 기록</a></li>
+    <li id="src-6"><a href="https://obsidian.md/help/bases" target="_blank" rel="noopener">Obsidian 도움말 — Bases</a></li>
+    <li id="src-7"><a href="https://jsoncanvas.org/" target="_blank" rel="noopener">JSON Canvas</a></li>
+    <li id="src-8"><a href="https://obsidian.md/clipper" target="_blank" rel="noopener">Obsidian Web Clipper</a></li>
+    <li id="src-9"><a href="https://obsidian.md/changelog/2026-02-27-desktop-v1.12.4/" target="_blank" rel="noopener">Obsidian 1.12 Desktop (Public) 변경 기록</a></li>
+    <li id="src-10"><a href="https://obsidian.md/help/cli" target="_blank" rel="noopener">Obsidian 도움말 — CLI</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 20일에 2026년 8월 10일 라이브 세미나 영상을 보고 정리했어요. 원본은 유훈식 교수 : 에이전트경험(AX)디자인 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+// 직접 그린 그림: 위키 뼈대 파일 네 개(fig-files), 디자인 지식 여섯 층(fig-layers)
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+
+(() => {
+  const g = document.getElementById('fig-files');
+  if (!g) return;
+  const items = [
+    ['SCHEMA', '운영 헌법', '무엇을·왜', 'c1 cell'],
+    ['Rule', '이름·연결 규칙', '어떻게', 'c2 cell'],
+    ['index', '지식 지도', '어디에 있나', 'c3 cell'],
+    ['에이전트 작업', '생성·수정·연결', '', 'accent'],
+    ['log', '변경 이력', '언제·무엇이', 'c4 cell']
+  ];
+  const w = 118, gap = 18, y = 62, h = 96;
+  items.forEach(([name, s1, s2, cls], i) => {
+    const x = 8 + i * (w + gap);
+    g.append(el('rect', { x, y, width: w, height: h, rx: 10, class: cls }));
+    g.append(el('text', { x: x + w / 2, y: y + 36, 'text-anchor': 'middle', 'font-weight': 700 }, name));
+    g.append(el('text', { x: x + w / 2, y: y + 60, 'text-anchor': 'middle', class: 'sub' }, s1));
+    if (s2) g.append(el('text', { x: x + w / 2, y: y + 78, 'text-anchor': 'middle', class: 'sub' }, s2));
+    if (i < items.length - 1)
+      g.append(el('path', { d: `M${x + w + 2} ${y + h / 2} h${gap - 4}`, class: 'line', 'marker-end': 'url(#arrow-files)' }));
+  });
+  // 위: 작업 전에 읽는 순서
+  const left = 8, right = 8 + 3 * (w + gap) - gap;
+  g.append(el('path', { d: `M${left} 44 v-10 H${right} v10`, class: 'line' }));
+  g.append(el('text', { x: (left + right) / 2, y: 24, 'text-anchor': 'middle', class: 'sub' }, '작업 전에 이 순서로 읽어요 (index 문서의 안내)'));
+  // 아래: 작업 결과를 log에 남겨요
+  const wx = 8 + 3 * (w + gap), lx = 8 + 4 * (w + gap);
+  g.append(el('text', { x: (wx + lx + w) / 2, y: y + h + 34, 'text-anchor': 'middle', class: 'sub' }, '바뀐 것은 모두 log에 쌓아요'));
+})();
+
+(() => {
+  const g = document.getElementById('fig-layers');
+  if (!g) return;
+  const rows = [
+    ['1 철학', '01_철학_사용자중심디자인', 'PHIL-user-centered-design'],
+    ['2 심리학', '02_심리학_UX심리학', 'SKL-hicks-law'],
+    ['3 방법론', '03_방법론_SKILL', 'SKL-interview-analysis'],
+    ['4 가이드', '04_가이드_DESIGN', 'DSN-color-system'],
+    ['5 모델링 데이터', '05_모델링데이터', 'SKL-persona-template'],
+    ['6 로우 데이터', '06_로우데이터', 'SKL-voc-tickets']
+  ];
+  const top = 40, rh = 44, step = 50;
+  g.append(el('text', { x: 125, y: 24, 'text-anchor': 'middle', class: 'sub' }, '층'));
+  g.append(el('text', { x: 222, y: 24, class: 'sub' }, '강연자 볼트의 폴더 (02_UX 아래)'));
+  g.append(el('text', { x: 452, y: 24, class: 'sub' }, '화면에 나온 노트 예'));
+  rows.forEach(([name, folder, note], i) => {
+    const y = top + i * step;
+    g.append(el('rect', { x: 50, y, width: 150, height: rh, rx: 8, class: `c${i + 1} cell` }));
+    g.append(el('text', { x: 125, y: y + 27, 'text-anchor': 'middle', 'font-weight': 700 }, name));
+    g.append(el('rect', { x: 210, y, width: 460, height: rh, rx: 8, class: 'box' }));
+    g.append(el('text', { x: 222, y: y + 27, class: 'mono' }, folder));
+    g.append(el('text', { x: 452, y: y + 27, class: 'mono' }, note));
+  });
+  const bottom = top + 5 * step + rh;
+  g.append(el('path', { d: `M16 ${top} V${bottom}`, class: 'line', 'marker-end': 'url(#arrow-layers)' }));
+  g.append(el('path', { d: `M36 ${bottom} V${top}`, class: 'line', 'marker-end': 'url(#arrow-layers)' }));
+  g.append(el('text', { x: 10, y: top + 150, 'text-anchor': 'middle', class: 'sub', transform: `rotate(-90 10 ${top + 150})` }, '방향을 정해요'));
+  g.append(el('text', { x: 30, y: top + 150, 'text-anchor': 'middle', class: 'sub', transform: `rotate(-90 30 ${top + 150})` }, '근거를 대요'));
+})();
+</script>
+</body>
+</html>

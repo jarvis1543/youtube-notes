@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>내가 요즘 가장 좋아하는 러스트 크레이트, Rig</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>내가 요즘 가장 좋아하는 러스트 크레이트, Rig</h1>
+  <p class="lede">요청 한 번에서 도구, MCP, RAG, 파이프라인까지 예제 코드로 따라가요</p>
+  <div class="meta">
+    <span>Code to the Moon</span><span class="dot">·</span>
+    <span>영상 08:21</span><span class="dot">·</span>
+    <span>읽는 데 약 12분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=9L9oOmqD6zc" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>Rig는 러스트에서 LLM(Large Language Model) 제공자 API(Application Programming Interface)를 쓰는 <span class="term" data-term="크레이트" data-en="Crate" data-desc="러스트의 패키지 단위예요. crates.io에 올라가고 Cargo로 받아 써요. 다른 언어의 라이브러리 패키지에 해당해요." data-g="1">크레이트</span>예요. 발표자는 API가 짧고 개발이 꾸준해서 좋은 출발점이라고 봐요.</li>
+    <li><code>completion_model</code>은 요청 한 번, <code>agent</code>는 <span class="term" data-term="도구" data-en="Tool" data-desc="모델이 부를 수 있게 앱이 내놓는 함수예요. 모델은 이름과 인자만 정해서 부르고, 실제 실행은 앱이 해요." data-g="4">도구</span>와 문맥을 붙일 수 있는 <span class="term" data-term="에이전트" data-en="Agent" data-desc="모델에 역할, 도구, 문맥을 묶어 둔 객체예요. 필요하면 모델이 도구를 불러 가며 여러 번 오간 끝에 답을 내요." data-g="3">에이전트</span>예요.</li>
+    <li>모델이 도구를 부르면 Rig가 실행하고 결과를 다시 보내는 왕복을 대신 처리해요. 개발자는 최종 답만 받아요.</li>
+    <li>MCP(Model Context Protocol) 도구는 <code>rmcp</code> 연동으로, RAG(Retrieval-Augmented Generation)는 <span class="term" data-term="임베딩" data-en="Embedding" data-desc="글의 의미를 숫자 배열(벡터)로 바꾼 거예요. 뜻이 비슷한 글끼리는 벡터도 가까워서, 단어가 달라도 의미로 찾을 수 있어요." data-g="6">임베딩</span> → <span class="term" data-term="벡터 스토어" data-en="Vector store" data-desc="임베딩을 저장해 두고 질문 벡터와 가까운 것을 찾아 주는 저장소예요. 메모리 안에 둘 수도 있고 Qdrant 같은 전용 데이터베이스를 쓸 수도 있어요." data-g="7">벡터 스토어</span> → <code>dynamic_context</code>로 몇 줄이면 붙어요.</li>
+    <li>모델 판단 없이 단계를 고정하려면 파이프라인을 써요. 다만 지금 Rig는 1.0 전이라 영상 속 API 일부가 바뀌거나 빠졌어요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">요청 한 번에서 에이전트까지</a></li>
+    <li><a href="#s2">도구: 모델이 모르는 걸 가져오기</a></li>
+    <li><a href="#s3">MCP: 남이 만든 도구 빌려 쓰기</a></li>
+    <li><a href="#s4">임베딩과 RAG</a></li>
+    <li><a href="#s5">파이프라인, 그리고 Rig를 고를 이유</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>요청 한 번에서 에이전트까지</h2>
+<p>Rig는 언어 모델 제공자의 API를 러스트에서 쓰게 해 주는 크레이트예요. OpenAI 같은 호스팅 모델뿐 아니라 Ollama도 지원해서, 내 컴퓨터에서 도는 로컬 모델을 쓸 때도 그대로 쓸 수 있어요.</p>
+
+<h3>요청 한 번 보내기</h3>
+<p>첫 예제는 가장 단순한 <span class="term" data-term="추론 요청" data-en="Inference request" data-desc="학습된 모델에 입력을 주고 답을 받아 오는 호출이에요. 여기서는 프롬프트를 보내 텍스트를 받는 API 요청 한 번을 말해요." data-g="2">추론 요청</span>이에요. 코드는 네 줄 흐름이에요. 맨 위에서 환경 변수로 OpenAI 클라이언트를 만들고, <code>completion_model</code>로 모델을 꺼내요. 가운데 <code>completion_request("is there love in space?")</code>의 문자열이 프롬프트이고, 그 아래 <code>preamble</code>이 모델에게 맡길 역할이에요. 마지막 줄에서 <code>completion(request).await</code>로 보내요.</p>
+<figure>
+  <img src="assets/frame-0024.webp" alt="openai Client를 from_env로 만들고 completion_model, completion_request, preamble, build, completion 순서로 요청을 보내는 러스트 코드">
+  <figcaption>
+    프롬프트와 역할을 빌더로 붙여서 보내요. 발표자는 이 정도만 할 거면 Rig가 없어도 된다고 인정해요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=24s" target="_blank" rel="noopener">영상 00:24에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>에이전트로 바꾸기</h3>
+<p>같은 클라이언트에서 <code>agent</code>를 만들면 에이전트가 돼요. 아래 코드는 앞 예제와 똑같은 일을 해요. 다른 점은 모델 위에 <code>preamble</code>을 바로 붙이고, <code>agent.prompt(...)</code> 한 줄로 묻는다는 거예요. 겉보기엔 비슷하지만 에이전트에는 뒤에서 볼 도구와 문맥을 붙일 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0040.webp" alt="client.agent(openai::GPT_5_1)에 preamble을 붙여 build하고 agent.prompt로 질문하는 러스트 코드">
+  <figcaption>
+    이 뒤로 나오는 기능은 전부 이 <code>agent</code> 빌더에 한 줄씩 더하는 방식이에요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=40s" target="_blank" rel="noopener">영상 00:40에서 보기</a>
+  </figcaption>
+</figure>
+
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>꺼내는 것</th><th>묻는 방법</th><th>더 붙일 수 있는 것</th></tr></thead>
+    <tbody>
+      <tr><td><code>completion_model</code></td><td><code>completion_request</code>로 요청을 만들어 보내기</td><td>프롬프트와 역할 정도</td></tr>
+      <tr><td><code>agent</code></td><td><code>prompt</code> 한 줄</td><td>도구, MCP 도구, 동적 문맥(RAG)</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=54s" target="_blank" rel="noopener">00:54</a>
+  <h2>도구: 모델이 모르는 걸 가져오기</h2>
+<p>"내일 로스앤젤레스 날씨에 맞는 활동 세 가지는?" 같은 질문을 생각해 봐요. 모델은 학습 데이터로 인기 있는 활동은 알지만 내일 날씨는 몰라요. 그래서 날씨를 가져올 방법이 필요하고, 그게 도구예요. 도구로 웹 검색, 계산, 일기 예보 조회를 시킬 수 있고 실제 행동까지 맡길 수도 있어요.</p>
+<p>발표자는 '행동을 맡기는 게 좋은 생각 같죠?'라고 비꼬면서, AI(Artificial Intelligence) 에이전트가 회사 데이터베이스를 통째로 지웠다는 기사를 잠깐 띄워요. 도구는 강력한 만큼 무엇을 맡길지 조심해야 한다는 뜻이에요.</p>
+
+<h3>에이전트에 도구 붙이기</h3>
+<p>코드는 앞의 에이전트에 <code>.tool(WeatherForecastTool)</code> 한 줄만 더했어요. 프롬프트도 날씨 질문으로 바뀌었고요.</p>
+<figure>
+  <img src="assets/frame-0106.webp" alt="agent 빌더에 .tool(WeatherForecastTool)을 추가하고 로스앤젤레스 내일 날씨에 맞는 활동 세 가지를 묻는 러스트 코드">
+  <figcaption>
+    도구를 넘기는 건 빌더 한 줄이에요. 도구를 언제 부를지는 모델이 정해요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=66s" target="_blank" rel="noopener">영상 01:06에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>도구 호출이 오가는 순서</h3>
+<p>발표자는 Host(내 앱)와 Provider(모델 제공자) 사이를 오가는 메시지를 순서대로 그려요. 위에서부터 읽으면 돼요. 시스템 메시지와 함께 사용자 질문과 쓸 수 있는 도구 목록 <code>weather-forecast</code>가 가요. 모델은 답 대신 <code>weather-forecast(zipcode: "90001")</code> 호출을 돌려줘요. 앱이 도구를 실행해 <code>ToolResult</code>로 "Sunny, 80°F"를 보내면, 모델이 마지막 줄에서 그 결과로 답을 써요.</p>
+<figure>
+  <img src="assets/frame-0136.webp" alt="Host와 Provider 사이에 System, User와 도구 목록, Assistant의 도구 호출, ToolResult, Assistant의 최종 답이 화살표로 오가는 시퀀스 다이어그램">
+  <figcaption>
+    모델은 도구를 직접 실행하지 않아요. 부르겠다고 말할 뿐이고, 실행은 앱이 해요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=96s" target="_blank" rel="noopener">영상 01:36에서 보기</a>
+  </figcaption>
+</figure>
+<p>Rig가 여기서 해 주는 일이 핵심이에요. 모델이 도구를 부르면 Rig가 도구 로직을 실행하고, 결과를 담아 다시 모델에게 물어요. 그래서 중간 왕복은 코드에 드러나지 않고 개발자는 최종 답만 받아요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 720 190" role="img" aria-label="개발자 코드의 prompt 호출 뒤에 도구 알려 주기, 모델의 도구 호출, 도구 실행을 Rig가 처리하고 개발자는 최종 답만 받는 흐름">
+    <defs><marker id="arrow-tool" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="65" y="40" text-anchor="middle" class="sub">개발자 코드</text>
+    <rect x="10" y="60" width="110" height="70" rx="10" class="box"/>
+    <text x="65" y="92" text-anchor="middle" class="mono">prompt(…)</text>
+    <text x="65" y="112" text-anchor="middle" class="sub">질문 한 줄</text>
+    <rect x="132" y="48" width="430" height="94" rx="12" class="ring"/>
+    <text x="347" y="40" text-anchor="middle">Rig가 대신 처리</text>
+    <rect x="140" y="60" width="130" height="70" rx="10" class="accent"/>
+    <text x="205" y="90" text-anchor="middle">① 도구 알려 주기</text>
+    <text x="205" y="112" text-anchor="middle" class="sub">질문 + 도구 목록</text>
+    <rect x="285" y="60" width="130" height="70" rx="10" class="accent"/>
+    <text x="350" y="90" text-anchor="middle">② 모델의 도구 호출</text>
+    <text x="350" y="112" text-anchor="middle" class="sub">날씨 도구를 부름</text>
+    <rect x="430" y="60" width="125" height="70" rx="10" class="accent"/>
+    <text x="492" y="90" text-anchor="middle">③ 도구 실행</text>
+    <text x="492" y="112" text-anchor="middle" class="sub">결과 담아 재요청</text>
+    <text x="640" y="40" text-anchor="middle" class="sub">개발자가 받는 것</text>
+    <rect x="575" y="60" width="130" height="70" rx="10" class="ok"/>
+    <text x="640" y="90" text-anchor="middle">④ 최종 답</text>
+    <text x="640" y="112" text-anchor="middle" class="sub">비 예보 → 실내 활동</text>
+    <path d="M121 95 h17" class="line" marker-end="url(#arrow-tool)"/>
+    <path d="M271 95 h12" class="line" marker-end="url(#arrow-tool)"/>
+    <path d="M416 95 h12" class="line" marker-end="url(#arrow-tool)"/>
+    <path d="M556 95 h17" class="line" marker-end="url(#arrow-tool)"/>
+    <text x="347" y="168" text-anchor="middle" class="sub">모델이 도구를 여러 번 부르면 ②와 ③이 반복돼요</text>
+  </svg>
+  <figcaption>점선 안의 세 단계가 코드에서 사라져요. 개발자 눈에는 질문과 최종 답만 남아요.</figcaption>
+</figure>
+
+<h3>도구를 직접 만들기</h3>
+<p>도구는 <code>Tool</code> <span class="term" data-term="트레이트" data-en="Trait" data-desc="러스트에서 타입이 갖춰야 할 메서드 묶음을 정한 것이에요. 다른 언어의 인터페이스와 비슷해요. Rig는 Tool, Embed 같은 트레이트로 확장점을 열어 둬요." data-g="5">트레이트</span>를 구현한 타입이에요. 아래 뼈대처럼 메서드가 두 개 있어요. <code>definition</code>은 모델에게 이 도구를 어떻게 쓰는지 알려 주고, <code>call</code>은 모델이 도구를 부를 때 실제로 도는 로직이에요.</p>
+<figure>
+  <img src="assets/frame-0206.webp" alt="struct WeatherForecastTool과 impl Tool for WeatherForecastTool 안에 async fn definition과 async fn call 두 메서드의 빈 뼈대가 있는 코드">
+  <figcaption>
+    <code>definition</code>이 설명서, <code>call</code>이 실제 일이에요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=126s" target="_blank" rel="noopener">영상 02:06에서 보기</a>
+  </figcaption>
+</figure>
+<p>예제의 <code>call</code>은 진짜 예보를 가져오지 않아요. 우편번호가 실제로 있는지만 확인하고, "Sunny", "Rainy", "Cloudy", "Meatballs"처럼 7일치 날씨를 코드에 박아 돌려줘요. 두 번째 칸이 "Rainy"라서 내일은 항상 비예요.</p>
+<figure>
+  <img src="assets/frame-0214.webp" alt="call 메서드가 is_real로 우편번호를 확인한 뒤 Sunny, Rainy, Cloudy, Meatballs, Sunny, Snow, Sunny 일곱 개 값을 Ok로 돌려주고, 아니면 InvalidLocation 오류를 내는 코드">
+  <figcaption>
+    일부러 엉터리 예보를 넣어서, 모델이 정말 도구 결과를 쓰는지 확인할 수 있어요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=134s" target="_blank" rel="noopener">영상 02:14에서 보기</a>
+  </figcaption>
+</figure>
+<p>실행 결과 첫 줄에 "Tomorrow's forecast: Rainy"가 나와요. 모델이 스스로 날씨 도구를 불렀다는 증거예요. 그래서 박물관(The Broad, LACMA(Los Angeles County Museum of Art)), 역사 있는 극장, 지붕이 덮인 Grand Central Market처럼 실내 활동만 추천했어요. 발표자는 웅덩이에서 첨벙거리는 걸 얼마나 좋아하는지 알려 주지 않은 게 아쉽다고 농담해요.</p>
+<figure>
+  <img src="assets/frame-0236.webp" alt="Program Output 화면. 내일 예보가 비라는 줄 아래 박물관 방문, 역사 있는 극장에서 영화 보기, Grand Central Market 둘러보기 세 가지 추천">
+  <figcaption>
+    세 추천이 모두 비를 피하는 활동이에요. 도구 결과가 답에 반영됐어요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=156s" target="_blank" rel="noopener">영상 02:36에서 보기</a>
+  </figcaption>
+</figure>
+
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>지금 Rig 저장소의 이전 안내(MIGRATING.md)를 보면, 0.39에서 0.40으로 넘어갈 때 <code>Tool::definition(prompt)</code>가 없어졌어요. 대신 도구 작성자가 <code>description()</code>과 <code>parameters()</code>를 직접 구현해요. 최신 버전으로 따라 하면 영상의 <code>definition</code> 코드는 컴파일되지 않을 수 있어요.</p>
+  <p class="cite">출처: <a href="https://github.com/0xPlaygrounds/rig/blob/main/MIGRATING.md" target="_blank" rel="noopener">0xPlaygrounds/rig — MIGRATING.md</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=160s" target="_blank" rel="noopener">02:40</a>
+  <h2>MCP: 남이 만든 도구 빌려 쓰기</h2>
+<p>MCP는 외부 제공자가 내놓은 도구를 찾아서 쓰게 해 줘요. 앞에서처럼 도구를 내 앱에서 정의하고 실행하는 대신, 그 일을 다른 제공자에게 맡기는 거예요.</p>
+<p>발표자가 띄운 MCP 공식 사이트 그림은 MCP를 AI 앱의 USB-C 포트에 비유해요. 왼쪽에 채팅 앱(Claude Desktop, LibreChat), 코드 편집기(Claude Code, Goose) 같은 AI 앱이 있고, 오른쪽에 데이터베이스와 파일(PostgreSQL, SQLite, GDrive), 개발 도구(Git, Sentry), 생산성 도구(Slack, Google Maps)가 있어요. 가운데 MCP 칸 하나가 양쪽을 이어요.</p>
+<figure>
+  <img src="assets/frame-0244.webp" alt="MCP를 USB-C 포트에 비유하는 문장 아래, 왼쪽 AI 앱 세 묶음과 오른쪽 데이터·개발·생산성 도구 세 묶음이 가운데 MCP 표준 프로토콜 상자로 연결된 그림">
+  <figcaption>
+    앱마다 도구를 따로 붙이지 않고, 표준 하나로 꽂아 쓰는 구조예요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=164s" target="_blank" rel="noopener">영상 02:44에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상은 실제 제공자로 두 곳을 들어요. Twelve Data는 주식 시세를 가져오는 MCP 연동을, Hugging Face는 모델 저장소 검색 같은 MCP 연동을 제공해요. 아래 Hugging Face 설정 화면에는 HuggingChat, VSCode, Cursor, Claude Code처럼 이 MCP 서버를 붙일 수 있는 도구 목록이 보여요. 발표자는 이 분야가 아직 초기 단계라고 봐요.</p>
+<figure>
+  <img src="assets/frame-0304.webp" alt="Hugging Face 설정의 MCP Server 페이지. Setup with your AI assistant 아래 HuggingChat, VSCode, Cursor, ChatGPT, Codex, Gemini CLI, Claude, Claude Code, LM Studio 선택지">
+  <figcaption>
+    MCP 서버 하나를 여러 AI 도구가 같이 쓸 수 있어요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=184s" target="_blank" rel="noopener">영상 03:04에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>Rig에서 MCP 도구 쓰기</h3>
+<p>러스트에서 MCP 제공자와 연결하는 건 <code>rmcp</code> 크레이트예요. README 첫 줄이 'tokio 비동기 런타임 위에 만든 공식 러스트 MCP SDK'라고 소개해요. 배지를 보면 crates.io 버전이 v1.0.0-alpha예요.</p>
+<figure>
+  <img src="assets/frame-0312.webp" alt="RMCP README. crates.io v1.0.0-alpha, docs passing, CI passing, Apache-2.0 라이선스 배지와 An official Rust Model Context Protocol SDK implementation with tokio async runtime 설명">
+  <figcaption>
+    Rig가 MCP를 직접 구현하지 않고 이 공식 SDK(Software Development Kit)에 기대요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=192s" target="_blank" rel="noopener">영상 03:12에서 보기</a>
+  </figcaption>
+</figure>
+<p>Rig는 <code>rmcp</code>와 연동돼서, 에이전트를 만들 때 <code>.rmcp_tools(tools, peer)</code>만 부르면 MCP 도구가 붙어요.</p>
+<figure>
+  <img src="assets/frame-0321.webp" alt="agent 빌더에 GPT_5_2 모델, default_max_turns(32), preamble, rmcp_tools(tools, peer)를 차례로 붙이는 러스트 코드">
+  <figcaption>
+    직접 만든 도구의 <code>.tool(...)</code> 자리에 <code>.rmcp_tools(...)</code>가 들어간 모양이에요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=201s" target="_blank" rel="noopener">영상 03:21에서 보기</a>
+  </figcaption>
+</figure>
+
+<div class="table-scroll">
+  <table>
+    <thead><tr><th></th><th>직접 만든 도구</th><th>MCP 도구</th></tr></thead>
+    <tbody>
+      <tr><td>정의하는 곳</td><td>내 코드의 <code>Tool</code> 구현</td><td>외부 제공자</td></tr>
+      <tr><td>실행하는 곳</td><td>내 앱</td><td>외부 제공자</td></tr>
+      <tr><td>Rig에 붙이는 법</td><td><code>.tool(WeatherForecastTool)</code></td><td><code>.rmcp_tools(tools, peer)</code></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>지금 Rig에서는 MCP 연동이 별도 크레이트 <code>rig-rmcp</code>로 나왔어요. MIGRATING.md의 0.42 → 0.43 항목에 따르면 <code>AgentBuilder::rmcp_tools</code>는 없어졌어요. MCP 도구를 <code>DynamicTool</code>로 바꿔 등록하거나 <code>McpClientHandler</code>를 쓰는 방식이에요.</p>
+  <p class="cite">출처: <a href="https://github.com/0xPlaygrounds/rig/blob/main/MIGRATING.md" target="_blank" rel="noopener">0xPlaygrounds/rig — MIGRATING.md</a> · <a href="https://github.com/0xPlaygrounds/rig/tree/main/crates/rig-rmcp" target="_blank" rel="noopener">rig-rmcp README</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=205s" target="_blank" rel="noopener">03:25</a>
+  <h2>임베딩과 RAG</h2>
+<h3>임베딩: 문장의 뜻을 숫자로</h3>
+<p>임베딩은 글의 의미를 숫자로 나타낸 거예요. 슬라이드에는 "The Moon is a cube", "Dark matter is spacetime", "The sky is green" 세 문장마다 아래에 <code>[-0.03, 0.01, …]</code> 같은 숫자 배열이 붙어 있어요. 이 숫자끼리 비교하면 문장의 뜻이 얼마나 가까운지 잴 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0329.webp" alt="세 문장 The Moon is a cube, Dark matter is spacetime, The sky is green 아래에 각각 소수 배열이 적힌 슬라이드">
+  <figcaption>
+    일부러 엉터리 문장을 썼어요. 모델이 원래 아는 내용과 구별하기 쉽게 하려는 거예요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=209s" target="_blank" rel="noopener">영상 03:29에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>지식 베이스를 통째로 넣으면 안 되는 이유</h3>
+<p>회사에 모델 답변에 도움이 될 사내 지식 베이스가 있다고 해 봐요. 가장 무식한 방법은 질문마다 지식 베이스 전체를 붙이는 거예요. 슬라이드는 지식 베이스 세 줄 아래에 "What shape are celestial bodies?"라는 프롬프트를 붙이고, 그 위에 금지 표시를 그렸어요.</p>
+<figure>
+  <img src="assets/frame-0353.webp" alt="지식 베이스 세 문장과 Prompt 줄의 What shape are celestial bodies? 옆에 빨간 금지 표시가 있는 슬라이드">
+  <figcaption>
+    문서 전체를 프롬프트 앞에 붙이는 방식에 금지 표시가 붙어 있어요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=233s" target="_blank" rel="noopener">영상 03:53에서 보기</a>
+  </figcaption>
+</figure>
+<p>이유는 두 가지예요. 하나는 <span class="term" data-term="컨텍스트 윈도우" data-en="Context window" data-desc="모델이 한 번에 입력으로 받을 수 있는 최대 길이예요. 이걸 넘는 문서는 통째로 넣을 수 없어서 골라 넣는 방법이 필요해요." data-g="9">컨텍스트 윈도우</span>가 유한하다는 거예요. 발표자는 '적어도 지금은'이라고 덧붙여요. 다른 하나는 입력이 길어질수록 모델의 정확도가 떨어지는 경향이 있다는 거예요.</p>
+
+<h3>RAG: 관련된 것만 골라 넣기</h3>
+<p>그래서 흔히 쓰는 해법이 RAG예요. 모델이 학습하지 못한 정보 중에서 질문과 관련된 부분만 찾아 프롬프트에 넣어요. 발표자가 띄운 Qdrant 문서 그림이 흐름을 보여 줘요. 위의 질문("지난달 예산을 지켰나?")으로 지식 베이스에서 관련 지식을 찾고, 둘을 함께 LLM에 넣어 아래의 답을 만들어요.</p>
+<figure>
+  <img src="assets/frame-0507.webp" alt="Qdrant 문서의 RAG 그림. Question에서 Knowledge base를 거쳐 Relevant knowledge가 나오고, 질문과 함께 LLM으로 들어가 Augmented Generation을 거쳐 Answer가 나오는 흐름">
+  <figcaption>
+    검색(Retrieval)이 생성(Generation) 앞에 하나 더 붙은 구조예요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=307s" target="_blank" rel="noopener">영상 05:07에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>Rig로 시맨틱 검색하기</h3>
+<p>Rig는 <span class="term" data-term="시맨틱 검색" data-en="Semantic search" data-desc="글자 일치가 아니라 의미가 가까운 문서를 찾는 검색이에요. 질문과 문서의 임베딩을 비교해 점수를 매겨요." data-g="8">시맨틱 검색</span>과 RAG 둘 다 짧은 API로 지원해요. 첫 화면 코드를 위에서부터 읽으면 이래요. 클라이언트에서 <code>embedding_model</code>로 임베딩 모델(<code>TEXT_EMBEDDING_3_SMALL</code>)을 꺼내요. 다음으로 <code>EmbeddingsBuilder</code>에 문서 세 개를 넣어 임베딩을 만들어요. 마지막 줄에서 그 결과를 <code>InMemoryVectorStore</code>에 넘겨요.</p>
+<figure>
+  <img src="assets/frame-0537.webp" alt="embedding_model로 TEXT_EMBEDDING_3_SMALL을 꺼내고 EmbeddingsBuilder의 documents에 문장 세 개를 넣어 build한 뒤 InMemoryVectorStore::from_documents에 넘기는 코드">
+  <figcaption>
+    문서는 <code>Embed</code> 트레이트만 구현하면 뭐든 돼요. 예제에서는 그냥 문자열이에요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=337s" target="_blank" rel="noopener">영상 05:37에서 보기</a>
+  </figcaption>
+</figure>
+<p>예제의 벡터 스토어는 메모리 안에 있지만 외부 벡터 데이터베이스로 바꿀 수도 있어요. 발표자는 Qdrant를 예로 들어요. 다음 코드는 스토어에서 인덱스를 꺼내 바로 질의해요. <code>query</code>에 "What shape are celestial bodies more than 2000 miles wide?"를 넣고, <code>top_n</code>으로 결과를 받아요. 이게 시맨틱 검색이에요.</p>
+<figure>
+  <img src="assets/frame-0546.webp" alt="vector_store.index로 인덱스를 만들고 VectorSearchRequestBuilder에 질의 문장과 samples(10)을 넣은 뒤 index.top_n으로 점수, 이름, 내용 튜플 목록을 받는 코드">
+  <figcaption>
+    결과 타입 <code>Vec&lt;(f64, String, String)&gt;</code>가 점수, 문서 이름, 내용이에요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=346s" target="_blank" rel="noopener">영상 05:46에서 보기</a>
+  </figcaption>
+</figure>
+<p>질의하면 질문 문장의 임베딩을 새로 계산하고, 스토어에 있는 문서마다 유사도를 매겨요. 결과마다 <code>score</code>, 자동으로 붙은 <code>doc_name</code>, <code>content</code>가 나와요. 점수가 높을수록 질문과 뜻이 가까워요. 맨 아래 달 문서가 0.3605로 가장 높아요.</p>
+<figure>
+  <img src="assets/frame-0601.webp" alt="JSON 결과. doc1 하늘 문장 0.2216, doc2 암흑물질 문장 0.2537, doc0 달 문장 0.3605">
+  <figcaption>
+    천체의 모양을 물었으니 달 문장이 가장 가깝게 나와요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=361s" target="_blank" rel="noopener">영상 06:01에서 보기</a>
+  </figcaption>
+</figure>
+<p>세 점수를 같은 눈금에 놓으면 차이가 더 잘 보여요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 180" role="img" aria-label="질문과 세 문서의 유사도 점수 막대. 하늘 0.2216, 암흑물질 0.2537, 달 0.3605">
+    <line class="axis" x1="220" y1="140" x2="600" y2="140"/>
+    <text x="210" y="37" text-anchor="end">하늘은 파랗지 않다</text>
+    <rect class="bar alt" x="220" y="20" width="199" height="26"/>
+    <text x="426" y="38">0.2216</text>
+    <text x="210" y="77" text-anchor="end">암흑물질은 시공간 곡률</text>
+    <rect class="bar alt" x="220" y="60" width="228" height="26"/>
+    <text x="455" y="78">0.2537</text>
+    <text x="210" y="117" text-anchor="end">달은 정육면체</text>
+    <rect class="bar" x="220" y="100" width="324" height="26"/>
+    <text x="551" y="118">0.3605</text>
+    <line class="axis" x1="220" y1="140" x2="220" y2="146"/><text x="220" y="162" text-anchor="middle" class="sub">0</text>
+    <line class="axis" x1="310" y1="140" x2="310" y2="146"/><text x="310" y="162" text-anchor="middle" class="sub">0.1</text>
+    <line class="axis" x1="400" y1="140" x2="400" y2="146"/><text x="400" y="162" text-anchor="middle" class="sub">0.2</text>
+    <line class="axis" x1="490" y1="140" x2="490" y2="146"/><text x="490" y="162" text-anchor="middle" class="sub">0.3</text>
+    <line class="axis" x1="580" y1="140" x2="580" y2="146"/><text x="580" y="162" text-anchor="middle" class="sub">0.4</text>
+  </svg>
+  <figcaption>영상 결과 화면의 점수 그대로예요. 점수 자체는 작아도, 순위를 정하는 데는 이 차이로 충분해요. <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=361s" target="_blank" rel="noopener">영상 06:01에서 보기</a></figcaption>
+</figure>
+
+<h3>에이전트에 붙이면 RAG</h3>
+<p>이제 처음 예로 든 '기가바이트짜리 사내 문서'에 적용해요. 화면에 나온 그 문서는 사실 문장 세 개라고 발표자가 농담해요. 에이전트를 만들 때 <code>.dynamic_context(1, index)</code>를 더하면, 질문과 가장 가까운 문서를 프롬프트에 끼워 줘요. 첫 인자가 1이라 문서 한 개만 들어가요. <code>preamble</code>에는 '문서 내용을 항상 사실로 여겨라'라는 지시도 넣었어요.</p>
+<figure>
+  <img src="assets/frame-0631.webp" alt="agent 빌더에 문서 내용을 항상 사실로 여기라는 preamble과 dynamic_context(1, index)를 붙이고, 지름 2000마일 넘는 천체의 모양을 묻는 코드">
+  <figcaption>
+    시맨틱 검색 코드가 <code>dynamic_context</code> 한 줄로 줄어들었어요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=391s" target="_blank" rel="noopener">영상 06:31에서 보기</a>
+  </figcaption>
+</figure>
+<p>결과를 보면 모델은 먼저 실제로는 그런 천체가 대체로 둥글다고 말해요. 그다음 '주어진 문서에는'이라며 "The Moon was recently discovered to be cube shaped!"를 인용하고, 그 문서 안에서는 달이 정육면체라고 답해요. 달 문서가 프롬프트에 들어갔다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0644.webp" alt="Program Output. 지름 약 2000마일 넘는 천체는 실제로 대체로 구형이라는 문단, 주어진 문서에는 달이 정육면체라고 적혀 있다는 인용, 그 문서 맥락에서는 달이 정육면체로 묘사된다는 결론">
+  <figcaption>
+    모델이 원래 아는 사실과 넣어 준 문서를 구분해서 함께 답했어요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=404s" target="_blank" rel="noopener">영상 06:44에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=406s" target="_blank" rel="noopener">06:46</a>
+  <h2>파이프라인, 그리고 Rig를 고를 이유</h2>
+<h3>정해진 순서대로 돌리는 파이프라인</h3>
+<p>파이썬의 LangChain은 파이프라인을 처음 널리 알린 프레임워크로 유명해요. 순차 작업과 병렬 작업을 엮어서 앞 작업의 출력이 뒤 작업의 입력이 되게 해요. Rig에도 비슷한 개념이 있어요. 단계마다 앞 단계에서 입력을 받고 다음 단계로 출력을 넘겨요.</p>
+<p>영상의 예제는 앞의 RAG와 거의 같은 일을 파이프라인으로 해요. 코드 맨 위 <code>parallel!</code> 안에 두 갈래가 있어요. <code>passthrough</code>는 질문을 그대로 넘기고, <code>lookup(index, 1)</code>은 시맨틱 검색으로 문서 한 개를 찾아요. 가운데 <code>map</code>이 둘을 받아 "Docs: …  Prompt: …" 모양으로 합쳐요. 검색이 실패하면 오류를 찍고 질문만 넘겨요. 맨 아래 <code>prompt(agent)</code>가 그걸 에이전트에 물어요.</p>
+<figure>
+  <img src="assets/frame-0722.webp" alt="pipeline::new().chain(parallel!(passthrough, lookup(index, 1))) 다음 map에서 Ok면 Docs와 Prompt를 format으로 합치고 Err면 추가 문맥 없이 진행한다고 출력한 뒤 prompt(agent)로 끝나는 러스트 코드">
+  <figcaption>
+    RAG 예제보다 길지만, 각 단계가 무엇을 하는지 코드에 다 드러나요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=442s" target="_blank" rel="noopener">영상 07:22에서 보기</a>
+  </figcaption>
+</figure>
+<p>코드의 흐름을 단계로 옮기면 이래요. 파이프라인은 <code>chain.call("What shape are celestial bodies…")</code>처럼 문자열 하나로 시작해요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  Q["질문 문자열"] --> P1["passthrough<br/>질문 그대로"]
+  Q --> P2["lookup(index, 1)<br/>문서 1개 검색"]
+  P1 --> M["map<br/>Docs + Prompt로 합치기"]
+  P2 --> M
+  M --> A["prompt(agent)<br/>에이전트에 묻기"]
+  A --> R["답"]
+</pre>
+  <figcaption>앞 두 갈래는 병렬로 돌고, 그 뒤는 순서대로예요. 어느 단계를 거칠지는 모델이 아니라 코드가 정해요.</figcaption>
+</figure>
+<p>발표자는 언제 파이프라인을 쓰는지도 짚어요. 정해진 단계를 그대로 돌리고, 무엇을 할지 모델이 결정하지 않게 하고 싶을 때예요. 더 깊이 가면 여러 프롬프트를 엮고 단계마다 다른 언어 모델을 쓸 수도 있어요. 다만 대부분의 Rig 사용자는 여기까지 쓰지 않을 것 같다고 말해요.</p>
+
+<div class="table-scroll">
+  <table>
+    <thead><tr><th></th><th>에이전트 + <code>dynamic_context</code></th><th>파이프라인</th></tr></thead>
+    <tbody>
+      <tr><td>코드 길이</td><td>빌더에 한 줄</td><td>단계를 하나씩 써서 더 길어요</td></tr>
+      <tr><td>누가 흐름을 정하나요</td><td>에이전트(도구를 부를지는 모델이 판단)</td><td>코드에 적은 순서</td></tr>
+      <tr><td>어울리는 경우</td><td>대부분의 RAG</td><td>단계를 고정하고 싶을 때, 여러 모델을 엮을 때</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>지금 Rig 저장소의 MIGRATING.md에는 0.39 → 0.40 항목의 '완전히 삭제된 것' 표에 실험 기능 <code>pipeline</code> 모듈이 대체 없음으로 올라 있어요. 최신 Rig에서는 이 예제를 그대로 쓸 수 없어요. README도 Rig가 아직 1.0 전이라 릴리스마다 깨지는 변경이 있다고 경고하고, 변경 사항은 CHANGELOG와 MIGRATING.md를 보라고 안내해요.</p>
+  <p class="cite">출처: <a href="https://github.com/0xPlaygrounds/rig/blob/main/MIGRATING.md" target="_blank" rel="noopener">0xPlaygrounds/rig — MIGRATING.md</a> · <a href="https://github.com/0xPlaygrounds/rig" target="_blank" rel="noopener">0xPlaygrounds/rig README</a></p>
+</aside>
+
+<h3>왜 Rig에서 시작하나요</h3>
+<p>러스트로 언어 모델을 다루는 크레이트는 많아요. 그래도 발표자는 Rig를 좋은 출발점으로 꼽고 이유를 넷 들어요. API가 간결하고, 기능이 고루 있고, 개발이 꾸준하고, Discord 커뮤니티가 잘 답해 준다는 거예요. 꾸준한 개발의 근거로 GitHub 저장소를 띄우는데, 동그라미 친 마지막 커밋이 '7 hours ago'예요. 오른쪽에는 별 6.2k, 포크 676이 보여요.</p>
+<figure>
+  <img src="assets/frame-0758.webp" alt="GitHub 0xPlaygrounds/rig 저장소. 마지막 커밋 7 hours ago에 흰 동그라미, Starred 6.2k, Fork 676, Build modular and scalable LLM Applications in Rust 설명과 rig.rs 링크">
+  <figcaption>
+    몇 시간 전 커밋이 있다는 게 '활발히 개발 중'이라는 말의 근거예요.
+    <a href="https://www.youtube.com/watch?v=9L9oOmqD6zc&amp;t=478s" target="_blank" rel="noopener">영상 07:58에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 영어 자막이라 이름 하나가 다르게 받아적혔어요. 화면을 기준으로 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>12 data</td><td>Twelve Data</td><td>주식 시세 데이터를 주는 회사. 화면 로고는 twelvedata</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-4"><dt>도구<span class="en">Tool</span></dt><dd>모델이 부를 수 있게 앱이 내놓는 함수예요. 모델은 이름과 인자만 정해서 부르고, 실제 실행은 앱이 해요.</dd></div>
+    <div class="g" id="g-7"><dt>벡터 스토어<span class="en">Vector store</span></dt><dd>임베딩을 저장해 두고 질문 벡터와 가까운 것을 찾아 주는 저장소예요. 메모리 안에 둘 수도 있고 Qdrant 같은 전용 데이터베이스를 쓸 수도 있어요.</dd></div>
+    <div class="g" id="g-8"><dt>시맨틱 검색<span class="en">Semantic search</span></dt><dd>글자 일치가 아니라 의미가 가까운 문서를 찾는 검색이에요. 질문과 문서의 임베딩을 비교해 점수를 매겨요.</dd></div>
+    <div class="g" id="g-3"><dt>에이전트<span class="en">Agent</span></dt><dd>모델에 역할, 도구, 문맥을 묶어 둔 객체예요. 필요하면 모델이 도구를 불러 가며 여러 번 오간 끝에 답을 내요.</dd></div>
+    <div class="g" id="g-6"><dt>임베딩<span class="en">Embedding</span></dt><dd>글의 의미를 숫자 배열(벡터)로 바꾼 거예요. 뜻이 비슷한 글끼리는 벡터도 가까워서, 단어가 달라도 의미로 찾을 수 있어요.</dd></div>
+    <div class="g" id="g-2"><dt>추론 요청<span class="en">Inference request</span></dt><dd>학습된 모델에 입력을 주고 답을 받아 오는 호출이에요. 여기서는 프롬프트를 보내 텍스트를 받는 API 요청 한 번을 말해요.</dd></div>
+    <div class="g" id="g-9"><dt>컨텍스트 윈도우<span class="en">Context window</span></dt><dd>모델이 한 번에 입력으로 받을 수 있는 최대 길이예요. 이걸 넘는 문서는 통째로 넣을 수 없어서 골라 넣는 방법이 필요해요.</dd></div>
+    <div class="g" id="g-1"><dt>크레이트<span class="en">Crate</span></dt><dd>러스트의 패키지 단위예요. crates.io에 올라가고 Cargo로 받아 써요. 다른 언어의 라이브러리 패키지에 해당해요.</dd></div>
+    <div class="g" id="g-5"><dt>트레이트<span class="en">Trait</span></dt><dd>러스트에서 타입이 갖춰야 할 메서드 묶음을 정한 것이에요. 다른 언어의 인터페이스와 비슷해요. Rig는 Tool, Embed 같은 트레이트로 확장점을 열어 둬요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>LACMA</dt><dd>Los Angeles County Museum of Art</dd></div>
+    <div class="g"><dt>LLM</dt><dd>Large Language Model</dd></div>
+    <div class="g"><dt>MCP</dt><dd>Model Context Protocol</dd></div>
+    <div class="g"><dt>RAG</dt><dd>Retrieval-Augmented Generation</dd></div>
+    <div class="g"><dt>SDK</dt><dd>Software Development Kit</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=9L9oOmqD6zc" target="_blank" rel="noopener">원본 영상 — Code to the Moon</a></li>
+    <li id="src-2"><a href="https://github.com/0xPlaygrounds/rig" target="_blank" rel="noopener">0xPlaygrounds/rig — GitHub 저장소와 README</a></li>
+    <li id="src-3"><a href="https://github.com/0xPlaygrounds/rig/blob/main/MIGRATING.md" target="_blank" rel="noopener">0xPlaygrounds/rig — MIGRATING.md</a></li>
+    <li id="src-4"><a href="https://github.com/0xPlaygrounds/rig/tree/main/crates/rig-rmcp" target="_blank" rel="noopener">rig-rmcp README</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 20일에 이 영상을 보고 정리했어요. 원본은 Code to the Moon 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,911 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>클로드 코드 Mods: 부탁 한 줄로 만드는 모드 4개와 깔기 전 검사</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>클로드 코드 Mods: 부탁 한 줄로 만드는 모드 4개와 깔기 전 검사</h1>
+  <p class="lede">띄워 두고, 막아 두고, 남의 모드는 검사하고 까는 법을 짚어요</p>
+  <div class="meta">
+    <span>AI싱크클럽</span><span class="dot">·</span>
+    <span>영상 09:31</span><span class="dot">·</span>
+    <span>읽는 데 약 13분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=jPUbsnsKHQw" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li><span class="term" data-term="모드" data-en="Mod" data-desc="클로드 코드 안에서 돌아가는 작은 프로그램이에요. 정해 둔 순간마다 실행돼 동작을 바꾸고, 다른 확장 방식과 달리 화면에 띠·옆 창·버튼까지 그릴 수 있어요." data-g="1">모드</span>는 클로드 코드 안에 끼워 넣는 작은 프로그램이에요. <span class="term" data-term="스킬" data-en="Skill" data-desc="일하는 방법을 적어 둔 지침 파일(SKILL.md)이에요. 그 일을 할 때 클로드가 꺼내 읽어요. 같은 설명을 매번 붙여 넣고 있다면 스킬로 만들 때예요." data-g="2">스킬</span>·MCP(Model Context Protocol)·<span class="term" data-term="훅" data-en="Hook" data-desc="설정 파일에 적어 두는 자동 명령이에요. 파일 저장 직전처럼 정해진 순간마다 돌아서 막거나 결과를 바꿀 수 있지만, 화면에 그리지는 못해요." data-g="3">훅</span>과 달리 화면에 띠나 버튼까지 그려요.</li>
+    <li>'모드로 만들어 줘', 어디에 보여 줄지, 언제 바뀔지 세 가지를 넣어 말로 부탁하면 클로드가 만들어 줘요.</li>
+    <li>만든 모드는 그 <span class="term" data-term="세션" data-en="Session" data-desc="클로드 코드에서 대화 하나를 부르는 말이에요. 데스크톱 앱 왼쪽 목록의 대화 하나가 세션 하나예요. 부탁해서 만든 모드는 이 세션 안에서만 켜져요." data-g="4">세션</span>에서만 살아 있어요. 계속 쓰려면 '모든 대화에서 쓰게 설치해 줘'라고 한 번 더 부탁해요.</li>
+    <li>말로 한 규칙은 잊혀도 모드는 매번 검사해요. <span class="term" data-term="금지어" data-desc="AI 티 지킴이 모드가 저장 직전에 찾아내는 단어 목록이에요. 영상에서는 &#x27;다양한&#x27;, &#x27;혁신적인&#x27; 같은 말이에요. 한 글자만 달라도 놓치니 꼼꼼히 적어야 해요." data-g="6">금지어</span> 잡기와 고객 번호 가리기가 그 예예요.</li>
+    <li>모드는 내 권한 그대로 돌아요. 남이 만든 모드는 무엇을 읽고 어디로 보내는지 먼저 검사시켜요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">모드는 무엇이고, 스킬·MCP·훅과 뭐가 다를까요</a></li>
+    <li><a href="#s2">부탁 한 줄로 만들고, 모든 대화에 설치하기</a></li>
+    <li><a href="#s3">1단계, 보여 주는 모드: 상태 띠와 메모 창</a></li>
+    <li><a href="#s4">2단계, 막아 주는 모드: AI 티 지킴이와 고객 번호 가림막</a></li>
+    <li><a href="#s5">3단계, 깔기 전에 검사하기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=59s" target="_blank" rel="noopener">00:59</a>
+  <h2>모드는 무엇이고, 스킬·MCP·훅과 뭐가 다를까요</h2>
+<p>모드는 클로드 코드 안에 끼워 넣는 작은 프로그램이에요. 영상은 크롬에 확장 프로그램을 까는 일에 빗대요. 기능이 나온 건 10월 2일이고, 발표자는 발표 글이 440만 번 넘게 읽혔고 11일 만에 공개된 모드가 3,570개를 넘었다고 소개해요.</p>
+<p>아래가 그 발표 글이에요. 'You can now mod Claude Code' 아래에 모드로 할 수 있는 일 세 가지가 적혀 있어요. 동작 바꾸기(Change how it behaves), 화면 꾸미기(Customize the UI(User Interface)), 나만의 기능 넣기(Swap in your own features)예요. 그 밑 줄에는 TypeScript 몇 줄로 직접 쓰거나 클로드에게 만들게 할 수 있다고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0100.webp" alt="ClaudeDevs 계정의 발표 글. You can now mod Claude Code 아래 세 줄 목록과 2026년 10월 2일, 조회수 447.5만이 보여요">
+  <figcaption>
+    발표 글의 세 줄이 곧 모드가 바꾸는 세 가지예요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=60s" target="_blank" rel="noopener">영상 01:00에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>모드가 바꾸는 세 가지</h3>
+<p>영상은 이 세 가지를 한 장씩 넘기며 설명해요. 한 그림에 모으면 이래요. 첫째는 화면으로, 입력창 위 띠와 옆 창, 버튼, 확인 창을 새로 붙여요. 둘째는 동작이에요. 클로드가 일하는 도중에 멈춰 세우거나 결과를 바꿔요. 셋째는 기능으로, 나만의 명령을 하나 더 만들어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 190" role="img" aria-label="모드가 바꾸는 세 가지: 화면, 동작, 기능">
+    <rect x="10" y="20" width="196" height="150" rx="12" class="c1 cell"/>
+    <text x="108" y="58" text-anchor="middle">① 화면</text>
+    <text x="108" y="92" text-anchor="middle" class="sub">입력창 위 띠 · 옆 창</text>
+    <text x="108" y="114" text-anchor="middle" class="sub">버튼 · 확인 창</text>
+    <text x="108" y="148" text-anchor="middle" class="sub">새로 붙여요</text>
+    <rect x="222" y="20" width="196" height="150" rx="12" class="c2 cell"/>
+    <text x="320" y="58" text-anchor="middle">② 동작</text>
+    <text x="320" y="92" text-anchor="middle" class="sub">일하는 도중에</text>
+    <text x="320" y="114" text-anchor="middle" class="sub">멈춰 세우거나</text>
+    <text x="320" y="148" text-anchor="middle" class="sub">결과를 바꿔요</text>
+    <rect x="434" y="20" width="196" height="150" rx="12" class="c3 cell"/>
+    <text x="532" y="58" text-anchor="middle">③ 기능</text>
+    <text x="532" y="92" text-anchor="middle" class="sub">나만의 명령을</text>
+    <text x="532" y="114" text-anchor="middle" class="sub">하나 더</text>
+    <text x="532" y="148" text-anchor="middle" class="sub">만들어요</text>
+  </svg>
+  <figcaption>이 셋 모두 코드 없이 말로 부탁하면 클로드가 만들어 줘요. 이 영상의 모드 넷은 ①화면과 ②동작 쪽이에요.</figcaption>
+</figure>
+
+<h3>스킬·MCP·훅과 무엇이 다를까요</h3>
+<p>클로드 코드에는 비슷해 보이는 확장 방식이 이미 셋 있어요. 영상은 넷을 한 표에 놓고 '무엇', '언제', '막기·바꾸기', '화면 그리기' 네 줄로 비교해요. 맨 아래 '화면 그리기' 줄을 보면 동그라미가 모드 칸에만 있어요.</p>
+<figure>
+  <img src="assets/frame-0224.webp" alt="스킬, MCP, 훅, 모드를 무엇, 언제, 막기·바꾸기, 화면 그리기 네 줄로 비교한 표">
+  <figcaption>
+    막기·바꾸기는 훅과 모드가 둘 다 돼요. 화면에 그리는 건 모드뿐이에요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=144s" target="_blank" rel="noopener">영상 02:24에서 보기</a>
+  </figcaption>
+</figure>
+<p>표를 말로 풀면 이래요. 스킬은 보고서 쓰는 법처럼 일하는 방법을 적어 둔 지침 파일이에요. 그 일을 할 때 클로드가 꺼내 읽어요. MCP는 구글 드라이브나 슬랙 같은 다른 서비스에 잇는 통로라서, 클로드가 부를 때 쓰여요. 훅은 설정 파일에 적는 자동 명령이에요. 파일 저장 직전처럼 정해진 순간마다 돌아서 막거나 결과를 바꿀 수 있어요. 모드는 대화 내내 붙어 있다가 정해 둔 순간마다 돌고, 동작을 바꾸는 데 더해 화면에 띠나 버튼까지 그려요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 문서는 모드를 'JavaScript나 TypeScript 이벤트 핸들러로 된 플러그인'이라고 설명해요. 훅·스킬·MCP 서버는 클로드 코드 바깥에서 스크립트를 돌리거나 텍스트·도구를 주는 반면, 모드는 클로드 코드 안에서 돌아서 화면을 그릴 수 있다는 거예요.</p>
+  <p>문서를 읽을 때 헷갈리기 쉬운 점도 하나 있어요. 문서는 모드 안의 핸들러도 '훅'이라고 불러요. 그래서 영상이 말하는 설정 파일 쪽 훅은 문서에서 'settings hook'이라고 따로 불러요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/plugins/mods/overview" target="_blank" rel="noopener">Claude Code 공식 문서 — Mods overview</a></p>
+</aside>
+
+<h3>오늘 볼 세 단계</h3>
+<p>모드 네 개는 세 단계로 나눠 봐요. 그림 왼쪽부터 1단계 '보여 주는 모드'(눈 모양), 2단계 '막아 주는 모드'(손바닥), 3단계 '깔기 전에'(방패)예요. 시연은 클로드 데스크톱 앱의 코드 탭에서 하지만, 터미널에서 쓰는 클로드 코드에도 같은 모드가 떠요.</p>
+<figure>
+  <img src="assets/frame-0236.webp" alt="보여 주는 모드 1, 막아 주는 모드 2, 깔기 전에 3 세 단계를 계단처럼 놓은 슬라이드">
+  <figcaption>
+    띄워 두기, 막아 두기, 검사하고 깔기 순서예요. 아래 섹션도 이 순서를 따라가요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=156s" target="_blank" rel="noopener">영상 02:36에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=173s" target="_blank" rel="noopener">02:53</a>
+  <h2>부탁 한 줄로 만들고, 모든 대화에 설치하기</h2>
+<p>모드를 만드는 전용 명령은 없어요. 화면에 <code>/mods</code>를 치고 엑스 표시를 하는 장면이 나오는데, 그냥 말로 부탁하면 된다는 뜻이에요. 앱만 최신으로 올려 두면 돼요.</p>
+<p>발표자는 잘 만들어지는 부탁에 세 가지가 들어간다고 해요. 아래 슬라이드의 세 칸이 그 세 가지예요. 왼쪽부터 '모드로 만들어 줘', '어디에', '언제'예요.</p>
+<figure>
+  <img src="assets/frame-0304.webp" alt="모드로 만들어 줘, 어디에, 언제 세 칸이 나란히 놓인 슬라이드. 오른쪽에는 부탁·허락·켜기·고치기·검사 진행 표시가 있어요">
+  <figcaption>
+    '어디에'는 보여 줄 자리, '언제'는 바뀌는 순간이에요. 이 둘이 빠지면 클로드가 짐작으로 채워요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=184s" target="_blank" rel="noopener">영상 03:04에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>부탁부터 검사까지 다섯 걸음</h3>
+<p>화면 오른쪽 진행 표시처럼 만들기는 부탁 → 허락 → 켜기 → 고치기 → 검사 순서로 가요.</p>
+<ol class="steps">
+  <li><b>부탁해요</b> — 영상은 "입력창 위에 버튼 세 개를 띄우는 모드 만들어 줘"라고 보내요.</li>
+  <li><b>허락해요</b> — 클로드가 모드 파일을 만들고, 만들어도 되는지 물어요.</li>
+  <li><b>켜요</b> — 이어서 뜨는 질문에서 Enable for this session을 골라요.
+    <span class="done">입력창 위에 버튼이 바로 생겨요</span></li>
+  <li><b>고쳐요</b> — 마음에 안 들면 그대로 말해요. "버튼 이름 바꿔 줘" 한 줄이면 돼요.</li>
+  <li><b>검사해요</b> — 마지막에 "검사도 돌려 줘"라고 하면 클로드가 모드에 문제가 없는지 확인해요.</li>
+</ol>
+<p>3번 켜기 화면이에요. 가운데 질문 창에 How does this work?, Enable for this session, Not now 세 가지가 있고, 영상은 가운데를 골라요. 질문 창 위 설명에는 모드 파일이 <code>.claude\dev-mods\</code> 아래 만들어졌다고 나와요.</p>
+<figure>
+  <img src="assets/frame-0314.webp" alt="모드를 켤지 묻는 질문 창에서 Enable for this session을 고르는 장면">
+  <figcaption>
+    Not now를 고르면 이번엔 안 켜지고, 다음에 이 세션을 다시 열 때 켜져요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=194s" target="_blank" rel="noopener">영상 03:14에서 보기</a>
+  </figcaption>
+</figure>
+<p>4번 고치기에서는 "버튼 이름 바꿔 줘. 할 일 정리, 세 줄 요약, 답장 초안으로."라고 보내요. 화면 맨 아래 입력창 위를 보면 버튼 세 개가 '오늘 할 일 정리', '표 세 줄 요약', '답장 초안'으로 바뀌어 있어요.</p>
+<figure>
+  <img src="assets/frame-0318.webp" alt="버튼 이름을 바꿔 달라는 부탁과, 입력창 위에 오늘 할 일 정리·표 세 줄 요약·답장 초안 버튼 세 개가 보이는 화면">
+  <figcaption>
+    고칠 때도 코드는 안 봐요. 바꾸고 싶은 걸 말로 하면 돼요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=198s" target="_blank" rel="noopener">영상 03:18에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>그 대화에서만 살아 있어요</h3>
+<p>여기서 꼭 알아 둘 점이 있어요. 이렇게 만든 모드는 만든 대화 안에서만 살아 있어요. 클로드 코드에선 대화 하나를 세션이라고 불러요. 데스크톱 앱 왼쪽 목록의 대화 하나가 세션 하나예요. 그래서 새 대화를 열면 방금 만든 버튼이 없고, 그대로 두면 30일 뒤엔 파일도 지워져요.</p>
+<p>모든 대화에서 쓰려면 "이 모드, 모든 대화에서 쓰게 설치해 줘"라고 한 번 더 부탁해요. 아래 화면은 그 답이에요. 빨간 상자 안을 보면 모드 파일을 <code>my-mods</code> 폴더로 복사했고, <code>my-mods</code>라는 <span class="term" data-term="마켓플레이스" data-en="Marketplace" data-desc="플러그인을 받아 설치하는 목록이에요. 영상에서는 모드를 모든 대화에 설치하려고 클로드가 my-mods라는 내 마켓플레이스를 만들어요." data-g="5">마켓플레이스</span>를 만들어 사용자 범위로 설치했다고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0348.webp" alt="모드를 모든 대화에서 쓰도록 설치했다는 클로드의 답. 위치, 마켓플레이스, 이 세션, 문구 수정 네 항목이 적혀 있어요">
+  <figcaption>
+    설치하고 나면 새 대화를 열어도 버튼이 그대로 있어요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=228s" target="_blank" rel="noopener">영상 03:48에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 문서에 따르면 클로드가 만든 모드는 <code>~/.claude/dev-mods/</code> 아래 세션 ID 폴더에 저장되고, 그 세션에서만 불러와져요. 이 폴더는 <code>cleanupPeriodDays</code>보다 오래되면 지워지는데, 이 설정의 기본값이 30일이에요. 영상의 '30일 뒤엔 지워져요'가 여기서 나와요. 이 값을 바꿨다면 기간도 달라져요.</p>
+  <p>'앱만 최신으로'의 기준도 문서에 있어요. 터미널은 Claude Code v2.1.287 이상, 데스크톱 앱은 v2.1.286 이상에서 모드가 돌아요. 데스크톱 앱 코드 탭에서는 <code>/status</code>로 버전을 확인할 수 있어요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/plugins/mods/create" target="_blank" rel="noopener">Claude Code 공식 문서 — Create a mod</a> · <a href="https://code.claude.com/docs/en/settings-reference" target="_blank" rel="noopener">Settings reference — cleanupPeriodDays</a> · <a href="https://code.claude.com/docs/en/plugins/mods/overview" target="_blank" rel="noopener">Mods overview — Turn mods on or off</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=232s" target="_blank" rel="noopener">03:52</a>
+  <h2>1단계, 보여 주는 모드: 상태 띠와 메모 창</h2>
+<p>지금까지는 궁금할 때마다 다른 창을 열어 확인했어요. 1단계 모드는 그걸 일하는 화면에 늘 띄워 둬요. 영상은 자동차 계기판에 빗대요. 운전하면서 기름이 얼마 남았는지 따로 찾아보지 않잖아요.</p>
+
+<h3>팁 1. 상태 띠: 남은 사용량과 컴퓨터 상태</h3>
+<p>한도가 언제 바닥날지 몰라서 매번 설정을 열어 보는 일을 없애는 모드예요. 발표자는 렌더를 여러 개 돌리다 디스크가 꽉 차서 작업을 한 번 다 날린 적이 있다고 해요. 부탁은 이 한 줄이에요.</p>
+<p>"입력창 위에 남은 사용량이랑 디스크, 메모리를 늘 띄워 주는 모드 만들어 줘."</p>
+<p>결과 화면에서 빨간 상자로 확대한 줄이 입력창 위에 뜨는 띠예요. '5시간 97% 남음 · 주간 91% 남음', '디스크 58GB 여유 (77% 사용)', '메모리 43% (7/16GB)' 세 칸이 보여요. 같은 줄이 맨 아래 입력창 바로 위에도 떠 있어요.</p>
+<figure>
+  <img src="assets/frame-0427.webp" alt="입력창 위에 5시간 97% 남음, 주간 91% 남음, 디스크 58GB 여유, 메모리 43%가 한 줄로 뜬 상태 띠와, 띠의 동작을 설명한 클로드의 답">
+  <figcaption>
+    5시간 한도와 주간 한도를 따로 보여 줘서, 어느 쪽이 먼저 바닥날지 한눈에 보여요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=267s" target="_blank" rel="noopener">영상 04:27에서 보기</a>
+  </figcaption>
+</figure>
+<p>띠 위에 있는 클로드의 설명도 볼 만해요. 남은 사용량은 응답이 올 때마다 갱신하고, 디스크와 메모리는 20초마다 다시 읽는다고 적혀 있어요. 간격은 모드 파일의 숫자 하나로 바꿀 수 있다고 해요. 개발자라면 켜 둔 서버 포트까지 띄울 수 있어요.</p>
+<p>이 팁의 한 줄 정리는 이거예요. 자꾸 확인하는 건 띠로 띄워 두세요.</p>
+
+<h3>팁 2. 메모 창: 자꾸 치는 말을 버튼으로</h3>
+<p>발표자가 제일 좋아한다는 모드예요. 같은 부탁을 매번 메모장에서 복사해 붙이던 일을, 그 메모장째 클로드 화면 안으로 가져와요. 부탁은 이래요.</p>
+<p>"옆 창에 메모를 적고 저장하는 모드 만들어 줘. 저장한 메모는 입력창 위에 버튼으로 띄우고, 대화를 닫아도 남게."</p>
+<p>아래 화면은 메모를 저장한 뒤예요. 맨 아래 입력창 위에 '이 표를 세 줄로 요약하고,…' 버튼이 생겼고, 버튼을 누르자 빨간 상자처럼 '이 표를 세 줄로 요약하고, 숫자는 그대로 둬 줘.'가 입력창에 들어왔어요. 오른쪽 빈 칸이 메모를 적는 옆 창이에요.</p>
+<figure>
+  <img src="assets/frame-0528.webp" alt="저장한 메모가 입력창 위 버튼으로 뜨고, 버튼을 누르자 이 표를 세 줄로 요약하고 숫자는 그대로 둬 줘 문장이 입력창에 들어간 화면">
+  <figcaption>
+    버튼을 눌러도 바로 보내지지 않아요. 입력창에서 고친 뒤 보내면 돼요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=328s" target="_blank" rel="noopener">영상 05:28에서 보기</a>
+  </figcaption>
+</figure>
+<p>화면 위쪽 클로드의 설명에는 긴 메모는 버튼에 16자까지만 보이고, 메모는 모드 전용 저장소에 들어가서 대화를 닫아도 남는다고 적혀 있어요. 한 줄 정리는 이거예요. 자꾸 치는 말은 옆에 꺼내 두세요.</p>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=336s" target="_blank" rel="noopener">05:36</a>
+  <h2>2단계, 막아 주는 모드: AI 티 지킴이와 고객 번호 가림막</h2>
+<p>다음은 하지 말라고 했는데 또 하는 문제예요. 말로 부탁한 규칙은 대화가 길어지면 가끔 잊혀요. 모드는 정해 둔 순간마다 매번 검사해요. 영상은 공항 검색대에 빗대요. 짐이 통과하기 전에 한 번씩 꼭 보는 것처럼요.</p>
+
+<h3>팁 3. AI 티 지킴이: 저장 직전에 금지어 잡기</h3>
+<p>보고서에 AI(Artificial Intelligence) 티 나는 말이 있으면 저장하기 전에 멈춰 세우는 모드예요. 부탁은 이래요.</p>
+<p>"저장 전에 AI 티 나는 말이 있으면 막고, 몇째 줄인지 알려 줘."</p>
+<p>모드를 켠 뒤 일부러 금지어를 넣은 보고서를 저장하게 해요. 화면 가운데를 보면 <code>report.md</code>를 저장하지 못했다는 말 아래 '1째 줄: "다양한"', '1째 줄: "혁신적인"'이 나와요. 그 아래에는 금지어를 뺀 첫 줄 대안도 함께 제안해요.</p>
+<figure>
+  <img src="assets/frame-0618.webp" alt="report.md 저장이 막히고, 1째 줄의 다양한과 혁신적인이 금지어로 걸렸다고 알려 주는 클로드의 답">
+  <figcaption>
+    어느 줄의 어떤 말이 걸렸는지까지 알려 줘서, 어디를 고칠지 바로 보여요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=378s" target="_blank" rel="noopener">영상 06:18에서 보기</a>
+  </figcaption>
+</figure>
+<p>여기서 "고치기"라고 답하면 걸린 문장만 고쳐서 저장해요. 오른쪽에 열린 <code>report.md</code>를 보면 빨간 상자의 첫 문장만 "고객 요청을 새로운 방식으로 반영했습니다"로 바뀌었고, 둘째·셋째 문장은 그대로예요. 왼쪽에는 이번엔 금지어 검사를 통과했다고 나와요.</p>
+<figure>
+  <img src="assets/frame-0626.webp" alt="고치기 후 다시 저장한 report.md. 첫 문장만 바뀌고 나머지 문장은 그대로인 화면">
+  <figcaption>
+    보고서 전체를 다시 쓰지 않고 걸린 말만 바꿔요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=386s" target="_blank" rel="noopener">영상 06:26에서 보기</a>
+  </figcaption>
+</figure>
+<p>주의할 점은 금지어를 꼼꼼히 적는 거예요. 한 글자만 달라도 놓쳐요. 영상은 '를 통해'와 '을 통해'를 나란히 띄워 이걸 보여 줘요. 한 줄 정리는 이거예요. 말로 한 부탁은 잊어도, 모드는 매번 검사해요.</p>
+
+<h3>팁 4. 고객 번호 가림막: 읽을 때부터 가리기</h3>
+<p>막는 것보다 무서운 게 있어요. 클로드가 보면 안 되는 걸 보는 일이에요. 발표자는 처음에 화면에서만 고객 번호를 가렸더니, 클로드는 진짜 번호를 그대로 알고 있었다고 해요. 그래서 파일을 읽을 때부터 가리게 바꿨어요. 두 방식의 차이를 그림으로 옮기면 이래요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 250" role="img" aria-label="화면에서만 가릴 때와 읽을 때부터 가릴 때, 클로드가 받는 번호의 차이">
+    <defs><marker id="arrow-mask" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="10" y="24" class="sub">(가) 화면에서만 가림</text>
+    <rect x="10" y="36" width="150" height="70" rx="10" class="box"/>
+    <text x="85" y="66" text-anchor="middle">고객 명단 파일</text>
+    <text x="85" y="88" text-anchor="middle" class="sub">전체 번호 그대로</text>
+    <path d="M162 71 h76" class="line" marker-end="url(#arrow-mask)"/>
+    <rect x="240" y="36" width="170" height="70" rx="10" class="box bad"/>
+    <text x="325" y="66" text-anchor="middle">클로드</text>
+    <text x="325" y="88" text-anchor="middle" class="sub">진짜 번호를 알아요</text>
+    <path d="M412 71 h56" class="line" marker-end="url(#arrow-mask)"/>
+    <rect x="470" y="36" width="160" height="70" rx="10" class="box"/>
+    <text x="550" y="66" text-anchor="middle">화면</text>
+    <text x="550" y="88" text-anchor="middle" class="mono">010-****-4417</text>
+    <text x="10" y="150" class="sub">(나) 읽을 때부터 가림</text>
+    <rect x="10" y="162" width="150" height="70" rx="10" class="box"/>
+    <text x="85" y="192" text-anchor="middle">고객 명단 파일</text>
+    <text x="85" y="214" text-anchor="middle" class="sub">전체 번호 그대로</text>
+    <path d="M162 197 h36" class="line" marker-end="url(#arrow-mask)"/>
+    <rect x="200" y="162" width="120" height="70" rx="10" class="box accent"/>
+    <text x="260" y="192" text-anchor="middle">가림막 모드</text>
+    <text x="260" y="214" text-anchor="middle" class="sub">가운데 네 자리</text>
+    <path d="M322 197 h36" class="line" marker-end="url(#arrow-mask)"/>
+    <rect x="360" y="162" width="270" height="70" rx="10" class="box ok"/>
+    <text x="495" y="192" text-anchor="middle">클로드</text>
+    <text x="495" y="214" text-anchor="middle" class="mono">010-****-4417만 받아요</text>
+  </svg>
+  <figcaption>가리는 자리를 화면 앞에서 파일 바로 뒤로 옮긴 거예요. (가)는 남이 보는 화면만 막고, (나)는 클로드에게 넘어가는 내용까지 막아요.</figcaption>
+</figure>
+<p>가림막 모드를 켜고 고객 명단 파일 <code>customer-original.csv</code>를 읽혀 본 화면이에요. 빨간 상자를 보면 다섯 명의 전화번호가 모두 '010-****-4417'처럼 가운데 네 자리가 별표로 들어왔어요. 오른쪽 아래 '예시 데이터' 표시처럼 시연용 가짜 명단이에요.</p>
+<figure>
+  <img src="assets/frame-0712.webp" alt="가림막을 켠 뒤 읽은 고객 명단. 이름 다섯 개 옆 전화번호의 가운데 네 자리가 별표로 가려져 있어요">
+  <figcaption>
+    이제 클로드도 가려진 번호만 받아요. 입력창 위엔 가림막 켜짐 띠도 떠요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=432s" target="_blank" rel="noopener">영상 07:12에서 보기</a>
+  </figcaption>
+</figure>
+<p>표 아래 설명도 눈여겨볼 만해요. 주민번호 열도 같이 가려졌는데, 숫자가 8자리 이상 이어지면 다 가리는 규칙이라서 생긴 부작용이라고 클로드가 스스로 밝혀요. 고객 번호만 가리고 싶으면 규칙을 좁히겠다고 해요. 정말 모르는지 가운데 네 자리를 물어보면, 클로드는 별표로만 받아서 모른다고 답해요.</p>
+<p>마지막 주의점은 순서예요. 아래 화면 맨 위 빨간 상자에는 "모드가 아직 로드되지 않았습니다. 그냥 읽으면 원본 번호가 그대로 들어오니"라는 말이 있어요. 모드가 켜지기 전에 읽은 내용은 가려지지 않은 채 대화에 남는다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0720.webp" alt="모드가 아직 로드되지 않아 그냥 읽으면 원본 번호가 들어온다고 알리는 클로드의 답과, 가린 형태로 읽은 고객 명단">
+  <figcaption>
+    켜고 나서 파일을 읽히세요. 켜기 전에 읽은 건 남아요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=440s" target="_blank" rel="noopener">영상 07:20에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=450s" target="_blank" rel="noopener">07:30</a>
+  <h2>3단계, 깔기 전에 검사하기</h2>
+<p>남이 만든 모드는 받아 쓰면 편해요. 그런데 모드는 내 권한 그대로 돌아요. 그래서 마지막 단계는 깔기 전에 꼭 볼 것이에요.</p>
+
+<h3>안전망이지, 자물쇠가 아니에요</h3>
+<p>영상은 공식 예제 중 파일을 지우기 전에 멈춰 세우는 모드로 실험해요. 화면 위 제목에 보이는 'Blast Radius'예요. 가상 PC(Personal Computer)에서 Bash로 지우라고 하면 이 모드가 멈춰 세워요. 그런데 PowerShell로 지우라고 하자 그냥 지나갔어요. 아래 화면 빨간 상자에는 "Proceed/Cancel 창 없이 바로 실행했습니다"라는 말과 함께, 이 모드는 Bash 호출만 감시해서 PowerShell 도구는 감시 대상이 아니라는 설명이 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0750.webp" alt="PowerShell의 Remove-Item으로 연습 파일을 지웠고, Blast Radius 모드가 개입하지 않았다고 설명하는 클로드의 답">
+  <figcaption>
+    확인 창도 안 뜨고 파일이 바로 지워졌어요. 같은 '지우기'라도 어떤 도구로 하느냐에 따라 모드가 못 볼 수 있어요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=470s" target="_blank" rel="noopener">영상 07:50에서 보기</a>
+  </figcaption>
+</figure>
+<p>모드의 설명서(README)에도 이 한계가 적혀 있어요. 영상은 그 문장을 크게 띄워 보여 줘요.</p>
+<figure>
+  <img src="assets/frame-0754.webp" alt="README 카드에 It only watches the Bash tool 문장이 적힌 슬라이드">
+  <figcaption>
+    'It only watches the Bash tool'은 'Bash 도구만 지켜본다'는 뜻이에요. 모드가 무엇을 막는지는 설명서에서 먼저 확인해야 해요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=474s" target="_blank" rel="noopener">영상 07:54에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>팁 5. 깔기 전에 클로드에게 검사시키기</h3>
+<p>그래서 남이 만든 모드는 깔기 전에 클로드에게 검사시켜요. 부탁은 이래요.</p>
+<p>"이 모드가 무엇을 읽고, 어디로 보내는지 쉬운 말로 알려 줘."</p>
+<p>영상은 화면 공유용 가림 모드 하나를 검사시켜요. 결론 줄을 확대한 빨간 상자를 보면 "위험한 동작은 보이지 않습니다"라고 하면서도, <code>TYPESAFE_API_KEY</code>를 설정하면 화면 내용 일부가 외부(typesafe.ai)로 나간다고 짚어요. 그 위에는 '이 모드가 하는 일', '읽는 것'이 나뉘어 정리돼 있어요.</p>
+<figure>
+  <img src="assets/frame-0812.webp" alt="화면 공유용 가림 모드를 검사한 결과. 결론, 이 모드가 하는 일, 읽는 것 항목과, 특정 키를 설정하면 내용이 외부로 나간다는 경고가 보여요">
+  <figcaption>
+    겉보기엔 가리기만 하는 모드에도 밖으로 보내는 기능이 숨어 있을 수 있어요. 깔기 전에 한 번, 검사부터 해요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=492s" target="_blank" rel="noopener">영상 08:12에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Blast Radius는 Anthropic이 <code>claude-code-playground</code> 저장소에 올려 둔 예제 모드예요. README의 한계 항목에 'It only watches the Bash tool. File edits and other tools aren't held.'라고 적혀 있어요. Bash가 아닌 파일 편집이나 다른 도구는 붙잡지 않는다는 뜻이에요.</p>
+  <p>공식 문서는 모드가 <span class="term" data-term="샌드박스" data-en="Sandbox" data-desc="프로그램이 닿을 수 있는 파일과 네트워크를 울타리 안으로 묶어 두는 장치예요. 모드는 이 울타리 밖에서 내 권한 그대로 돌아요." data-g="7">샌드박스</span> 없이 내 권한으로 돈다고 경고해요. 파일을 읽고 쓰고, 프로그램을 띄우고, 네트워크로 보내고, 환경 변수에 둔 API(Application Programming Interface) 키까지 읽을 수 있어요. 클로드에게 묻는 것 말고도, 설치 전에 터미널에서 <code>claude plugin validate ./모드폴더</code>를 돌리면 코드를 실행하지 않고 그 모드가 어떤 이벤트에 붙는지(<code>hooks:</code>), 무엇을 하려는지(<code>calls:</code>)를 목록으로 볼 수 있어요.</p>
+  <p class="cite">출처: <a href="https://github.com/anthropics/claude-code-playground/tree/main/claude-code/mods/blast-radius" target="_blank" rel="noopener">anthropics/claude-code-playground — blast-radius README</a> · <a href="https://code.claude.com/docs/en/plugins/mods/overview" target="_blank" rel="noopener">Claude Code 공식 문서 — Decide whether to trust a mod</a></p>
+</aside>
+
+<h3>무엇을 고를까요</h3>
+<p>영상은 고르는 기준을 한 줄로 정리해요. 같은 설명을 매번 친다면 스킬, 막기만 하면 되면 훅, 화면에 늘 보여야 하면 모드예요. 아래 화면처럼 갈림길 세 갈래로 보여 줘요.</p>
+<figure>
+  <img src="assets/frame-0818.webp" alt="한 줄에서 스킬, 훅, 모드 세 갈래로 나뉘는 갈림길 그림">
+  <figcaption>
+    화면에 그릴 일이 없으면 모드까지 갈 필요가 없어요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=498s" target="_blank" rel="noopener">영상 08:18에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>한 장으로 보기</h3>
+<p>마무리 화면은 오늘 본 모드 넷과 깔기 전 검사를 카드 다섯 장으로 놓아요. 왼쪽부터 상태 띠, 메모 창, AI 티 지킴이, 가림막, 깔기 전 검사예요. 영상이 고정 댓글에 둔다고 한 '복붙 자료 문장' 다섯 개는 영상 속에서 읽어 준 그대로 이래요.</p>
+<figure>
+  <img src="assets/frame-0826.webp" alt="상태 띠, 메모 창, AI 티 지킴이, 가림막, 깔기 전 검사 다섯 장의 카드가 나란히 놓인 정리 화면">
+  <figcaption>
+    마음에 드는 모드는 모든 대화에서 쓰게 설치해 두라고 권해요.
+    <a href="https://www.youtube.com/watch?v=jPUbsnsKHQw&amp;t=506s" target="_blank" rel="noopener">영상 08:26에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>번호</th><th>모드</th><th>부탁 문장</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>상태 띠</td><td>"입력창 위에 남은 사용량이랑 디스크, 메모리를 늘 띄워 주는 모드 만들어 줘."</td></tr>
+      <tr><td>2</td><td>메모 창</td><td>"옆 창에 메모를 적고 저장하는 모드 만들어 줘. 저장한 메모는 입력창 위에 버튼으로 띄우고, 대화를 닫아도 남게."</td></tr>
+      <tr><td>3</td><td>AI 티 지킴이</td><td>"저장 전에 AI 티 나는 말이 있으면 막고, 몇째 줄인지 알려 줘."</td></tr>
+      <tr><td>4</td><td>가림막</td><td>파일을 읽을 때부터 고객 번호를 가리게 하는 부탁 (영상에서 문장을 읽어 주지 않았어요)</td></tr>
+      <tr><td>5</td><td>깔기 전 검사</td><td>"이 모드가 무엇을 읽고, 어디로 보내는지 쉬운 말로 알려 줘."</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>금지어는 회사에서 쓰는 것으로 바꿔 넣으면 돼요. 처음이라 무엇부터 만들지 모르겠다면, 영상의 마지막 제안처럼 "지난 대화 20개 읽고, 모드 다섯 개 추천해 줘"부터 해 보면 돼요. 정리하면 1단계는 띄워 두기, 2단계는 막아 두기, 3단계는 검사하고 깔기예요.</p>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-6"><dt>금지어</dt><dd>AI 티 지킴이 모드가 저장 직전에 찾아내는 단어 목록이에요. 영상에서는 &#x27;다양한&#x27;, &#x27;혁신적인&#x27; 같은 말이에요. 한 글자만 달라도 놓치니 꼼꼼히 적어야 해요.</dd></div>
+    <div class="g" id="g-5"><dt>마켓플레이스<span class="en">Marketplace</span></dt><dd>플러그인을 받아 설치하는 목록이에요. 영상에서는 모드를 모든 대화에 설치하려고 클로드가 my-mods라는 내 마켓플레이스를 만들어요.</dd></div>
+    <div class="g" id="g-1"><dt>모드<span class="en">Mod</span></dt><dd>클로드 코드 안에서 돌아가는 작은 프로그램이에요. 정해 둔 순간마다 실행돼 동작을 바꾸고, 다른 확장 방식과 달리 화면에 띠·옆 창·버튼까지 그릴 수 있어요.</dd></div>
+    <div class="g" id="g-7"><dt>샌드박스<span class="en">Sandbox</span></dt><dd>프로그램이 닿을 수 있는 파일과 네트워크를 울타리 안으로 묶어 두는 장치예요. 모드는 이 울타리 밖에서 내 권한 그대로 돌아요.</dd></div>
+    <div class="g" id="g-4"><dt>세션<span class="en">Session</span></dt><dd>클로드 코드에서 대화 하나를 부르는 말이에요. 데스크톱 앱 왼쪽 목록의 대화 하나가 세션 하나예요. 부탁해서 만든 모드는 이 세션 안에서만 켜져요.</dd></div>
+    <div class="g" id="g-2"><dt>스킬<span class="en">Skill</span></dt><dd>일하는 방법을 적어 둔 지침 파일(SKILL.md)이에요. 그 일을 할 때 클로드가 꺼내 읽어요. 같은 설명을 매번 붙여 넣고 있다면 스킬로 만들 때예요.</dd></div>
+    <div class="g" id="g-3"><dt>훅<span class="en">Hook</span></dt><dd>설정 파일에 적어 두는 자동 명령이에요. 파일 저장 직전처럼 정해진 순간마다 돌아서 막거나 결과를 바꿀 수 있지만, 화면에 그리지는 못해요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>MCP</dt><dd>Model Context Protocol</dd></div>
+    <div class="g"><dt>PC</dt><dd>Personal Computer</dd></div>
+    <div class="g"><dt>UI</dt><dd>User Interface</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=jPUbsnsKHQw" target="_blank" rel="noopener">원본 영상 — AI싱크클럽</a></li>
+    <li id="src-2"><a href="https://code.claude.com/docs/en/plugins/mods/overview" target="_blank" rel="noopener">Claude Code 공식 문서 — Mods overview</a></li>
+    <li id="src-3"><a href="https://code.claude.com/docs/en/plugins/mods/create" target="_blank" rel="noopener">Claude Code 공식 문서 — Create a mod</a></li>
+    <li id="src-4"><a href="https://code.claude.com/docs/en/settings-reference" target="_blank" rel="noopener">Claude Code 공식 문서 — Settings reference (cleanupPeriodDays)</a></li>
+    <li id="src-5"><a href="https://github.com/anthropics/claude-code-playground/tree/main/claude-code/mods/blast-radius" target="_blank" rel="noopener">anthropics/claude-code-playground — blast-radius README</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 20일에 이 영상을 보고 정리했어요. 원본은 AI싱크클럽 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
