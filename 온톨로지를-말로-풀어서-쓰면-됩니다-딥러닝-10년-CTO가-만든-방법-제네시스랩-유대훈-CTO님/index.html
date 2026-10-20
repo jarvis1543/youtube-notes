@@ -1,0 +1,1146 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>온톨로지를 말로 풀어 쓰는 법 — 제네시스랩 유대훈 CTO의 슬립박스</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>온톨로지를 말로 풀어 쓰는 법 — 제네시스랩 유대훈 CTO의 슬립박스</h1>
+  <p class="lede">그래프 대신 글로 쓴 지식 지도, 슬립박스가 어떻게 동작하는지 짚어요</p>
+  <div class="meta">
+    <span>빌더 조쉬 Builder Josh</span><span class="dot">·</span>
+    <span>영상 48:09</span><span class="dot">·</span>
+    <span>읽는 데 약 25분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=b6phhtUi0hs" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>AI(Artificial Intelligence) 서비스는 배포가 시작이에요. 그래서 현업이 직접 고치고 테스트하는 에이전트 빌더 '에이전트리아'를 만들었어요.</li>
+    <li>여기서 말하는 <span class="term" data-term="온톨로지" data-en="Ontology" data-desc="어떤 분야의 개념과 그 사이 관계를 정리한 지식 구조예요. 이 영상에서는 흩어진 데이터가 어디 있고 어떻게 가져오는지 적은 &#x27;지도&#x27;라는 뜻으로 써요." data-g="1">온톨로지</span>는 흩어진 DB(Database)·API(Application Programming Interface)를 어디서 어떻게 쓰는지 적은 지도예요. 데이터를 옮기지 않고 있는 시스템을 그대로 써요.</li>
+    <li>관계는 말로 쓰고 컴파일은 LLM(Large Language Model)이 해요. 목차는 DB로 관리해 정합성을 지키고, 에이전트에게는 마크다운으로 렌더링해 줘요.</li>
+    <li>자주 바뀌는 지식은 <span class="term" data-term="슬립박스" data-en="Slipbox" data-desc="에이전트리아의 지식 기능이에요. 시스템·용어·규칙을 사람이 읽는 페이지로 적어 두면, 에이전트가 읽고 필요한 DB나 어빌리티를 실행해요." data-g="3">슬립박스</span>로, 정적인 데이터는 RAG(Retrieval-Augmented Generation)로 나눠요. <span class="term" data-term="임베딩" data-en="Embedding" data-desc="문장을 의미가 담긴 숫자 벡터로 바꾸는 일이에요. 비슷한 내용을 빨리 찾게 해 주지만, 모델을 바꾸면 전부 다시 계산해야 해요." data-g="14">임베딩</span> 모델 교체 때마다 전체를 다시 만드는 부담 때문이에요.</li>
+    <li>목표는 AI 역량을 개인이 아닌 회사의 자산으로 쌓는 것이고, 그래도 책임은 사람이 져요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">AI 서비스는 배포가 시작이에요</a></li>
+    <li><a href="#s2">어빌리티, 그리고 온톨로지라는 지도</a></li>
+    <li><a href="#s3">마크다운 위키에서 슬립박스로</a></li>
+    <li><a href="#s4">슬립박스 화면: 용어, 조인 경로, 금칙</a></li>
+    <li><a href="#s5">변환은 잘 됐을까요? 품질과 평가</a></li>
+    <li><a href="#s6">왜 RAG 대신 슬립박스일까요?</a></li>
+    <li><a href="#s7">시연: 딜 현황 보고에서 Text-to-SQL까지</a></li>
+    <li><a href="#s8">자산화, 그리고 책임은 사람이 져요</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=157s" target="_blank" rel="noopener">02:37</a>
+  <h2>AI 서비스는 배포가 시작이에요</h2>
+<p>게스트 유대훈 CTO(Chief Technology Officer)가 있는 제네시스랩은 10년 가까이 딥러닝을 연구해 온 회사예요. AI 면접 분석, 음성 인식·합성, AI 휴먼 같은 모델을 10개 넘게 만들었어요. 대표 서비스는 AI 면접 플랫폼 뷰인터HR이고, 엔터테인먼트 서비스 '주시(ZUICY)'와 정신 건강 자가 평가 챗봇도 운영했어요. 지금은 이 경험을 모아 에이전트 빌더 '에이전트리아'를 개발하고 있어요.</p>
+
+<h3>세 팀이 도는 데 2주가 걸렸어요</h3>
+<p>예전에는 서비스 하나를 고치려면 세 팀을 거쳤어요. 현업 도메인 전문가가 요구를 정리하면, AI 연구원이 Streamlit 같은 도구로 프로토타입을 만들어요. 그건 프로덕션 수준이 아니라서, 서비스 개발팀이 트래픽을 견디게 다시 만들어 배포해요.</p>
+<p>아래 그래픽은 영상이 이 문제를 그린 장면이에요. 위쪽 '일반 서비스' 줄은 QA(Quality Assurance) 시트를 통과하면 배포 깃발에서 끝나요. 아래쪽 'AI 서비스' 줄은 배포 지점이 '시작'이고, 거기서부터 화살표가 여러 갈래로 뻗어요. 사용자가 만든 사람의 의도대로 쓰지 않기 때문이에요.</p>
+<figure>
+  <img src="assets/frame-0452.webp" alt="일반 서비스는 QA 시트를 통과하면 배포에서 끝나고, AI 서비스는 배포 지점에서 개발이 시작돼 여러 갈래로 뻗는 모습을 그린 그래픽">
+  <figcaption>
+    AI 서비스는 불확실성이 있어서 QA 시트만으로 끝낼 수 없어요. 배포 뒤 피드백이 진짜 개발의 출발점이에요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=292s" target="_blank" rel="noopener">영상 04:52에서 보기</a>
+  </figcaption>
+</figure>
+<p>배포 뒤 문제가 생기면 판단은 현업이 하고, 그걸 정리해 다시 연구팀에, 다시 개발팀에 넘겨요. 이 한 바퀴가 2주쯤 걸렸어요. 프롬프트 몇 줄이면 끝날 수정도 1주가 걸렸다고 해요. 아래 (b)는 같은 화면에서 현업과 연구팀이 함께 고치는 방식이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 680 260" role="img" aria-label="세 팀을 차례로 거치던 예전 방식과 같은 화면에서 바로 고치는 에이전트 빌더 방식 비교">
+    <defs><marker id="arrow-loop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="20" y="24" class="sub">(a) 예전: 세 팀이 차례로</text>
+    <rect x="20" y="36" width="140" height="56" rx="10" class="c1 cell"/>
+    <text x="90" y="60" text-anchor="middle">현업 도메인</text>
+    <text x="90" y="80" text-anchor="middle" class="sub">요구·판단</text>
+    <rect x="190" y="36" width="140" height="56" rx="10" class="c2 cell"/>
+    <text x="260" y="60" text-anchor="middle">AI 연구원</text>
+    <text x="260" y="80" text-anchor="middle" class="sub">프로토타입</text>
+    <rect x="360" y="36" width="140" height="56" rx="10" class="c3 cell"/>
+    <text x="430" y="60" text-anchor="middle">서비스 개발팀</text>
+    <text x="430" y="80" text-anchor="middle" class="sub">프로덕션화</text>
+    <rect x="530" y="36" width="130" height="56" rx="10" class="box"/>
+    <text x="595" y="60" text-anchor="middle">운영 배포</text>
+    <text x="595" y="80" text-anchor="middle" class="sub">여기서 문제 발견</text>
+    <path d="M162 64 h26" class="line" marker-end="url(#arrow-loop)"/>
+    <path d="M332 64 h26" class="line" marker-end="url(#arrow-loop)"/>
+    <path d="M502 64 h26" class="line" marker-end="url(#arrow-loop)"/>
+    <path d="M595 94 V114 H90 V96" class="line hot" marker-end="url(#arrow-loop)"/>
+    <text x="340" y="134" text-anchor="middle" class="sub">피드백이 다시 세 팀을 돌아요 · 한 바퀴 약 2주</text>
+    <text x="20" y="174" class="sub">(b) 에이전트 빌더: 같은 화면에서</text>
+    <rect x="20" y="186" width="190" height="56" rx="10" class="c1 cell"/>
+    <text x="115" y="210" text-anchor="middle">현업 + 연구팀</text>
+    <text x="115" y="230" text-anchor="middle" class="sub">프롬프트·지식 직접 설정</text>
+    <rect x="250" y="186" width="190" height="56" rx="10" class="accent"/>
+    <text x="345" y="210" text-anchor="middle">에이전트 바로 생성</text>
+    <text x="345" y="230" text-anchor="middle" class="sub">같은 화면을 보며</text>
+    <rect x="480" y="186" width="180" height="56" rx="10" class="ok"/>
+    <text x="570" y="210" text-anchor="middle">테스트·수정</text>
+    <text x="570" y="230" text-anchor="middle" class="sub">어떤 건 하루 만에</text>
+    <path d="M212 214 h36" class="line" marker-end="url(#arrow-loop)"/>
+    <path d="M442 214 h36" class="line" marker-end="url(#arrow-loop)"/>
+  </svg>
+  <figcaption>바뀐 건 기술보다 '누가 고치느냐'예요. 판단하는 사람이 직접 고치니 전달 과정이 사라져요.</figcaption>
+</figure>
+
+<h3>ZUICY STUDIO에서 먼저 해 봤어요</h3>
+<p>이 방식을 처음 시험한 곳은 주시였어요. 유튜브 크리에이터를 에이전트로 만드는 서비스인데, 여기서 'ZUICY STUDIO'라는 도구를 만들었어요. 화면에 뜬 앱스토어 카드에 'ZUICY STUDIO — 콘텐츠 제작 툴'이라고 적혀 있어요. 현업이 프롬프트와 지식 체계를 직접 설정하면 에이전트가 바로 만들어지고, 문제가 생기면 그 자리에서 고쳐요.</p>
+<figure>
+  <img src="assets/frame-0539.webp" alt="유대훈 CTO 옆으로 ZUICY STUDIO 콘텐츠 제작 툴의 앱스토어 화면이 떠 있는 장면">
+  <figcaption>
+    이 경험이 '세 서비스의 바탕이 될 범용 에이전트 빌더를 만들자'는 결정으로 이어졌어요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=339s" target="_blank" rel="noopener">영상 05:39에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>n8n 대신 직접 만든 이유</h3>
+<p>처음엔 개발 인력이 부족해서 n8n 같은 기존 도구도 검토했어요. 걸린 건 버전 관리였어요. 필요했던 건 이런 것들이에요.</p>
+<ul>
+  <li>모듈마다 따로 버전을 붙이는 것</li>
+  <li>작업은 한곳에서 하되, 모듈 버전마다 API를 따로 배포하는 것</li>
+  <li>스테이징 서버와 개발 서버를 나누는 것</li>
+  <li>보안을 위한 API 키 관리</li>
+</ul>
+<p>당시 판단으로는 기존 도구로 이걸 다 할 수 없었어요. 그래서 내부용으로 직접 만들기 시작했고, 사내 팀이 많은 고생을 하며 다듬었다고 해요.</p>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=474s" target="_blank" rel="noopener">07:54</a>
+  <h2>어빌리티, 그리고 온톨로지라는 지도</h2>
+<h3>워크플로가 아니라 어빌리티</h3>
+<p>에이전트리아는 노드를 이어 만든 워크플로를 '<span class="term" data-term="어빌리티" data-en="Ability" data-desc="에이전트리아에서 노드를 이어 만든 워크플로를 부르는 이름이에요. 버전을 붙여 모듈로 만들고, 다른 어빌리티나 에이전트에 도구처럼 꽂아 써요." data-g="2">어빌리티</span>'라고 불러요. 목표가 에이전트였으니, 에이전트에게 능력을 하나씩 꽂아 준다는 뜻으로 이름을 붙였어요. 어빌리티에는 버전이 붙고, 다른 어빌리티 안에 노드처럼 다시 들어가요.</p>
+<p>아래 그래픽에서 왼쪽 주황색 'Ability v1' 블록 하나가, 오른쪽 세 줄의 서로 다른 어빌리티 안에 각각 다른 자리로 들어가 있어요. 영상 속 제목이 'Ability는 다시 꽂아 쓰는 부품'이에요. 진행자는 변수들을 묶어 클래스처럼 쓰는 개발자 사고방식 같다고 했어요.</p>
+<figure>
+  <img src="assets/frame-0855.webp" alt="왼쪽 Ability v1 블록이 오른쪽 세 개의 다른 Ability 안에서 서로 다른 위치의 노드로 들어가 있는 그래픽">
+  <figcaption>
+    한 번 만든 어빌리티를 함수처럼 재사용하고, 버전으로 바꿔 끼워요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=535s" target="_blank" rel="noopener">영상 08:55에서 보기</a>
+  </figcaption>
+</figure>
+<p>그 위에는 에이전트 계층이 따로 있어요. 같은 워크플로 화면이지만 에이전트로 들어가면 에이전트 노드가 열려요. 에이전트 노드에 어빌리티나 일반 노드를 연결하면, 에이전트가 그걸 도구처럼 골라 써요.</p>
+
+<h3>온톨로지는 흩어진 데이터의 지도예요</h3>
+<p>계속 마음에 걸린 건 데이터 계층이었어요. 처음엔 정형 데이터를 저장하고 텍스트는 임베딩으로 처리하는 데이터 스토리지로 출시했어요. 하지만 제네시스랩은 2~3년 전부터 멀티 에이전트와 온톨로지를 연구해 왔고, 그때 특허도 냈어요.</p>
+<p>유대훈 CTO가 당시 정의한 온톨로지는 이래요. 고객사의 DB, 시스템, API 서비스는 다 흩어져 있어요. 이걸 '이 데이터가 필요하면 이 DB의 이 테이블로, 저 데이터는 저 시스템의 API로' 하고 정리한 모음이 온톨로지예요. 아래 그래픽에서 섬 하나가 'DB 테이블'이고, 섬 사이 점선에 '접근 방법'이라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-1034.webp" alt="'온톨로지는 흩어진 데이터의 지도다'라는 제목 아래 여러 섬이 선으로 이어지고, 한 섬에 DB 테이블, 점선 경로에 접근 방법이라고 표시된 그래픽">
+  <figcaption>
+    에이전트는 이 지도를 보고 '데이터가 여기 있구나' 하고 찾아가요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=634s" target="_blank" rel="noopener">영상 10:34에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>데이터를 옮기지 않고 그 자리에서 써요</h3>
+<p>유대훈 CTO는 팔란티어를 공개 자료로 공부한 뒤, 모든 시스템을 자기 <span class="term" data-term="데이터 레이크" data-en="Data lake" data-desc="여러 시스템의 데이터를 원래 형태 그대로 한곳에 모아 두는 큰 저장소예요. 모으면 다루기 쉽지만, 원본과 계속 동기화하는 비용이 커요." data-g="4">데이터 레이크</span>로 올리고 그 위에 온톨로지를 쌓는 방식이라고 이해했어요. 그 동기화를 실시간에 가깝게 유지하려면 인프라와 기술이 엄청 들어가요. 작은 회사가 감당하기 어렵고, 고객사에게도 부담이에요.</p>
+<p>아래 그래픽 왼쪽은 '한곳에 모은 큰 저장소'로 대기업 건물 데이터를 옮기는 그림이에요. 오른쪽은 '있는 시스템 그대로' 건물인데, 지하 금고 옆에 '<span class="term" data-term="데이터 주권" data-en="Data sovereignty" data-desc="자기 데이터를 어디에 두고 누가 접근할지 스스로 통제할 권리예요. 그래서 외부 솔루션으로 데이터를 옮기는 걸 꺼리는 기업이 많아요." data-g="5">데이터 주권</span> · 옮기기 만만치 않다'는 표지가 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-1151.webp" alt="왼쪽은 대기업 건물의 데이터를 한곳에 모은 큰 저장소로 옮기는 그림, 오른쪽은 있는 시스템 그대로 쓰는 건물과 데이터 주권 표지가 있는 그래픽">
+  <figcaption>
+    큰 기업은 결정할 수 있어도 중견기업에게 데이터 이전은 만만치 않아요. 데이터 주권을 더 중요하게 여기는 곳도 많고요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=711s" target="_blank" rel="noopener">영상 11:51에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th></th><th>영상이 설명한 팔란티어 방식</th><th>제네시스랩 방식</th></tr></thead>
+    <tbody>
+      <tr><td>데이터 위치</td><td>모든 시스템을 데이터 레이크로 옮겨요</td><td>있는 시스템에 그대로 둬요</td></tr>
+      <tr><td>온톨로지</td><td>데이터 레이크 위에 쌓아요</td><td>어디서 어떻게 가져오는지 적은 지도예요</td></tr>
+      <tr><td>부담</td><td>실시간 동기화 인프라와 기술</td><td>지도를 쓰고 고치는 일</td></tr>
+      <tr><td>잘 맞는 곳</td><td>결정을 밀어붙일 수 있는 큰 기업</td><td>데이터 주권을 중시하는 중견기업</td></tr>
+    </tbody>
+  </table>
+</div>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>팔란티어 공식 문서는 온톨로지를 '플랫폼에 통합된 데이터셋, 가상 테이블(virtual table), 모델' 위에 놓이는 운영 계층이라고 설명해요. 가상 테이블은 외부 시스템의 테이블을 Foundry에 저장하지 않고 가리키기만 하는 방식이에요. 문서에는 '데이터를 한곳에 모을 필요가 없는 구조'도 가능하다고 적혀 있어요. 그러니 '모두 데이터 레이크로 옮긴다'는 건 유대훈 CTO가 공개 자료를 보고 이해한 방식으로 읽는 게 좋아요.</p>
+  <p class="cite">출처: <a href="https://www.palantir.com/docs/foundry/ontology/overview/" target="_blank" rel="noopener">Palantir 문서 — Ontology overview</a> · <a href="https://www.palantir.com/docs/foundry/data-integration/virtual-tables/" target="_blank" rel="noopener">Palantir 문서 — Virtual tables</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=711s" target="_blank" rel="noopener">11:51</a>
+  <h2>마크다운 위키에서 슬립박스로</h2>
+<h3>표준 문법은 너무 어려웠어요</h3>
+<p>온톨로지를 공부할수록 문법이 어려웠다고 해요. 개발자인데도요. 기계가 이해하도록 구조를 만들다 보니 쿼리와 구조가 복잡해질 수밖에 없어요. 고객에게 설명할 방법이 막막했어요.</p>
+<p>실마리는 Claude Skills였어요. Claude가 bash 같은 도구로 파일 시스템을 영리하게 오가며 일을 잘 조율하는 걸 보고, 마크다운 문서가 실시간으로 다루기 좋고 사람이 이해하기도 좋다고 느꼈어요. 여기에 한 가지를 더했어요. 마크다운을 DB에 담으면 검색 엔진을 붙일 수 있어요.</p>
+<p>아래 그래픽 위쪽 grep 줄은 파일을 하나씩 열어 보느라 막대가 느리게 차요. 아래쪽 DB 줄은 검색창에 '업무 메모'를 넣자 바로 문서가 나오고, 옆에 'DB 검색이 훨씬 빠르다'고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-1253.webp" alt="'마크다운을 DB에 담으면 빨라진다' 제목 아래, grep으로 파일을 하나씩 여는 느린 막대와 DB 검색창에서 업무 메모가 바로 찾아지는 모습을 비교한 그래픽">
+  <figcaption>
+    사람이 읽기 좋은 마크다운은 그대로 두고, 저장과 검색만 DB로 옮기자는 생각이에요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=773s" target="_blank" rel="noopener">영상 12:53에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>LLM Wiki를 만나고, 약점을 고쳤어요</h3>
+<p>관계를 어떻게 표현할지는 여전히 숙제였어요. 그러다 안드레이 카파시가 LLM Wiki를 공유했어요. 제네시스랩은 2~3년 전 <span class="term" data-term="제텔카스텐" data-en="Zettelkasten" data-desc="메모를 작은 카드로 나눠 쓰고 서로 링크로 잇는 지식 관리법이에요. 독일어로 &#x27;메모 상자&#x27;라는 뜻이고, 영어로 하면 Slip Box예요." data-g="6">제텔카스텐</span> 붐 때부터 사내에서 옵시디언으로 메모와 지식을 관리하고 있었어요. 화면에 뜬 카파시의 gist에도 '한쪽엔 LLM 에이전트, 한쪽엔 Obsidian'을 띄워 둔다는 문장이 노란색으로 표시돼 있어요.</p>
+<figure>
+  <img src="assets/frame-1320.webp" alt="GitHub Gist 카파시의 LLM Wiki 문서 화면, 'LLM 에이전트를 한쪽에, Obsidian을 다른 쪽에 열어 둔다'는 문장이 강조된 모습">
+  <figcaption>
+    처음엔 '개인 작업에 좋겠다' 싶었는데, 곧 '이걸 회사 시스템에 연결하면 되겠구나'로 바뀌었다고 해요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=800s" target="_blank" rel="noopener">영상 13:20에서 보기</a>
+  </figcaption>
+</figure>
+<p>유대훈 CTO가 짚은 LLM Wiki의 약점은 두 가지예요.</p>
+<ul>
+  <li>목차가 200개를 넘으면 성능이 떨어져요. 그래서 목차를 트리로 만들었어요.</li>
+  <li>LLM이 글로 링크를 잇다 보니 연결을 놓치거나, 다른 제목을 달아 연결이 끊기거나, 같은 제목이 겹쳐요. 이를 바로잡는 <span class="term" data-term="린트" data-en="Lint" data-desc="규칙에 어긋난 곳을 자동으로 찾아내는 점검이에요. LLM Wiki에서는 끊긴 링크, 고아 페이지, 모순을 LLM이 찾아 고치게 하는데 토큰이 많이 들어요." data-g="7">린트</span>를 마지막에 돌리는데, 그게 토큰을 많이 써요.</li>
+</ul>
+<p>그래서 목차는 DB로 관리하기로 했어요. DB는 정합성을 기본으로 맞춰 줘요. 목차를 재구성할 때도 LLM은 계획만 세우고, 실제 반영은 한 번의 트랜잭션으로 해요. 문제는 에이전트가 DB를 그대로는 이해하지 못한다는 점이에요. 그래서 DB 내용을 마크다운으로 렌더링해서 에이전트에게 넣어 줘요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["파일 · DB 인제스트"] --> B["목차 트리&lt;br/&gt;(DB로 관리)"]
+  H["사람이 위키처럼 수정"] --> B
+  B --> C["마크다운으로 렌더링"]
+  C --> D["에이전트가 읽고 실행"]
+</pre>
+  <figcaption>저장은 DB, 읽기는 마크다운이에요. 정합성은 DB가 지키고, 이해는 사람과 LLM 모두 마크다운으로 해요.</figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>카파시의 LLM Wiki gist는 index.md(전체 페이지 목록) 하나로 관련 페이지를 찾는 방식이 '적당한 규모(소스 약 100개, 페이지 수백 개)'에서 잘 동작한다고 써요. 위키가 커지면 제대로 된 검색이 필요하다고도 해요. 린트는 페이지 간 모순, 들어오는 링크가 없는 고아 페이지, 빠진 교차 참조를 LLM에게 점검시키는 작업이에요. '200개'라는 기준은 유대훈 CTO의 수치예요.</p>
+  <p class="cite">출처: <a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">Andrej Karpathy — LLM Wiki (GitHub Gist)</a></p>
+</aside>
+
+<h3>관계는 말로 쓰고, 컴파일은 LLM이</h3>
+<p>W3C(World Wide Web Consortium) 같은 곳의 표준 온톨로지는 좋지만, 고객에게 설명하기엔 너무 어려워요. 그래서 온톨로지를 말로 풀어, 원래 업무 문서를 쓰듯 글로 쓰기로 했어요. 아래 그래픽 왼쪽 메모장에 '계약서 A는 고객 B와 맺었다', '고객 B의 담당은 C팀이다' 두 줄이 있어요. 가운데 'LLM Compile' 화살표를 지나면 오른쪽에 계약서 A, 고객 B, C팀이 '맺음', '담당'으로 이어진 관계 그래프가 생겨요.</p>
+<figure>
+  <img src="assets/frame-1533.webp" alt="왼쪽 업무 메모에 '계약서 A는 고객 B와 맺었다, 고객 B의 담당은 C팀이다'라고 적혀 있고, LLM Compile 화살표 오른쪽에 계약서 A, 고객 B, C팀을 잇는 관계 그래프가 그려진 그래픽">
+  <figcaption>
+    사람은 문장만 쓰면 되고, 엔티티와 관계로 바꾸는 일은 LLM이 백그라운드에서 해요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=933s" target="_blank" rel="noopener">영상 15:33에서 보기</a>
+  </figcaption>
+</figure>
+<p>이렇게 태어난 게 슬립박스예요. 제텔카스텐은 독일어인데, 영어로 하면 Slip Box(메모 상자)라서 이름이 됐어요. 화면에 뜬 에이전트리아 공식 문서에는 '팀원이 쓴 문서가 곧바로 에이전트 지식이 된다'는 문장이 강조돼 있어요.</p>
+<figure>
+  <img src="assets/frame-1542.webp" alt="에이전트리아 공식 문서의 Using Slipbox 페이지, 팀원이 쓴 문서가 곧바로 에이전트 지식이 된다는 문장이 강조된 화면">
+  <figcaption>
+    새 데이터 레이크를 만들지 않고, 지식을 메타 지식으로 관리한다는 게 문서의 설명이에요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=942s" target="_blank" rel="noopener">영상 15:42에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상이 '어렵다'고 한 표준은 W3C의 OWL(Web Ontology Language)이에요. 사물과 그 무리, 그 사이의 관계에 대한 복잡한 지식을 표현하는 시맨틱 웹 언어예요. 계산 논리 기반이라 프로그램이 지식의 일관성을 검증하거나 숨은 지식을 끌어낼 수 있어요. 그만큼 문법이 엄격하고, 슬립박스는 이 엄격함을 포기하는 대신 글쓰기의 쉬움을 택한 셈이에요.</p>
+  <p class="cite">출처: <a href="https://www.w3.org/OWL/" target="_blank" rel="noopener">W3C — Web Ontology Language (OWL)</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=967s" target="_blank" rel="noopener">16:07</a>
+  <h2>슬립박스 화면: 용어, 조인 경로, 금칙</h2>
+<p>온톨로지를 검색하면 대부분 그래프 그림이 나와요. 엔티티(명사) 사이를 관계로 잇는 트리플 구조예요. 유대훈 CTO는 이 관계를 말로 설명한다면, 페이지와 페이지 사이의 관계로도 충분하다고 봤어요. 이 구간은 그 생각을 실제 화면으로 보여 줘요.</p>
+
+<h3>DB를 인제스트하면 지도가 생겨요</h3>
+<p>카파시의 LLM Wiki는 파일을 <span class="term" data-term="인제스트" data-en="Ingest" data-desc="파일이나 DB 같은 원본을 읽어 지식 저장소에 넣는 과정이에요. 슬립박스에서는 이때 페이지, 목차, 관계가 자동으로 만들어져요." data-g="8">인제스트</span>해 페이지로 만들어요. 슬립박스는 여기에 DB와 클라우드 드라이브까지 인제스트 대상으로 넣었어요. 시연용으로는 <span class="term" data-term="합성 데이터" data-en="Synthetic data" data-desc="실제 데이터 대신 AI 등으로 만들어 낸 가짜 데이터예요. 시연이나 테스트에서 민감한 실데이터를 쓰지 않으려고 써요." data-g="10">합성 데이터</span>로 만든 제조 MES(Manufacturing Execution System) DB를 썼어요. 아래 화면 가운데는 자동으로 생긴 페이지 사이의 연결 그래프예요.</p>
+<figure>
+  <img src="assets/frame-1637.webp" alt="에이전트리아 슬립박스 화면 가운데에 페이지들이 점과 선으로 이어진 그래프 뷰가 떠 있는 모습">
+  <figcaption>
+    익숙한 그래프 모양이지만, 점 하나하나가 사람이 읽을 수 있는 페이지예요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=997s" target="_blank" rel="noopener">영상 16:37에서 보기</a>
+  </figcaption>
+</figure>
+<p>DB를 인제스트하면 에이전트가 먼저 테이블 스키마를 봐요. 테이블명, 컬럼명, 코멘트를 읽고, 컬럼명이 약칭이라 뜻이 애매하면 데이터를 일부 샘플링해서 의미를 추정해요. 아래 '사업장 (PLANT)' 페이지는 그렇게 만들어진 결과예요. 위쪽 요약에 <code>PLANT_CODE</code>(PLT-01~05), <code>REGION</code>(경기도·경상남도 등) 같은 컬럼 설명이 있고, 개요 아래 '주의: 합성 데이터' 상자, 그 아래 <code>REGION</code> 코드값 표가 이어져요.</p>
+<figure>
+  <img src="assets/frame-1737.webp" alt="슬립박스의 사업장(PLANT) 페이지, 요약·개요·합성 데이터 주의 문구·REGION 코드값 표가 있고 왼쪽에 DEMO_MES 아래 테이블별 페이지 목차가 보이는 화면">
+  <figcaption>
+    왼쪽 목차에 사업장, 생산라인, 설비, 작업지시, 품질검사, 센서 측정값처럼 테이블마다 페이지가 하나씩 생겼어요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=1057s" target="_blank" rel="noopener">영상 17:37에서 보기</a>
+  </figcaption>
+</figure>
+<p>데이터가 어떤 구조로 어디에 있는지만 알면, 에이전트는 그 힌트로 시행착오를 거쳐 충분히 찾아가요. 아무것도 없으면 뭐부터 해야 할지 막막해하고요. 이게 '지도를 만든다'는 말의 뜻이에요. 테이블 사이의 의존 관계도 함께 정리돼요. DEMO_MES 페이지의 '<span class="term" data-term="조인 경로" data-en="Join path" data-desc="여러 테이블을 어떤 컬럼으로 이어야 원하는 데이터가 나오는지 적은 순서예요. 에이전트가 SQL을 짤 때 길잡이가 돼요." data-g="9">조인 경로</span>'를 보면 <code>PLANT → PRODUCTION_LINE → EQUIPMENT → SENSOR_READING</code> 순서와, 어떤 컬럼으로 조인하는지가 한 줄씩 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-1937.webp" alt="DEMO_MES 페이지에서 테이블별 설명 표와 PLANT.ID = PRODUCTION_LINE.PLANT_ID 같은 조인 경로 목록이 보이는 화면">
+  <figcaption>
+    테이블 관계를 한눈에 보는 부분이에요. 에이전트가 쿼리를 짤 때 이 줄을 그대로 참고해요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=1177s" target="_blank" rel="noopener">영상 19:37에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>용어 정의가 온톨로지의 핵심이에요</h3>
+<p>유대훈 CTO에게 온톨로지는 결국 그 조직이 쓰는 용어와 그 정의예요. 같은 말도 분야마다 뜻이 달라요. 진행자의 예시로는, 파리라는 지명은 호주에도, 미국에도 있어요. '우리가 말하는 파리는 미국의 그 도시'라고 적어 두는 게 해석 규칙을 드러내는 일이에요. LLM은 용어를 이렇게 쓰라고 알려 주면 그때부터 그 뜻으로 받아들여요. 사용자는 현업 사람이라 현업 용어로 물으니, 인제스트 단계에서 용어부터 정의해 두는 거예요.</p>
+
+<h3>금칙과 없는 연산도 적어 둬요</h3>
+<p>해 보면서 깨달은 게 하나 더 있어요. 센서 데이터처럼 계속 쌓이는 테이블을 실수로 전체 조회하면 메모리가 터지고, LLM도 감당하지 못해요. 그래서 그런 테이블을 찾아 금칙으로 적어 둬요. 아래 화면에서 주황색 테두리로 강조된 줄이 'SENSOR_READING은 누적 시계열 대용량 테이블 — 기간 필터(READING_TIME) 없이 전체 조회 금지'예요. 그 아래에는 마스킹된 합성값이라 실명 검색이 안 되는 컬럼, 불합격일 때만 값이 있는 컬럼이 적혀 있고, '없는 연산' 목록도 있어요.</p>
+<figure>
+  <img src="assets/frame-2007.webp" alt="조인 경로 아래 금칙 목록에서 SENSOR_READING 전체 조회 금지 줄이 주황색 테두리로 강조되고, 그 아래 없는 연산 목록이 보이는 화면">
+  <figcaption>
+    '하지 말 것'을 먼저 적어 두면 에이전트의 사고를 미리 막아요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=1207s" target="_blank" rel="noopener">영상 20:07에서 보기</a>
+  </figcaption>
+</figure>
+<p>이 내용은 처음엔 자동으로 만들어져요. 그다음에는 슬립박스 에이전트에게 고쳐 달라고 해도 되고, 사람이 '이 용어 설명은 틀렸어' 하고 노션이나 옵시디언 쓰듯 직접 고쳐도 돼요.</p>
+<p>위키로 쓰는 이유는 아래 그래픽 제목 그대로예요. '관계를 따라 읽다 보면 전체가 이해된다.' 사업장 카드의 [[생산라인]] 링크를 따라가면 생산라인, 다시 [[설비]], [[센서 측정값]]으로 이어져요.</p>
+<figure>
+  <img src="assets/frame-2052.webp" alt="'관계를 따라 읽다 보면 전체가 이해된다' 제목 옆에 사업장, 생산라인, 설비, 센서 측정값, 작업지시, 품질검사 카드가 링크로 이어진 그래픽">
+  <figcaption>
+    에이전트가 읽기 좋은 구조가 사람에게도 읽기 좋아요. 그래서 사람이 끝까지 이해하고 고칠 수 있어요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=1252s" target="_blank" rel="noopener">영상 20:52에서 보기</a>
+  </figcaption>
+</figure>
+<p>페이지 아래쪽 '구조' 블록은 앞에서 말한 DB로 관리하는 부분이에요. 아래 화면에 '구조 (마지막 동기화 시점의 카탈로그 — 서버가 쓴다)'라는 제목과 '자동 생성: 동기화마다 서버가 갱신한다. 이 안은 손으로 고치지 마세요'라는 주석이 보여요. 이 블록이 에이전트에게는 마크다운으로 자동 렌더링돼 들어가요. DB 이름이 명시돼 있어 속도가 빨라지고, 데이터가 틀리는 것도 막아요.</p>
+<figure>
+  <img src="assets/frame-2122.webp" alt="구조 블록에 mes_highlight_only · DEMO_MES.PLANT 테이블의 kind, comment, ID·PLANT_CODE·PLANT_NAME 같은 컬럼 정의가 나열되고 손으로 고치지 말라는 주석이 붙은 화면">
+  <figcaption>
+    사람이 쓰는 설명과 서버가 쓰는 스키마가 한 페이지에 함께 있되, 영역이 나뉘어 있어요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=1282s" target="_blank" rel="noopener">영상 21:22에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>모든 걸 그래프로 만들 필요는 없어요</h3>
+<p>연결, 관계, 절차를 전부 그래프로 할 필요는 없다는 게 핵심이에요. 페이지 하나가 작은 온톨로지예요. '공장의 이 플랜트는 자동 라인과 이렇게 연결돼 있다'를 원래는 공장·라인·제품 같은 엔티티로 쪼개야 했다면, 여기서는 그냥 글로 써요. LLM이 그걸 잘 읽으니까요.</p>
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>진행자는 이것이 표준 온톨로지와는 다른, 제네시스랩만의 방식이라는 점을 분명히 해 두자고 했어요. 이 문서도 같은 뜻으로 '온톨로지'라는 말을 써요.</p>
+</aside>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>에이전트리아 공식 문서를 보면 슬립박스의 페이지(슬립)에는 목적에 따라 문서 유형이 있어요. 하위 페이지를 묶는 Index, 특정 사람·회사·제품·절차를 설명하는 Entity, 개념과 용어를 설명하는 Concept, 자료 하나를 요약한 Summary, 여러 자료를 비교해 결론을 내는 Synthesis, 정리되지 않은 메모인 Note예요. 문서는 각 슬립의 요약이 슬립박스 쿼리 노드가 문서를 찾는 핵심 근거라서, 슬립을 쓴 뒤 꼭 요약을 생성하라고 안내해요.</p>
+  <p class="cite">출처: <a href="https://agentria.ai/docs/slipbox" target="_blank" rel="noopener">Agentria Docs — Using Slipbox</a></p>
+</aside>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=1354s" target="_blank" rel="noopener">22:34</a>
+  <h2>변환은 잘 됐을까요? 품질과 평가</h2>
+<p>진행자가 고객사 입장에서 물었어요. 엑셀, PPT(PowerPoint) 같은 비정형 파일을 인제스트해 마크다운으로 바꿨을 때, 변환이 잘 됐는지 내가 직접 검증하려면 어떻게 하나요?</p>
+
+<h3>인제스트는 두 방식이에요</h3>
+<p>아래 그래픽 제목이 두 방식을 한 줄로 요약해요. '원문은 그대로 자르고, 합성은 목차 트리를 만든다.' 위 칸 '원문보전'은 문서를 잘라 순서대로 제자리에 넣어요. 아래 칸 '합성'은 문서를 토픽 A, B, C로 나눈 뒤 오른쪽 '목차 트리' 상자로 다시 묶어요.</p>
+<figure>
+  <img src="assets/frame-2343.webp" alt="'원문은 그대로 자르고, 합성은 목차 트리를 만든다' 제목 아래, 원문보전은 문서를 잘라 순서대로 넣고 합성은 토픽 A·B·C로 나눠 목차 트리를 만드는 과정을 그린 그래픽">
+  <figcaption>
+    글자 하나가 중요한 문서는 원문 보존으로, 내용을 재구성해야 하는 문서는 합성으로 넣어요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=1423s" target="_blank" rel="noopener">영상 23:43에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>방식</th><th>하는 일</th><th>언제 쓰나요</th></tr></thead>
+    <tbody>
+      <tr><td>원문 보존</td><td>글자 하나 바꾸지 않고, 위치에 맞춰 잘라 넣기만 해요. 마크다운 모양은 덜 예뻐요</td><td>법률처럼 글자 하나가 바뀌면 뜻이 달라지는 문서</td></tr>
+      <tr><td>합성</td><td>내용을 토픽으로 나누고, 토픽에 맞춰 목차 트리를 만들어요</td><td>100쪽짜리 PDF(Portable Document Format)처럼 목차를 다시 짜야 하는 문서</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>합성에서 목차를 만드는 길은 또 둘이에요. 문서에 목차가 있으면 그걸 힌트로 써요. 목차가 없거나, 확인해 보니 실제 내용과 어긋나 있으면 페이지를 직접 뒤져 토픽을 뽑아요. 그래서 결과 목차가 3단이 되기도, 2단이 되기도 해요.</p>
+
+<h3>평가는 세 단계로 해요</h3>
+<p>AI 관점에서 보면 결국 검증 데이터셋이 필요해요. 다만 처음부터 데이터셋을 만들기는 어려우니, 단계를 나눠요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart TD
+  A["1. 도메인 전문가가&lt;br/&gt;슬립박스 에이전트에게 질문"] --> B["2. 제로클릭&lt;br/&gt;합성 입력으로 채팅 테스트"]
+  B --> C["3. 검증 데이터셋 + 벌크 테스트&lt;br/&gt;정답과 일치하는지 반복 비교"]
+</pre>
+  <figcaption>앞의 두 단계는 데이터셋 없이도 할 수 있어요. 큰 틀만 정해지면 바로 시작해요.</figcaption>
+</figure>
+<p>첫 단계는 도메인을 아는 사람이 직접 질문해 보는 거예요. 무엇을 확인해야 하는지 아는 사람이라, 중요한 지점을 1차로 걸러요. 마지막 단계는 에이전트리아의 <span class="term" data-term="벌크 테스트" data-en="Bulk test" data-desc="여러 입력과 정답을 한꺼번에 돌려 결과가 정답과 맞는지 비교하는 테스트예요. 에이전트를 고친 뒤 이전보다 나빠지지 않았는지 확인할 때 써요." data-g="11">벌크 테스트</span>예요. 어빌리티의 출력이 정답과 맞는지 결과를 뽑아 주고, 이를 계속 비교해요.</p>
+
+<h3>제로클릭: 에이전트가 스스로 테스트해요</h3>
+<p>비개발자가 결과를 눈으로 보며 맞는지 판단하는 건 긴 작업이에요. 현업은 다양한 입력 사례를 떠올리는 것부터 힘들어해요. 그래서 '<span class="term" data-term="제로클릭" data-desc="에이전트리아의 도우미 에이전트가 합성 입력을 만들어 대상 에이전트와 스스로 채팅 테스트를 하는 방식이에요. 사람이 사례를 일일이 만들지 않아도 돼요." data-g="12">제로클릭</span>'이라는 도우미 에이전트에게 맡겨요. 도메인만 알려 주면 입력 데이터를 합성해 직접 채팅 테스트를 해요.</p>
+<p>아래 화면 오른쪽 패널 맨 위 요청이 '5번 정도 에이전트 테스트를 해서 슬립박스의 내용을 추론해봐'예요. 그 아래 마스터 에이전트가 '1번째 테스트 메시지를 보냅니다'라고 하고, 결과 블록에 AGENT_CHAT_TEST_RESULT와 테스트 대상 에이전트의 답이 찍혀 있어요. 가운데 패널은 테스트를 받는 MES 에이전트의 대화예요.</p>
+<figure>
+  <img src="assets/frame-2714.webp" alt="오른쪽 '슬립박스 내용 추론 테스트' 패널에서 마스터 에이전트가 테스트 메시지를 보내고 AGENT_CHAT_TEST_RESULT 결과를 받는 모습, 가운데는 MES 에이전트의 대화와 조회 시 주의사항">
+  <figcaption>
+    에이전트가 에이전트를 테스트해요. 사람은 결과를 보고 고칠 곳만 골라요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=1634s" target="_blank" rel="noopener">영상 27:14에서 보기</a>
+  </figcaption>
+</figure>
+<p>예를 들어 상담 심리 에이전트를 만들었다면 사용자 페르소나는 여러 가지일 수 있어요. '건강한 사람의 페르소나로 대화를 시작해'라고 시키면 스스로 대화를 주고받고, 끝나면 '에이전트를 이렇게 고치면 좋겠다'는 가이드까지 줘요. 진행자는 100% 시나리오는 아니어도, 구축 초기에 채팅으로 먼저 확인하고 고칠 곳을 찾는 데 쓸 수 있다고 정리했어요. 그다음 본격적으로 데이터셋을 만들어 벌크 테스트로 같은 결과가 나오는지 추적하면서 안정성을 높여요.</p>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=1716s" target="_blank" rel="noopener">28:36</a>
+  <h2>왜 RAG 대신 슬립박스일까요?</h2>
+<p>진행자는 RAG의 장점이 안정적인 답을 낸다는 데 있다고 알고 있었어요. 슬립박스는 임베딩을 과감히 포기하고, DB 스키마를 처음부터 마크다운으로 적고 트리 구조를 넣어 성능을 끌어올렸어요. 왜 그 길을 골랐을까요?</p>
+
+<h3>문제는 임베딩 모델을 바꿀 때예요</h3>
+<p>에이전트리아에도 임베딩 기능은 있어요. 데이터 스토리지의 테이블에서 텍스트 컬럼을 '임베딩 필드'로 연결하고 모델을 고르면 돌아가요. RAG 프로젝트를 해 보니 데이터가 바뀌지 않을 때는 아프지 않았어요. 고민은 임베딩 모델을 바꿀 때 시작됐어요.</p>
+<p>PDF 수천 장을 청크로 나눠 임베딩해 뒀는데 고객이 다른 모델로 바꿔 달라고 하면, 일부만 바꿀 수 없어요. 전면 교체해야 해요. 아래 그래픽은 'Embedding 저장소' 칸들이 모델 B로 하나씩 다시 칠해지는 모습이에요. 진행 막대 아래 '전체를 다시 Embedding'이라고 적혀 있고, 오른쪽에 'GPU 서버', '모델 관리' 부담과 '고객이 감당하기엔 너무 무겁다'는 결론이 있어요.</p>
+<figure>
+  <img src="assets/frame-3134.webp" alt="'Embedding 모델이 바뀌면 전체를 다시 만들어야 한다' 제목 옆, 임베딩 저장소 격자가 모델 B로 다시 채워지는 진행 막대와 GPU 서버·모델 관리 부담이 적힌 그래픽">
+  <figcaption>
+    지식이 자주 바뀌면 바뀔 때마다 다시 임베딩해야 해요. 그 비용이 고객에게 가요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=1894s" target="_blank" rel="noopener">영상 31:34에서 보기</a>
+  </figcaption>
+</figure>
+<p>슬립박스 같은 지식은 사람이나 에이전트가 운영하면서 계속 고쳐요. 수정이 일어날 때마다 임베딩을 다시 해야 한다면 감당하기 어려워요. 유대훈 CTO는 AI에서 모델을 바꾸는 건 엄청난 일이라고 강조했어요. 모델이 바뀌면 모든 게 달라지는데, 과거 이력 전체를 다시 확인하는 <span class="term" data-term="회귀 테스트" data-en="Regression test" data-desc="무언가를 바꾼 뒤 예전에 되던 기능이 여전히 되는지 다시 확인하는 시험이에요. 모델을 바꾸면 범위가 전체라서 특히 어려워요." data-g="13">회귀 테스트</span>가 너무 어렵거든요.</p>
+<p>LLM Wiki에 RAG를 붙여 성능을 높였다는 사례도 많다고 해요. 그래도 그 길로 가지 않은 건 이 부담 때문이에요. 임베딩 모델을 쓰면 GPU(Graphics Processing Unit) 서버가 필요하고, 고객이 모델을 관리해야 하고, 모델이 바뀌면 전체를 다시 만들어야 해요.</p>
+
+<h3>그래서 하이브리드예요</h3>
+<p>RAG를 버린 건 아니에요. 데이터가 바뀌는 주기에 따라 나눠 써요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>지식의 성격</th><th>쓰는 방식</th><th>이유</th></tr></thead>
+    <tbody>
+      <tr><td>정적이고 1년에 한 번쯤 바뀌는 데이터</td><td>RAG (데이터 스토리지의 임베딩)</td><td>잘 맞고 속도도 빨라요</td></tr>
+      <tr><td>일주일, 한 달 단위로 바뀌는 지식</td><td>슬립박스</td><td>글로 고치면 바로 반영돼요. 재임베딩이 없어요</td></tr>
+      <tr><td>이미 형식 온톨로지를 갖춘 시스템</td><td>어빌리티 노드로 조회</td><td>다른 시스템과 협업해요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>그래프 방식으로 하던 온톨로지 일은 대부분 슬립박스로 풀고, 정말 형식적으로 해야 하는 일은 그걸 잘하는 다른 시스템에 맡기자는 생각이에요.</p>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=1929s" target="_blank" rel="noopener">32:09</a>
+  <h2>시연: 딜 현황 보고에서 Text-to-SQL까지</h2>
+<p>여기서부터는 미리 녹화한 시연 영상 세 편을 보며 설명해요. 영업 파이프라인 DB로 보고서를 받는 것, 제조 MES DB를 인제스트하는 것, 그리고 에이전트가 SQL(Structured Query Language)을 만들어 실행하는 것이에요.</p>
+
+<h3>시연 1: 페이지에 어빌리티를 연결해요</h3>
+<p>영업 파이프라인 DB를 인제스트하면 페이지와 연결 고리, 그래프가 모두 자동으로 생겨요. 에이전트는 목차부터 탐색해요. 목차가 깊으면 호출이 몇 번 더 늘어서 처음엔 느린 편이었어요. 그래서 grep처럼 키워드로 찾는 검색 노드도 따로 넣었어요.</p>
+<p>아래 '딜 현황 보고' 페이지가 이 시연의 핵심이에요. 본문은 '진행중인 딜을 영업 단계별로 정리해 건수와 금액을 표로 보고한다' 한 줄이고, 그 아래 'Oracle DB 쿼리 어빌리티' 배지가 붙어 있어요. 오른쪽 패널에도 연결된 어빌리티의 버전(0.0.1)과 입력(Prompt)·출력(Result)이 보여요.</p>
+<figure>
+  <img src="assets/frame-3333.webp" alt="슬립박스의 '딜 현황 보고' 페이지, 본문 한 줄 아래 Oracle DB 쿼리 어빌리티 배지가 있고 오른쪽 패널에 연결된 어빌리티 정보가 보이는 화면">
+  <figcaption>
+    '이 어빌리티를 실행해라'라고 글로만 써 두면, 서브 에이전트가 이 페이지를 읽고 어빌리티를 실행해요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=2013s" target="_blank" rel="noopener">영상 33:33에서 보기</a>
+  </figcaption>
+</figure>
+<p>에이전트 구성은 이래요. 아래 화면에서 주황색 테두리 안이 기본 줄기예요. 왼쪽 'Agent Input', 가운데 에이전트 루프 노드, 오른쪽 'Agent Output'이에요. 에이전트 노드 아래로 쓸 LLM 노드(Bedrock Anthropic LLM)가 연결되고, 그 아래 '슬립 탐색' 노드가 도구로 붙어요. 슬립박스도 하나의 서브 에이전트라서 자기 LLM 노드를 따로 연결해요.</p>
+<figure>
+  <img src="assets/frame-3357.webp" alt="에이전트 빌더 캔버스에서 Agent Input, 에이전트 루프 노드, Agent Output이 주황색 테두리로 강조되고, 아래에 Bedrock Anthropic LLM 노드와 슬립 탐색 노드가 연결된 화면">
+  <figcaption>
+    입력, 에이전트, 출력 세 칸에 도구를 꽂는 구조예요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=2037s" target="_blank" rel="noopener">영상 33:57에서 보기</a>
+  </figcaption>
+</figure>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  I["Agent Input"] --> A["에이전트 노드&lt;br/&gt;(LLM 연결)"] --> O["Agent Output"]
+  A -. 도구 .-> S["슬립 탐색 노드&lt;br/&gt;(서브 에이전트, LLM 따로)"]
+  A -. 도구 .-> X["슬립 실행 노드"]
+  X --> AB["페이지에 연결된 어빌리티&lt;br/&gt;(Oracle DB 조회)"]
+</pre>
+  <figcaption>탐색 노드가 '어느 페이지인지' 찾고, 실행 노드가 그 페이지의 어빌리티를 돌려요. 지식 조회와 실행이 한 흐름에 있어요.</figcaption>
+</figure>
+<p>다음 계획으로는 Jev라는 모델을 붙여 목차 탐색을 훨씬 빠르게 하는 걸 기대한다고 했어요. 화면에는 2026년 9월 18일자 TechCrunch 기사가 떠요. 노란 강조 부분은 Jev가 대형 언어 모델(LLM)이 아니고, 텍스트 대신 확률을 내놓으며, 그래서 아주 싸고 빠르다는 문장이에요.</p>
+<figure>
+  <img src="assets/frame-3421.webp" alt="TechCrunch 2026년 9월 18일 기사 'A new kind of AI model from a ChatGPT inventor is thrilling developers' 화면, Jev가 LLM이 아니고 확률을 출력한다는 문장이 강조된 모습">
+  <figcaption>
+    목차 탐색처럼 '어느 쪽으로 갈지 고르는' 일에는 글을 쓰는 모델보다 이런 모델이 맞을 수 있다는 기대예요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=2061s" target="_blank" rel="noopener">영상 34:21에서 보기</a>
+  </figcaption>
+</figure>
+<p>채팅 창에 '진행중인 딜 현황 보고해줘'라고 하면, 에이전트가 해당 페이지를 찾아 실행해요. 아래 결과 표는 영업 단계(<code>PR</code>, <code>QL</code>, <code>NG</code>, <code>PO</code>)별 딜 건수와 총 금액, 가중 금액을 보여 주고, 합계는 20,000건이에요. 오른쪽 디버거에는 Agent Input부터 slipbox_query, slipbox_skill_execute, Agent Output까지 거친 단계가 시간과 함께 찍혀 있어요.</p>
+<figure>
+  <img src="assets/frame-3509.webp" alt="채팅 패널에 영업 단계별 진행중인 딜 현황 표(PR·QL·NG·PO, 합계 20,000건)가 나오고, 오른쪽 디버거에 slipbox_query와 slipbox_skill_execute 단계가 나열된 화면">
+  <figcaption>
+    이어서 '전략 고객은 표 맨 위에 따로 모아 달라'고 하면 다시 탐색해서 표를 바꿔요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=2109s" target="_blank" rel="noopener">영상 35:09에서 보기</a>
+  </figcaption>
+</figure>
+<p>디버거로 모든 단계의 입력과 출력을 볼 수 있게 한 이유는 두 가지예요. 하나는 디버깅이에요. 어느 단계를 고칠지, 슬립박스의 어느 페이지를 고칠지 알 수 있어요. 다른 하나는 AI 기본법이 말하는 투명성과 설명 가능성이에요. 화면에는 이 법이 시행된다는 뉴시스 기사가 잠깐 떠요.</p>
+<figure>
+  <img src="assets/frame-3557.webp" alt="뉴시스 2026년 1월 21일 기사 'AI기본법 내일부터 시행…생성형 AI 결과물 워터마크 부착해야' 화면, AI 사용 사실을 이용자에게 미리 고지한다는 문장이 강조된 모습">
+  <figcaption>
+    과정을 보여 줄 수 있어야 사람이 책임지고 설명할 수 있어요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=2157s" target="_blank" rel="noopener">영상 35:57에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상이 말한 AI 기본법의 정식 이름은 「인공지능 발전과 신뢰 기반 조성 등에 관한 기본법」(법률 제20676호)이에요. 2026년 1월 22일부터 시행되고 있고, 제31조가 '인공지능 투명성 확보 의무'예요. 우리 회사 에이전트가 어떤 의무에 해당하는지는 조문 원문과 과학기술정보통신부 안내로 확인하는 게 좋아요.</p>
+  <p class="cite">출처: <a href="https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=268543&amp;efYd=20260122" target="_blank" rel="noopener">국가법령정보센터 — 인공지능 발전과 신뢰 기반 조성 등에 관한 기본법</a></p>
+</aside>
+
+<h3>시연 2: DB를 인제스트하고 AI와 점검해요</h3>
+<p>두 번째 시연은 DB 인제스트 과정이에요. DB 접속 정보(크리덴셜)를 따로 관리하는 기능을 만들어 두고, 데모용 DB를 연결했어요. DB나 디스크를 고르고, 지식화 범위를 정하고, 쓸 어빌리티가 있으면 골라서 인제스트를 걸어요. 아래 화면은 'MES 공정 DB'(Oracle) 소스의 커넥터 정보와 지식화 범위이고, 맨 위에 '지식화 내용 분석 중(0/7)' 진행 막대가 돌고 있어요.</p>
+<figure>
+  <img src="assets/frame-3633.webp" alt="슬립박스 소스 화면에서 MES 공정 DB(Oracle)의 커넥터 정보, 지식화 범위, 관련 어빌리티 칸이 보이고 상단에 지식화 내용 분석 진행 막대가 있는 화면">
+  <figcaption>
+    스키마를 따로 정의하지 않아도 일단 인제스트가 돌아가요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=2193s" target="_blank" rel="noopener">영상 36:33에서 보기</a>
+  </figcaption>
+</figure>
+<p>페이지가 생기면 먼저 훑어보며 구조를 확인해요. 그다음 하나하나 다 보기 어려우니 AI의 도움을 받아요. 슬립박스 에이전트를 열어 '품질검사 불합격 시 어떤 정보가 기록되느냐'고 물으면, 에이전트가 페이지들을 보고 답해요. 아래 오른쪽 답변에는 불합격일 때만 채워지는 필드(DEFECT_TYPE_CODE, DEFECT_NOTE)와 불량 유형 6종(<code>SCRATCH</code>, <code>DIM</code>, <code>BUBBLE</code>, <code>DISCOLOR</code>, <code>CRACK</code>, <code>MISALIGN</code>) 표가 정리돼 있어요.</p>
+<figure>
+  <img src="assets/frame-3721.webp" alt="왼쪽에 품질검사 결과(QUALITY_INSPECTION) 페이지의 주의사항과 구조 블록, 오른쪽에 품질검사 불합격 기록 질문에 대한 답으로 불합격 시 채워지는 필드와 불량 유형 6종 표가 보이는 화면">
+  <figcaption>
+    이렇게 주고받으며, 내용을 아는 사람은 잘 됐는지를 바로 확인할 수 있어요. 품질검사 결과가 작업지시와 어떻게 이어지는지도 물어볼 수 있어요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=2241s" target="_blank" rel="noopener">영상 37:21에서 보기</a>
+  </figcaption>
+</figure>
+<p>진행자는 결국 현업이 '어떤 질문을 해야 하는지'에 대한 질문 데이터셋도 따로 필요하겠다고 덧붙였고, 유대훈 CTO도 동의했어요.</p>
+
+<h3>시연 3: 에이전트가 SQL을 만들어 실행해요</h3>
+<p>인제스트한 슬립박스를 에이전트에 연결하고, 프롬프트에 슬립박스의 쿼리 정보를 참고하라는 가이드를 줘요. 아래 화면에서 '생산 라인별 불량률'을 물었더니, 채팅 패널에 실행한 SQL(WORK_ORDER와 PRODUCTION_LINE을 조인해 불량률을 계산)과 결과 표가 함께 나왔어요. 오른쪽 디버거에는 slipbox_query 다음에 Oracle Database 노드가 실행된 기록이 있어요.</p>
+<figure>
+  <img src="assets/frame-3830.webp" alt="채팅 패널에 생산 라인별 불량률을 구하는 SQL과 라인코드·라인명·총생산량·불량수·불량률 결과 표가 나오고, 오른쪽 디버거에 slipbox_query와 Oracle Database 노드 실행 기록이 보이는 화면">
+  <figcaption>
+    쿼리문을 노출하도록 해 두었기 때문에, 사람이 SQL과 결과를 직접 보고 맞는지 확인할 수 있어요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=2310s" target="_blank" rel="noopener">영상 38:30에서 보기</a>
+  </figcaption>
+</figure>
+<p>현장에는 Text-to-SQL에 대한 갈증이 크다고 해요. DB를 그대로 쓰다 보니 쿼리가 잘 안 나오면 손쓸 방법이 별로 없었어요. DB에 대한 정보가 개발 문서나 코드에 흩어져 있고, 결과가 시스템 프롬프트에 크게 좌우되거든요.</p>
+<p>슬립박스에서는 인제스트하면 DB 명세가 페이지로 생기니, 에이전트가 쿼리를 잘 못 짜는 부분만 그 페이지에 맥락으로 넣으면 돼요. 고객사 예로, '사업자 번호'가 테이블마다 뜻이 달랐어요. 관련 테이블이 많아 프롬프트에 다 넣기엔 양이 너무 많아요. 페이지가 테이블별로 있으면 해당 페이지에 한두 줄만 적으면 돼요.</p>
+<p>결과가 잘 안 나오면 어떤 페이지가 검색됐는지 보고, '이 데이터로는 못 하겠구나' 싶으면 빠진 부분만 글로 채워요. 그다음부터는 LLM이 그 맥락으로 판단해요. 유대훈 CTO는 이게 에이전트를 빠르게 배포한 뒤 안정성을 높여 가는 방법이라고 봐요.</p>
+</section>
+
+<section id="s8">
+  <a class="stamp" href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=2426s" target="_blank" rel="noopener">40:26</a>
+  <h2>자산화, 그리고 책임은 사람이 져요</h2>
+<h3>도입 다음 고민은 ROI예요</h3>
+<p>진행자가 어떤 도메인에 쓰면 좋을지 묻자, 유대훈 CTO는 기업이 AI를 받아들이는 순서부터 짚었어요. Claude 같은 앱은 이미 너무 잘해요. 기업은 처음엔 학습 데이터가 밖으로 나갈까 두려워해요. 다들 쓰니 결국 도입하지만, 그다음엔 경영진이 묻기 시작해요. 생산성이 엄청나다는데 실제로는 그만큼인지, 전 직원에게 쓰면 싸다 해도 여전히 비싼데 ROI(Return on Investment)가 나오는지요.</p>
+<p>개인이 공부해 만든 프롬프트를 '내가 만든 거라 회사에 공유할 수 없다'는 사례도 나와요. 유대훈 CTO는 그 말도 틀리지 않다고 봐요. 그래서 처음부터 회사의 규칙을 회사 쪽에 쌓는 구조가 필요해요.</p>
+
+<h3>지금의 화두는 자산화예요</h3>
+<p>아래 그래픽 제목이 이 부분의 결론이에요. 'AI 역량은 개인이 아니라 회사의 자산이다.' 왼쪽 글은 '지금까지: 개인마다 따로 쌓인 AI 역량'에서 '바꾸면: 회사 시스템으로 모은다(자산화)'를 거쳐 '회사의 자산이 되는 AI 역량'으로 내려가요. 오른쪽 사무실 그림 가운데에는 '회사 서가'가 있고, 책상마다 흩어져 있던 문서가 그 서가에 꽂혀 있어요.</p>
+<figure>
+  <img src="assets/frame-4237.webp" alt="'AI 역량은 개인이 아니라 회사의 자산이다' 제목 아래, 개인마다 따로 쌓인 AI 역량을 회사 시스템으로 모아 회사의 자산이 되는 흐름과, 사무실 가운데 회사 서가에 문서가 모인 그림">
+  <figcaption>
+    개인의 AI 활용 능력이 아니라 회사 자체의 역량이 높아지는 쪽으로 가야 한다는 게 핵심이에요.
+    <a href="https://www.youtube.com/watch?v=b6phhtUi0hs&amp;t=2557s" target="_blank" rel="noopener">영상 42:37에서 보기</a>
+  </figcaption>
+</figure>
+<p>슬립박스가 여기서 하는 역할은 모아 두고 쓰게 하는 거예요. 모든 걸 풀어 주지는 않지만, 글로 쓰는 방식이라 현업이 쉽게 뭐라도 시도해 볼 수 있어요. 슬립박스 노드를 어빌리티로 만들면 MCP(Model Context Protocol) 서버 도구로도 내보낼 수 있어요. 개인 Claude에 그 MCP 서버 주소를 연결하면, 작업이 끝났을 때 개인 스킬로도 남기고 회사 슬립박스에도 써 달라고 할 수 있어요. 도구로도, 에이전트로도 쓰는 식이에요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>MCP(Model Context Protocol)는 AI 앱을 외부 시스템에 연결하는 오픈소스 표준이에요. 공식 문서는 이걸 AI 앱의 USB-C 포트에 비유해요. Claude나 ChatGPT 같은 앱이 파일·DB 같은 데이터, 검색 엔진 같은 도구, 정해진 워크플로에 같은 방식으로 붙을 수 있어요. 그래서 회사 슬립박스를 MCP 서버로 열면, 직원이 각자 쓰는 AI 앱에서 같은 지식 창고를 읽고 쓸 수 있어요.</p>
+  <p class="cite">출처: <a href="https://modelcontextprotocol.io/docs/getting-started/intro" target="_blank" rel="noopener">Model Context Protocol — What is MCP?</a></p>
+</aside>
+
+<h3>결국 책임은 사람이 져요</h3>
+<p>마지막 한마디로 유대훈 CTO는 지난 10년을 돌아봤어요. 그중 7~8년은 학습 데이터를 어떻게 만들지 고민했어요. LLM이 범용적으로 쓰이면서 방식이 바뀌었고, ChatGPT 덕분에 이제는 AI가 뭔지 설명하는 데 시간을 쓰지 않아도 돼요.</p>
+<p>AI는 빠르게 발전하고 사람을 대체할 거라고들 하지만, 그는 책임을 지는 일은 만만치 않다고 봐요.</p>
+<blockquote>
+  <p>결국 책임은 사람이 져야 될 것 같아.</p>
+  <cite>— 영상 45:07</cite>
+</blockquote>
+<p>중요한 결정은 사람이 승인하는 일만 남을지도 몰라요. 그러려면 AI가 만든 결과를 사람이 이해해야 해요. 문제가 터지면 적어도 사후에라도 들여다보고 '이게 문제였네, 이렇게 바꾸자'고 결정할 수 있어야 해요. 그는 Claude가 두 시간쯤 멈췄을 때 모두가 손 놓고 기다렸던 일을 예로 들었어요. 그러지 않으려면 사람이 들어가 워크플로를 보고 고칠 수 있는 상태여야 해요. 그래서 사람과 AI가 협업하는 방식은 어떤 형태로든 계속 남을 거라고 봐요. 진행자는 많은 게스트가 '통제 가능성(controllability)'을 잃지 말아야 한다고 말했다며, 같은 이야기라고 정리했어요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 이름과 용어가 잘못 받아적힌 곳이 많았어요. 화면의 자막·기사·문서를 기준으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>유데 님 · 유대운 · 유대원 · 대우 님</td><td>유대훈</td><td>게스트, 제네시스랩 CTO</td></tr>
+      <tr><td>제니스</td><td>제네시스랩</td><td></td></tr>
+      <tr><td>하와이 AI · 하우와이 AI 팟캐스트</td><td>How I AI 팟캐스트</td><td>화면 로고 기준</td></tr>
+      <tr><td>듀인터 · 뷰인터 HI · 비인타이</td><td>뷰인터HR</td><td>제네시스랩의 AI 면접 플랫폼</td></tr>
+      <tr><td>주시 · 주시 스튜디오</td><td>ZUICY · ZUICY STUDIO</td><td>화면의 앱스토어 카드 기준</td></tr>
+      <tr><td>페이선</td><td>파이썬</td><td>화면 자막 기준</td></tr>
+      <tr><td>스트림시</td><td>Streamlit</td><td>(추정)</td></tr>
+      <tr><td>NA · 엠파이</td><td>n8n</td><td>챕터 제목 기준</td></tr>
+      <tr><td>안드카스가 미키 · 에르미키 · LM키 · L키</td><td>안드레이 카파시 · LLM Wiki</td><td>화면의 GitHub Gist 기준</td></tr>
+      <tr><td>제텔카스</td><td>제텔카스텐(Zettelkasten)</td><td></td></tr>
+      <tr><td>인베딩 · 인미딩 · 인베닝 · 인베리</td><td>임베딩</td><td></td></tr>
+      <tr><td>레그</td><td>RAG</td><td></td></tr>
+      <tr><td>WCC</td><td>W3C</td><td>화면 자막 기준</td></tr>
+      <tr><td>인스트 · 인젝스 · 윈제스트 · 인지스테</td><td>인제스트</td><td></td></tr>
+      <tr><td>커리문 · 퍼리문 · 쿼리무의</td><td>쿼리문</td><td></td></tr>
+      <tr><td>흔줄 검사 · 손질 검사</td><td>품질검사</td><td>화면의 페이지 제목 기준</td></tr>
+      <tr><td>3당 심리 에이전트</td><td>상담 심리 에이전트</td><td>(추정)</td></tr>
+      <tr><td>재보 · 재부</td><td>Jev</td><td>화면의 TechCrunch 기사 기준</td></tr>
+      <tr><td>텍스트투 SQL</td><td>Text-to-SQL</td><td></td></tr>
+      <tr><td>채집t</td><td>ChatGPT</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-4"><dt>데이터 레이크<span class="en">Data lake</span></dt><dd>여러 시스템의 데이터를 원래 형태 그대로 한곳에 모아 두는 큰 저장소예요. 모으면 다루기 쉽지만, 원본과 계속 동기화하는 비용이 커요.</dd></div>
+    <div class="g" id="g-5"><dt>데이터 주권<span class="en">Data sovereignty</span></dt><dd>자기 데이터를 어디에 두고 누가 접근할지 스스로 통제할 권리예요. 그래서 외부 솔루션으로 데이터를 옮기는 걸 꺼리는 기업이 많아요.</dd></div>
+    <div class="g" id="g-7"><dt>린트<span class="en">Lint</span></dt><dd>규칙에 어긋난 곳을 자동으로 찾아내는 점검이에요. LLM Wiki에서는 끊긴 링크, 고아 페이지, 모순을 LLM이 찾아 고치게 하는데 토큰이 많이 들어요.</dd></div>
+    <div class="g" id="g-11"><dt>벌크 테스트<span class="en">Bulk test</span></dt><dd>여러 입력과 정답을 한꺼번에 돌려 결과가 정답과 맞는지 비교하는 테스트예요. 에이전트를 고친 뒤 이전보다 나빠지지 않았는지 확인할 때 써요.</dd></div>
+    <div class="g" id="g-3"><dt>슬립박스<span class="en">Slipbox</span></dt><dd>에이전트리아의 지식 기능이에요. 시스템·용어·규칙을 사람이 읽는 페이지로 적어 두면, 에이전트가 읽고 필요한 DB나 어빌리티를 실행해요.</dd></div>
+    <div class="g" id="g-2"><dt>어빌리티<span class="en">Ability</span></dt><dd>에이전트리아에서 노드를 이어 만든 워크플로를 부르는 이름이에요. 버전을 붙여 모듈로 만들고, 다른 어빌리티나 에이전트에 도구처럼 꽂아 써요.</dd></div>
+    <div class="g" id="g-1"><dt>온톨로지<span class="en">Ontology</span></dt><dd>어떤 분야의 개념과 그 사이 관계를 정리한 지식 구조예요. 이 영상에서는 흩어진 데이터가 어디 있고 어떻게 가져오는지 적은 &#x27;지도&#x27;라는 뜻으로 써요.</dd></div>
+    <div class="g" id="g-8"><dt>인제스트<span class="en">Ingest</span></dt><dd>파일이나 DB 같은 원본을 읽어 지식 저장소에 넣는 과정이에요. 슬립박스에서는 이때 페이지, 목차, 관계가 자동으로 만들어져요.</dd></div>
+    <div class="g" id="g-14"><dt>임베딩<span class="en">Embedding</span></dt><dd>문장을 의미가 담긴 숫자 벡터로 바꾸는 일이에요. 비슷한 내용을 빨리 찾게 해 주지만, 모델을 바꾸면 전부 다시 계산해야 해요.</dd></div>
+    <div class="g" id="g-12"><dt>제로클릭</dt><dd>에이전트리아의 도우미 에이전트가 합성 입력을 만들어 대상 에이전트와 스스로 채팅 테스트를 하는 방식이에요. 사람이 사례를 일일이 만들지 않아도 돼요.</dd></div>
+    <div class="g" id="g-6"><dt>제텔카스텐<span class="en">Zettelkasten</span></dt><dd>메모를 작은 카드로 나눠 쓰고 서로 링크로 잇는 지식 관리법이에요. 독일어로 &#x27;메모 상자&#x27;라는 뜻이고, 영어로 하면 Slip Box예요.</dd></div>
+    <div class="g" id="g-9"><dt>조인 경로<span class="en">Join path</span></dt><dd>여러 테이블을 어떤 컬럼으로 이어야 원하는 데이터가 나오는지 적은 순서예요. 에이전트가 SQL을 짤 때 길잡이가 돼요.</dd></div>
+    <div class="g" id="g-10"><dt>합성 데이터<span class="en">Synthetic data</span></dt><dd>실제 데이터 대신 AI 등으로 만들어 낸 가짜 데이터예요. 시연이나 테스트에서 민감한 실데이터를 쓰지 않으려고 써요.</dd></div>
+    <div class="g" id="g-13"><dt>회귀 테스트<span class="en">Regression test</span></dt><dd>무언가를 바꾼 뒤 예전에 되던 기능이 여전히 되는지 다시 확인하는 시험이에요. 모델을 바꾸면 범위가 전체라서 특히 어려워요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>CTO</dt><dd>Chief Technology Officer</dd></div>
+    <div class="g"><dt>DB</dt><dd>Database</dd></div>
+    <div class="g"><dt>GPU</dt><dd>Graphics Processing Unit</dd></div>
+    <div class="g"><dt>LLM</dt><dd>Large Language Model</dd></div>
+    <div class="g"><dt>MCP</dt><dd>Model Context Protocol</dd></div>
+    <div class="g"><dt>MES</dt><dd>Manufacturing Execution System</dd></div>
+    <div class="g"><dt>OWL</dt><dd>Web Ontology Language</dd></div>
+    <div class="g"><dt>PDF</dt><dd>Portable Document Format</dd></div>
+    <div class="g"><dt>PPT</dt><dd>PowerPoint</dd></div>
+    <div class="g"><dt>QA</dt><dd>Quality Assurance</dd></div>
+    <div class="g"><dt>RAG</dt><dd>Retrieval-Augmented Generation</dd></div>
+    <div class="g"><dt>ROI</dt><dd>Return on Investment</dd></div>
+    <div class="g"><dt>SQL</dt><dd>Structured Query Language</dd></div>
+    <div class="g"><dt>W3C</dt><dd>World Wide Web Consortium</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=b6phhtUi0hs" target="_blank" rel="noopener">원본 영상 — 빌더 조쉬 Builder Josh</a></li>
+    <li id="src-2"><a href="https://agentria.ai/docs/slipbox" target="_blank" rel="noopener">Agentria Docs — Using Slipbox</a></li>
+    <li id="src-3"><a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">Andrej Karpathy — LLM Wiki (GitHub Gist)</a></li>
+    <li id="src-4"><a href="https://www.palantir.com/docs/foundry/ontology/overview/" target="_blank" rel="noopener">Palantir 문서 — Ontology overview</a></li>
+    <li id="src-5"><a href="https://www.palantir.com/docs/foundry/data-integration/virtual-tables/" target="_blank" rel="noopener">Palantir 문서 — Virtual tables</a></li>
+    <li id="src-6"><a href="https://www.w3.org/OWL/" target="_blank" rel="noopener">W3C — Web Ontology Language (OWL)</a></li>
+    <li id="src-7"><a href="https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=268543&amp;efYd=20260122" target="_blank" rel="noopener">국가법령정보센터 — 인공지능 발전과 신뢰 기반 조성 등에 관한 기본법</a></li>
+    <li id="src-8"><a href="https://modelcontextprotocol.io/docs/getting-started/intro" target="_blank" rel="noopener">Model Context Protocol — What is MCP?</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 20일에 이 영상을 보고 정리했어요. 원본은 빌더 조쉬 Builder Josh 채널의 How I AI 팟캐스트예요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
