@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>안드로이드 폰을 SMS API 서버로 쓰기 — OpenSMS</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>안드로이드 폰을 SMS API 서버로 쓰기 — OpenSMS</h1>
+  <p class="lede">유료 문자 서비스 없이 폰 한 대로 문자 API를 띄우는 과정이에요</p>
+  <div class="meta">
+    <span>DasLearning</span><span class="dot">·</span>
+    <span>영상 07:02</span><span class="dot">·</span>
+    <span>읽는 데 약 9분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=wNXH_3onjfg" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>OpenSMS는 안드로이드 폰 안에서 API(Application Programming Interface) 서버를 띄우고, 들어온 요청을 그 폰의 SIM(Subscriber Identity Module)으로 문자로 보내 줘요.</li>
+    <li>Play 스토어 밖에서 받은 <span class="term" data-term="APK" data-en="Android Package Kit" data-desc="안드로이드 앱 설치 파일이에요. Play 스토어를 거치지 않고 이 파일을 직접 받아 설치하면 보안 경고가 더 많이 떠요." data-g="3">APK(Android Package Kit)</span>라서 <span class="term" data-term="Play Protect" data-en="Google Play Protect" data-desc="구글이 안드로이드에 넣어 둔 악성 앱 검사 기능이에요. 문자처럼 민감한 권한을 쓰는 출처 모를 앱은 설치 자체를 막기도 해요." data-g="4">Play Protect</span>가 설치를 막고, 설치 뒤에도 SMS(Short Message Service) 권한이 <span class="term" data-term="제한된 설정" data-en="Restricted settings" data-desc="Play 스토어 밖에서 설치한 앱이 SMS 같은 민감한 권한을 바로 받지 못하게 잠가 두는 안드로이드 보안 장치예요. 앱 정보에서 따로 풀어 줘야 해요." data-g="5">제한된 설정</span>으로 잠겨 있어요. 두 곳 다 직접 풀어야 해요.</li>
+    <li>서버를 처음 켤 때 API 키를 만들어요. 키는 한 번만 보여 주니 바로 저장해 둬야 해요.</li>
+    <li>같은 로컬 네트워크의 노트북에서 폰 IP(Internet Protocol)와 포트 9292로 POST를 보내면 문자가 나가요. 키가 틀리면 <span class="term" data-term="401 Unauthorized" data-en="HTTP 401" data-desc="요청에 올바른 인증 정보가 없다는 HTTP 응답 코드예요. 키가 틀렸거나 만료됐을 때 돌아와요." data-g="8">401 Unauthorized</span>가 돌아오고 폰 로그에도 남아요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">왜 폰을 SMS 서버로 쓰나요</a></li>
+    <li><a href="#s2">설치: Play Protect와 제한된 설정 넘기기</a></li>
+    <li><a href="#s3">앱 설정과 API 키 만들기</a></li>
+    <li><a href="#s4">노트북에서 API를 불러 문자 보내기</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>왜 폰을 SMS 서버로 쓰나요</h2>
+<p>웹사이트나 앱을 만들다 보면 프로그램이 문자를 보내야 할 때가 있어요. 전화번호를 넣으면 <span class="term" data-term="OTP" data-en="One-Time Password" data-desc="한 번만 쓰고 버리는 인증 번호예요. 로그인할 때 문자로 받는 6자리 숫자가 대표적이라, 문자 발송이 필요한 가장 흔한 이유예요." data-g="2">OTP(One-Time Password)</span>가 오는 로그인 화면이 대표적이고, 주문이나 장애 알림을 문자로 보내는 경우도 있어요. 영상은 쇼핑몰 로그인 창에 전화번호를 넣는 장면으로 이 상황을 보여 줘요.</p>
+<p>이런 문자는 보통 Twilio 같은 업체에 맡겨요. 아래는 영상에 나온 Twilio의 인도 요금표예요. 맨 위 'International Numbers' 줄의 SMS 발신(Outbound) 칸에 건당 <b>0.0832달러</b>가 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0024.webp" alt="Twilio 웹사이트의 India SMS/MMS Pricing 표. International Numbers 행의 SMS Outbound 칸에 0.0832달러가 선택돼 있어요">
+  <figcaption>문자 한 건마다 요금이 붙어요. 보낼 문자가 많아질수록 이 숫자가 그대로 쌓여요. <a href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=24s" target="_blank" rel="noopener">영상 00:24에서 보기</a></figcaption>
+</figure>
+<p>발표자의 제안은 이래요. SIM 카드가 꽂힌 안드로이드 폰에서 서버를 돌리고, API 호출이 들어오면 그 폰이 직접 문자를 보내게 하는 거예요. 폰이 곧 <span class="term" data-term="SMS 게이트웨이" data-en="SMS gateway" data-desc="프로그램이 보낸 요청을 받아 실제 문자 메시지로 바꿔 내보내는 중계 지점이에요. 이 영상에서는 폰이 그 역할을 해요." data-g="1">SMS 게이트웨이</span>가 되는 셈이에요. 아래 그림은 영상 후반 데모의 흐름을 한 장으로 옮긴 거예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="노트북이 로컬 네트워크로 안드로이드 폰의 OpenSMS 서버에 요청을 보내고, 폰이 SIM으로 받는 폰에 문자를 보내는 흐름. 키가 틀리면 401을 돌려줘요">
+    <defs>
+      <marker id="arrow-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker>
+    </defs>
+    <rect class="box" x="10" y="45" width="150" height="80" rx="10"/>
+    <text x="85" y="78" text-anchor="middle">노트북</text>
+    <text x="85" y="102" text-anchor="middle" class="sub">curl로 POST /sms/</text>
+    <path class="line" d="M162 85 H236" marker-end="url(#arrow-flow)"/>
+    <text x="199" y="72" text-anchor="middle" class="sub">로컬 네트워크</text>
+    <text x="199" y="106" text-anchor="middle" class="sub">Bearer 키</text>
+    <rect class="accent" x="240" y="30" width="170" height="110" rx="10"/>
+    <text x="325" y="62" text-anchor="middle">안드로이드 폰</text>
+    <text x="325" y="88" text-anchor="middle" class="sub">OpenSMS 서버</text>
+    <text x="325" y="108" text-anchor="middle" class="mono">:9292</text>
+    <text x="325" y="128" text-anchor="middle" class="sub">SIM 카드</text>
+    <path class="line" d="M412 85 H476" marker-end="url(#arrow-flow)"/>
+    <text x="444" y="72" text-anchor="middle" class="sub">문자</text>
+    <rect class="ok" x="480" y="45" width="150" height="80" rx="10"/>
+    <text x="555" y="78" text-anchor="middle">받는 폰</text>
+    <text x="555" y="102" text-anchor="middle" class="sub">문자 도착</text>
+    <path class="line" d="M325 142 V170" marker-end="url(#arrow-flow)"/>
+    <rect class="bad" x="240" y="174" width="170" height="44" rx="10"/>
+    <text x="325" y="201" text-anchor="middle" class="sub">키가 틀리면 401</text>
+  </svg>
+  <figcaption>노트북은 폰의 IP와 포트로 요청만 보내요. 키 확인과 문자 발송은 전부 폰 안에서 일어나요.</figcaption>
+</figure>
+<p>이걸 위해 발표자가 만든 오픈소스 프로젝트가 OpenSMS예요. GitHub README 맨 위에 '안드로이드 폰을 SMS API 서버로 바꿔 준다', '오픈소스이고 광고 없이 개인정보를 지킨다'는 두 가지 특징이 적혀 있어요. 오른쪽 Releases 칸에는 최신 버전 0.1.0이 보여요.</p>
+<figure>
+  <img src="assets/frame-0100.webp" alt="GitHub의 daslearning-org/OpenSMS 저장소 README. OpenSMS 로고 아래 특징 두 줄과 오른쪽 Releases 0.1.0 Latest 표시">
+  <figcaption>지금은 안드로이드 앱만 있어요. 발표자는 나중에 Windows와 Linux용도 만들 계획이라고 해요. <a href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=60s" target="_blank" rel="noopener">영상 01:00에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=64s" target="_blank" rel="noopener">01:04</a>
+  <h2>설치: Play Protect와 제한된 설정 넘기기</h2>
+<p>설치 파일은 GitHub 저장소의 Releases 페이지에 있어요. 왼쪽 브라우저 화면의 Assets 칸에서 <code>opensms-0.1.0-arm64-v8a.apk</code>(35.5MB)가 보여요. 발표자는 이 APK를 미리 폰에 받아 두고, 오른쪽 폰 화면처럼 파일 탐색기에서 열어요.</p>
+<figure>
+  <img src="assets/frame-0114.webp" alt="왼쪽은 OpenSMS 0.1.0 릴리스 페이지로 변경 사항 네 줄과 opensms-0.1.0-arm64-v8a.apk 파일, 오른쪽은 폰 홈 화면">
+  <figcaption>0.1.0의 변경 사항에 '필요한 권한이 있는지 앱이 확인한다'와 'API 요청 로그 추가'가 보여요. 둘 다 뒤에서 쓰여요. <a href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=74s" target="_blank" rel="noopener">영상 01:14에서 보기</a></figcaption>
+</figure>
+<h3>첫 번째 관문: Play Protect</h3>
+<p>그런데 설치를 누르면 바로 막혀요. 폰 화면 위쪽에 'Google Play Protect — App blocked to protect your device'가 뜨고, 그 위로 'OpenSMS — App not installed' 창이 겹쳐 있어요. SMS 권한을 쓰는 앱을 Play 스토어 밖에서 깔려고 해서 생긴 일이에요.</p>
+<figure>
+  <img src="assets/frame-0134.webp" alt="폰 화면에 Google Play Protect의 App blocked to protect your device 경고와 OpenSMS App not installed 창이 겹쳐 떠 있어요">
+  <figcaption>앱에 문제가 있어서가 아니라, 출처가 Play 스토어가 아니면서 문자 권한을 쓰기 때문에 막혀요. <a href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=94s" target="_blank" rel="noopener">영상 01:34에서 보기</a></figcaption>
+</figure>
+<p>그래서 Play Protect를 잠시 꺼요. Play 스토어에서 프로필 아이콘을 누르고 Play Protect로 들어가면 아래 화면이 나와요. 오른쪽 위 톱니바퀴를 눌러 검사를 끄고, 지문으로 한 번 확인해요.</p>
+<figure>
+  <img src="assets/frame-0154.webp" alt="Play 스토어의 Play Protect 화면. 초록 방패와 No harmful apps found 문구, 오른쪽 위 톱니바퀴 아이콘">
+  <figcaption>설정은 오른쪽 위 톱니바퀴 안에 있어요. 발표자는 '잠시만' 끈다고 여러 번 말해요. <a href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=114s" target="_blank" rel="noopener">영상 01:54에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>구글 도움말도 같은 경로를 안내해요. Play 스토어 → 프로필 아이콘 → Play Protect → 설정에서 '앱 검사(Scan apps with Play Protect)'를 켜고 끌 수 있어요. 구글은 보안을 위해 항상 켜 두기를 권하니, 설치가 끝나면 다시 켜 두는 게 좋아요.</p>
+  <p class="cite">출처: <a href="https://support.google.com/googleplay/answer/2812853" target="_blank" rel="noopener">Google Play 고객센터 — Use Google Play Protect</a></p>
+</aside>
+<h3>두 번째 관문: 제한된 설정</h3>
+<p>Play Protect를 끄고 다시 설치하면 이번엔 깔려요. 앱을 열면 권한을 묻는데, 여기서 또 막혀요. 가운데 창에 'App was denied access to SMS'가 떠요. Play 스토어처럼 믿을 수 있는 출처에서 온 앱이 아니라서 SMS 권한을 줄 수 없다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0224.webp" alt="OpenSMS 앱 위에 App was denied access to SMS 경고 창과 Close 버튼이 떠 있어요">
+  <figcaption>이 창은 닫고 넘어가요. 같은 화면에서 알림 권한은 허용해요. 서버를 <span class="term" data-term="포그라운드 서비스" data-en="Foreground service" data-desc="알림을 띄워 둔 채로 계속 돌아가는 안드로이드 백그라운드 작업이에요. 알림이 있어야 시스템이 서버를 함부로 끄지 않아요." data-g="6">포그라운드 서비스</span>로 돌리려면 알림이 필요하거든요. <a href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=144s" target="_blank" rel="noopener">영상 02:24에서 보기</a></figcaption>
+</figure>
+<p>SMS 권한을 풀려면 앱 아이콘을 길게 눌러 '앱 정보'로 가요. 설정 → 앱 → OpenSMS로 가도 같아요. 권한 화면의 SMS 항목은 회색으로 잠겨 있으니, 앱 정보 화면으로 돌아와 오른쪽 위 점 세 개를 눌러요. 아래처럼 'Allow restricted settings' 메뉴가 나와요.</p>
+<figure>
+  <img src="assets/frame-0307.webp" alt="OpenSMS 앱 정보 화면의 오른쪽 위 점 세 개 메뉴에 Allow restricted settings 항목이 펼쳐져 있어요">
+  <figcaption>이 메뉴는 앱 정보 화면의 점 세 개 안에 숨어 있어요. 권한 화면에서는 보이지 않아요. <a href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=187s" target="_blank" rel="noopener">영상 03:07에서 보기</a></figcaption>
+</figure>
+<p>지문으로 확인하고 다시 권한 → SMS로 들어가면, 아까 회색이던 선택지를 고를 수 있어요. 아래 화면에서는 'Allow'에 표시가 들어가 있어요.</p>
+<figure>
+  <img src="assets/frame-0319.webp" alt="OpenSMS의 SMS permission 화면. SMS access for this app 아래 Allow가 선택돼 있어요">
+  <figcaption>제한된 설정을 풀고 나서야 SMS 권한을 허용할 수 있어요. 순서가 바뀌면 계속 회색이에요. <a href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=199s" target="_blank" rel="noopener">영상 03:19에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>구글 도움말은 제한된 설정을 해로운 앱이 민감한 설정을 바꾸지 못하게 막는 장치라고 설명해요. 이 단계 중 일부는 안드로이드 13 이상에서만 동작한다고 해요. 푸는 경로도 영상과 같아요. 설정 → 앱 → 해당 앱 → 더보기(점 세 개) → '제한된 설정 허용'이에요. 구글은 개발자를 믿을 때만 풀라고 권해요.</p>
+  <p class="cite">출처: <a href="https://support.google.com/android/answer/12623953" target="_blank" rel="noopener">Android 고객센터 — Learn about restricted settings</a></p>
+</aside>
+<p>정리하면 설치에서 넘어야 할 단계는 이래요. README의 Quickstart Guide에도 같은 순서가 적혀 있어요.</p>
+<ol class="steps">
+  <li><b>Releases에서 APK를 받아 폰에 둬요</b></li>
+  <li><b>Play 스토어에서 Play Protect를 잠시 꺼요</b> — 프로필 아이콘 → Play Protect → 톱니바퀴.
+    <span class="done">APK를 다시 누르면 설치가 끝까지 진행돼요</span></li>
+  <li><b>앱을 열고 알림 권한을 허용해요</b></li>
+  <li><b>앱 정보 → 점 세 개 → 제한된 설정 허용</b>
+    <span class="done">권한 → SMS에서 Allow를 고를 수 있어요</span></li>
+  <li><b>SMS 권한을 허용하고 앱을 다시 열어요</b></li>
+</ol>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=201s" target="_blank" rel="noopener">03:21</a>
+  <h2>앱 설정과 API 키 만들기</h2>
+<p>권한을 다 주고 앱을 다시 열면 화면은 단순해요. 서버를 켜는 버튼 하나가 있고, 아래 탭에서 설정으로 갈 수 있어요. 설정 화면에는 항목이 세 개뿐이에요.</p>
+<figure>
+  <img src="assets/frame-0337.webp" alt="OpenSMS 설정 화면. 위에 Save와 Reset 버튼, 아래로 Auto Start API Server 토글, Port Number 9292, API Key 재생성 버튼">
+  <figcaption>포트 칸 옆의 작은 글씨 'Needs a Stop-Start, Should be &gt; 1024'를 눈여겨보세요. <a href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=217s" target="_blank" rel="noopener">영상 03:37에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>설정</th><th>화면에 적힌 설명</th><th>영상에서는</th></tr></thead>
+    <tbody>
+      <tr><td>Auto Start API Server</td><td>앱을 켜면 서버도 같이 켜져요</td><td>꺼 둬요</td></tr>
+      <tr><td>Port Number</td><td>바꾸면 서버를 껐다 켜야 하고, 1024보다 커야 해요</td><td>기본값 9292 그대로</td></tr>
+      <tr><td>API Key</td><td>새 키를 만들면 이전 키는 더 이상 안 먹어요</td><td>서버를 처음 켤 때 만들어요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>API 키는 설정에서 만들어도 되고, 서버를 처음 켤 때 만들어도 돼요. 발표자는 API 탭에서 Start Server를 눌러요. 아직 키가 없으니 'Generate API Key' 창이 떠요. 창 안의 문구는 '새 키를 만들면 이전 키는 모두 무효가 된다'는 경고예요.</p>
+<figure>
+  <img src="assets/frame-0409.webp" alt="OpenSMS 화면 위에 Generate API Key 확인 창과 Cancel, Generate 버튼이 떠 있어요">
+  <figcaption>키를 다시 만들면 이전 키로 보내던 프로그램은 모두 401을 받게 돼요. <a href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=249s" target="_blank" rel="noopener">영상 04:09에서 보기</a></figcaption>
+</figure>
+<p>Generate를 누르면 'Your New API Key' 창에 키가 나와요. 안내 문구를 보면 키는 이미 클립보드에 복사돼 있고, <b>이 화면은 한 번만 나온다</b>고 적혀 있어요. 발표자는 키를 메신저 대화창에 붙여 넣어 보관해요. 놓쳤다면 창의 Copy 버튼으로 다시 복사할 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0425.webp" alt="Your New API Key 창. 이미 복사됐고 이 화면은 한 번만 나온다는 안내와 키 문자열, Cancel과 Copy 버튼">
+  <figcaption>창을 닫으면 같은 키를 다시 볼 수 없어요. 잃어버리면 새 키를 만들어야 해요. <a href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=265s" target="_blank" rel="noopener">영상 04:25에서 보기</a></figcaption>
+</figure>
+<p>창을 닫고 Start Server를 누르면 서버가 떠요. 위쪽 문구가 'API Server running on port: 9292'로 바뀌고, 버튼은 주황색 Stop Server가 돼요. 왼쪽 위 햄버거 메뉴의 Logs에서 요청 기록을 볼 수 있는데, 아직은 아무 요청도 없어서 비어 있어요.</p>
+<figure>
+  <img src="assets/frame-0433.webp" alt="OpenSMS 메인 화면에 API Server running on port: 9292 문구와 주황색 Stop Server 버튼">
+  <figcaption>이 문구가 보이면 폰이 요청을 받을 준비가 된 거예요. <a href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=273s" target="_blank" rel="noopener">영상 04:33에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=295s" target="_blank" rel="noopener">04:55</a>
+  <h2>노트북에서 API를 불러 문자 보내기</h2>
+<p>이제 노트북에서 폰을 불러요. 발표자가 노트북으로 옮긴 이유는 하나예요. 같은 로컬 네트워크라면 다른 기기에서 폰의 API를 바로 부를 수 있다는 걸 보여 주려는 거예요. 필요한 건 폰의 IP 주소뿐이에요.</p>
+<p>호출 방법은 저장소 README에 정리돼 있어요. 아래 Quickstart Guide의 1~7번은 앞에서 따라 한 설치 단계 그대로예요. 그 아래 'Test API endpoint'에 curl 예시가 있어요.</p>
+<figure>
+  <img src="assets/frame-0505.webp" alt="OpenSMS README의 Quickstart Guide. Releases에서 받기, Play Protect 끄기, 설치, 권한, Allow restricted access, SMS 권한, 재실행까지 7단계">
+  <figcaption>영상에서 한 설치 과정이 README 5번 한 줄에 다 들어 있어요. 막히면 여기부터 다시 보면 돼요. <a href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=305s" target="_blank" rel="noopener">영상 05:05에서 보기</a></figcaption>
+</figure>
+<p>발표자는 README 예시를 편집기에 붙여 IP만 폰 주소로 바꿔요. 키 자리에는 일부러 아무 값 <code>my-key</code>를 넣어요. 아래 터미널 화면의 명령을 부분별로 나누면 표와 같아요.</p>
+<figure>
+  <img src="assets/frame-0529.webp" alt="터미널에 붙여 넣은 curl 명령. 192.168.29.152:9292/sms/ 주소로 POST, Content-Type과 Authorization: Bearer my-key 헤더, number와 text가 든 JSON 본문">
+  <figcaption>받는 번호는 영상에서 가려져 있어요. 키는 일부러 틀린 값이에요. <a href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=329s" target="_blank" rel="noopener">영상 05:29에서 보기</a></figcaption>
+</figure>
+<pre><code class="language-bash">curl -i -X POST 'http://192.168.29.152:9292/sms/' \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer my-key' \
+    -d '{"number": "+91…", "text": "Hello from OpenSMS API!"}'</code></pre>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>부분</th><th>값</th><th>뜻</th></tr></thead>
+    <tbody>
+      <tr><td>주소</td><td><code>http://&lt;폰 IP&gt;:9292/sms/</code></td><td>폰의 IP, 앱에 설정한 포트, 문자 발송 경로</td></tr>
+      <tr><td>메서드</td><td><code>POST</code></td><td>문자를 보내 달라는 요청</td></tr>
+      <tr><td>인증 헤더</td><td><code>Authorization: Bearer &lt;API 키&gt;</code></td><td>앱에서 만든 키를 <span class="term" data-term="Bearer 토큰" data-en="Bearer token" data-desc="Authorization 헤더에 &#x27;Bearer &lt;키&gt;&#x27; 형태로 실어 보내는 인증 값이에요. 이 키를 가진 쪽이면 누구든 요청을 보낼 수 있어서 키 관리가 중요해요." data-g="7">Bearer 토큰</span>으로 실어 보내요</td></tr>
+      <tr><td>본문</td><td><code>{"number": …, "text": …}</code></td><td>받는 번호와 문자 내용</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>틀린 키로 먼저 보내 보기</h3>
+<p>결과는 바로 실패예요. 응답 첫 줄이 <code>HTTP/1.1 401 Unauthorized</code>이고, 본문에는 'Invalid or expired API key'가 찍혀요. 오른쪽 폰의 로그 화면에도 '2026-10-16 13:13:14 Authentication failed from IP: 192.168.29.237' 한 줄이 남았어요. 이 IP가 노트북 주소예요.</p>
+<figure>
+  <img src="assets/frame-0545.webp" alt="왼쪽 터미널에 401 Unauthorized 응답과 Invalid or expired API key 메시지, 오른쪽 폰 로그에 Authentication failed from IP: 192.168.29.237">
+  <figcaption>실패한 요청도 어느 IP에서 왔는지 폰에 기록돼요. <a href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=345s" target="_blank" rel="noopener">영상 05:45에서 보기</a></figcaption>
+</figure>
+<h3>진짜 키로 보내기</h3>
+<p>다음엔 메신저에 보관해 둔 키를 가져와 Bearer 자리에 넣어요. 발표자는 다른 폰으로 화면 녹화를 켠 뒤 명령을 다시 실행해요. 아래 화면 왼쪽 터미널에는 <code>HTTP/1.1 200 OK</code>와 <code>{"stat":true}</code>가 찍혔어요. 오른쪽 받는 폰의 대화창 맨 아래에는 'Hello from OpenSMS API!'가 'Now' 시각으로 막 도착해 있어요.</p>
+<figure>
+  <img src="assets/frame-0635.webp" alt="왼쪽 터미널에 401 응답 아래 두 번째 요청의 200 OK와 stat true, 오른쪽 받는 폰 대화창에 Hello from OpenSMS API! 문자가 Now로 도착">
+  <figcaption>위쪽 문자 몇 개는 발표자가 전에 해 본 테스트예요. 맨 아래 'Now'가 이번 요청으로 온 문자예요. <a href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=395s" target="_blank" rel="noopener">영상 06:35에서 보기</a></figcaption>
+</figure>
+<p>폰의 로그를 다시 열면 세 줄이 쌓여 있어요. 최신 기록이 위에 오니 아래부터 읽으면 순서대로예요.</p>
+<figure>
+  <img src="assets/frame-0648.webp" alt="OpenSMS 로그 화면에 세 줄. 아래부터 Authentication failed from IP, Authenticated request from 192.168.29.237, SMS successfully sent to">
+  <figcaption>실패 한 번, 인증 성공 한 번, 발송 성공 한 번이에요. 요청마다 무슨 일이 있었는지 폰에서 바로 확인할 수 있어요. <a href="https://www.youtube.com/watch?v=wNXH_3onjfg&amp;t=408s" target="_blank" rel="noopener">영상 06:48에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>보낸 키</th><th>노트북이 받은 응답</th><th>폰 로그</th></tr></thead>
+    <tbody>
+      <tr><td><code>my-key</code> (틀린 키)</td><td>401 Unauthorized, Invalid or expired API key</td><td>Authentication failed from IP</td></tr>
+      <tr><td>앱에서 만든 키</td><td>200 OK, <code>{"stat":true}</code></td><td>Authenticated request, SMS successfully sent</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>발표자는 이렇게 마무리해요. 문자를 언제, 누구에게, 어떤 로직으로 보낼지 전부 내가 정할 수 있고, 폰 한 대가 API 게이트웨이 역할을 한다는 거예요.</p>
+<blockquote>
+  <p>Your phone will serve as your API gateway or API server.</p>
+  <p>폰이 그대로 API 게이트웨이, API 서버가 돼요.</p>
+  <cite>— 영상 06:06</cite>
+</blockquote>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>README에 따르면 OpenSMS는 파이썬으로 만들었어요. API는 FastAPI, 앱 화면은 KivyMD와 Kivy로 만들었다고 해요. 영상 속 응답 헤더의 <code>server: uvicorn</code>은 이 FastAPI 앱을 돌리는 파이썬 웹 서버(ASGI(Asynchronous Server Gateway Interface) 서버) 이름이에요. 영상은 0.1.0을 설치했고, 지금 Releases에는 일부 폰 GPU(Graphics Processing Unit)에서 앱이 꺼지는 문제를 고친 0.1.1이 최신이에요. 파일 이름도 <code>opensms-0.1.1-arm64.apk</code>로 조금 바뀌었어요.</p>
+  <p class="cite">출처: <a href="https://github.com/daslearning-org/OpenSMS" target="_blank" rel="noopener">OpenSMS README</a> · <a href="https://github.com/daslearning-org/OpenSMS/releases" target="_blank" rel="noopener">OpenSMS Releases</a> · <a href="https://github.com/Kludex/uvicorn" target="_blank" rel="noopener">uvicorn GitHub</a></p>
+</aside>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 영어 자막이라 몇몇 이름이 잘못 받아적혔어요. 화면을 보고 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>Open SMS</td><td>OpenSMS</td><td>프로젝트 이름은 붙여 써요</td></tr>
+      <tr><td>call command</td><td>curl command</td><td>README의 curl 예시를 가리켜요</td></tr>
+      <tr><td>BRR token</td><td>Bearer token</td><td>Authorization 헤더의 Bearer 값</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-5"><dt>제한된 설정<span class="en">Restricted settings</span></dt><dd>Play 스토어 밖에서 설치한 앱이 SMS 같은 민감한 권한을 바로 받지 못하게 잠가 두는 안드로이드 보안 장치예요. 앱 정보에서 따로 풀어 줘야 해요.</dd></div>
+    <div class="g" id="g-6"><dt>포그라운드 서비스<span class="en">Foreground service</span></dt><dd>알림을 띄워 둔 채로 계속 돌아가는 안드로이드 백그라운드 작업이에요. 알림이 있어야 시스템이 서버를 함부로 끄지 않아요.</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g" id="g-3"><dt>APK<span class="en">Android Package Kit</span></dt><dd>안드로이드 앱 설치 파일이에요. Play 스토어를 거치지 않고 이 파일을 직접 받아 설치하면 보안 경고가 더 많이 떠요.</dd></div>
+    <div class="g"><dt>ASGI</dt><dd>Asynchronous Server Gateway Interface</dd></div>
+    <div class="g" id="g-7"><dt>Bearer 토큰<span class="en">Bearer token</span></dt><dd>Authorization 헤더에 &#x27;Bearer &lt;키&gt;&#x27; 형태로 실어 보내는 인증 값이에요. 이 키를 가진 쪽이면 누구든 요청을 보낼 수 있어서 키 관리가 중요해요.</dd></div>
+    <div class="g"><dt>GPU</dt><dd>Graphics Processing Unit</dd></div>
+    <div class="g"><dt>IP</dt><dd>Internet Protocol</dd></div>
+    <div class="g" id="g-2"><dt>OTP<span class="en">One-Time Password</span></dt><dd>한 번만 쓰고 버리는 인증 번호예요. 로그인할 때 문자로 받는 6자리 숫자가 대표적이라, 문자 발송이 필요한 가장 흔한 이유예요.</dd></div>
+    <div class="g" id="g-4"><dt>Play Protect<span class="en">Google Play Protect</span></dt><dd>구글이 안드로이드에 넣어 둔 악성 앱 검사 기능이에요. 문자처럼 민감한 권한을 쓰는 출처 모를 앱은 설치 자체를 막기도 해요.</dd></div>
+    <div class="g"><dt>SIM</dt><dd>Subscriber Identity Module</dd></div>
+    <div class="g"><dt>SMS</dt><dd>Short Message Service</dd></div>
+    <div class="g" id="g-1"><dt>SMS 게이트웨이<span class="en">SMS gateway</span></dt><dd>프로그램이 보낸 요청을 받아 실제 문자 메시지로 바꿔 내보내는 중계 지점이에요. 이 영상에서는 폰이 그 역할을 해요.</dd></div>
+    <div class="g" id="g-8"><dt>401 Unauthorized<span class="en">HTTP 401</span></dt><dd>요청에 올바른 인증 정보가 없다는 HTTP 응답 코드예요. 키가 틀렸거나 만료됐을 때 돌아와요.</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=wNXH_3onjfg" target="_blank" rel="noopener">원본 영상 — DasLearning</a></li>
+    <li id="src-2"><a href="https://github.com/daslearning-org/OpenSMS" target="_blank" rel="noopener">OpenSMS GitHub 저장소 (README)</a></li>
+    <li id="src-3"><a href="https://github.com/daslearning-org/OpenSMS/releases" target="_blank" rel="noopener">OpenSMS Releases</a></li>
+    <li id="src-4"><a href="https://support.google.com/android/answer/12623953" target="_blank" rel="noopener">Android 고객센터 — Learn about restricted settings</a></li>
+    <li id="src-5"><a href="https://support.google.com/googleplay/answer/2812853" target="_blank" rel="noopener">Google Play 고객센터 — Use Google Play Protect</a></li>
+    <li id="src-6"><a href="https://github.com/Kludex/uvicorn" target="_blank" rel="noopener">uvicorn GitHub 저장소</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 20일에 이 영상을 보고 정리했어요. 원본은 DasLearning 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

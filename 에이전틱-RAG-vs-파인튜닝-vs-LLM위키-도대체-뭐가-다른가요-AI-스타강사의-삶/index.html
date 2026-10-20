@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>에이전틱 RAG vs 파인튜닝 vs LLM 위키, 뭐가 다른가요?</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>에이전틱 RAG vs 파인튜닝 vs LLM 위키, 뭐가 다른가요?</h1>
+  <p class="lede">RAG 계열 용어 넷을 &#x27;누가 무엇을 맡느냐&#x27;로 갈라 봐요</p>
+  <div class="meta">
+    <span>코딩알려주는누나</span><span class="dot">·</span>
+    <span>영상 22:17</span><span class="dot">·</span>
+    <span>읽는 데 약 12분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=vvOuhfgH02E" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>RAG(Retrieval-Augmented Generation)는 오픈북 시험이에요. LLM(Large Language Model)이 모르는 사내 규정이나 법률을 찾아서 함께 넘겨 주고 그걸 참고해 답하게 해요.</li>
+    <li>RAG는 <span class="term" data-term="파라미터" data-en="Parameter" data-desc="모델이 학습으로 얻은 숫자 값들이에요. 모델은 이 값으로 계산해서 답을 내요. RAG는 이 값을 그대로 두고, 파인튜닝은 이 값을 바꿔요." data-g="2">파라미터</span>를 그대로 두고, <span class="term" data-term="파인튜닝" data-en="Fine-tuning" data-desc="이미 학습된 모델을 내 데이터로 추가 학습시켜 파라미터를 바꾸는 일이에요. 말투나 형식을 몸에 배게 할 수 있지만 GPU와 학습 데이터가 필요해서 비싸요." data-g="3">파인튜닝</span>은 파라미터를 업데이트해요. 보안 때문에 작은 자체 모델을 쓰는 기업은 둘을 함께 써요.</li>
+    <li>실제 RAG 프로젝트가 막히는 곳은 기술보다 권한, 정책, 부서 이해관계 같은 서비스 레벨이에요.</li>
+    <li>에이전틱 RAG는 어느 데이터 소스를 찾을지를 개발자의 키워드 규칙 대신 LLM이 판단하게 한 거예요.</li>
+    <li>LLM 위키는 DB(Database) 없이 연결된 마크다운 문서를 LLM이 직접 읽는 개인용 방식이에요. 문서가 많아지면 RAG가 맞아요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">GPT에 PDF 올리기와 RAG는 뭐가 달라요?</a></li>
+    <li><a href="#s2">RAG와 파인튜닝, 기업은 뭘 쓰나요?</a></li>
+    <li><a href="#s3">사내 HR 에이전트가 막힌 곳</a></li>
+    <li><a href="#s4">에이전틱 RAG는 무엇을 대신하나요?</a></li>
+    <li><a href="#s5">LLM 위키는 RAG와 뭐가 달라요?</a></li>
+    <li><a href="#s6">ChatGPT와 직접 만든 RAG 비교 데모</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=vvOuhfgH02E&amp;t=128s" target="_blank" rel="noopener">02:08</a>
+  <h2>GPT에 PDF 올리기와 RAG는 뭐가 달라요?</h2>
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>진행자가 묻고 용담 님이 답하는 대담 영상이라 화면 자료가 거의 없어요. 말로 설명한 구조는 그림으로 옮겼고, 마지막 데모 구간만 실제 화면을 캡처했어요.</p>
+</aside>
+<p>진행자의 첫 질문은 단순해요. GPT(Generative Pre-trained Transformer)에 PDF(Portable Document Format)를 던져 주고 물어보는 것과 RAG 시스템을 만들어 쓰는 것이 솔직히 뭐가 다르냐는 거예요.</p>
+<p>용담 님은 먼저 RAG가 왜 필요한지부터 짚어요. LLM은 <span class="term" data-term="할루시네이션" data-en="Hallucination" data-desc="LLM이 사실이 아닌 내용을 그럴듯하게 지어내는 현상이에요. 모르는 정보를 물으면 특히 잘 생겨서, 근거 자료를 함께 주는 RAG가 필요해져요." data-g="1">할루시네이션</span>이 생겨요. 원하는 답을 받으려면 관련 정보를 찾아서 같이 넘겨 주는 게 좋은데, 특정 법률이나 사내 규정은 LLM이 알고 있을 리가 없어요. 그래서 자료를 주고 '이걸 참고해서 답해 줘'라고 하는 구조를 만들어요. 용담 님은 이걸 <b>오픈북 시험</b>에 비유해요.</p>
+<p>아래 그림은 그 흐름이에요. 질문이 들어오면 먼저 사내 문서에서 관련 부분을 찾고, 찾은 내용을 질문과 함께 LLM에 넘겨요. 점선은 직접 만든 RAG에서 손댈 수 있는 지점이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 210" role="img" aria-label="질문, 문서 검색, LLM 생성, 답변으로 이어지는 RAG 흐름과 직접 조절할 수 있는 검색·생성 단계">
+    <defs><marker id="arrow-rag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="c1 cell" x="10" y="50" width="110" height="70" rx="10"/>
+    <text x="65" y="82" text-anchor="middle">질문</text>
+    <text x="65" y="102" text-anchor="middle" class="sub">사용자</text>
+    <path class="line" d="M122 85 h36" marker-end="url(#arrow-rag)"/>
+    <rect class="c2 cell" x="162" y="50" width="140" height="70" rx="10"/>
+    <text x="232" y="82" text-anchor="middle">관련 자료 찾기</text>
+    <text x="232" y="102" text-anchor="middle" class="sub">법률·사내 규정</text>
+    <path class="line" d="M304 85 h36" marker-end="url(#arrow-rag)"/>
+    <rect class="c3 cell" x="344" y="50" width="150" height="70" rx="10"/>
+    <text x="419" y="82" text-anchor="middle">LLM이 읽고 답 생성</text>
+    <text x="419" y="102" text-anchor="middle" class="sub">질문 + 찾은 자료</text>
+    <path class="line" d="M496 85 h36" marker-end="url(#arrow-rag)"/>
+    <rect class="box" x="536" y="50" width="94" height="70" rx="10"/>
+    <text x="583" y="90" text-anchor="middle">답변</text>
+    <rect class="ring" x="154" y="40" width="348" height="90" rx="14"/>
+    <text x="328" y="160" text-anchor="middle">직접 만든 RAG는 검색도, 생성도 고치고 튜닝할 수 있어요</text>
+    <text x="328" y="185" text-anchor="middle" class="sub">GPT에 PDF를 올리면 이 두 칸을 GPT가 '알아서' 해요</text>
+  </svg>
+  <figcaption>GPT에 PDF를 올리는 것도 같은 모양이에요. 차이는 점선 안을 누가 정하느냐예요.</figcaption>
+</figure>
+<h3>그래도 직접 만드는 이유</h3>
+<p>용담 님은 GPT에 PDF를 올리는 것도 크게 보면 RAG의 한 종류라고 해요. 그래도 회사가 RAG를 직접 만드는 이유는 두 가지예요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th></th><th>GPT에 PDF 올리기</th><th>직접 만든 RAG</th></tr></thead>
+    <tbody>
+      <tr><td>쓸 수 있는 환경</td><td>외부 서비스를 써도 되는 곳</td><td>보안 때문에 외부를 못 쓰는 회사도 가능</td></tr>
+      <tr><td>검색과 답변</td><td>GPT가 알아서 찾고 알아서 답해요</td><td>로직을 직접 만들어서 단계마다 조절해요</td></tr>
+      <tr><td>성능</td><td>GPT가 정한 만큼</td><td>검색·생성을 고치고 튜닝하면 더 좋아질 수 있어요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>실제 기업에서도 많이 쓰냐는 질문에는 '엄청 많이'라고 답해요. RAG라는 말이 처음 유행한 게 2023~2024년쯤인데, 그때부터 거의 모든 회사가 RAG 시스템을 만들고 운영하면서 계속 넓혀 가고 있다고 해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>RAG라는 이름 자체는 2020년 5월 Patrick Lewis 등이 arXiv에 올린 논문 'Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks'에서 나왔어요. 영상이 말한 2023~2024년은 기업들 사이에서 키워드로 퍼진 시기로 보면 돼요.</p>
+  <p class="cite">출처: <a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">arXiv 2005.11401 — Lewis et al., 2020</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=vvOuhfgH02E&amp;t=239s" target="_blank" rel="noopener">03:59</a>
+  <h2>RAG와 파인튜닝, 기업은 뭘 쓰나요?</h2>
+<p>두 번째 질문은 RAG와 파인튜닝의 차이예요. 용담 님은 한 단어로 갈라요. <b>파라미터를 바꾸느냐</b>예요. 모델은 파라미터로 계산해서 답을 내요. RAG는 파라미터를 그대로 두고, 답을 만들 때 자료를 <span class="term" data-term="컨텍스트" data-en="Context" data-desc="모델이 답할 때 한 번에 읽는 입력 전체예요. RAG는 찾은 자료를 여기에 넣어 주고, 모델은 이걸 보면서 답해요." data-g="4">컨텍스트</span>로 읽게 해요. 파인튜닝은 파라미터 자체를 업데이트해요.</p>
+<h3>면접으로 비유하면</h3>
+<p>용담 님은 온라인 면접 상황에 빗대요. 면접관이 질문했을 때 답하는 방식을 세 가지로 나눠요. 그림의 가운데 칸이 RAG, 오른쪽 칸이 파인튜닝이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 220" role="img" aria-label="면접에서 답하는 세 가지 방식: 이미 알아서 바로 답하기, 자료를 보고 읽으며 답하기(RAG), 자료를 여러 번 읽어 익숙해진 뒤 답하기(파인튜닝)">
+    <rect class="box" x="10" y="20" width="196" height="180" rx="12"/>
+    <text x="108" y="50" text-anchor="middle">(a) 이미 알고 있어요</text>
+    <text x="108" y="90" text-anchor="middle" class="sub">질문을 듣고</text>
+    <text x="108" y="110" text-anchor="middle" class="sub">머릿속에서 바로 답해요</text>
+    <rect class="c3 cell" x="40" y="132" width="136" height="52" rx="8"/>
+    <text x="108" y="154" text-anchor="middle">원래 아는 것</text>
+    <text x="108" y="173" text-anchor="middle" class="sub">이미 학습한 지식</text>
+
+    <rect class="accent" x="222" y="20" width="196" height="180" rx="12"/>
+    <text x="320" y="50" text-anchor="middle">(b) 자료를 보며 답해요</text>
+    <text x="320" y="90" text-anchor="middle" class="sub">앞에 놓인 자료를 읽고 답해요</text>
+    <text x="320" y="110" text-anchor="middle" class="sub">처음 보면 말이 어색해요</text>
+    <rect class="c2 cell" x="252" y="132" width="136" height="52" rx="8"/>
+    <text x="320" y="154" text-anchor="middle">RAG</text>
+    <text x="320" y="173" text-anchor="middle" class="sub">파라미터 그대로</text>
+
+    <rect class="box" x="434" y="20" width="196" height="180" rx="12"/>
+    <text x="532" y="50" text-anchor="middle">(c) 읽고 또 읽었어요</text>
+    <text x="532" y="90" text-anchor="middle" class="sub">표현이 몸에 배어서</text>
+    <text x="532" y="110" text-anchor="middle" class="sub">자연스럽게 말해요</text>
+    <rect class="c4 cell" x="464" y="132" width="136" height="52" rx="8"/>
+    <text x="532" y="154" text-anchor="middle">파인튜닝</text>
+    <text x="532" y="173" text-anchor="middle" class="sub">파라미터 업데이트</text>
+  </svg>
+  <figcaption>(b)와 (c)는 같은 자료를 써요. 그 자료를 '보면서' 말하느냐, '알게 된 뒤' 말하느냐가 달라요.</figcaption>
+</figure>
+<p>(b)처럼 처음 보는 자료를 읽으며 답하면 내용을 잘 모르니 말이 어색하게 나올 수 있어요. 말투를 다듬고 싶다면 그 자료를 여러 번 읽어서 거기서 쓰는 표현을 익히면 돼요. 기술적으로는 모델이 글의 흐름을 학습해서 다음 토큰이 더 자연스럽게 이어지게 되는 거예요. 이게 파인튜닝이에요.</p>
+<h3>기업은 무엇을 고를까요</h3>
+<p>처음에는 RAG를 더 선호했어요. 파인튜닝은 GPU(Graphics Processing Unit)가 많이 필요하고 학습 데이터도 직접 만들어야 해서 돈이 많이 들고 어렵거든요. 그런데 보안 때문에 외부 LLM을 못 쓰는 환경이 문제였어요. 이런 회사는 자체 모델을 써야 하는데, 작은 SLM(Small Language Model)은 성능이 부족해요. 그래서 파인튜닝으로 성능을 끌어올리고, 모델이 작으니 필요한 컨텍스트를 주려고 RAG도 붙였어요. 결국 둘 다 써요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th></th><th>RAG</th><th>파인튜닝</th></tr></thead>
+    <tbody>
+      <tr><td>파라미터</td><td>그대로 둬요</td><td>업데이트해요</td></tr>
+      <tr><td>하는 일</td><td>답할 때 자료를 읽게 해요</td><td>자료의 흐름과 표현을 모델이 익혀요</td></tr>
+      <tr><td>비용</td><td>상대적으로 적어요</td><td>GPU와 학습 데이터가 필요해서 비싸요</td></tr>
+      <tr><td>쓰는 경우</td><td>외부 LLM에도, 자체 모델에도 붙여요</td><td>자체 모델(SLM)의 성능을 올릴 때</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>외부 LLM을 쓸 수 있는 회사도 RAG는 붙여요. 용담 님은 외부 LLM은 파인튜닝이 안 되니 어쩔 수 없이 RAG를 붙인다고 설명해요. 정말 제대로 만들고 싶다면 파인튜닝도 하고 RAG도 붙인다는 게 결론이에요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>외부 LLM 파인튜닝이 '아예 안 된다'는 건 서비스마다 달라요. OpenAI는 API(Application Programming Interface)로 지도 미세조정(supervised fine-tuning)을 제공해 왔는데, 공식 문서에는 지금 이 플랫폼을 정리하는 중이라 새 사용자는 쓸 수 없고 기존 사용자만 당분간 학습을 돌릴 수 있다고 적혀 있어요. 외부 모델을 파인튜닝하려면 해당 업체 문서에서 현재 상태를 먼저 확인하는 게 좋아요.</p>
+  <p class="cite">출처: <a href="https://developers.openai.com/api/docs/guides/supervised-fine-tuning" target="_blank" rel="noopener">OpenAI API 문서 — Supervised fine-tuning</a> (2026년 10월 확인)</p>
+</aside>
+<h3>래그일까요, 라그일까요</h3>
+<p>진행자가 갑자기 발음을 물어요. 용담 님은 원래 '래그'라고 읽었는데 헷갈려서 그냥 'R-A-G'라고 읽는대요. 요즘은 LLM으로 답해야 하는 챗봇이나 <span class="term" data-term="에이전트" data-en="Agent" data-desc="사람이 하던 판단이나 작업을 대신 맡아 수행하는 LLM 시스템이에요. 영상은 &#x27;대행&#x27;이라는 말뜻에서 출발해 설명해요." data-g="5">에이전트</span> 시스템에는 거의 다 RAG를 붙인다고 해요.</p>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=vvOuhfgH02E&amp;t=436s" target="_blank" rel="noopener">07:16</a>
+  <h2>사내 HR 에이전트가 막힌 곳</h2>
+<p>RAG를 잘 만든 사례가 있냐는 질문에 용담 님은 방향을 살짝 틀어요. 잘 만든 곳은 많지만, 기업들이 RAG를 만든 지 길어야 2년쯤이라 <b>만들어 놓고 고도화에서 막힌 경우</b>가 더 많다고 해요.</p>
+<p>예로 든 건 한 대기업의 HR(Human Resources) 전용 에이전트예요. 사내 규정을 일일이 찾기 어려우니 다 모아서 에이전트로 만들자는 프로젝트를 전사 레벨로 진행했어요. 문서는 다 있으니 될 거라고 생각했는데, 막힌 곳은 기술이 아니었어요. 아래 그림이 영상에서 나온 세 가지 문제예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 250" role="img" aria-label="HR 에이전트가 막힌 세 가지: 권한, 우회 시도, HR 문의 증가">
+    <defs><marker id="arrow-hr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="c3 cell" x="230" y="12" width="180" height="46" rx="10"/>
+    <text x="320" y="34" text-anchor="middle">HR 에이전트</text>
+    <text x="320" y="50" text-anchor="middle" class="sub">사내 규정을 모두 넣음</text>
+    <path class="line" d="M260 60 L108 96" marker-end="url(#arrow-hr)"/>
+    <path class="line" d="M320 60 V96" marker-end="url(#arrow-hr)"/>
+    <path class="line" d="M380 60 L532 96" marker-end="url(#arrow-hr)"/>
+
+    <rect class="bad" x="10" y="100" width="196" height="120" rx="12"/>
+    <text x="108" y="128" text-anchor="middle">① 권한</text>
+    <text x="108" y="156" text-anchor="middle" class="sub">인턴이 묻는다:</text>
+    <text x="108" y="174" text-anchor="middle" class="sub">'부사장급 연봉은?'</text>
+    <text x="108" y="200" text-anchor="middle" class="sub">권한이 없으면 그대로 답함</text>
+
+    <rect class="bad" x="222" y="100" width="196" height="120" rx="12"/>
+    <text x="320" y="128" text-anchor="middle">② 우회 시도</text>
+    <text x="320" y="156" text-anchor="middle" class="sub">물어보면 안 되는 것을</text>
+    <text x="320" y="174" text-anchor="middle" class="sub">어떻게든 뚫어서</text>
+    <text x="320" y="192" text-anchor="middle" class="sub">알아내려 해요</text>
+
+    <rect class="bad" x="434" y="100" width="196" height="120" rx="12"/>
+    <text x="532" y="128" text-anchor="middle">③ HR 문의 증가</text>
+    <text x="532" y="156" text-anchor="middle" class="sub">답이 100% 맞진 않아서</text>
+    <text x="532" y="174" text-anchor="middle" class="sub">'여기 물어봤는데…'가</text>
+    <text x="532" y="192" text-anchor="middle" class="sub">다시 HR로 와요</text>
+    <text x="320" y="244" text-anchor="middle" class="sub">셋 다 모델 성능이 아니라 정책·사람의 문제예요</text>
+  </svg>
+  <figcaption>①은 RAG나 에이전트가 아니라 사람이 먼저 정해 둬야 하는 규칙이에요. ③은 업무를 줄이려던 에이전트가 오히려 일을 늘린 경우예요.</figcaption>
+</figure>
+<h3>세 가지 문제</h3>
+<p><b>권한.</b> 인턴이 입사해서 HR 에이전트에게 부사장급 연봉을 물어봐요. 정보에 권한이 나뉘어 있지 않으면 바로 찾아서 답해 버려요. 예전에는 문서별로 접근이 나뉘어 있었고, HR 부서에 물으면 거기서 알아서 걸렀어요. 에이전트로 만들면 이런 정책을 전부 따로 관리해야 해요. 그리고 이 규칙은 RAG나 에이전트가 정하는 게 아니라 사람이 정해 놔야 해요.</p>
+<p><b>우회 시도.</b> 그러면 안 되지만, 물어보면 안 되는 것을 자꾸 뚫어서 알아내려는 사람이 생겨요.</p>
+<p><b>HR 문의 증가.</b> HR팀 입장에서 챗봇이 잘 쓰이면 업무가 줄 것 같아요. 그런데 답이 100% 잘 나오진 않으니, '에이전트에 물어봤는데 답이 이상한데 확인해 줄 수 있냐'는 질문이 다시 와요. 업무가 줄기는커녕 늘어서, HR 쪽이 대응을 열심히 안 해 주기도 해요.</p>
+<p>용담 님은 이런 이해관계 문제가 기술 문제보다 오히려 많다고 해요. 진행자는 데이터가 준비돼 있다고 해도 그게 곧 'AI를 위한 데이터 준비'는 아니라고 정리해요. 기존 데이터를 AI(Artificial Intelligence)가 쓸 수 있게 바꾸는 작업까지 RAG 프로젝트에 들어 있다는 거예요.</p>
+<p>서비스 레벨에서 고민할 게 많다는 뜻이에요. 이런 걸 잘하는 인재는 거의 없다고 해요. 직접 해 봐야 알 수 있는 일이라서요.</p>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=vvOuhfgH02E&amp;t=594s" target="_blank" rel="noopener">09:54</a>
+  <h2>에이전틱 RAG는 무엇을 대신하나요?</h2>
+<p>에이전틱 RAG를 설명하려면 먼저 '에이전트'라는 말부터 봐야 한다고 해요. 에이전트에는 <b>대행</b>이라는 뜻이 들어 있어요. 스포츠 에이전시가 선수의 일을 대신해 주듯, RAG 앞에 에이전트가 붙으면 뭔가를 대신해 준다는 뜻이에요.</p>
+<p>그럼 무엇을 대신할까요? 질문에 따라 찾아봐야 할 데이터 소스가 여러 개인 상황을 생각해 봐요. 아래 그림의 (a)가 예전 방식, (b)가 에이전틱 RAG예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 260" role="img" aria-label="(a) 개발자가 키워드 규칙으로 데이터 소스를 고르는 방식과 (b) LLM이 질문을 보고 데이터 소스를 고르는 에이전틱 RAG 비교">
+    <defs><marker id="arrow-ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="155" y="20" text-anchor="middle">(a) 예전: 개발자가 정한 규칙</text>
+    <rect class="c1 cell" x="10" y="100" width="80" height="50" rx="8"/>
+    <text x="50" y="130" text-anchor="middle">질문</text>
+    <path class="line" d="M92 125 h22" marker-end="url(#arrow-ag)"/>
+    <rect class="box" x="118" y="70" width="110" height="110" rx="10"/>
+    <text x="173" y="100" text-anchor="middle" class="sub">키워드 A → 1번</text>
+    <text x="173" y="125" text-anchor="middle" class="sub">키워드 B → 2번</text>
+    <text x="173" y="150" text-anchor="middle" class="sub">그 밖의 질문 → ?</text>
+    <path class="line" d="M230 100 L250 70" marker-end="url(#arrow-ag)"/>
+    <path class="line" d="M230 125 h20" marker-end="url(#arrow-ag)"/>
+    <path class="line dim" d="M230 150 L250 180" marker-end="url(#arrow-ag)"/>
+    <rect class="c2 cell" x="254" y="50" width="50" height="34" rx="6"/><text x="279" y="72" text-anchor="middle">1번</text>
+    <rect class="c2 cell" x="254" y="108" width="50" height="34" rx="6"/><text x="279" y="130" text-anchor="middle">2번</text>
+    <rect class="c2 cell dim" x="254" y="166" width="50" height="34" rx="6"/><text x="279" y="188" text-anchor="middle" class="dim">3번</text>
+    <text x="155" y="236" text-anchor="middle" class="sub">경우가 너무 많아 키워드를 다 지정할 수 없어요</text>
+
+    <line class="axis" x1="320" y1="10" x2="320" y2="250"/>
+
+    <text x="480" y="20" text-anchor="middle">(b) 에이전틱 RAG: LLM이 판단</text>
+    <rect class="c1 cell" x="336" y="100" width="70" height="50" rx="8"/>
+    <text x="371" y="130" text-anchor="middle">질문</text>
+    <path class="line" d="M408 125 h18" marker-end="url(#arrow-ag)"/>
+    <rect class="c3 cell" x="430" y="90" width="80" height="70" rx="10"/>
+    <text x="470" y="120" text-anchor="middle">LLM</text>
+    <text x="470" y="140" text-anchor="middle" class="sub">어디를 찾을까</text>
+    <rect class="ring" x="424" y="84" width="92" height="82" rx="13"/>
+    <path class="line" d="M518 105 L556 70" marker-end="url(#arrow-ag)"/>
+    <path class="line" d="M518 125 h38" marker-end="url(#arrow-ag)"/>
+    <path class="line" d="M518 145 L556 180" marker-end="url(#arrow-ag)"/>
+    <rect class="c2 cell" x="560" y="50" width="50" height="34" rx="6"/><text x="585" y="72" text-anchor="middle">1번</text>
+    <rect class="c2 cell" x="560" y="108" width="50" height="34" rx="6"/><text x="585" y="130" text-anchor="middle">2번</text>
+    <rect class="c2 cell" x="560" y="166" width="50" height="34" rx="6"/><text x="585" y="188" text-anchor="middle">3번</text>
+    <text x="480" y="236" text-anchor="middle" class="sub">소스를 고른 뒤는 기존 파이프라인 그대로</text>
+  </svg>
+  <figcaption>바뀐 건 동그라미 친 한 칸이에요. 사람이 짜 둔 키워드 규칙 자리를 LLM의 판단이 대신해요.</figcaption>
+</figure>
+<p>예전에는 개발자가 규칙을 정해 놨어요. 어떤 키워드가 들어오면 1번 소스, 다른 키워드면 2번 소스로 보내는 <span class="term" data-term="라우팅" data-en="Routing" data-desc="들어온 질문을 보고 어느 데이터 소스나 처리 경로로 보낼지 정하는 일이에요. 에이전틱 RAG는 이 판단을 키워드 규칙 대신 LLM에게 맡겨요." data-g="6">라우팅</span>이에요. 그런데 경우의 수가 너무 많아서 키워드를 다 지정할 수 없어요. LLM이 똑똑해지자 이 판단을 LLM에게 시켜 보자는 생각이 나왔어요. 질문이 들어오면 여러 소스 중 어디를 찾아서 답하면 좋을지를 LLM이 정하고, 그 뒤는 기존 파이프라인을 그대로 따라가요.</p>
+<h3>꼭 갈아타야 할까요</h3>
+<p>이미 RAG를 만든 회사도 에이전틱 RAG로 옮겨야 하냐는 질문에, 용담 님은 장단점을 같이 말해요.</p>
+<ul>
+  <li><b>좋은 점</b>: API 비용 대비 효율이 확실히 있고, 판단을 LLM에게 맡기니 만들기가 훨씬 편해요.</li>
+  <li><b>고민할 점</b>: 앞에서 나온 질문, 즉 '통제가 되느냐'예요. LLM이 잘하면 상관없지만, 잘못 고를 때 어떻게 할지가 문제예요.</li>
+</ul>
+<p>꼭 필요한 게 아니면 안 써도 되지만, 넣었더니 크게 좋아지는 경우가 많아서 개인적으로는 써 보길 권한다고 해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Anthropic은 영상이 말한 구조를 '라우팅(Routing)' 워크플로라고 불러요. 입력을 분류해서 그에 맞는 후속 작업으로 보내는 방식이에요. 분류는 LLM이 할 수도 있고 전통적인 분류 모델이 할 수도 있어요. 같은 글은 가장 단순한 방법부터 시작하고, 필요할 때만 복잡도를 올리라고 권해요. 에이전트 시스템은 지연과 비용을 내주고 성능을 얻는 거래라는 거예요. 용담 님의 '꼭 필요한 게 아니면 안 써도 된다'와 같은 이야기예요.</p>
+  <p class="cite">출처: <a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">Anthropic — Building effective agents</a></p>
+</aside>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=vvOuhfgH02E&amp;t=723s" target="_blank" rel="noopener">12:03</a>
+  <h2>LLM 위키는 RAG와 뭐가 달라요?</h2>
+<p>진행자가 요즘 귀를 간지럽히는 게 'LLM 위키'라고 꺼내요. 용담 님은 업계의 유명 인사 안드레 카파시(Andrej Karpathy)가 공개한 마크다운 파일에서 시작한 개념이라고 소개해요. 오픈AI 공동 창업자로 알려진 사람이에요. 용담 님은 지인의 결혼식에서 카파시를 실제로 만나 '빅 팬'이라고 인사하고 사진을 찍었다는 일화도 들려줘요.</p>
+<h3>왜 나왔을까요</h3>
+<p>LLM 성능이 좋아지자 사람들은 '내 데이터'로 무언가를 만들고 싶어 했어요. 내 데이터를 LLM이 잘 이해하게 하려고 RAG도 나왔죠. 그런데 RAG는 너무 어렵고 복잡해요. 그래서 LLM이 지식을 알아서 관리하게 할 수는 없을까 하는 생각에서 LLM 위키가 나왔다고 해요.</p>
+<p>방법은 간단해요. 카파시가 공개한 마크다운 파일을 받아서, 내가 가진 텍스트 파일에 대고 '이 방식으로 만들어 줘'라고 하면 돼요. LLM이 위키백과처럼 문서끼리 서로 연결된 형태로 내 데이터를 정리해 줘요. 그렇게 나만의 지식 베이스가 생기면, LLM이 마치 나에 대해 다 아는 것처럼 답해 줘서 유행이 됐어요.</p>
+<h3>RAG와는 시스템이 달라요</h3>
+<p>용담 님은 LLM 위키도 크게 보면 RAG의 일부라고 봐요. 하는 일은 비슷하고, 차이는 시스템에 있어요. 아래 그림의 왼쪽이 LLM 위키, 오른쪽이 보통의 RAG예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 250" role="img" aria-label="LLM 위키는 서로 연결된 마크다운 문서를 LLM이 직접 찾아 읽고, RAG는 벡터 DB에서 검색한 조각을 LLM에 넘기는 구조 비교">
+    <defs><marker id="arrow-wk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="155" y="20" text-anchor="middle">LLM 위키</text>
+    <rect class="c2 cell" x="20" y="40" width="70" height="32" rx="6"/><text x="55" y="61" text-anchor="middle" class="mono">a.md</text>
+    <rect class="c2 cell" x="120" y="40" width="70" height="32" rx="6"/><text x="155" y="61" text-anchor="middle" class="mono">b.md</text>
+    <rect class="c2 cell" x="220" y="40" width="70" height="32" rx="6"/><text x="255" y="61" text-anchor="middle" class="mono">c.md</text>
+    <path class="line" d="M90 56 h30"/><path class="line" d="M190 56 h30"/>
+    <path class="line" d="M55 72 Q155 100 255 72"/>
+    <text x="155" y="112" text-anchor="middle" class="sub">위키처럼 서로 연결된 문서 · DB 없음</text>
+    <path class="line" d="M155 120 V146" marker-end="url(#arrow-wk)"/>
+    <rect class="c3 cell" x="70" y="150" width="170" height="54" rx="10"/>
+    <text x="155" y="173" text-anchor="middle">LLM이 직접 찾아</text>
+    <text x="155" y="192" text-anchor="middle">쭉 읽어요</text>
+    <text x="155" y="230" text-anchor="middle" class="sub">검색이 없어 읽을 컨텍스트가 많아요</text>
+
+    <line class="axis" x1="320" y1="10" x2="320" y2="240"/>
+
+    <text x="480" y="20" text-anchor="middle">RAG</text>
+    <rect class="c2 cell" x="345" y="40" width="80" height="32" rx="6"/><text x="385" y="61" text-anchor="middle">문서</text>
+    <path class="line" d="M427 56 h28" marker-end="url(#arrow-wk)"/>
+    <rect class="accent" x="459" y="34" width="150" height="44" rx="8"/>
+    <text x="534" y="61" text-anchor="middle">벡터 DB에 정리</text>
+    <path class="line" d="M534 80 V96" marker-end="url(#arrow-wk)"/>
+    <rect class="box" x="459" y="98" width="150" height="34" rx="8"/>
+    <text x="534" y="120" text-anchor="middle">질문으로 검색</text>
+    <path class="line" d="M534 134 V146" marker-end="url(#arrow-wk)"/>
+    <rect class="c3 cell" x="449" y="150" width="170" height="54" rx="10"/>
+    <text x="534" y="173" text-anchor="middle">찾은 부분만</text>
+    <text x="534" y="192" text-anchor="middle">LLM이 읽어요</text>
+    <text x="480" y="230" text-anchor="middle" class="sub">대규모 문서에 맞아요</text>
+  </svg>
+  <figcaption>하는 일은 비슷해요. LLM 위키는 검색 단계를 빼고 LLM이 읽는 양으로 메꾸는 셈이에요.</figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th></th><th>LLM 위키</th><th>RAG</th></tr></thead>
+    <tbody>
+      <tr><td>저장</td><td>텍스트를 정리만 해 둬요. DB가 없어요</td><td>보통 <span class="term" data-term="벡터 DB" data-en="Vector database" data-desc="문서 조각을 숫자 벡터로 바꿔 저장해 두고, 질문과 의미가 가까운 조각을 빠르게 찾아 주는 저장소예요. 보통의 RAG가 검색할 때 써요." data-g="7">벡터 DB</span>에 정리해요</td></tr>
+      <tr><td>찾는 방법</td><td>LLM이 필요할 때마다 소스를 찾아 쭉 읽어요</td><td>검색으로 관련 부분을 골라요</td></tr>
+      <tr><td>부담</td><td>LLM이 읽어야 할 컨텍스트가 많아요</td><td>시스템을 만들기 어렵고 복잡해요</td></tr>
+      <tr><td>맞는 규모</td><td>개인의 지식 베이스</td><td>대규모</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>용담 님은 LLM 위키 문서에 '문서가 10만 개쯤 넘어가면 위키 말고 RAG를 하라'고 적혀 있다고 해요. 무조건은 아니지만 나름의 기준선이고, 애초에 대규모용이 아니라 개인이 쓰라고 만든 거라는 뜻이에요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>카파시의 원문(GitHub gist 'llm-wiki')에는 '10만 개'라는 숫자가 없어요. 원문은 위키 전체 목록인 <code>index.md</code>를 LLM이 먼저 읽고 필요한 페이지로 들어가는 방식이 '적당한 규모(소스 100개쯤, 페이지 수백 개)'에서 잘 통하고, 임베딩 기반 RAG 인프라 없이 버틸 수 있다고 적어요. 위키가 커지면 제대로 된 검색 도구를 붙이라고 하면서, 마크다운용 로컬 검색 엔진(BM25(Best Matching 25)·벡터 혼합 검색)을 예로 들어요. 그러니 '언제 RAG로 넘어갈지'의 기준은 영상보다 훨씬 낮게 잡는 게 원문에 가까워요.</p>
+  <p>원문은 이 구조를 세 층으로 설명해요. 손대지 않는 원본 자료, LLM이 쓰고 고치는 위키, 그리고 위키 규칙을 적은 설정 문서(Claude Code의 <code>CLAUDE.md</code> 같은 것)예요.</p>
+  <p class="cite">출처: <a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">Andrej Karpathy — llm-wiki (GitHub gist)</a></p>
+</aside>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=vvOuhfgH02E&amp;t=962s" target="_blank" rel="noopener">16:02</a>
+  <h2>ChatGPT와 직접 만든 RAG 비교 데모</h2>
+<p>말로만 들으면 차이가 잘 와닿지 않으니, 용담 님이 직접 비교를 보여 줘요. 질문은 둘 다 같아요. '<span class="term" data-term="고영향 인공지능" data-en="High-impact AI" data-desc="AI 기본법이 사람의 생명·신체 안전이나 기본권에 큰 영향을 줄 수 있는 영역에 쓰이는 AI를 따로 묶어 부르는 말이에요. 이를 제공하는 사업자에게 별도 의무가 생겨요." data-g="11">고영향 인공지능</span>이란 무엇이고 사업자 의무는?'이에요.</p>
+<h3>같은 질문, 두 화면</h3>
+<p>오른쪽은 ChatGPT예요. 화면 위쪽에 <code>AI기본법_국문.pdf</code>를 올리고 질문했어요. 답변 첫머리에서 첨부한 「인공지능 발전과 신뢰 기반 조성 등에 관한 기본법」을 기준으로 설명하겠다고 밝혀요.</p>
+<figure>
+  <img src="assets/frame-1612.webp" alt="ChatGPT 대화창에 AI기본법_국문.pdf를 첨부하고 '고영향 인공지능이란 무엇이고 사업자 의무는?'이라고 물은 화면. 답변은 첨부한 인공지능기본법을 기준으로 설명하겠다고 시작해요">
+  <figcaption>
+    ChatGPT 쪽 준비물은 PDF 한 개와 질문 하나가 전부예요.
+    <a href="https://www.youtube.com/watch?v=vvOuhfgH02E&amp;t=972s" target="_blank" rel="noopener">영상 16:12에서 보기</a>
+  </figcaption>
+</figure>
+<p>왼쪽은 용담 님이 만든 'AI 법률 전문 챗봇'이에요. 주소창이 <code>localhost:8000</code>이라 자기 컴퓨터에서 돌리는 거예요. 제목 아래에 'AI 기본법·시행령 · EU AI Act · 개인정보위 생성형 AI 안내서 기반 Agentic RAG'라고 적혀 있어요. 공개된 법령 자료로 RAG를 구축했다는 뜻이에요. 같은 질문에 '핵심 결론'부터 답하고, 문장 끝에 <code>[AI 기본법 제2조제4호, 제34조제1항]</code>처럼 근거 조항을 달아요.</p>
+<figure>
+  <img src="assets/frame-1617.webp" alt="localhost:8000에서 돌아가는 'AI 법률 전문 챗봇' 화면. 예시 질문 버튼 네 개 아래에 같은 질문을 보냈고, '핵심 결론' 단락 끝에 AI 기본법 조항 번호가 붙어 있어요">
+  <figcaption>
+    예시 질문 버튼에 'EU AI Act에서 금지되는 AI 관행은?'도 있어요. 여러 자료를 한꺼번에 넣어 둔 챗봇이에요.
+    <a href="https://www.youtube.com/watch?v=vvOuhfgH02E&amp;t=977s" target="_blank" rel="noopener">영상 16:17에서 보기</a>
+  </figcaption>
+</figure>
+<h3>답의 성격이 달라요</h3>
+<p>고영향 인공지능에 해당하는 영역을 정리한 부분을 나란히 놓고 봐요. ChatGPT는 '영역'과 '활용 사례(예시)' 두 칸짜리 표로 다시 정리했어요. 에너지 칸에는 '전력 공급망 운영 AI', 보건의료 칸에는 '환자 진단 및 치료 의사결정 지원 AI'처럼 예시를 붙였어요. 화면 자막도 'GPT의 해설과 정리가 좀 들어감'이라고 짚어요. 용담 님은 ChatGPT가 서비스라서 자기 해석을 붙이는 경향이 있다고 설명해요.</p>
+<figure>
+  <img src="assets/frame-1634.webp" alt="ChatGPT 답변 확대 화면. '법률에서 정한 주요 적용 영역' 아래 영역과 활용 사례(예시) 두 열의 표가 있고, 에너지·먹는물·보건의료·의료기기·원자력·범죄 수사 행에 예시 AI가 적혀 있어요">
+  <figcaption>
+    '활용 사례' 열은 법 조문에 없는 ChatGPT의 해석이에요.
+    <a href="https://www.youtube.com/watch?v=vvOuhfgH02E&amp;t=994s" target="_blank" rel="noopener">영상 16:34에서 보기</a>
+  </figcaption>
+</figure>
+<p>RAG 쪽은 'AI 기본법 제2조제4호는 다음 영역을 규정합니다'로 시작해서 조문의 항목을 거의 그대로 옮겨요. '에너지 공급, 먹는물 생산 공정'부터 '그 밖에 생명·신체 안전·기본권 보호에 중대한 영향을 미치는 영역으로 대통령령으로 정하는 영역'까지예요. 용담 님이 <span class="term" data-term="시스템 프롬프트" data-en="System prompt" data-desc="사용자 질문보다 먼저 모델에게 주는 고정 지시문이에요. 데모에서는 여기에 &#x27;가져온 소스만 근거로 객관적으로 답하라&#x27;고 적었어요." data-g="10">시스템 프롬프트</span>에 'RAG에서 가져온 소스를 기반으로 최대한 객관적이고 투명하게 답하라'고 적어 둔 결과예요.</p>
+<figure>
+  <img src="assets/frame-1653.webp" alt="RAG 챗봇 답변 확대 화면. '고영향 인공지능에 해당할 수 있는 영역' 제목 아래 AI 기본법 제2조제4호의 영역 아홉 개가 글머리표로 나열되고 끝에 출처 번호 [1]이 붙어 있어요">
+  <figcaption>
+    화면 자막처럼 '좀 더 문서 내용 그대로 가져옴'이에요. 해석 없이 조문 순서대로 나열해요.
+    <a href="https://www.youtube.com/watch?v=vvOuhfgH02E&amp;t=1013s" target="_blank" rel="noopener">영상 16:53에서 보기</a>
+  </figcaption>
+</figure>
+<p>용담 님은 근거를 찾아오는 것 자체는 둘이 비슷하다고 해요. 다른 건 그다음을 누가 정하느냐예요.</p>
+<h3>조절할 수 있는 범위가 달라요</h3>
+<p>아래 화면은 영상이 두 쪽 위에 겹쳐 띄운 자막이에요. 왼쪽 RAG 위에는 '응답 형식, 시스템 프롬프트, 청킹 사이즈, <span class="term" data-term="임베딩 모델" data-en="Embedding model" data-desc="문장을 의미가 담긴 숫자 벡터로 바꿔 주는 모델이에요. 어떤 걸 쓰느냐에 따라 RAG가 찾아오는 문서의 질이 달라져요." data-g="9">임베딩 모델</span> 등 커스터마이제이션 가능', 오른쪽 GPT 위에는 '모델 바꾸기, pdf 문서 바꾸기 등 제어할 수 있는 영역에 한계가 있음'이라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-1717.webp" alt="RAG 사용 화면과 GPT 사용 화면을 나란히 띄운 위에, 왼쪽에는 응답 형식·시스템 프롬프트·청킹 사이즈·임베딩 모델 등 커스터마이제이션 가능, 오른쪽에는 모델 바꾸기·pdf 문서 바꾸기 등 제어할 수 있는 영역에 한계가 있음이라는 자막을 얹은 화면">
+  <figcaption>
+    이 데모의 결론이 이 한 장에 있어요. 직접 만든 RAG는 찾아오는 방식까지 고칠 수 있어요.
+    <a href="https://www.youtube.com/watch?v=vvOuhfgH02E&amp;t=1037s" target="_blank" rel="noopener">영상 17:17에서 보기</a>
+  </figcaption>
+</figure>
+<p>직접 만든 RAG는 무엇을 어떻게 찾아올지, 가져온 내용을 어떻게 구성할지, 더 들어가면 <span class="term" data-term="청크" data-en="Chunk" data-desc="긴 문서를 검색하기 좋게 잘라 둔 조각이에요. 너무 크면 엉뚱한 내용이 섞이고, 너무 작으면 맥락이 끊겨서 RAG 성능을 좌우해요." data-g="8">청크</span> 크기와 임베딩 모델까지 정할 수 있어요. 그래서 성능을 더 끌어올릴 여지가 있어요. 게다가 로컬 모델로도 돌릴 수 있어요. 앞에서 나온 보안 문제를 풀 수 있다는 뜻이에요. 진행자는 GPT나 클로드 같은 외부 LLM을 못 쓰는 금융권에서 특히 중요하겠다고 덧붙이고, 용담 님은 '무조건 써야 한다'고 답해요.</p>
+<h3>RAG 인재 수요</h3>
+<p>마지막으로 이런 걸 알면 취업이 잘 되겠냐는 질문이 나와요. 수요는 엄청 많지만 늘 그렇듯 잘하는 사람이 없다고 해요. 기업은 인재가 없다고 하고, 준비하는 쪽은 요구가 너무 높다고 하는데, 둘 다 맞는 말이래요.</p>
+<p>어려운 이유는 고도화에 필요한 스택이 많아서예요. 배우면 바로 된다고 말하긴 쉽지만, 실제로는 깊이 알아야 해요. 영상은 이 대목에서 '나만 딸깍이 아니다. 모두가 다 딸깍이다'라는 자막을 띄워요. 클로드 코드로 누구나 쉽게 만들 수 있으니, 결국 제대로 아는 사람이 차이를 만든다는 거예요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 용어와 이름이 많이 틀려 있어요. 영상에 박힌 한글 자막과 문맥으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>레그, 라그, R, RH, RG, R이지</td><td>RAG</td><td>영상 속 자막은 RAG로 적어요</td></tr>
+      <tr><td>LM, LRM, LNM, LN</td><td>LLM</td><td></td></tr>
+      <tr><td>할루스네이션</td><td>할루시네이션</td><td></td></tr>
+      <tr><td>산내 규정</td><td>사내 규정</td><td></td></tr>
+      <tr><td>BDF</td><td>PDF</td><td></td></tr>
+      <tr><td>채치피티, 최치T, 최츠T</td><td>ChatGPT</td><td></td></tr>
+      <tr><td>체포 시스템, 채포</td><td>챗봇</td><td></td></tr>
+      <tr><td>파인팅, 파인트닝, 파인윙</td><td>파인튜닝</td><td></td></tr>
+      <tr><td>ART팀</td><td>HR팀</td><td></td></tr>
+      <tr><td>스포츠 스타일을 대신해</td><td>스포츠 스타의 일을 대신해</td><td>영상 속 자막 기준</td></tr>
+      <tr><td>커스터마이즈가 한 개가</td><td>커스터마이즈가 한계가</td><td>영상 속 자막 기준</td></tr>
+      <tr><td>엔드 카파씨, 안드라 카시, 앤드라 카파 씨</td><td>안드레 카파시 (Andrej Karpathy)</td><td></td></tr>
+      <tr><td>LN 위키, LM 리키, 외키</td><td>LLM 위키</td><td></td></tr>
+      <tr><td>인베링 모델</td><td>임베딩 모델</td><td></td></tr>
+      <tr><td>고인 고영향</td><td>고영향</td><td></td></tr>
+      <tr><td>영단님, 용당님, 용접님</td><td>용담 님</td><td>출연자 호칭. 챕터 제목 기준</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-11"><dt>고영향 인공지능<span class="en">High-impact AI</span></dt><dd>AI 기본법이 사람의 생명·신체 안전이나 기본권에 큰 영향을 줄 수 있는 영역에 쓰이는 AI를 따로 묶어 부르는 말이에요. 이를 제공하는 사업자에게 별도 의무가 생겨요.</dd></div>
+    <div class="g" id="g-6"><dt>라우팅<span class="en">Routing</span></dt><dd>들어온 질문을 보고 어느 데이터 소스나 처리 경로로 보낼지 정하는 일이에요. 에이전틱 RAG는 이 판단을 키워드 규칙 대신 LLM에게 맡겨요.</dd></div>
+    <div class="g" id="g-7"><dt>벡터 DB<span class="en">Vector database</span></dt><dd>문서 조각을 숫자 벡터로 바꿔 저장해 두고, 질문과 의미가 가까운 조각을 빠르게 찾아 주는 저장소예요. 보통의 RAG가 검색할 때 써요.</dd></div>
+    <div class="g" id="g-10"><dt>시스템 프롬프트<span class="en">System prompt</span></dt><dd>사용자 질문보다 먼저 모델에게 주는 고정 지시문이에요. 데모에서는 여기에 &#x27;가져온 소스만 근거로 객관적으로 답하라&#x27;고 적었어요.</dd></div>
+    <div class="g" id="g-5"><dt>에이전트<span class="en">Agent</span></dt><dd>사람이 하던 판단이나 작업을 대신 맡아 수행하는 LLM 시스템이에요. 영상은 &#x27;대행&#x27;이라는 말뜻에서 출발해 설명해요.</dd></div>
+    <div class="g" id="g-9"><dt>임베딩 모델<span class="en">Embedding model</span></dt><dd>문장을 의미가 담긴 숫자 벡터로 바꿔 주는 모델이에요. 어떤 걸 쓰느냐에 따라 RAG가 찾아오는 문서의 질이 달라져요.</dd></div>
+    <div class="g" id="g-8"><dt>청크<span class="en">Chunk</span></dt><dd>긴 문서를 검색하기 좋게 잘라 둔 조각이에요. 너무 크면 엉뚱한 내용이 섞이고, 너무 작으면 맥락이 끊겨서 RAG 성능을 좌우해요.</dd></div>
+    <div class="g" id="g-4"><dt>컨텍스트<span class="en">Context</span></dt><dd>모델이 답할 때 한 번에 읽는 입력 전체예요. RAG는 찾은 자료를 여기에 넣어 주고, 모델은 이걸 보면서 답해요.</dd></div>
+    <div class="g" id="g-2"><dt>파라미터<span class="en">Parameter</span></dt><dd>모델이 학습으로 얻은 숫자 값들이에요. 모델은 이 값으로 계산해서 답을 내요. RAG는 이 값을 그대로 두고, 파인튜닝은 이 값을 바꿔요.</dd></div>
+    <div class="g" id="g-3"><dt>파인튜닝<span class="en">Fine-tuning</span></dt><dd>이미 학습된 모델을 내 데이터로 추가 학습시켜 파라미터를 바꾸는 일이에요. 말투나 형식을 몸에 배게 할 수 있지만 GPU와 학습 데이터가 필요해서 비싸요.</dd></div>
+    <div class="g" id="g-1"><dt>할루시네이션<span class="en">Hallucination</span></dt><dd>LLM이 사실이 아닌 내용을 그럴듯하게 지어내는 현상이에요. 모르는 정보를 물으면 특히 잘 생겨서, 근거 자료를 함께 주는 RAG가 필요해져요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>BM25</dt><dd>Best Matching 25</dd></div>
+    <div class="g"><dt>DB</dt><dd>Database</dd></div>
+    <div class="g"><dt>GPT</dt><dd>Generative Pre-trained Transformer</dd></div>
+    <div class="g"><dt>GPU</dt><dd>Graphics Processing Unit</dd></div>
+    <div class="g"><dt>HR</dt><dd>Human Resources</dd></div>
+    <div class="g"><dt>LLM</dt><dd>Large Language Model</dd></div>
+    <div class="g"><dt>PDF</dt><dd>Portable Document Format</dd></div>
+    <div class="g"><dt>RAG</dt><dd>Retrieval-Augmented Generation</dd></div>
+    <div class="g"><dt>SLM</dt><dd>Small Language Model</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=vvOuhfgH02E" target="_blank" rel="noopener">원본 영상 — 코딩알려주는누나</a></li>
+    <li id="src-2"><a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f" target="_blank" rel="noopener">Andrej Karpathy — llm-wiki (GitHub gist)</a></li>
+    <li id="src-3"><a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">Anthropic — Building effective agents</a></li>
+    <li id="src-4"><a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. — Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks (arXiv, 2020)</a></li>
+    <li id="src-5"><a href="https://developers.openai.com/api/docs/guides/supervised-fine-tuning" target="_blank" rel="noopener">OpenAI API 문서 — Supervised fine-tuning</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 20일에 이 영상을 보고 정리했어요. 대담 영상이라 말로 설명한 구조는 직접 그렸고, 데모 화면만 캡처했어요. 원본은 코딩알려주는누나 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
