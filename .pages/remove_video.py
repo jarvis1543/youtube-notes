@@ -66,10 +66,14 @@ def main():
 
     p, cats = load("categories.json")
     for big in list(cats):
-        for sub in list(cats[big]):
-            cats[big][sub] = [f for f in cats[big][sub] if unicodedata.normalize("NFC", f) != name]
-            if not cats[big][sub]:
-                del cats[big][sub]
+        for mid in list(cats[big]):
+            subs = cats[big][mid]
+            for sub in list(subs):
+                subs[sub] = [f for f in subs[sub] if unicodedata.normalize("NFC", f) != name]
+                if not subs[sub]:
+                    del subs[sub]
+            if not subs:
+                del cats[big][mid]
         if not cats[big]:
             del cats[big]
     save(p, cats)
