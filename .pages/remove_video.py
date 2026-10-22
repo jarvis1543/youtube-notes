@@ -65,17 +65,17 @@ def main():
     shutil.rmtree(folder)
 
     p, cats = load("categories.json")
-    for big in list(cats):
-        for mid in list(cats[big]):
-            subs = cats[big][mid]
-            for sub in list(subs):
-                subs[sub] = [f for f in subs[sub] if unicodedata.normalize("NFC", f) != name]
-                if not subs[sub]:
-                    del subs[sub]
-            if not subs:
-                del cats[big][mid]
-        if not cats[big]:
-            del cats[big]
+    def prune(node):
+        """Drop the folder at any depth (소분류 lists and "_videos" alike); False once the node is empty."""
+        if isinstance(node, list):
+            node[:] = [f for f in node if unicodedata.normalize("NFC", f) != name]
+            return bool(node)
+        for k in list(node):
+            if not prune(node[k]):
+                del node[k]
+        return bool(node)
+
+    prune(cats)
     save(p, cats)
 
     p, topics = load("topics.json")

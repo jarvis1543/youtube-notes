@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Build the GitHub Pages home (../index.html) from categories.json, topics.json and each folder's content.json.
 
-categories.json is three levels deep: {대분류: {중분류: {소분류: [folder names]}}}.
-
-Folders not listed in categories.json land in "미분류" so a new digest never goes missing.
+categories.json nests up to three levels: {대분류: {중분류: {소분류: [folder names]}}}. A video can stop at
+any level: "_videos" lists the folders that sit on that 대분류 or 중분류 itself.
+Folders not listed anywhere show up under "아직 분류가 없는 영상" so a new digest never goes missing.
 Fetches each video's YouTube upload date once (yt-dlp) into uploads.json; same-channel videos sort by it.
 Also puts the password lock into every document page (see protect_pages).
 Run: python3 .pages/build_home.py
@@ -211,6 +211,56 @@ def protect_pages(videos, pw_hash):
     return changed
 
 
+DIRECT = "_videos"  # categories.json key: folders placed on that level itself, not in a child
+
+
+def cat_parts(node):
+    """(folders placed here, child categories) of one categories.json node. A bare list holds folders only."""
+    if isinstance(node, list):
+        return node, OrderedDict()
+    return node.get(DIRECT, []), OrderedDict((k, v) for k, v in node.items() if k != DIRECT)
+
+
+def place_videos(node, path, videos, cat_of):
+    """Fill cat_of with "대분류 › 중분류 › 소분류" (as deep as the folder sits) for every listed folder."""
+    here, kids = cat_parts(node)
+    for f in here:
+        f = unicodedata.normalize("NFC", f)
+        if f in cat_of:
+            print(f"warn: categories.json lists {f} twice")
+        if f in videos:
+            cat_of[f] = " › ".join(path)
+    if kids and len(path) == 3:
+        print(f"warn: categories.json goes deeper than 소분류 under {' › '.join(path)}")
+    for name, child in kids.items():
+        place_videos(child, path + [name], videos, cat_of)
+
+
+def cat_section(name, node, level, sec_id, videos, cat_of):
+    """One category as <section>: 1 = 대분류 (with a 중분류 table of contents), 2 = 중분류, 3 = 소분류.
+    Folders placed on the category itself come first, then its children. Returns (html, n_videos)."""
+    here, kids = cat_parts(node)
+    vs = sorted((videos[f] for f in (unicodedata.normalize("NFC", f) for f in here) if f in videos),
+                key=lambda v: v["channel"])
+    parts, toc, n = [], [], len(vs)
+    for j, (kid, child) in enumerate(kids.items()):
+        kid_id = f"{sec_id}-{j}"
+        h, k = cat_section(kid, child, level + 1, kid_id, videos, cat_of)
+        if k:
+            parts.append(h)
+            toc.append(f'<a href="#{kid_id}">{esc(kid)}<span class="n">{k}</span></a>')
+            n += k
+    if not n:
+        return "", 0
+    cls, head = {1: ("big", f"<h2>{esc(name)}<span class=\"n\">{n}</span></h2>"),
+                 2: ("mid", f"<h3>{esc(name)}<span class=\"n\">{n}</span></h3>")}.get(
+        level, ("sub", f'<h4 class="subh">{esc(name)}<span class="n">{n}</span></h4>'))
+    if level == 1 and toc:
+        head += f'<nav class="toc">{"".join(toc)}</nav>'
+    body = (channel_blocks(vs, cat_of) if vs else "") + "".join(parts)
+    return f'<section class="{cls}" id="{sec_id}" data-sec>{head}{body}</section>', n
+
+
 def topic_view(videos):
     """topics.json: per big category, a list of {id, title, about, videos} — tight groups of similar
     videos, each meant to become one combined study page later. Returns (nav, html, n_topics)."""
@@ -257,53 +307,28 @@ def topic_view(videos):
 def main():
     videos = load_videos()
     load_uploads(videos)
-    # categories.json: 대분류 › 중분류 › 소분류 › [folder names]
     cats =json.loads((HERE / "categories.json").read_text(encoding="utf-8"), object_pairs_hook=OrderedDict)
-    placed, cat_of = set(), {}
-    for big, mids in cats.items():
-        for mid, subs in mids.items():
-            for sub, folders in subs.items():
-                for f in folders:
-                    f = unicodedata.normalize("NFC", f)
-                    if f in placed:
-                        print(f"warn: categories.json lists {f} twice")
-                    if f in videos:
-                        placed.add(f)
-                        cat_of[f] = f"{big} › {mid} › {sub}"
-    rest = [f for f in videos if f not in placed]
-    if rest:
-        cats["미분류"] = OrderedDict([("새로 추가된 영상", OrderedDict([("정리 대기", rest)]))])
-        for f in rest:
-            cat_of[f] = "미분류"
+    cat_of = {}
+    for big, node in cats.items():
+        place_videos(node, [big], videos, cat_of)
+    rest = sorted((f for f in videos if f not in cat_of), key=lambda f: (videos[f]["channel"], upload_order(videos[f])))
+    for f in rest:
+        cat_of[f] = "분류 없음"
 
     # category view
     nav, sections = [], []
-    for i, (big, mids) in enumerate(cats.items()):
+    for i, (big, node) in enumerate(cats.items()):
         sid = f"c{i}"
-        mid_parts, toc, n_big = [], [], 0
-        for mid, subs in mids.items():
-            sub_parts, n_mid = [], 0
-            for sub, folders in subs.items():
-                vs = [videos[unicodedata.normalize("NFC", f)] for f in folders if unicodedata.normalize("NFC", f) in videos]
-                if not vs:
-                    continue
-                n_mid += len(vs)
-                vs.sort(key=lambda v: v["channel"])
-                sub_parts.append(
-                    f'<section class="sub" data-sec><h4 class="subh">{esc(sub)}<span class="n">{len(vs)}</span></h4>'
-                    f"{channel_blocks(vs, cat_of)}</section>"
-                )
-            if sub_parts:
-                n_big += n_mid
-                mid_id = f"{sid}-{len(mid_parts)}"
-                toc.append(f'<a href="#{mid_id}">{esc(mid)}<span class="n">{n_mid}</span></a>')
-                mid_parts.append(
-                    f'<section class="mid" id="{mid_id}" data-sec><h3>{esc(mid)}<span class="n">{n_mid}</span></h3>{"".join(sub_parts)}</section>'
-                )
-        nav.append(f'<a href="#{sid}">{esc(big)}<span class="n">{n_big}</span></a>')
+        h, n = cat_section(big, node, 1, sid, videos, cat_of)
+        if n:
+            nav.append(f'<a href="#{sid}">{esc(big)}<span class="n">{n}</span></a>')
+            sections.append(h)
+    if rest:
+        nav.append(f'<a href="#c-loose">아직 분류가 없는 영상<span class="n">{len(rest)}</span></a>')
         sections.append(
-            f'<section class="big" id="{sid}" data-sec><h2>{esc(big)}<span class="n">{n_big}</span></h2>'
-            f'<nav class="toc">{"".join(toc)}</nav>{"".join(mid_parts)}</section>'
+            f'<section class="big" id="c-loose" data-sec><h2>아직 분류가 없는 영상<span class="n">{len(rest)}</span></h2>'
+            f'<p class="tpabout">맞는 분류가 생기면 그 자리로 옮겨요.</p>'
+            f'{channel_blocks([videos[f] for f in rest], cat_of)}</section>'
         )
 
     # channel view
@@ -360,7 +385,7 @@ def main():
     changed = protect_pages(videos, pw_hash)
     print(f"document pages {'locked' if pw_hash else 'unlocked'}: {changed} changed")
     print(f"index.html: {len(videos)} videos, {len(cats)} categories, {n_topics} topics, {len(by_ch)} channels"
-          + (f", 미분류 {len(rest)}: {rest}" if rest else ""))
+          + (f", 아직 분류가 없는 영상 {len(rest)}: {rest}" if rest else ""))
 
 
 if __name__ == "__main__":
