@@ -1,0 +1,1594 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>시니어 엔지니어처럼 시스템 설계하기 — 5단계 틀과 Spotify·Booking·WhatsApp 설계</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>시니어 엔지니어처럼 시스템 설계하기 — 5단계 틀과 Spotify·Booking·WhatsApp 설계</h1>
+  <p class="lede">60분 면접을 다섯 단계로 나누고, 같은 틀로 세 서비스를 처음부터 설계해요</p>
+  <div class="meta">
+    <span>freeCodeCamp.org</span><span class="dot">·</span>
+    <span>영상 3:16:48</span><span class="dot">·</span>
+    <span>읽는 데 약 54분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=soTfFFIQQ8U" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>면접관은 설계 결과만 보지 않아요. 소통, 구조적 사고, 기술 판단, 실전 감각, 시간 관리까지 다섯 가지를 함께 채점해요.</li>
+    <li>60분은 요구사항(약 10분) → 데이터·API(약 20분) → 아키텍처(약 15분) → 확장·장애(약 10분) → 마무리(약 5분)로 나누고, 단계마다 면접관에게 확인을 받아요.</li>
+    <li>설계는 숫자에서 출발해요. Spotify는 저장소 대부분이 오디오, Booking은 읽기 1,000 QPS(Queries Per Second) 대 쓰기 17 TPS(Transactions Per Second), WhatsApp은 초당 11만 5천 건 쓰기라는 계산이 DB(Database)와 구조를 정해요.</li>
+    <li>어려운 곳은 동시성과 장애예요. 더블 부킹은 <span class="term" data-term="멱등성 키" data-en="Idempotency key" data-desc="같은 요청을 여러 번 보내도 한 번만 처리되도록 요청에 붙이는 고유 값이에요. 예약 버튼을 두 번 눌러도 예약이 하나만 생기게 해 줘요." data-g="7">멱등성 키</span>와 <span class="term" data-term="행 잠금" data-en="Row locking (SELECT ... FOR UPDATE)" data-desc="읽은 행을 트랜잭션이 끝날 때까지 다른 트랜잭션이 고치지 못하게 잠그는 방법이에요. 같은 행을 노리는 요청만 줄 세우고 나머지는 그대로 병렬로 가요." data-g="9">행 잠금</span>으로, Redis·Kafka 장애는 DB 백업과 로컬 버퍼로 막아요.</li>
+    <li>단순하게 시작해서 부하가 커질 때 캐시·복제·샤딩을 하나씩 더해요. 모든 선택에는 트레이드오프를 붙여 말해요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">면접관이 실제로 보는 다섯 가지</a></li>
+    <li><a href="#s2">60분을 나누는 5단계</a></li>
+    <li><a href="#s3">Spotify ①: 요구사항부터 읽기·쓰기 흐름까지</a></li>
+    <li><a href="#s4">Spotify ②: API, 저장소, 5천만 명으로 키우기</a></li>
+    <li><a href="#s5">Booking ①: 요구사항, 트래픽 추정, 서비스 나누기</a></li>
+    <li><a href="#s6">Booking ②: API·데이터 모델과 더블 부킹 막기</a></li>
+    <li><a href="#s7">Booking ③: 샤딩·캐시·검색·복제</a></li>
+    <li><a href="#s8">WhatsApp ①: 요구사항, 규모, 연결 방식, 데이터</a></li>
+    <li><a href="#s9">WhatsApp ②: 메시지가 오가는 길</a></li>
+    <li><a href="#s10">WhatsApp ③: 배치 쓰기, 종단간 암호화, 속도 제한</a></li>
+    <li><a href="#s11">WhatsApp ④: 샤딩, 정리 작업, 장애, 기능 출시</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>면접관이 실제로 보는 다섯 가지</h2>
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>freeCodeCamp 채널에 올라온 강의이고, 강의는 Hayk Simonyan이 만들었어요. 3시간이 넘는 영상이라 앞의 두 섹션은 면접의 틀을, 나머지 아홉 섹션은 세 가지 설계 사례를 다뤄요.</p>
+</aside>
+<p>강사는 경력 초기에 시니어 자리 면접에서 여러 번 떨어졌다고 해요. 돌아보니 그 면접들엔 공통점이 하나 있었어요. 거의 늘 시스템 설계가 들어 있었다는 거예요. 지금은 미드 레벨 면접에서도 나와요. AI(Artificial Intelligence)가 구현 코드를 대신 쓰는 시대라, 회사는 지원자가 구성 요소들이 어떻게 맞물리는지, 처음부터 설계하고 트레이드오프를 따질 수 있는지 보고 싶어 하거든요.</p>
+<p>슬라이드의 화살표 네 개가 시스템 설계가 면접에 나오는 방식이에요. 왼쪽 위의 '시스템 전체를 화이트보드에 그리기'가 가장 흔하고, 나머지는 회사 인프라의 병목 토론, 지난 프로젝트 설명, 개념을 깊이 묻는 질문이에요.</p>
+<figure>
+  <img src="assets/frame-0300.webp" alt="Early in my career, I failed many interviews 제목 아래 Whiteboard a full system, Discuss bottlenecks in existing infra, Talk through past projects, Answer conceptual depth questions 네 항목이 적힌 슬라이드">
+  <figcaption>화이트보드 설계 말고도 세 가지 형식이 더 있어요. 어느 형식이든 아키텍처를 말로 풀 수 있어야 해요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=180s" target="_blank" rel="noopener">영상 03:00에서 보기</a></figcaption>
+</figure>
+<h3>왜 코딩 면접보다 어렵게 느껴질까요</h3>
+<p>코딩 면접은 입력과 출력이 정해져 있어요. 함수가 어떤 인자를 받고 무엇을 돌려줘야 하는지 알고, 테스트 케이스로 맞는지 확인할 수 있어요. 시스템 설계는 정반대예요. 요구는 모호하고, 범위를 좁히는 것부터 지원자 몫이에요. 답도 하나가 아니에요. 그래서 이 면접은 무엇을 아는지보다 어떻게 생각하는지를 봐요.</p>
+<h3>채점 기준 다섯 가지</h3>
+<p>Spotify나 WhatsApp 아키텍처 몇 개를 외우는 건 다섯 가지 중 하나를 준비한 것에 불과해요. 슬라이드의 번호 다섯 개가 면접관이 실제로 점수를 매기는 축이에요. 각 줄 아래 작은 글씨가 그 기준에서 잘하는 모습이에요.</p>
+<figure>
+  <img src="assets/frame-0815.webp" alt="What You're Actually Being Evaluated On 제목 아래 1 Communication, 2 Structured Thinking, 3 Technical Judgment, 4 Practical Depth, 5 Time Management 다섯 줄이 번호와 함께 적힌 슬라이드">
+  <figcaption>설계 결과는 다섯 가지 중 '기술 판단'에 주로 들어가요. 나머지 넷은 설계하는 태도에서 점수가 나와요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=495s" target="_blank" rel="noopener">영상 08:15에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>기준</th><th>면접관이 보는 것</th><th>실무에서는</th></tr></thead>
+    <tbody>
+      <tr><td>소통과 협업</td><td>가정을 혼자 세우지 않고 질문으로 확인하는지</td><td>요구를 잘못 이해하고 만들었다가 다시 짜는 낭비를 막아요</td></tr>
+      <tr><td>구조적 사고</td><td>모호한 문제를 순서 있는 단계로 쪼개는지, 단계 사이를 오가지 않는지</td><td>지금 무엇을 하고 다음이 무엇인지 늘 분명해요</td></tr>
+      <tr><td>기술 판단</td><td>SQL(Structured Query Language), 캐시, 메시지 큐를 고른 이유를 요구사항으로 설명하는지</td><td>Kafka를 안다는 이유가 아니라 맞아서 골라요</td></tr>
+      <tr><td>실전 감각</td><td>장애, 규모, 잘못될 수 있는 일을 먼저 떠올리는지</td><td>실제로 운영해 본 사람과 이론만 아는 사람이 갈려요</td></tr>
+      <tr><td>시간 관리</td><td>한 영역에 매달리지 않고 45~60분 안에 넓이와 깊이를 모두 챙기는지</td><td>면접에서 시간을 못 지키면 일에서도 못 지킨다고 봐요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>시간 관리를 위해 강사는 면접 초반에 어디에 집중하고 싶은지 면접관에게 묻거나, 직접 제안해서 합의해 두라고 권해요. 다음 섹션의 5단계가 그 시간 배분의 틀이에요.</p>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=554s" target="_blank" rel="noopener">09:14</a>
+  <h2>60분을 나누는 5단계</h2>
+<p>어떤 화이트보드 설계 문제에도 같은 다섯 단계를 쓸 수 있어요. 목표는 정리된 상태를 유지하면서, 면접관에게 생각하는 과정을 보여 주는 거예요. 강사는 60분 면접이 45분보다 흔하다며 60분을 기준으로 설명해요.</p>
+<p>슬라이드는 단계마다 걸리는 시간을 붙여 놨어요. 2단계 데이터·API가 약 20분으로 가장 길고, 마무리는 약 5분이에요. 말로는 2단계와 3단계를 각각 15~20분으로 잡고, 둘 중 어느 쪽을 먼저 해도 된다고 해요.</p>
+<figure>
+  <img src="assets/frame-1114.webp" alt="The 5-Step Framework 슬라이드. 01 Clarify Requirements 약 10분, 02 Data + APIs 약 20분, 03 Architecture 약 15분, 04 Scale & Edge Cases 약 10분, 05 Wrap Up 약 5분">
+  <figcaption>합치면 60분이에요. 4단계를 남겨 둘 시간이 없으면 시니어 신호를 보여 줄 기회를 잃어요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=674s" target="_blank" rel="noopener">영상 11:14에서 보기</a></figcaption>
+</figure>
+<h3>1단계: 요구사항 정리 (약 10분)</h3>
+<p>후보자가 가장 많이 하는 실수가 범위를 이해하기 전에 설계부터 시작하는 거예요. Spotify를 60분 안에 다 설계할 수는 없어요. 여러 팀이 몇 년 걸려 만든 시스템이거든요. 그래서 핵심 사용 사례와 범위 밖을 먼저 정해요.</p>
+<p>왼쪽 열이 기능 요구사항, 오른쪽 열이 비기능 요구사항이에요. 아래 파란 띠에는 단계를 마칠 때 던질 확인 질문이 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-1240.webp" alt="Functional Requirements 열에 주요 사용 사례, 범위 밖, 사용자와 플랫폼 질문이, Non-Functional Requirements 열에 일·월 사용자와 초당 요청, 읽기 대 쓰기 비율, 지연 목표 200ms 또는 100ms 미만, 허용 다운타임이 적힌 슬라이드. 아래에 Does this scope and these requirements make sense before I move forward 확인 문구">
+  <figcaption>면접관이 "네"라고 하면 다음으로, 힌트를 주면 무언가 빠뜨렸다는 뜻이에요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=760s" target="_blank" rel="noopener">영상 12:40에서 보기</a></figcaption>
+</figure>
+<h3>2단계: 데이터와 API (약 20분)</h3>
+<p>무엇을 저장하고 클라이언트가 어떻게 상호작용할지 모델링해요. YouTube라면 핵심 엔티티는 동영상과 사용자예요. 관계, 기본 키와 외래 키, 인덱스, 레코드 하나의 크기를 정하고, 어떤 데이터에 강한 일관성이 필요하고 어디서 <span class="term" data-term="최종 일관성" data-en="Eventual consistency" data-desc="쓰기 직후에는 복제본마다 값이 다를 수 있지만, 시간이 지나면 같아지는 성질이에요. 검색 결과처럼 몇 초 늦어도 되는 데이터에 써요." data-g="2">최종 일관성</span>으로 충분한지도 이때 정해요.</p>
+<p>API는 주요 엔드포인트와 요청·응답 형식을 정하고, 페이지네이션, 에러 처리, 속도 제한, 버전 관리까지 말하면 좋아요. DB 선택도 여기서 해요. PostgreSQL이든 MongoDB든, 왜 그걸 골랐고 무엇을 고려했다가 버렸는지 함께 말해요.</p>
+<h3>3단계: 아키텍처 (약 15분)</h3>
+<p>아무것도 떠오르지 않을 때 시작점이 되는 네 가지가 있어요. 슬라이드 가운데 원을 둘러싼 네 상자예요.</p>
+<figure>
+  <img src="assets/frame-1614.webp" alt="High-Level Architecture 슬라이드. 가운데 Component Architecture 원 주위에 Database, Load Balancer, Cache Layer, API Servers 네 상자가 배치됨">
+  <figcaption>로드 밸런서, API 서버, 데이터베이스, 캐시는 거의 모든 시스템에 들어가요. 여기서 시작해 필요한 것을 붙여요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=974s" target="_blank" rel="noopener">영상 16:14에서 보기</a></figcaption>
+</figure>
+<p>그다음 사용자 여정을 따라가요. 웹·모바일 앱에서 API 게이트웨이와 로드 밸런서, API 서버, 캐시, 필요하면 메시지 큐, 마지막으로 DB까지요. 읽기와 쓰기 흐름을 모두 짚어요. 캐시를 쓰면 TTL(Time To Live)과 무효화 방식을 꼭 말해요. 구성 요소마다 일관성과 가용성 중 무엇을 고르는지 <span class="term" data-term="CAP 정리" data-en="CAP theorem" data-desc="네트워크가 갈라졌을 때 일관성과 가용성 중 하나를 포기해야 한다는 분산 시스템의 원리예요. 영상은 구성 요소마다 다른 쪽을 고를 수 있다고 말해요." data-g="1">CAP(Consistency, Availability, Partition tolerance) 정리</span>로 설명하면 트레이드오프를 이해한다는 신호가 돼요.</p>
+<h3>4단계: 병목·확장·안정성 (약 10분)</h3>
+<p>정상 흐름이 아니라 부하가 몰릴 때 무엇이 깨지는지 보여 주는 단계예요. 강사는 미드 레벨과 시니어를 가르는 가장 분명한 신호라고 해요. 슬라이드의 네 항목이 다룰 거리예요.</p>
+<figure>
+  <img src="assets/frame-1814.webp" alt="Single Points of Failure, Fallbacks and Failures, Redundancy, Monitoring 네 항목과 설명이 적힌 슬라이드. Monitoring에는 p50/p95/p99 API 지연, 에러율, 큐 깊이, 요청 ID가 붙은 구조화 로그가 적혀 있음">
+  <figcaption>모니터링은 자주 빠지지만, 챙기면 시니어처럼 생각한다는 강한 신호가 돼요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=1094s" target="_blank" rel="noopener">영상 18:14에서 보기</a></figcaption>
+</figure>
+<p>단일 장애 지점을 찾아 해결책을 내고, 무언가 고장 나면 느리지만 동작하는 경로로 넘어가는 폴백을 말해요. 다중 가용 영역 복제, 가용 영역을 넘나드는 자동 확장, 복제되는 분산 캐시 같은 이중화도 여기서 나와요.</p>
+<h3>5단계: 트레이드오프와 확장 (약 5분)</h3>
+<p>왼쪽 파란 카드는 지금까지의 결정을 요약하는 질문이고, 오른쪽은 "다음에 무엇을 만들겠냐"는 질문이에요. 노란 상자의 문구가 이 단계의 전제예요.</p>
+<figure>
+  <img src="assets/frame-1914.webp" alt="Trade-offs and Extensions 슬라이드. Summarize Key Decisions 카드에 무엇을 우선했고 무엇을 포기했는지, What Would You Build Next에 시간이 더 있거나 부하가 10배가 되면. 노란 상자에 Your design is NEVER perfect">
+  <figcaption>60분 설계는 완벽할 수 없어요. 개선할 점을 스스로 말할 수 있는지가 평가 대상이에요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=1154s" target="_blank" rel="noopener">영상 19:14에서 보기</a></figcaption>
+</figure>
+<h3>할 일과 하지 말 일</h3>
+<p>흰 글씨가 할 일, 그 아래 빨간 글씨가 피할 일이에요. 다섯 항목 모두 앞의 채점 기준과 이어져요.</p>
+<figure>
+  <img src="assets/frame-2236.webp" alt="What to do 슬라이드. 설계 전에 질문하기, 면접관을 동료로 대하기, 결정 전에 여러 접근 제시하기, 기술을 고를 때 트레이드오프 설명하기, 단계마다 확인하기 다섯 항목과 각각의 피할 행동이 빨간 글씨로 적혀 있음">
+  <figcaption>세 번째 줄의 빨간 글씨가 핵심이에요. 설명하지 않으면 모른다고 간주해요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=1356s" target="_blank" rel="noopener">영상 22:36에서 보기</a></figcaption>
+</figure>
+<p>예를 들어 결제 시스템에서 SQL은 누가 봐도 당연한 선택이에요. 그래도 이유를 말하지 않으면 면접관은 지원자가 몰랐다고 보거나, 따로 물어야 해요. 묻지 않을 수도 있어요. 그래서 왜 NoSQL이 아닌지까지 말해요. 면접관을 대하는 태도도 두 극단을 피해요. 말없이 다이어그램만 그리는 것도, 침묵을 메우려고 혼자 계속 말하는 것도 안 돼요.</p>
+<p>정리 슬라이드의 밑줄 친 문장이 이 섹션의 결론이에요. 아래 다섯 카드는 단계 이름을 한 단어로 줄인 거예요.</p>
+<figure>
+  <img src="assets/frame-2345.webp" alt="Summary 슬라이드. This is a conversation between 2 engineers, not a monologue 밑줄 문장과 Clarify, Model, Design, Scale, Reflect 다섯 카드">
+  <figcaption>독백도, 혼자 푸는 과제도 아니고 엔지니어 둘의 대화예요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=1425s" target="_blank" rel="noopener">영상 23:45에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=1435s" target="_blank" rel="noopener">23:55</a>
+  <h2>Spotify ①: 요구사항부터 읽기·쓰기 흐름까지</h2>
+<p>음악 스트리밍은 오디오 전달, 메타데이터 관리, 객체 스토리지가 한데 섞여 있어서 단골 문제예요. 강사는 일곱 단계로 풀어요. 요구사항과 용량 계획, 상위 아키텍처, 읽기·쓰기 흐름, API, 저장소, 확장, 그리고 시니어와 미드 레벨을 가르는 피라미드 순서예요.</p>
+<h3>요구사항과 가정</h3>
+<p>왼쪽 열이 규모와 핵심 기능, 오른쪽 열이 오디오 형식이에요. 손글씨 밑줄이 그어진 곳이 강사가 짚은 가정이에요.</p>
+<figure>
+  <img src="assets/frame-2610.webp" alt="1. Requirements & Assumptions 슬라이드. 약 50만 사용자, 곡 3천만 개, 아티스트 업로드, 검색과 재생, 플레이리스트, 프로필, 기본 모니터링. 오른쪽에 Ogg와 AAC, 64kbps 모바일 절약, 128kbps 표준, 320kbps 프리미엄, 표준 비트레이트 한 곡 약 3MB">
+  <figcaption>오른쪽 아래 '한 곡 평균 3MB'가 뒤의 모든 용량 계산의 출발점이에요. 실제 면접에서는 이 값도 면접관에게 확인해요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=1570s" target="_blank" rel="noopener">영상 26:10에서 보기</a></figcaption>
+</figure>
+<p>사용자 50만 명, 곡 3천만 개로 시작해요. 아티스트는 곡을 올리고, 사용자는 검색·재생하고 플레이리스트를 만들어요. 헬스 체크, 에러 추적, 성능 지표 같은 기본 모니터링도 범위에 넣어요. 음질은 데이터 절약용 64kbps, 표준 128kbps, 프리미엄 320kbps 세 가지예요.</p>
+<h3>용량 계획: 오디오가 거의 전부예요</h3>
+<p>네 덩어리로 나눠 계산해요. 슬라이드 왼쪽 위가 곡 저장소, 오른쪽 위가 곡 메타데이터, 왼쪽 아래가 사용자 메타데이터, 오른쪽 아래가 하루 대역폭이에요.</p>
+<figure>
+  <img src="assets/frame-2740.webp" alt="2. Capacity Planning 슬라이드. Song storage 3MB × 30M songs ≈ 90TB, 복제와 재업로드 때문에 2~3배. Song metadata 100 bytes × 30M ≈ 3GB. User metadata 1KB × 500k ≈ 0.5GB. Daily bandwidth 평균 3.5분, 128~160kbps, 한 번 재생에 3~4MB, 하루 10~15곡">
+  <figcaption>90TB 대 3GB 대 0.5GB예요. 메타데이터는 오디오에 비하면 사실상 0이에요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=1660s" target="_blank" rel="noopener">영상 27:40에서 보기</a></figcaption>
+</figure>
+<p>오디오는 3MB × 3천만 곡 = 약 90TB이고, 지역 복제와 재업로드까지 치면 2~3배를 잡아요. 곡 메타데이터는 100바이트 × 3천만 = 약 3GB, 사용자 정보는 1KB × 50만 = 약 0.5GB예요. 하루 대역폭은 평균 3.5분, 128~160kbps로 한 번 재생에 3~4MB, 한 사람이 하루 10~15곡을 듣는다고 보면 상당한 <span class="term" data-term="이그레스 비용" data-en="Egress cost" data-desc="데이터가 클라우드 밖으로 나갈 때 내는 요금이에요. 스트리밍 서비스에서는 저장 비용만큼 큰 비중을 차지해요." data-g="4">이그레스 비용</span>이 나와요.</p>
+<p>결론은 저장 비용도 대역폭도 오디오가 지배한다는 거예요. 그래서 설계의 핵심은 큰 파일을 어디에 두고 어떻게 내보낼지가 돼요.</p>
+<h3>상위 아키텍처</h3>
+<p>그림 왼쪽부터 따라가면 돼요. 모바일 앱이 HTTP(Hypertext Transfer Protocol) 요청을 로드 밸런서로 보내고, 로드 밸런서가 API 서버 셋 중 하나로 나눠요. API 서버는 위쪽 화살표로 SQL DB에 메타데이터를 묻고, 아래쪽 화살표로 블롭 스토리지용 <span class="term" data-term="서명된 URL" data-en="Signed URL / Pre-signed URL" data-desc="서버가 서명을 붙여 만든, 정해진 시간 뒤 만료되는 파일 주소예요. 앱이 서버를 거치지 않고 저장소에서 파일을 직접 올리거나 받게 해 줘요." data-g="3">서명된 URL(Uniform Resource Locator)</span>을 만들어요.</p>
+<figure>
+  <img src="assets/frame-2955.webp" alt="3. High Level Architecture 다이어그램. Mobile App에서 HTTP Requests로 Load Balancer, WEB/API LAYER의 API Server 1·2·3, Metadata Queries로 SQL Database(Metadata), Generate Signed URLs로 Blob Storage(Audio Files)">
+  <figcaption>메타데이터와 오디오가 처음부터 다른 저장소로 갈라져요. 용량 계산이 이 갈림을 정했어요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=1795s" target="_blank" rel="noopener">영상 29:55에서 보기</a></figcaption>
+</figure>
+<p>로드 밸런서 알고리즘은 라운드 로빈이나 최소 연결 수 방식을 쓰고, API 서버 헬스 체크도 맡겨요. 인증은 JWT(JSON Web Token)로 해요. 오디오를 SQL에 넣지 않는 이유는 크기 때문이에요. S3(Amazon Simple Storage Service) 같은 블롭 스토리지는 사실상 무한히 늘어나고, 내구성이 기본으로 들어 있고, 큰 파일을 싸게 보관해요. 오디오 주소는 서명된 URL로 줘요. 일정 시간이 지나면 만료되니 같은 주소가 영원히 열려 있지 않아요.</p>
+<h3>읽기 흐름: 곡 재생</h3>
+<p>시퀀스 다이어그램의 'JWT valid' 상자 안이 정상 흐름이에요. 5.1~5.4에서 API 서버가 SQL에서 곡 정보를 읽고, 서명된 URL을 만들어 함께 돌려줘요. 그 아래 'Audio streaming' 상자에서 앱이 블롭 스토리지와 직접 주고받아요.</p>
+<figure>
+  <img src="assets/frame-3210.webp" alt="재생 시퀀스 다이어그램. JWT valid 구간에서 Query song metadata, Return song details, Generate signed URL, Return metadata + signed URL, Audio streaming 구간에서 Range requests for audio chunks와 Stream audio data, 이어서 POST /songs/{id}/play (analytics), JWT invalid 구간에서 Return authentication error">
+  <figcaption>오디오 바이트는 API 서버를 거치지 않아요. 서버는 짧은 메타데이터와 URL만 다뤄요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=1930s" target="_blank" rel="noopener">영상 32:10에서 보기</a></figcaption>
+</figure>
+<p>앱은 서명된 URL로 블롭 스토리지에 범위 요청을 보내 오디오를 조각 단위로 받아요. 재생 통계는 따로 <code>POST /songs/{id}/play</code>로 보내요. JWT가 틀리면 맨 아래 'JWT invalid' 구간처럼 인증 오류만 돌려주고 나머지는 하지 않아요.</p>
+<h3>쓰기 흐름: 아티스트 업로드</h3>
+<p>업로드 다이어그램 위쪽 'invalid file' 구간은 형식이나 크기가 맞지 않을 때 바로 거절하는 길이에요. 그 아래 'valid file' 구간이 정상 흐름이에요.</p>
+<figure>
+  <img src="assets/frame-3425.webp" alt="업로드 시퀀스 다이어그램. Validate file format and size 후 invalid file이면 Reject upload. valid file이면 Store file in /pending/{upload_id}/, Extract audio metadata(duration, bitrate), Insert song, artist, and mapping records, Move file to /artist/{artist_id}/album/{album_id}/, cache invalidation 구간에서 Invalidate CDN cache for artist/album, 마지막으로 Upload successful">
+  <figcaption>파일을 먼저 임시 경로에 두고, DB 기록을 마친 뒤 정식 경로로 옮기고, CDN(Content Delivery Network) 캐시를 지워요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=2065s" target="_blank" rel="noopener">영상 34:25에서 보기</a></figcaption>
+</figure>
+<p>객체 스토리지에는 원래 폴더 구조가 없어요. 경로처럼 보이는 키 이름일 뿐이에요. 그래도 아티스트·앨범 단위로 경로를 잡아 두면 관리하기 편해요. CDN은 아티스트 페이지, 앨범 정보, 곡 정보를 사용자 가까이에 캐시해요. 새 곡이 올라오면 오래된 캐시를 지워야 사용자가 바로 최신 목록을 봐요.</p>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=2123s" target="_blank" rel="noopener">35:23</a>
+  <h2>Spotify ②: API, 저장소, 5천만 명으로 키우기</h2>
+<h3>API 설계</h3>
+<p>엔드포인트를 네 묶음으로 나눠요. 슬라이드 왼쪽이 검색·탐색과 콘텐츠 접근, 오른쪽이 사용자 행동과 사용자 관리예요. 회색 상자는 요청 본문 예시예요.</p>
+<figure>
+  <img src="assets/frame-3823.webp" alt="5. API Design 슬라이드 일부. GET /search?q=&amp;type=song,artist&amp;limit=20&amp;offset=0, GET /songs/trending?genre=&amp;limit=50, GET /artists/{id}/songs, GET /songs/{id}, GET /songs/{id}/stream, POST /playlists 본문 name과 is_public, PUT /playlists/{id}/songs 본문 song_ids와 position, DELETE /playlists/{id}/songs/{song_id}, POST /songs/{id}/like">
+  <figcaption>곡 추가 요청에 position을 함께 보내요. 플레이리스트 몇 번째 자리에 넣을지까지 API가 받아요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=2303s" target="_blank" rel="noopener">영상 38:23에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>묶음</th><th>엔드포인트</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>검색·탐색</td><td><code>GET /search?q=&amp;type=&amp;limit=&amp;offset=</code><br><code>GET /songs/trending?genre=</code><br><code>GET /artists/{id}/songs</code></td><td>limit 기본 20, offset으로 페이지 이동</td></tr>
+      <tr><td>콘텐츠 접근</td><td><code>GET /songs/{id}</code><br><code>GET /songs/{id}/stream</code><br><code>GET /playlists/{id}?include_songs=true</code></td><td>stream은 서명된 URL의 대안</td></tr>
+      <tr><td>사용자 행동</td><td><code>POST /playlists</code><br><code>PUT /playlists/{id}/songs</code><br><code>DELETE /playlists/{id}/songs/{song_id}</code><br><code>POST /songs/{id}/like</code></td><td>추가 때 곡 ID(Identifier) 목록과 위치를 보내요</td></tr>
+      <tr><td>사용자 관리</td><td><code>GET /users/me/playlists</code><br><code>GET /users/me/liked-songs</code><br><code>POST /users/me/follow/{artist_id}</code></td><td>복수형 이름을 일관되게 써요</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>저장소와 스키마</h3>
+<p>오디오 파일은 바뀌지 않아요. 고칠 게 있으면 새로 올리고 옛 파일을 지워요. 메타데이터는 PostgreSQL이나 MySQL에 둬요. 화면의 표가 기본 스키마예요. 가운데 초록 <code>songs</code> 표를 중심으로 왼쪽 위 <code>playlistitems</code>가 플레이리스트와 곡을, 왼쪽 아래 <code>artistsongs</code>가 아티스트와 곡을 이어요.</p>
+<figure>
+  <img src="assets/frame-4123.webp" alt="관계형 스키마 다이어그램. playlists(PlaylistID, OwnerID, Name, CreatedAt), users(UserID, Email, PasswordHash, CreatedAt, LastLogin, SubscriptionType, Country), playlistitems(PlaylistID, Position, AddedAt, SongID), songs(SongID, Title, Duration, ReleaseDate, FileURL, CreatedAt, ArtistID), artistsongs(SongID, ArtistID), artists(ArtistID, Name, Country)">
+  <figcaption>조인 테이블이 둘이에요. 이렇게 관계가 얽혀 있으니 관계형 DB가 자연스러운 선택이 돼요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=2483s" target="_blank" rel="noopener">영상 41:23에서 보기</a></figcaption>
+</figure>
+<p>SQL을 고른 이유는 조인이 많아서예요. "내가 팔로하는 아티스트의 곡 전부" 같은 복잡한 질의도 쉽게 돼요. 데이터가 커지면 자주 찾는 컬럼에 인덱스를 걸어요. 곡 제목, 아티스트 이름, 그리고 플레이리스트-곡 조인 테이블의 곡 ID예요. 마지막 인덱스는 "이 플레이리스트의 곡"과 "이 곡이 들어간 플레이리스트"를 모두 빠르게 해 줘요.</p>
+<h3>사용자 5천만, 곡 2억으로 키우기</h3>
+<p>규모가 커지면 용량부터 다시 계산해요. 슬라이드 세 줄이 새 숫자예요.</p>
+<figure>
+  <img src="assets/frame-4423.webp" alt="7. Scalability (50M Users, 200M Songs) 슬라이드. Song metadata 100 bytes × 200M songs ≈ 20GB, User metadata 1KB × 50M users ≈ 50GB, Audio storage 3MB × 200M songs ≈ 600TB(복제와 지역 사본 제외)">
+  <figcaption>오디오 600TB도 복제를 빼고 잰 값이라, 실제로는 2~3배를 잡아요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=2663s" target="_blank" rel="noopener">영상 44:23에서 보기</a></figcaption>
+</figure>
+<p>확장된 구조는 왼쪽에서 오른쪽으로 읽어요. 북미, 유럽, 아시아·태평양, 남미의 CDN 엣지, 지역별 로드 밸런서 두 대, 늘어난 API 서버가 차례로 놓여요. 강사는 CDN 옆에 'LRU'라고 적었어요.</p>
+<figure>
+  <img src="assets/frame-4623.webp" alt="확장 아키텍처. Mobile Apps에서 CDN EDGES(North America, Europe, APAC, South America), LOAD BALANCERS(Load Balancer A, B), API SERVERS 여섯 대, 오른쪽 데이터베이스 계층과 블롭 스토리지로 이어지는 다이어그램. CDN 옆에 손글씨 LRU">
+  <figcaption>API 서버는 상태가 없어서 같은 서버를 복제해 늘리기만 하면 돼요. 확장이 쉬운 이유가 무상태 설계예요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=2783s" target="_blank" rel="noopener">영상 46:23에서 보기</a></figcaption>
+</figure>
+<p>CDN 캐시가 가득 차면 LRU(Least Recently Used) 방식으로 가장 오래 안 쓴 콘텐츠부터 지우고, 캐시에 없으면 원본 저장소에서 가져와요. API 서버는 세션도 저장소도 갖지 않으니 그냥 늘려요. 반대로 말하면, 처음부터 정말 무상태로 설계해야 이렇게 늘릴 수 있어요.</p>
+<p>DB 계층은 확대한 그림이 더 잘 보여요. 가운데 'DB Leader - Writes'가 쓰기를 받고, 점선 'Replication'으로 오른쪽 팔로워 셋에 복사해요. 아래 'DB SHARDS' 상자가 그다음 단계인 샤딩이에요.</p>
+<figure>
+  <img src="assets/frame-4723.webp" alt="DATABASE TIER 확대 그림. API 서버들의 Reads 화살표는 DB FOLLOWERS(DB Follower - Reads 세 대)로, Writes 화살표는 DB Leader - Writes로 가고, 리더에서 팔로워로 Replication 점선. 아래에 DB SHARDS 상자(Shard 1, Shard 2)">
+  <figcaption>읽기와 쓰기를 먼저 나누고, 그래도 모자랄 때 샤딩해요. 순서가 중요해요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=2843s" target="_blank" rel="noopener">영상 47:23에서 보기</a></figcaption>
+</figure>
+<p>샤딩은 사용자를 미국·유럽처럼 지역으로 나누고, 곡은 아티스트 ID 범위로 나눠요. 관련 데이터가 한곳에 모여 성능이 좋아져요. 블롭 스토리지도 지역마다 두고, 유럽 사용자는 유럽 저장소에 올려요. 어디서든 접근은 서명된 URL로 해요. 강사가 강조하는 건 순서예요. 적은 사용자에게 과하게 설계하지 말고, 단순하게 시작해서 규모에 맞춰 늘려요.</p>
+<h3>시니어와 미드 레벨을 가르는 피라미드</h3>
+<p>Spotify 설계를 마치며 강사는 설계 작업을 피라미드로 그려요. 초록 바닥이 계획, 파란 가운데가 기술 선택, 보라 꼭대기가 코드예요. 면적이 곧 비중이에요.</p>
+<figure>
+  <img src="assets/frame-4923.webp" alt="세 층 피라미드. 꼭대기 Code, 가운데 Tech stack selection(Picking the right db, Caching layers, Storage solutions), 바닥 Planning(understanding requirements, estimating capacity, choosing your architecture)">
+  <figcaption>코드가 가장 작은 층이에요. 강사는 코드만 짤 줄 알면 AI 모델과 경쟁해야 한다고 말해요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=2963s" target="_blank" rel="noopener">영상 49:23에서 보기</a></figcaption>
+</figure>
+<p>강사는 많은 미드 레벨 개발자가 이 피라미드를 거꾸로 세운다고 해요. 계획도 기술 선택도 없이 코드부터 쓰고 어디로 가는지 지켜본다는 거예요. 반대로 키보드에 손대기 전에 사용자 관점에서 문제를 생각하는 사람은 일자리를 찾느라 고생하지 않는다고 해요. 화면 문구로는 'Fundamental seekers'예요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=3074s" target="_blank" rel="noopener">51:14</a>
+  <h2>Booking ①: 요구사항, 트래픽 추정, 서비스 나누기</h2>
+<p>두 번째 사례는 Booking.com이나 Airbnb 같은 호텔 예약이에요. 강사는 흔한 실수부터 짚어요. 캐싱과 복제를 붙인 평범한 CRUD(Create, Read, Update, Delete) 앱으로 보는 거예요. 마지막 남은 방 하나를 두 사람이 동시에 잡을 때, 단순히 조회한 뒤 삽입하면 더블 부킹이 생겨요. 카드 두 장이 결제되고, 환불과 화난 고객이 남고, 다음엔 믿지 못할 서비스가 돼요.</p>
+<p>그래서 이 문제는 동시성, 여러 시스템에 걸친 데이터 일관성, 장애를 전제로 한 설계를 함께 시험해요. 패턴을 외우기보다 실제로 생길 문제와 해결책, 해결책 사이의 트레이드오프를 이해하는 게 목표예요.</p>
+<h3>질문으로 범위 정하기</h3>
+<p>슬라이드 맨 위 'Clarifying Questions'가 먼저 던질 질문 넷이에요. 그 아래로 기능 요구사항과 비기능 요구사항이 이어져요.</p>
+<figure>
+  <img src="assets/frame-5457.webp" alt="Clarifying Questions(결제, 예약 채널, 취소와 오버부킹 5~10%, 동적 가격), Functional Requirements(호텔 관리, 검색과 탐색, 예약 흐름, 결제 처리, 알림), Non-Functional Requirements(강한 일관성, 높은 동시성, 검색 500ms 이하와 예약 확정 2~3초, 99.9%+ 가용성, 수평 확장)가 적힌 슬라이드">
+  <figcaption>비기능 요구사항 첫 줄 '같은 방·같은 날짜 중복 예약 금지'는 협상 불가예요. 이 한 줄이 DB 선택을 정해요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=3297s" target="_blank" rel="noopener">영상 54:57에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>질문</th><th>이번 설계의 답</th></tr></thead>
+    <tbody>
+      <tr><td>결제를 플랫폼에서 받나요, 체크인 때 받나요?</td><td>플랫폼에서 받아요. 결제 시스템이 필요해요</td></tr>
+      <tr><td>웹만인가요, 모바일 앱도 있나요?</td><td>둘 다예요</td></tr>
+      <tr><td>취소와 오버부킹을 지원하나요?</td><td>둘 다 지원해요. 호텔은 취소를 감안해 보통 5~10% 더 받아요</td></tr>
+      <tr><td>가격이 고정인가요, 수요에 따라 바뀌나요?</td><td>동적 가격이에요. 성수기에는 오르고, 녹화 중인 방도 크리스마스라 평소의 세 배였다고 해요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>기능 요구사항은 관리자 패널(호텔 추가·수정·삭제), 위치·날짜·인원·가격으로 검색, 예약·조회·취소, 결제 연동, 확정 알림이에요. 핵심 기능을 고르는 요령도 알려 줘요. "이걸 빼면 더 이상 Booking.com이 아닌가?"를 물어보면 돼요. 위치로 검색할 수 없다면 쓸모없는 앱이 되겠죠.</p>
+<p>비기능 요구사항에서 일관성을 둘로 나눈 게 중요해요. 예약은 강한 일관성이 필요하지만, 검색과 탐색은 최종 일관성이면 충분해요. 검색은 500ms 안, 예약 확정은 2~3초 안, 가용성은 99.9%이고, 나중에 처음부터 다시 설계하지 않고 수평으로 늘릴 수 있어야 해요.</p>
+<h3>깔때기로 트래픽 추정하기</h3>
+<p>예약 사이트의 트래픽은 깔때기 모양이에요. 그림의 세 칸이 방문자, 예약 페이지까지 온 사람, 실제 예약한 사람이고, 오른쪽 숫자가 각 단계의 비율이에요.</p>
+<figure>
+  <img src="assets/frame-5957.webp" alt="Data Estimation: Back-of-the-Envelope Calculations 슬라이드의 깔때기. 1. View the hotel room 100%, 2. Room booking page 10%, 3. Reserve the room 10%">
+  <figcaption>방문자 대부분은 구경만 해요. 그래도 그들의 검색이 읽기 부하를 만들어서 설계에서 빼면 안 돼요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=3597s" target="_blank" rel="noopener">영상 59:57에서 보기</a></figcaption>
+</figure>
+<p>계산은 두 방향 중 하나로 해요. 위에서 내려오려면 SimilarWeb 같은 도구로 본 월 방문 수에서, 아래에서 올라가려면 연간 예약 수에서 출발해요. 면접관에게 숫자 하나만 받으면 나머지는 계산할 수 있어요. 아래 슬라이드가 두 계산을 모두 보여 줘요.</p>
+<figure>
+  <img src="assets/frame-010342.webp" alt="Daily Reservations &amp; TPS: 1.1B room nights / 2 nights per booking ≈ 550M bookings/year, 550M / 365 ≈ 1.5M bookings/day, 1.5M / 86,400 ≈ 17 bookings per second. Traffic Funnel &amp; Read QPS: Similarweb 약 5억 1,650만 월 방문, 방문당 약 7.56페이지, 516.5M / 30 ≈ 17M visits per day, 17M / 86,400 ≈ 200 visits per second, 방문당 백엔드 읽기 5회로 200 × 5 ≈ 1,000 read requests per second, 결론 Strongly read-heavy">
+  <figcaption>맨 아래 두 줄이 결론이에요. 읽기 약 1,000 QPS, 쓰기 약 17 TPS라 읽기에 맞춰 구조를 짜고 쓰기는 일관성을 지켜요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=3822s" target="_blank" rel="noopener">영상 1:03:42에서 보기</a></figcaption>
+</figure>
+<p>쓰기는 연간 숙박 11억 박(Booking Holdings가 2024년에 발표한 숫자라고 슬라이드에 적혀 있어요)을 평균 2박으로 나눠 연 5.5억 건, 365로 나눠 하루 150만 건, 86,400초로 나눠 초당 약 17건이에요. 읽기는 월 방문을 30일로 나눠 하루 1,700만, 다시 초로 나눠 초당 약 200 방문이에요. 방문 한 번에 검색·재고 확인 같은 백엔드 읽기가 5번 일어난다고 보면 약 1,000 QPS가 돼요. 영상은 말로 '월 5억 방문, 방문당 8페이지'라고 하고, 슬라이드는 5억 1,650만, 7.56페이지로 적었어요. 결과는 같아요.</p>
+<div class="explore" id="envelope">
+  <span class="tag">직접 돌려 보기</span>
+  <div class="controls">
+    <label>연간 숙박 <input type="range" min="1" max="20" step="1" value="11"> <output>11</output>억 박</label>
+    <label>예약 1건당 평균 숙박 <input type="range" min="1" max="7" step="1" value="2"> <output>2</output>박</label>
+    <label>월 방문 <input type="range" min="100" max="1000" step="1" value="516"> <output>516</output>백만 회</label>
+    <label>방문당 백엔드 읽기 <input type="range" min="1" max="10" step="1" value="5"> <output>5</output>회</label>
+  </div>
+  <div class="stage">
+    <svg viewBox="0 0 420 170" aria-label="초당 읽기와 초당 쓰기 막대 비교"></svg>
+    <div class="readout"></div>
+  </div>
+  <div class="try"><b>해 볼 것</b><ol>
+    <li>기본값 그대로 두고 결과를 보세요. 쓰기 약 17 TPS, 읽기 약 1,000 QPS로 영상의 숫자와 같아요.</li>
+    <li>평균 숙박을 1박으로 내려 보세요. 쓰기가 약 35 TPS로 두 배가 되지만, 읽기가 여전히 수십 배 많아요.</li>
+    <li>방문당 읽기를 10회로 올려 보세요. 읽기가 2,000 QPS 가까이 돼요. 다음 섹션의 16개 샤드로 나누면 샤드당 약 125 QPS예요.</li>
+  </ol></div>
+</div>
+<h3>서비스를 나눈 상위 설계</h3>
+<p>그림 왼쪽 'CLIENTS'의 웹·모바일 앱이 CDN을 거쳐 분홍색 API 게이트웨이로 들어가요. 가운데 'SERVICES' 상자에 호텔·예약·요금·결제 서비스와 알림 서비스가 있고, 오른쪽 'DATA STORES'의 PostgreSQL과 Redis로 이어져요. 결제 서비스는 오른쪽 아래 외부 결제 게이트웨이와 연결돼요.</p>
+<figure>
+  <img src="assets/frame-010457.webp" alt="High-Level Design 다이어그램. CLIENTS(Web App, Mobile App, CDN) → API Gateway → SERVICES(Hotel Service, Reservation Service, Rate Service, Payment Service, Notification Service가 예약과 결제에 의해 triggers) → DATA STORES(PostgreSQL, Redis), Payment Service → Payment Gateway">
+  <figcaption>서비스는 경계를 나누되, 강하게 묶인 데이터는 한 DB에 두는 게 출발점이에요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=3897s" target="_blank" rel="noopener">영상 1:04:57에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>구성 요소</th><th>하는 일</th></tr></thead>
+    <tbody>
+      <tr><td>CDN</td><td>호텔 사진, 미디어, JavaScript 같은 정적 자산</td></tr>
+      <tr><td>API 게이트웨이</td><td>단일 진입점. 인증, 속도 제한, 서비스 라우팅, 같은 서비스 인스턴스 사이의 부하 분산</td></tr>
+      <tr><td>호텔 서비스</td><td>호텔·방 정보. 거의 바뀌지 않아 캐시하기 좋아요</td></tr>
+      <tr><td>예약 서비스</td><td>예약 로직, 재고 확인, 생성과 취소. 동시성을 여기서 처리해요</td></tr>
+      <tr><td>요금 서비스</td><td>날짜별 방 가격, 수요에 따른 동적 가격</td></tr>
+      <tr><td>결제 서비스</td><td>Stripe, PayPal, Apple Pay, Google Pay 등 연동</td></tr>
+      <tr><td>알림 서비스</td><td>예약·결제 서비스와 이어져 이메일과 푸시를 보내요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>데이터는 ACID(Atomicity, Consistency, Isolation, Durability)가 필요해서 PostgreSQL로 시작하고, 잘 안 바뀌는 데이터는 Redis에 캐시해요. 그런데 1,000 QPS의 검색을 PostgreSQL 혼자 받기는 버겁다고 강사는 봐요. 그래서 검색 서비스와 Elasticsearch를 따로 붙여요. 호텔 이름·설명 전문 검색, 반경 5km 같은 위치 필터, 가격·평점 필터를 PostgreSQL보다 훨씬 빠르게 해요. 대신 최종 일관성이에요.</p>
+<h3>메시지 큐로 서비스 떼어 내기</h3>
+<p>확대한 그림에서 왼쪽 위 'MESSAGING' 상자의 Kafka/RabbitMQ를 보세요. 결제 서비스가 여기에 이벤트를 넣으면, 위로는 알림 서비스로 'Send Email/Push'가, 아래로는 검색 서비스로 'Update Availability'가 나가요. 오른쪽 데이터 저장소는 결제 DB, 가격 캐시, 검색 인덱스, 호텔 DB, 예약 DB로 나뉘었어요.</p>
+<figure>
+  <img src="assets/frame-010842.webp" alt="분리된 마이크로서비스 구조. Kafka / RabbitMQ에서 Send Email/Push로 Notification Service, Update Availability로 Search Service. 오른쪽 DATA STORES에 Payment DB(Postgres), Price Cache(Redis), Search Index(ES), Hotel DB(Postgres), Res DB(Postgres). 강사가 Search Index와 Hotel DB를 손글씨로 묶어 표시">
+  <figcaption>검색 인덱스는 늦게 따라와도 돼요. 예약할 때는 호텔 DB에서 다시 확인하니까요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=4122s" target="_blank" rel="noopener">영상 1:08:42에서 보기</a></figcaption>
+</figure>
+<p>그래서 결제 직후에 검색하면 그 방이 아직 비어 있는 것처럼 보일 수 있어요. 그래도 예약 단계에서 진짜 DB를 확인하니 예약은 막혀요. 시간이 지나면 검색 인덱스도 같아져요.</p>
+<p>마지막으로 서비스를 어떻게 쪼갤지 세 가지를 비교해요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>방식</th><th>좋은 점</th><th>문제</th></tr></thead>
+    <tbody>
+      <tr><td>모놀리스 하나</td><td>트랜잭션이 단순해요</td><td>수백 명이 한 코드베이스에서 일하면 독립 배포와 확장이 어려워요</td></tr>
+      <tr><td>완전한 마이크로서비스</td><td>서비스마다 DB를 따로 가져요</td><td>모놀리스엔 없던 분산 트랜잭션과 일관성 문제가 생겨요</td></tr>
+      <tr><td>실용적 마이크로서비스</td><td>서비스는 앱 계층에서 나누고, 예약과 호텔처럼 강하게 묶인 데이터는 한 DB에 둬요</td><td>로컬 ACID 트랜잭션을 그대로 쓸 수 있어요. 영상이 고른 방식이에요</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=4262s" target="_blank" rel="noopener">1:11:02</a>
+  <h2>Booking ②: API·데이터 모델과 더블 부킹 막기</h2>
+<p>API는 REST(Representational State Transfer)로 만들어요. 그림에서는 프론트엔드가 각 서비스를 직접 부르지만, 강사는 마이크로서비스가 많으면 프론트엔드 앞에 GraphQL 계층을 두는 방식도 흔하다고 덧붙여요. 프론트엔드는 GraphQL 스키마만 알고, 서비스 사이 라우팅은 그 계층이 맡아요.</p>
+<h3>API: 호텔, 방, 예약, 검색</h3>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>리소스</th><th>엔드포인트</th><th>어디서 읽나요</th></tr></thead>
+    <tbody>
+      <tr><td>호텔 목록</td><td><code>GET /hotels?필터</code></td><td>Elasticsearch</td></tr>
+      <tr><td>호텔 상세</td><td><code>GET /hotels/{id}</code></td><td>PostgreSQL</td></tr>
+      <tr><td>호텔 관리(관리자)</td><td><code>POST /hotels</code> · <code>PUT/PATCH /hotels/{id}</code> · <code>DELETE /hotels/{id}</code></td><td>PostgreSQL에 먼저 쓰고, 검색 인덱스는 나중에 따라와요. 생성은 201로 응답해요</td></tr>
+      <tr><td>방 유형(하위 리소스)</td><td><code>GET/POST /hotels/{id}/rooms</code> · <code>PUT/DELETE /hotels/{id}/rooms/{id}</code></td><td>PostgreSQL</td></tr>
+      <tr><td>예약</td><td><code>GET /reservations</code> · <code>GET /reservations/{id}</code> · <code>POST /reservations</code> · <code>PUT /reservations/{id}</code> · <code>DELETE /reservations/{id}</code></td><td>PostgreSQL</td></tr>
+      <tr><td>검색</td><td><code>GET /search?location&amp;checkIn&amp;checkOut&amp;guests&amp;beds&amp;priceRange</code></td><td>Elasticsearch</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>취소(<code>DELETE</code>)는 DB에서 취소 가능 기간인지 확인해요. 일주일 전이면 되고, 직전이면 안 되는 식이에요. 날짜 변경은 <code>PUT</code>으로 해요.</p>
+<h3>같은 사람의 중복 클릭: 멱등성 키</h3>
+<p>더블 부킹에는 두 가지 경우가 있어요. 한 사람이 예약 버튼을 두 번 누르는 경우와, 다른 두 사람이 마지막 방을 동시에 잡는 경우예요. 첫 번째는 API에서 바로 막을 수 있어요. 시퀀스 다이어그램 가운데 'POST /v1/reservations (with idempotency key)' 아래 코드 상자가 요청 본문이에요.</p>
+<figure>
+  <img src="assets/frame-011947.webp" alt="POST /v1/reservations (with idempotency key) 화살표와 Important Detail for Reservations 상자. 본문에 reservationId uuid, roomTypeId, hotelId, startDate, endDate, guestCount, roomCount가 있고, reservationId는 프론트엔드에서 생성되어 여러 번 제출해도 중복 예약을 막는다는 주석. 오른쪽에 강사 손글씨 hotel_id, room_id, user_id, date">
+  <figcaption>본문 첫 줄의 <code>reservationId</code>가 멱등성 키예요. 오른쪽 손글씨는 백엔드에서 만드는 다른 방법이에요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=4787s" target="_blank" rel="noopener">영상 1:19:47에서 보기</a></figcaption>
+</figure>
+<p>프론트엔드가 예약 폼을 열 때 UUID(Universally Unique Identifier) 하나를 만들어 <code>reservationId</code>로 보내요. 서버는 이 ID가 이미 있는지 먼저 보고, 없으면 새로 넣고, 있으면 이미 만든 예약을 그대로 돌려줘요. 이 값이 멱등성 키예요.</p>
+<p>백엔드에서 만드는 방법도 있어요. 호텔 ID, 방 ID, 사용자 ID에 날짜나 타임스탬프를 섞어 해시를 만들어요. 날짜를 빼면 같은 사람이 나중에 같은 호텔을 다시 예약하지 못하게 돼요. 강사는 한 사람의 중복 클릭만 막을 거라면 프론트엔드 UUID가 훨씬 가볍다고 봐요. 예약이 확정되면 Kafka 이벤트가 나가 사용자와 호텔 주인에게 알림이 가요.</p>
+<h3>데이터 모델: 방이 아니라 방 유형을 팔아요</h3>
+<p>핵심은 방 번호가 아니라 방 유형을 예약한다는 점이에요. "더블 퀸 침대 방"을 사고, 방 번호는 체크인 때 정해요. 테이블은 이렇게 이어져요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>테이블</th><th>주요 컬럼</th><th>관계와 이유</th></tr></thead>
+    <tbody>
+      <tr><td>hotel</td><td>hotel_id, name, address, location, description</td><td>같은 브랜드의 다른 지점은 ID를 달리하거나 hotel_groups로 묶어요</td></tr>
+      <tr><td>room_type</td><td>room_type_id, name, description, max_occupancy, amenities, hotel_id</td><td>호텔 하나에 여러 유형(1:N)</td></tr>
+      <tr><td>room_type_rate</td><td>date, rate, room_type_id, hotel_id</td><td>기본 100, 전망 150, 조식 포함 200처럼 유형별 요금(1:N)</td></tr>
+      <tr><td>room</td><td>room_id, floor, number, is_available, room_type_id, hotel_id</td><td>체크인 때 배정하는 실제 방</td></tr>
+      <tr><td>room_type_inventory</td><td>hotel_id, room_type_id, date, total_inventory, total_reserved</td><td>호텔·유형·날짜마다 한 행. 재고 확인의 중심</td></tr>
+      <tr><td>reservation</td><td>reservation_id, room_type_id, hotel_id, guest_id, start_date, end_date, status, room_count</td><td>손님 한 명이 여러 예약(1:N)</td></tr>
+      <tr><td>transaction</td><td>transaction_id, reservation_id, transaction_type, amount</td><td>예약 하나에 여러 거래(1:N). 금액은 음수도 돼요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>화면에서 보라색 <code>reservation</code> 표와 그 왼쪽 <code>transaction</code> 표를 보세요. 강사가 손글씨로 'reserved, cancel, date'라고 적은 게 거래가 여러 줄 생기는 세 경우예요.</p>
+<figure>
+  <img src="assets/frame-012717.webp" alt="스키마 일부 확대. room_type_inventory(room_type_id, hotel_id, date, total_inventory, total_reserved), transaction(transaction_id, reservation_id, transaction_type, amount, transaction_date, notes), reservation(reservation_id, room_type_id, hotel_id, guest_id, start_date, end_date, status, room_count), guest(guest_id, first_name, last_name, email)">
+  <figcaption>예약하면 결제 한 줄, 날짜를 바꾸면 차액 한 줄, 취소하면 마이너스 환불 한 줄이 쌓여요. 그래서 거래를 예약과 떼어 놨어요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=5237s" target="_blank" rel="noopener">영상 1:27:17에서 보기</a></figcaption>
+</figure>
+<p>재고를 방 단위가 아니라 호텔·유형·날짜 단위로 세면 좋은 점이 있어요. 가용 여부를 한꺼번에 갱신할 수 있고, 가격·검색과 맞추기 쉽고, 오버부킹 계산이 단순해져요. <code>room_type_inventory</code>는 2년치를 미리 채워 두고, 하루 한 번 크론 작업이 새 날짜를 더해요.</p>
+<h3>재고 확인과 오버부킹</h3>
+<p>12월 23~27일을 예약한다면, 그 기간의 재고 행을 읽어서 날짜마다 조건을 확인해요. 슬라이드 위가 조회 쿼리, 아래가 조건식이에요.</p>
+<figure>
+  <img src="assets/frame-013102.webp" alt="When checking availability for Dec 23-27 슬라이드. SELECT date, total_inventory, total_reserved FROM room_type_inventory WHERE hotel_id = 211 AND room_type_id = 1001 AND date BETWEEN '2024-12-23' AND '2024-12-27'. 아래 For each date in the range, verify: (total_reserved + rooms_to_book) &lt;= total_inventory">
+  <figcaption>날짜 하나라도 조건을 못 넘으면 예약할 수 없어요. 기간 예약은 날짜별 검사의 묶음이에요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=5462s" target="_blank" rel="noopener">영상 1:31:02에서 보기</a></figcaption>
+</figure>
+<p>총 재고 100, 예약 92면 남은 방은 8개예요. 한 방을 더 잡으면 93 ≤ 100이라 통과해요. 오버부킹을 10% 허용한다면 오른쪽 항에 계수를 곱해요. 슬라이드 아래쪽에 손글씨로 100이 110이 된 게 보여요.</p>
+<figure>
+  <img src="assets/frame-013217.webp" alt="(total_reserved + rooms_to_book) &lt;= (total_inventory * overbooking_factor) 식과 손글씨 10%, 100, 110. 아래 Why Relational Database? 항목으로 ACID guarantees, Read-heavy workload 1,000 read QPS vs 17 write TPS, Structured relationships, Complex queries">
+  <figcaption>총 재고 100에 10%를 허용하면 110건까지 받아요. 그중 약 10건은 취소될 거라고 보는 거예요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=5537s" target="_blank" rel="noopener">영상 1:32:17에서 보기</a></figcaption>
+</figure>
+<p>같은 슬라이드 아래쪽에 관계형 DB를 고른 이유가 네 줄로 정리돼 있어요. ACID가 더블 부킹을 막는 데 필수이고, 읽기 중심 부하를 잘 받고(부족하면 Elasticsearch와 함께 써요), 호텔·방·예약 관계가 뚜렷하고, 재고와 가격을 조인하고 날짜로 거르고 합계를 내는 복잡한 질의가 필요해요.</p>
+<h3>다른 두 사람의 동시 예약</h3>
+<p>두 번째 경우가 진짜 문제예요. 아래 타임라인이 <code>READ COMMITTED</code>에서 일어나는 일이에요. Time 1과 Time 2에서 A와 B가 모두 예약 99, 총 100을 읽어요. Time 3과 4에서 둘 다 99 + 1 ≤ 100을 통과해요. Time 5부터 둘 다 쓰면 예약이 101건이 돼요.</p>
+<figure>
+  <img src="assets/frame-013447.webp" alt="두 사용자가 1 spot left 방을 동시에 예약하는 그림과 타임라인. Time 1 User A reads total_reserved = 99, total_inventory = 100. Time 2 User B reads 같은 값. Time 3 User A checks (99 + 1) &lt;= 100. Time 4 User B checks 같은 조건. Time 5 User A updates total_reserved = 100. 아래 Approach 1: Serializable Isolation + Row Locking">
+  <figcaption>둘 다 올바른 데이터를 읽고 올바르게 검사했어요. 문제는 읽기와 쓰기 사이의 틈이에요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=5687s" target="_blank" rel="noopener">영상 1:34:47에서 보기</a></figcaption>
+</figure>
+<p><code>READ COMMITTED</code>는 PostgreSQL의 기본 <span class="term" data-term="격리 수준" data-en="Isolation level" data-desc="동시에 도는 트랜잭션이 서로의 변경을 얼마나 볼 수 있는지 정하는 DB 설정이에요. 높일수록 안전하지만 동시 처리량이 줄어요." data-g="8">격리 수준</span>이에요. 다른 트랜잭션이 커밋한 데이터만 보이지만, 내가 읽은 뒤 쓰기 전까지 다른 트랜잭션이 끼어드는 건 막지 못해요. 해결책은 둘이에요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th></th><th><code>SERIALIZABLE</code></th><th><code>READ COMMITTED</code> + <code>SELECT ... FOR UPDATE</code></th></tr></thead>
+    <tbody>
+      <tr><td>방법</td><td>트랜잭션 시작 때 격리 수준을 <code>SERIALIZABLE</code>로 지정해요</td><td>기본 격리 수준 그대로, 재고 행을 읽을 때 잠가요</td></tr>
+      <tr><td>장점</td><td>구현이 단순하고, TPS가 낮으면 잘 돌아가요</td><td>같은 행을 노리는 트랜잭션만 줄을 서고, 나머지는 병렬로 가요</td></tr>
+      <tr><td>단점(영상 설명)</td><td>트랜잭션끼리 막아서 TPS가 높으면 확장이 어렵고, 여러 자원을 다른 순서로 잠그면 교착 상태가 생길 수 있어요. 잠금 타임아웃과 짧은 트랜잭션으로 줄여요</td><td>강사는 이쪽을 더 나은 해법으로 봐요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>코드에서는 기본 격리 수준으로 트랜잭션을 열고, 재고 조회 끝에 <code>ORDER BY date FOR UPDATE</code>를 붙여요. 그다음 애플리케이션에서 확인하고, 되면 재고를 올리고 예약을 넣어요.</p>
+<figure>
+  <img src="assets/frame-013602.webp" alt="READ COMMITTED vs SERIALIZABLE (Row Locking) 코드. BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED; SELECT date, total_inventory, total_reserved FROM room_type_inventory WHERE hotel_id = 211 AND room_type_id = 1001 AND date BETWEEN '2024-12-23' AND '2024-12-27' ORDER BY date FOR UPDATE; 주석으로 Check availability in application, Update if available, Insert reservation. 손글씨 TPS">
+  <figcaption><code>FOR UPDATE</code>가 해당 날짜 행에 대한 접근만 순서대로 줄 세워서 경쟁 조건을 막아요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=5762s" target="_blank" rel="noopener">영상 1:36:02에서 보기</a></figcaption>
+</figure>
+<p><code>ORDER BY date</code>도 의미가 있어요. 모든 트랜잭션이 날짜 순서대로 행을 잠그니, 서로 다른 순서로 잠가서 생기는 교착 상태를 피할 수 있어요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상은 <code>SERIALIZABLE</code>이 트랜잭션끼리 막는다고 설명하는데, PostgreSQL의 <code>SERIALIZABLE</code>은 동작이 조금 달라요. PostgreSQL은 이 수준에서 술어 잠금(predicate lock)으로 충돌을 감시하지만, 이 잠금은 다른 트랜잭션을 막지 않고 교착 상태도 만들지 않는다고 공식 문서에 적혀 있어요. 대신 충돌을 감지하면 한쪽을 직렬화 실패(serialization failure)로 끝내요.</p>
+  <p>그래서 <code>SERIALIZABLE</code>을 쓰는 애플리케이션은 실패한 트랜잭션을 처음부터 다시 시도할 준비를 해야 해요. 공식 문서는 환경에 따라 명시적 잠금(<code>SELECT FOR UPDATE</code>)보다 <code>SERIALIZABLE</code>이 성능상 더 나을 수도 있다고 말해요. 다른 DB(MySQL 등)는 구현이 다르니 쓰는 DB의 문서를 따로 확인하세요.</p>
+  <p class="cite">출처: <a href="https://www.postgresql.org/docs/current/transaction-iso.html" target="_blank" rel="noopener">PostgreSQL 공식 문서 — Transaction Isolation</a></p>
+</aside>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=5810s" target="_blank" rel="noopener">1:36:50</a>
+  <h2>Booking ③: 샤딩·캐시·검색·복제</h2>
+<p>읽기 1,000 QPS, 쓰기 17 TPS를 버티려면 결국 DB를 나눠야 해요. 일반 쿼리가 눈에 띄게 느려지면 그때가 신호예요. 이 섹션은 샤딩, 캐시, 검색, 복제를 차례로 다뤄요.</p>
+<h3>샤딩: 호텔 ID로 나눠요</h3>
+<p>샤딩에서 가장 중요한 결정은 어떤 필드로 나눌지예요. 강사는 호텔 ID를 골라요. 검색은 대부분 호텔부터 걸러서 위치를 맞추고, 그다음 그 호텔의 방 유형을 가져와요. 한 호텔의 데이터가 한 샤드에 모이니 샤드를 넘나드는 조인이 없고, 트랜잭션도 샤드 안에서 끝나요.</p>
+<p>그림은 16개 샤드에 부하를 나눈 모습이에요. 오른쪽 초록 샤드 옆 글씨가 샤드 하나가 받는 양이에요.</p>
+<figure>
+  <img src="assets/frame-013850.webp" alt="4×4로 놓인 16개 DB 샤드 그림. 위에 shard_number = consistent_hash(hotel_id) % num_shards 식에서 consistent에 줄을 그은 손글씨, 왼쪽 1,000 read QPS 화살표, 오른쪽 초록 샤드에 약 62 read QPS + 약 1 write TPS">
+  <figcaption>1,000 QPS를 16개로 나누면 샤드당 약 62 QPS, 1 TPS예요. 식의 consistent에 줄을 그은 건 처음엔 단순 모듈로로 시작한다는 뜻이에요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=5930s" target="_blank" rel="noopener">영상 1:38:50에서 보기</a></figcaption>
+</figure>
+<p>처음에는 <code>hash(hotel_id) % 샤드 수</code>로 나눠요. 샤드 수가 자주 바뀌지 않을 땐 이걸로 충분해요. 문제는 샤드를 하나 더할 때예요. 17번째 샤드를 넣으면 나머지가 거의 다 바뀌어서 1~16번의 데이터를 거의 전부 다시 섞어야 해요. <span class="term" data-term="일관된 해싱" data-en="Consistent hashing" data-desc="서버와 키를 같은 원 위에 놓고, 키를 시계 방향으로 가장 가까운 서버에 두는 방식이에요. 서버를 하나 더해도 그 서버 몫의 키만 옮겨요." data-g="6">일관된 해싱</span>은 새 샤드가 맡을 몫, 약 17분의 1만 옮겨요.</p>
+<p>강사가 말로 설명한 해시 링을 그림으로 옮겼어요. 왼쪽은 모듈로 방식, 오른쪽은 해시 링이에요. 빨간 부분이 옮겨야 하는 데이터예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 260" role="img" aria-label="샤드를 16개에서 17개로 늘릴 때 모듈로 방식은 거의 모든 키가 옮겨지고, 일관된 해싱은 새 서버와 이전 서버 사이의 키만 옮겨지는 비교 그림">
+    <defs><marker id="arrow-ring" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-hash"></g>
+  </svg>
+  <figcaption>모듈로는 샤드 수가 바뀌면 거의 모든 키의 자리가 바뀌어요. 링에서는 새 서버와 그 앞 서버 사이의 키만 새 서버로 가요. 그래서 샤드를 자주 늘릴 거라면 일관된 해싱을 써요.</figcaption>
+</figure>
+<p>링에서는 서버와 키를 모두 원 위의 점으로 놓고, 키는 시계 방향으로 가장 가까운 서버에 저장돼요. 새 서버를 넣으면 새 서버와 직전 서버 사이 구간의 키만 영향을 받아요. 샤드 수가 적고 거의 안 바뀌면 모듈로, 자주 늘릴 거면 일관된 해싱이에요.</p>
+<h3>재고 캐시와 무효화</h3>
+<p>자주 읽는 재고는 Redis나 Memcached에 캐시해요. 키는 <code>inventory:{hotel_id}:{room_type_id}:{date}</code>, 값은 총 재고 100과 예약 87 같은 숫자예요. 오버부킹 비율 10%는 캐시에 넣지 않고 고정값으로 따로 둬요. TTL은 5분이에요.</p>
+<p>흐름도는 위아래 두 단계로 읽어요. 위쪽 검색 단계는 Redis를 먼저 보고, 'Cache hit?'에서 Yes면 바로 보여 주고 No면 DB에서 읽어 Redis를 채워요. 아래 초록 예약 단계는 DB로 검증하고 쓴 뒤, 빨간 상자에서 해당 캐시 키를 지워요.</p>
+<figure>
+  <img src="assets/frame-014250.webp" alt="캐시 흐름도. SEARCH PHASE: User searches for hotels → Check Redis cache for hotel inventory → Cache hit? Yes면 Show hotel inventory to user, No면 Cache miss → Read hotel inventory from database → Populate Redis cache. BOOKING PHASE: User clicks book → Validate booking against database → Update database with booking transaction. CACHE INVALIDATION AND UPDATE PHASE: Invalidate affected cache keys → Next user search">
+  <figcaption>예약 검증은 캐시가 아니라 DB로 해요. 캐시는 검색을 빠르게 할 뿐이고, 예약 후 키를 지워 다음 검색이 최신 값을 읽게 해요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=6170s" target="_blank" rel="noopener">영상 1:42:50에서 보기</a></figcaption>
+</figure>
+<p>TTL이 만료된 경우도 캐시 미스처럼 다뤄요. DB에서 읽고, 캐시에 넣고, 보여 줘요.</p>
+<h3>왜 PostgreSQL로 검색하면 안 될까요</h3>
+<p>Elasticsearch는 검색과 분석에 특화된 DB예요. PostgreSQL은 "ID가 123인 행"이나 "이걸 넣어" 같은 정확한 작업에 강하고, Elasticsearch는 "이 글과 대충 맞는 문서를 관련도 순으로, 여러 조건으로, 수백만 건에서 빠르게"에 강해요. 슬라이드 위쪽 다섯 줄이 PostgreSQL로 검색할 때의 문제, 아래쪽이 Elasticsearch가 잘하는 일이에요.</p>
+<figure>
+  <img src="assets/frame-014550.webp" alt="Problems: 1. LIKE '%text%' does full table scan, 2. Can't rank by relevance, 3. Can't handle typos (Pari should match Paris), 4. Geospatial queries are clunky, 5. Aggregations (facets) are expensive. What Elasticsearch Does Well? 1. Full-Text Search with Relevance Ranking: luxury hotel paris를 토큰으로 나누고 TF-IDF 또는 BM25로 순위">
+  <figcaption>앞뒤에 %가 붙은 <code>LIKE</code>는 인덱스를 못 타서 표 전체를 훑어요. 파리 호텔이 전체의 10%도 안 돼도 모든 행을 봐야 해요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=6350s" target="_blank" rel="noopener">영상 1:45:50에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>할 일</th><th>PostgreSQL <code>LIKE</code></th><th>Elasticsearch</th></tr></thead>
+    <tbody>
+      <tr><td>'luxury hotel paris' 검색</td><td><code>LIKE '%luxury%'</code>로 풀 스캔</td><td>'luxury', 'hotel', 'paris'로 토큰화해 찾아요</td></tr>
+      <tr><td>관련도 순위</td><td>못 해요</td><td>TF-IDF나 BM25(Best Matching 25)로 순위를 매겨요</td></tr>
+      <tr><td>오타 'Pari'</td><td>못 찾아요</td><td>편집 거리 1로 'Paris'를 찾아요</td></tr>
+      <tr><td>좌표 반경 5km</td><td>거리 계산이 번거로워요</td><td>공간 인덱스가 있어요</td></tr>
+      <tr><td>가격대별 개수 같은 집계</td><td>비싸요</td><td>잘해요</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>Elasticsearch를 PostgreSQL과 맞추기</h3>
+<p>데이터는 사실상 복제해요. SQL의 호텔, 방 유형, 편의시설 테이블을 조인 없이 JSON(JavaScript Object Notation) 문서 하나로 펴서 넣어요. 진실의 원천은 여전히 PostgreSQL이에요. 예약 가능 여부와 오버부킹은 PostgreSQL로만 판단하고, 검색만 Elasticsearch에서 해요.</p>
+<p>둘을 맞추는 방법이 <span class="term" data-term="변경 데이터 캡처" data-en="Change Data Capture" data-desc="DB의 변경 기록(로그)을 읽어 다른 시스템으로 흘려보내는 방법이에요. 애플리케이션 코드를 고치지 않고 검색 인덱스를 따라가게 할 수 있어요." data-g="10">변경 데이터 캡처</span>(CDC(Change Data Capture))예요. 슬라이드 왼쪽 코드 상자가 데이터가 흐르는 순서이고, 오른쪽 문장이 각 단계 설명이에요.</p>
+<figure>
+  <img src="assets/frame-014850.webp" alt="Keeping Elasticsearch in Sync with PostgreSQL 슬라이드. PostgreSQL (source of truth) → Write-Ahead Log (WAL) → Debezium Connector (reads WAL) → Kafka Topic (event stream) → Elasticsearch Consumer (processes events) → Elasticsearch (updated index). 오른쪽 설명: 모든 변경은 테이블에 적용되기 전에 트랜잭션 로그에 기록되고, Debezium은 오픈소스 CDC 도구로 WAL을 읽고, 테이블마다 자기 Kafka 토픽을 가지며, 소비자는 직접 작성하는 코드">
+  <figcaption>애플리케이션은 PostgreSQL에만 써요. 나머지는 로그를 따라 자동으로 흘러가서 Elasticsearch가 최종 일관성으로 따라와요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=6530s" target="_blank" rel="noopener">영상 1:48:50에서 보기</a></figcaption>
+</figure>
+<p>PostgreSQL은 모든 변경을 테이블에 반영하기 전에 WAL(Write-Ahead Log)에 먼저 적어요. 오픈소스 CDC 도구인 Debezium이 이 로그를 실시간으로 읽어 테이블마다 Kafka 토픽에 발행해요. 우리가 짠 소비자가 이벤트를 받아 Elasticsearch 인덱스를 고쳐요. 로그가 남아 있으니 장애가 나도 이어서 복구할 수 있어요.</p>
+<h3>읽기 복제본과 '방금 쓴 사람' 처리</h3>
+<p>샤딩이 쓰기와 데이터 양을 나눈다면, 복제는 읽기를 나눠요. 주 DB에 쓰고, 다른 가용 영역의 <span class="term" data-term="읽기 복제본" data-en="Read replica" data-desc="주 DB의 변경을 따라 복사해 두고 읽기만 받는 DB예요. 읽기 부하를 나누지만 복제가 늦으면 방금 쓴 값이 안 보일 수 있어요." data-g="5">읽기 복제본</span>으로 복사해서 사용자는 가까운 복제본에서 읽어요. 단, 복제는 늦을 수 있어요. 코드가 그 처리를 보여 줘요.</p>
+<figure>
+  <img src="assets/frame-015050.webp" alt="getUserReservations(userId, recentWrite = false) 함수 코드. shouldUsePrimary = recentWrite || hasRecentWriteInSession(userId), 주석 Read from primary for ~10s after a write, otherwise replica, db는 shouldUsePrimary면 getPrimaryConnection, 아니면 getReplicaConnection, SELECT * FROM reservations WHERE guest_id = ?">
+  <figcaption>방금 예약한 사람이 자기 예약 목록을 볼 때 복제본에 아직 없으면 혼란스러워요. 쓴 뒤 약 10초는 주 DB에서 읽어요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=6650s" target="_blank" rel="noopener">영상 1:50:50에서 보기</a></figcaption>
+</figure>
+<h3>지역별로 나누고 쓰기는 한곳에</h3>
+<p>마지막 그림은 지리 기반 로드 밸런서를 중심으로 읽어요. 왼쪽 미국·유럽·아시아 사용자가 가운데 'Geo/Latency Load Balancer'를 거쳐 오른쪽 지역 상자(us-east-1, eu-west-1, ap-southeast-1)로 가요. 지역마다 Redis, DB 복제본, Elasticsearch가 있고, 가운데 'Primary Write DB'는 하나예요.</p>
+<figure>
+  <img src="assets/frame-015250.webp" alt="전역 라우팅 그림. US, EU, Asia 사용자 → Geo/Latency Load Balancer → route US users, route EU users, route Asia users로 지역별 상자. 각 지역에 Redis, DB Replica, Elasticsearch. 가운데 Primary Write DB에서 각 지역으로 async replication 점선. 손글씨로 S7">
+  <figcaption>쓰기 DB를 하나로 둬서 지역 사이 쓰기 충돌을 없앴어요. 17 TPS면 주 DB 하나로 충분하다는 계산이 이 결정을 받쳐 줘요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=6770s" target="_blank" rel="noopener">영상 1:52:50에서 보기</a></figcaption>
+</figure>
+<p>대부분 미국 사용자는 미국 호텔을, 유럽 사용자는 유럽 호텔을 찾아요. 그래서 지연 기반 라우팅이 맞아요. 미국 지역 Redis에 유럽 호텔까지 캐시할 이유도 없어요. 주 DB는 하나로 둬요. 샤드 7번처럼 샤드 하나라도 쓰기는 한곳에서만 받고, 지역마다 복제본을 둬요.</p>
+</section>
+
+<section id="s8">
+  <a class="stamp" href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=6779s" target="_blank" rel="noopener">1:52:59</a>
+  <h2>WhatsApp ①: 요구사항, 규모, 연결 방식, 데이터</h2>
+<p>세 번째 사례는 WhatsApp 같은 메신저예요. 시니어·스태프 면접에 자주 나오는 이유가 있어요. 상태를 유지하는 연결, 실시간 전달, 일관성과 규모, 부분 장애와 재해 복구, 여러 기기 동기화를 한꺼번에 다뤄야 하거든요. 강사는 수천 명용 단순한 구조로 시작해서 수십억 명으로 키우고, 어디서 깨지는지 찾아 고치는 순서로 가요.</p>
+<h3>요구사항</h3>
+<p>슬라이드 위 'Core requirements'가 기능, 아래 'Non-functional requirements'가 비기능 요구사항이에요. 손글씨 밑줄이 강사가 특히 짚은 곳이에요.</p>
+<figure>
+  <img src="assets/frame-015529.webp" alt="Core requirements: 1:1 텍스트 메시지, 최대 100명 그룹 채팅, 오프라인 사용자에게 30일간 대기열에 두었다가 전달, 이미지·동영상·오디오 첨부, sent·delivered·read 상태, 온라인·오프라인과 last seen. Non-functional: 온라인일 때 500ms 이하 전달, 메시지 유실 없음, 수십억 사용자와 높은 처리량, 필요 이상 서버에 보관하지 않기, 개별 구성 요소 장애에도 버티기">
+  <figcaption>'필요 이상 서버에 보관하지 않기'가 눈에 띄어요. 전달이 끝난 메시지는 기기로 내려보내고 서버에서는 지워요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=6929s" target="_blank" rel="noopener">영상 1:55:29에서 보기</a></figcaption>
+</figure>
+<h3>봉투 뒷면 계산</h3>
+<p>슬라이드는 사용자 지표, 메시지 추정, 저장량, 대역폭 순서로 내려가요.</p>
+<figure>
+  <img src="assets/frame-015759.webp" alt="Message estimations: 500M users × 20 messages = 10 billion messages/day, 약 115,000 messages per second, Peak hours 3-5x = 350,000-500,000. Storage calculation: 메시지당 약 1KB, 1KB × 10B messages = 10 TB/day, Annual storage 3.6 PB/year. Bandwidth: 피크 동시 접속 5천만, 연결당 10KB/s, 500 GB/s">
+  <figcaption>하루 100억 건이면 DB에 초당 11만 5천 건을 써야 해요. 이 숫자가 뒤에서 Cassandra를 고르는 이유가 돼요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=7079s" target="_blank" rel="noopener">영상 1:57:59에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>항목</th><th>계산</th><th>결과</th></tr></thead>
+    <tbody>
+      <tr><td>사용자</td><td>가입 10억, DAU(Daily Active Users) 5억, 피크 동시 접속 5천만, 1인 하루 10~20건</td><td>—</td></tr>
+      <tr><td>하루 메시지</td><td>5억 × 20건</td><td>100억 건(DB 쓰기 100억 번)</td></tr>
+      <tr><td>초당 쓰기</td><td>100억 ÷ 86,400</td><td>평균 약 11만 5천, 피크 3~5배면 35만~50만</td></tr>
+      <tr><td>저장량</td><td>1KB × 100억</td><td>하루 10TB, 1년 3.6PB</td></tr>
+      <tr><td>대역폭</td><td>5천만 연결 × 10KB/s</td><td>초당 500GB</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>대부분의 메시지는 몇 초 안에 전달되고 서버에서 지워져요. 사용자는 기기에 받아 두고, 원하면 Google Drive 같은 곳에 백업해요. 미전달 메시지만 30일 보관하고, 서버에 기록을 남기는 사용자는 10% 정도로 잡아요. 강사는 이렇게 불필요한 데이터를 안 쥐고 있어서 WhatsApp이 적은 인프라로 돈다고 설명해요.</p>
+<h3>첫 번째 구조</h3>
+<p>그림 왼쪽 클라이언트에서 로드 밸런서를 거쳐 가운데 'CHAT SERVERS'로 들어가요. 채팅 서버에서 위로는 메시지 큐 → 저장 서비스 → 메시지 DB가, 오른쪽으로는 연결 캐시와 블롭 스토리지 → CDN이, 아래로는 알림 서비스와 프레즌스 서비스가 뻗어요.</p>
+<figure>
+  <img src="assets/frame-015914.webp" alt="메신저 상위 구조. CLIENT(Mobile App) → Load Balancer → CHAT SERVERS(Chat Server 세 대) → Message Queue → Message Storage Service → Message Database. 채팅 서버에서 User Connection Cache, media upload/download로 Blob Storage → CDN, Notification Service, Presence Service">
+  <figcaption>채팅 서버는 받자마자 확인 응답을 주고, 저장은 큐 뒤로 미뤄요. 쓰기와 전달을 떼어 놓은 덕에 장애에도 버텨요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=7154s" target="_blank" rel="noopener">영상 1:59:14에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>구성 요소</th><th>하는 일</th><th>예시</th></tr></thead>
+    <tbody>
+      <tr><td>모바일 앱</td><td>채팅 서버와 연결 유지, UI(User Interface), 로컬 메시지 저장, 실패 시 재시도</td><td>—</td></tr>
+      <tr><td>채팅 서버</td><td>WebSocket 유지, 사용자 사이 메시지 라우팅, 접속 추적</td><td>—</td></tr>
+      <tr><td>메시지 큐</td><td>쓰기와 전달 분리. 서버가 바로 확인 응답을 주고 비동기로 넣어요</td><td>Kafka, RabbitMQ</td></tr>
+      <tr><td>메시지 저장소</td><td>큐를 소비해 저장. 쓰기 처리량이 크고 조회 패턴이 단순해요</td><td>Cassandra, DynamoDB</td></tr>
+      <tr><td>연결 캐시</td><td>누가 온라인인지, 어느 채팅 서버에 붙었는지, 마지막 활동 시각. DB보다 훨씬 빨리 찾아요</td><td>Redis</td></tr>
+      <tr><td>미디어</td><td>파일은 블롭 스토리지, 인기 파일은 세계 곳곳의 CDN 엣지</td><td>S3, Google Cloud Storage</td></tr>
+      <tr><td>알림 서비스</td><td>오프라인 사용자에게 푸시</td><td>Apple 푸시 알림 서비스, FCM(Firebase Cloud Messaging)</td></tr>
+      <tr><td>프레즌스 서비스</td><td>하트비트를 받아 온라인 상태를 바꾸고, 관심 있는 사용자에게 알려요</td><td>—</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>폴링, 롱 폴링, WebSocket</h3>
+<p>앱과 채팅 서버가 어떻게 주고받을지 세 가지를 비교해요. 먼저 일반 폴링 그림이에요. 위쪽 빨간 'Polling' 상자에서 클라이언트가 "새 메시지 있어요?"를 반복해서 묻고, 첫 번째엔 'No new messages', 두 번째에야 메시지를 받아요.</p>
+<figure>
+  <img src="assets/frame-020414.webp" alt="Client와 Chat Server 사이 Polling 시퀀스. Periodic Polling 루프에서 Do you have new messages?, No new messages, 다시 Do you have new messages?, Here are your new messages. 아래 Long Polling 상자가 시작됨">
+  <figcaption>2초마다 묻는데 메시지가 묻자마자 도착하면 2초를 기다려야 해요. 빈 응답이 수백만 명분이면 자원 낭비도 커요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=7454s" target="_blank" rel="noopener">영상 2:04:14에서 보기</a></figcaption>
+</figure>
+<p><span class="term" data-term="롱 폴링" data-en="Long polling" data-desc="클라이언트가 요청을 보내면 서버가 새 데이터가 생기거나 시간이 다 될 때까지 응답을 미루는 방식이에요. 응답을 받으면 바로 다시 요청해요." data-g="11">롱 폴링</span>은 서버가 새 메시지가 오거나 타임아웃이 될 때까지 응답을 미뤄요. 낫긴 하지만 응답마다 연결을 닫고 새로 열어서 HTTP 핸드셰이크가 반복돼요. 기다리는 연결도 메모리와 스레드 풀 자리를 차지해요. WebSocket 그림은 초록 상자 하나로 끝나요. 위 세 줄이 처음 한 번의 연결 수립이고, 가운데 'Bi-directional Communication'이 그 연결로 양쪽이 언제든 보내는 부분이에요.</p>
+<figure>
+  <img src="assets/frame-020644.webp" alt="WebSocket 시퀀스. Initiate HTTP connection, Perform WebSocket handshake, Connection established (persistent), Bi-directional Communication 구간에서 Push new message (as soon as available)와 Send message or acknowledgment, 마지막 줄 WebSocket connection is persistent and allows real-time, bi-directional updates">
+  <figcaption>핸드셰이크는 한 번뿐이에요. 그 뒤로는 서버도 클라이언트도 새 연결 없이 언제든 보내요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=7604s" target="_blank" rel="noopener">영상 2:06:44에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>방식</th><th>동작</th><th>문제·대가</th></tr></thead>
+    <tbody>
+      <tr><td>폴링</td><td>일정 간격으로 새 메시지가 있는지 물어요</td><td>빈 응답으로 대역폭 낭비, 간격만큼 지연</td></tr>
+      <tr><td>롱 폴링</td><td>서버가 메시지나 타임아웃까지 응답을 미뤄요</td><td>연결을 계속 열고 닫는 비용, 대기 연결이 메모리와 스레드를 차지</td></tr>
+      <tr><td>WebSocket</td><td>한 번 연결해 양방향으로 계속 주고받아요</td><td>연결당 메모리가 더 들고, 이를 지원하는 로드 밸런서가 필요해요. 강사는 L7 대신 L4 로드 밸런싱을 써야 한다고 말해요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>강사의 결론은 WebSocket이에요. 메모리가 더 들어도 실시간 전달과 지연 요구사항을 생각하면 그만한 값어치가 있다는 거예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상은 WebSocket 때문에 L7(애플리케이션 계층) 대신 L4 로드 밸런서를 써야 한다고 하지만, L7 로드 밸런서도 WebSocket을 지원하는 경우가 많아요. 예를 들어 AWS(Amazon Web Services) 문서는 ALB(Application Load Balancer)가 WebSocket을 기본 지원하고, 기존 HTTP/1.1 연결을 WebSocket으로 업그레이드하면 로드 밸런서를 거쳐 클라이언트와 대상 사이에 지속 연결이 된다고 설명해요. 실제로 쓸 로드 밸런서의 문서에서 지원 여부와 유휴 타임아웃 설정을 확인하세요.</p>
+  <p class="cite">출처: <a href="https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-listeners.html" target="_blank" rel="noopener">AWS 공식 문서 — Listeners for your Application Load Balancers</a></p>
+</aside>
+<h3>채팅 서버가 죽고 살아날 때: 서비스 디스커버리</h3>
+<p>운영 환경의 채팅 서버는 죽고, 재배포되고, 늘었다 줄었다 해요. 로드 밸런서는 지금 살아 있는 서버를 알아야 해요. 그림 가운데 'SERVICE DISCOVERY CLUSTER'가 Consul 노드 셋이고, 오른쪽 아래 빨간 'Chat Server 3 (Unhealthy)'가 빠진 서버예요.</p>
+<figure>
+  <img src="assets/frame-020759.webp" alt="Service Discovery Architecture. 채팅 서버들이 register로 SERVICE DISCOVERY CLUSTER(Consul Node 1, 2, 3)에 등록하고, 클러스터가 Health Check (10s)를 보냄. Load Balancer가 Query healthy servers로 Server list를 받아 Chat Server 1, 2로만 route traffic. 왼쪽에 Server 3: removed from routing">
+  <figcaption>10초마다 헬스 체크를 해서 응답이 없는 서버 3은 라우팅 표에서 빠져요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=7679s" target="_blank" rel="noopener">영상 2:07:59에서 보기</a></figcaption>
+</figure>
+<p>서버가 뜨면 자기 IP(Internet Protocol)로 Consul이나 AWS Cloud Map 같은 레지스트리에 등록해요. 레지스트리는 10초마다 헬스 체크를 하고, 로드 밸런서는 건강한 서버 목록을 받아 라우팅 표를 고쳐요. 이게 <span class="term" data-term="서비스 디스커버리" data-en="Service discovery" data-desc="서버가 뜰 때 자기 주소를 등록하고, 헬스 체크로 살아 있는 서버 목록을 유지하는 장치예요. 로드 밸런서가 이 목록을 보고 트래픽을 보내요." data-g="12">서비스 디스커버리</span>예요.</p>
+<h3>데이터 모델</h3>
+<p>저장소를 성격에 따라 나눠요. 아래쪽 검은 띠에 관계가 정리돼 있어요.</p>
+<figure>
+  <img src="assets/frame-021144.webp" alt="Data Model 다이어그램. group_members(group_id, role, joined_at, user_id), groups(group_id, name, created_at, created_by), message_inbox(user_id, timestamp, message_id), messages(sender_id, receiver_id, ...), users(user_id, phone_number unique, username, created_at). 아래 groups → group_members is 1-to-many, users → group_members is 1-to-many, users ↔ groups is many-to-many (through group_members)">
+  <figcaption>사용자와 그룹은 group_members를 사이에 둔 다대다 관계예요. 이건 관계형 DB에, 메시지는 Cassandra에 둬요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=7904s" target="_blank" rel="noopener">영상 2:11:44에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>테이블</th><th>주요 필드</th><th>저장소</th></tr></thead>
+    <tbody>
+      <tr><td>users</td><td>user_id, phone_number(고유), username, created_at, last_seen</td><td>PostgreSQL 또는 MySQL</td></tr>
+      <tr><td>messages</td><td>message_id, sender_id, receiver_id, content, media_url, status(sent/delivered/read), timestamp, is_deleted</td><td>Cassandra(쓰기가 많아서)</td></tr>
+      <tr><td>groups, group_members</td><td>group_id, name, created_at, created_by / group_id, user_id, role, joined_at</td><td>PostgreSQL</td></tr>
+      <tr><td>접속 레지스트리</td><td>user_id, server_id, connection_id, last_active, device_type</td><td>Redis, 하트비트마다 갱신(약 300초)</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>WebSocket과 REST 흐름</h3>
+<p>클라이언트와 서버 사이 첫 여덟 단계가 시퀀스 다이어그램에 번호로 붙어 있어요. 1·2가 인증, 3·4가 전송과 확인, 5~8이 받은 메시지 전달과 수신·읽음 확인이에요.</p>
+<figure>
+  <img src="assets/frame-021259.webp" alt="WebSocket and REST API Flows 시퀀스. Client와 Server 사이 1 Authenticate(user ID, token, device info), 2 Auth success(session ID, server time, unread count), 3 Send message(receiver, content, media, timestamp), 4 Message sent ack(message ID, status, timestamp), 5 Deliver message, 6 Delivery ack, 7 Read receipt(message IDs, timestamp), 8 Read receipt update(message IDs, read by, timestamp). 오른쪽에 Sender, REST API, Media Storage 열">
+  <figcaption>받음과 읽음은 다른 신호예요. 메시지를 받았어도 열기 전까지는 읽음 확인을 보내지 않아요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=7979s" target="_blank" rel="noopener">영상 2:12:59에서 보기</a></figcaption>
+</figure>
+<p>WebSocket 위에서는 인증, 메시지 전송, 확인 응답, 수신·읽음 확인, 그리고 5~10초 간격의 하트비트가 오가요. 앱을 닫거나 브라우저 탭을 닫으면 하트비트가 끊겨 연결을 정리해요. 미디어 업로드만 REST로 따로 해요. <code>POST /api/media/upload</code>로 파일 종류·크기·대화를 보내면, 서버가 업로드 URL, 미디어 ID, 만료 시각을 돌려주고, 앱이 그 사전 서명 URL로 저장소에 직접 올려요.</p>
+</section>
+
+<section id="s9">
+  <a class="stamp" href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=8118s" target="_blank" rel="noopener">2:15:18</a>
+  <h2>WhatsApp ②: 메시지가 오가는 길</h2>
+<h3>여러 기기 동기화</h3>
+<p>사용자 A가 휴대폰·태블릿·데스크톱 세 대를, B가 휴대폰·노트북 두 대를 쓴다고 해 봐요. 다이어그램 위쪽 줄의 열 이름이 각 기기와 그 기기가 붙은 채팅 서버예요. A의 휴대폰이 서버 A로 보내면, A의 태블릿(서버 C)과 데스크톱(서버 D)에도 'Display sent message'가 가요.</p>
+<figure>
+  <img src="assets/frame-021718.webp" alt="여러 기기 동기화 시퀀스. 열: User A's Phone, Chat Server A, Chat Server C, User A's Tablet, Chat Server D, User A's Desktop, Redis. Send message, ACK (status: sent), Display sent message 두 번, Where is User B?, User B has 2 devices on Server B &amp; Server E, 아래쪽에 Delivered와 Update (status: delivered)">
+  <figcaption>Redis가 "B는 기기 두 대로 서버 B와 E에 붙어 있다"고 답해요. 사용자 단위가 아니라 기기 단위로 연결을 추적해요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=8238s" target="_blank" rel="noopener">영상 2:17:18에서 보기</a></figcaption>
+</figure>
+<p>B 쪽도 같아요. 서버 B가 휴대폰에, 서버 E가 노트북에 전달해요. B가 휴대폰에서 받으면 '받음'이 서버 A를 거쳐 A의 모든 기기로, 읽으면 '읽음'이 같은 길로 가요. B의 노트북에도 읽음이 반영돼요. 기기끼리 충돌하면 버전 번호를 붙인 '마지막 쓰기 우선'으로 풀어요.</p>
+<p>최적화도 필요해요. 새 기기에 전체 기록을 보내면 비싸니 증분 동기화를 해요. 최근 30일만 먼저 보내고, 사용자가 위로 스크롤할 때 더 오래된 걸 가져와요. 아주 오래된 건 콜드 스토리지에 두고 필요할 때 불러와요. 대가는 전달 작업량이 약 두 배가 된다는 점이에요. 그래도 사용자는 모든 기기에서 같은 대화를 기대하니 꼭 필요한 기능이에요.</p>
+<h3>둘 다 온라인일 때</h3>
+<p>열 여섯 개짜리 다이어그램을 위에서 아래로 따라가요. 서버 A가 메시지 ID를 만들고, 'ACK (status: sent)'를 돌려주고, Redis에 B의 위치를 물어 서버 B로 넘겨요. 서버 B가 실시간으로 전달하면 'Delivery ACK'가 거꾸로 돌아와요.</p>
+<figure>
+  <img src="assets/frame-022118.webp" alt="Message Flow (Both Users Online). 열: User A, Chat Server A, Redis (User Connection Cache), Chat Server B, User B, Message Queue. Send message to User B, Generate message_id, ACK (status: sent), Where is User B?, User B is on Server B, Deliver message in real time, Delivery ACK, Forward delivery ACK, Status update (delivered), 아래 Async processing 구간에 Enqueue message for analytics/archival">
+  <figcaption>서버 A는 B에게 닿기 전에 이미 '보냄'을 알려요. 저장과 분석은 아래 회색 구간처럼 비동기로 따로 가요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=8478s" target="_blank" rel="noopener">영상 2:21:18에서 보기</a></figcaption>
+</figure>
+<p>서버 A에서 서버 B로 넘기는 건 Redis Pub/Sub 모델로 해요. 그사이 메시지 큐는 Cassandra 같은 메시지 DB에 기록을 써요. B가 메시지를 열면 같은 길로 '읽음'이 돌아와요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Redis Pub/Sub은 '최대 한 번(at-most-once)' 전달이에요. Redis 공식 문서는 메시지를 한 번 보내고 나면 다시 보내지 않으며, 구독자가 그 순간 처리하지 못하거나 연결이 끊겨 있으면 메시지가 사라진다고 설명해요. 더 강한 보장이 필요하면 메시지를 저장하는 Redis Streams를 보라고 해요.</p>
+  <p>영상 설계는 메시지를 큐와 DB에도 따로 저장하니, 서버 사이 Pub/Sub 전달이 한 번 빠져도 받은편지함에서 다시 꺼낼 수 있어요. Pub/Sub만 믿고 저장을 빼면 안 된다는 뜻이에요.</p>
+  <p class="cite">출처: <a href="https://redis.io/docs/latest/develop/pubsub/" target="_blank" rel="noopener">Redis 공식 문서 — Redis Pub/Sub</a></p>
+</aside>
+<h3>받는 사람이 오프라인일 때</h3>
+<p>앞부분은 같아요. 서버 A가 Redis에서 B의 상태를 확인했더니 오프라인이에요. 다이어그램의 'User B is offline' 구간이 그다음 할 일 네 가지예요.</p>
+<figure>
+  <img src="assets/frame-022318.webp" alt="오프라인 흐름 시퀀스. 열: Chat Server A, Redis, Database Inbox, Notification Service, Message Queue, User B. Check User B online status, User B is offline 구간에서 Add message to User B's inbox (ZSET), Store message in inbox table, Send push notification for User B, Enqueue message for further processing. User B is online 구간에서 Forward message for immediate delivery. 아래 User B comes online 구간에서 Connects to chat server, Retrieve pending messages from inbox (ZSET)">
+  <figcaption>Redis 받은편지함과 DB 받은편지함 두 곳에 써요. 빠른 곳과 오래가는 곳에 함께 두는 이 구조가 뒤의 Redis 장애 대응으로 이어져요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=8598s" target="_blank" rel="noopener">영상 2:23:18에서 보기</a></figcaption>
+</figure>
+<p>B의 Redis 받은편지함(정렬 집합)에 넣고, DB의 받은편지함 테이블에도 저장하고, 알림 서비스로 푸시를 보내요. 알림 서비스는 Apple이나 Google의 푸시 시스템을 불러요. 메시지는 큐에도 넣어 DB에 영구 저장해요. 나중에 B가 앱을 열어 서버 C에 접속하면, 서버 C가 받은편지함에서 쌓인 메시지를 꺼내 보내고 A에게 상태를 알려요.</p>
+<h3>그룹 메시지</h3>
+<p>50명 그룹을 예로 들어요. 1~5번이 준비 과정이에요. 서버 A가 그룹 서비스에 'group_789'의 구성원을 묻고, 50명의 ID를 받고, Redis에서 상태를 확인해 30명 온라인, 20명 오프라인이라는 답을 받아요.</p>
+<figure>
+  <img src="assets/frame-022618.webp" alt="Group Message Fan-Out (50-person group) 시퀀스. User A가 Send message to group_789, Chat Server A가 Group Service에 Who's in group_789?, Returns 50 user IDs, Redis (Connection Cache)에 Check status of 50 users, 30 online, 20 offline. For 30 online users 구간에서 Redis Pub/Sub에 Publish to channel:user:1, user:2 ... user:30, Parallel delivery to online users로 Server B에 15명, Server C에 15명">
+  <figcaption>온라인 30명은 서버 B와 C에 15명씩 나뉘어 있어요. Pub/Sub로 두 서버에 동시에 넘기고, 각 서버가 WebSocket으로 뿌려요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=8778s" target="_blank" rel="noopener">영상 2:26:18에서 보기</a></figcaption>
+</figure>
+<p>각 기기의 확인 응답은 원래 서버 A로 모여서 A의 화면 상태를 바꿔요. 오프라인 20명은 1:1과 같은 방식이에요. Redis 받은편지함 20곳, DB 받은편지함 20줄에 쓰고, 푸시를 보내요. 메시지 본문은 큐를 거쳐 DB에 한 번만 저장해요. 마지막으로 A의 기기에는 '30명 받음, 20명 대기'가 표시돼요.</p>
+<h3>미디어는 채팅 서버를 거치지 않아요</h3>
+<p>잘못된 방법부터 짚어요. 클라이언트가 이미지를 채팅 서버에 올리고, 서버가 DB에 저장하고, 받는 사람이 서버에서 내려받는 방식이에요. 그러면 채팅 서버가 파일 전송 대역폭에 묶여서, 잘하는 일(작은 메시지를 빨리 라우팅하기) 대신 못하는 일(큰 덩어리 옮기기)을 하게 돼요.</p>
+<p>올바른 업로드 흐름이에요. 2~4번에서 서버 A가 블롭 스토리지에 사전 서명 업로드 URL을 받아 앱에 넘기고, 초록 'Direct Upload' 구간에서 앱이 S3로 바로 올려요. 7번에서 미디어 URL만 담은 채팅 메시지를 보내요.</p>
+<figure>
+  <img src="assets/frame-023018.webp" alt="Presigned URL Media Upload &amp; Download Flow. 열: User A (Sender), User A's App, Chat Server A, Blob Storage, CDN, Chat Server B. Tap Send image, Request presigned upload URL, Generate presigned upload URL, Return upload URL, Direct Upload 구간에서 Upload media using presigned URL과 Confirm upload &amp; return media URL, Send chat message with media URL, Deliver message with media URL">
+  <figcaption>파일 바이트는 앱에서 S3로 바로 가요. 채팅 서버는 URL 한 줄만 다뤄요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=9018s" target="_blank" rel="noopener">영상 2:30:18에서 보기</a></figcaption>
+</figure>
+<p>받는 쪽도 같아요. B가 미디어를 누르면 서버 B가 사전 서명 다운로드 URL을 만들어 줘요. 그다음 두 길이 있어요. 아래 주황 상자의 위쪽 'Via CDN'과 아래쪽 'Direct from Storage'예요.</p>
+<figure>
+  <img src="assets/frame-023218.webp" alt="다운로드 부분 확대. Generate presigned download URL, Return download URL, 주황 상자 안 Via CDN 구간 Download media file via CDN과 Stream media, Direct from Storage 구간 Download media file directly와 Stream media. 아래 Key Notes 상자에 Handles only small text messages">
+  <figcaption>CDN은 요청이 한 번 더 늘지만, 이 규모에서는 성능과 비용 이득이 훨씬 커요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=9138s" target="_blank" rel="noopener">영상 2:32:18에서 보기</a></figcaption>
+</figure>
+<p>강사는 CDN을 권해요. 이게 없으면 연결 10만 개를 받는 채팅 서버 하나가 몇 MB짜리 파일을 동시에 올리는 사용자 100명에 짓눌릴 수 있다고 해요. 사전 서명 URL은 짧은 TTL로 만료되고, 미디어 자체의 TTL은 메시지 보관 기간인 30일과 맞춰서 자동으로 지워져요.</p>
+</section>
+
+<section id="s10">
+  <a class="stamp" href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=9245s" target="_blank" rel="noopener">2:34:05</a>
+  <h2>WhatsApp ③: 배치 쓰기, 종단간 암호화, 속도 제한</h2>
+<h3>저장 서비스를 파티션으로 나눠 늘리기</h3>
+<p>수천 명을 넘어 더 키우려면 서버를 더 떼어 놔야 해요. 흔한 방법이 Kafka 같은 메시지 큐예요. 그림 왼쪽 메시지 큐에서 나온 세 갈래가 저장 서비스 인스턴스 셋으로 가요. 화살표마다 'assigned partitions (0-9)', '(10-19)', '(20-29)'가 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-023505.webp" alt="Message Queue에서 assigned partitions 0-9, 10-19, 20-29로 INSTANCE 1, 2, 3에 연결된 그림. 인스턴스마다 Kafka Consumer, Retry Handler, Batch Writer, Index Updater가 있고 오른쪽 Database Cluster로 이어짐. on failure와 retry 화살표">
+  <figcaption>인스턴스는 상태가 없어서 필요한 만큼 늘리고 파티션을 나눠 맡기면 돼요. 재시도도 인스턴스 안에서 처리해요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=9305s" target="_blank" rel="noopener">영상 2:35:05에서 보기</a></figcaption>
+</figure>
+<p>각 인스턴스의 Kafka 소비자가 메시지를 받아 DB 클러스터에 묶어서 써요. 실패하면 인스턴스 안의 재시도 로직이 잠시 뒤 다시 써요. 그래도 실패하면 큐에서 메시지를 지우지 않거나, <span class="term" data-term="데드 레터 큐" data-en="Dead letter queue" data-desc="여러 번 재시도해도 처리하지 못한 메시지를 따로 모아 두는 큐예요. 원래 큐를 막지 않고, 실패한 메시지를 잃지도 않게 해 줘요." data-g="13">데드 레터 큐</span>로 옮겨 나중에 따로 처리해요. 쓰기가 성공하면 인덱스 갱신기가 검색용 인덱스를 고쳐요.</p>
+<h3>처리 흐름과 배치 쓰기</h3>
+<p>한 인스턴스 안을 확대한 그림이에요. 왼쪽 위에서 검증된 메시지가 'Batch Buffer'로 들어가고, 1,000건이나 5초가 차면 'Batch Writer'로 흘러가요. 오른쪽으로 세 갈래가 나가요. 위가 DB 일괄 삽입, 가운데가 검색·분석 인덱스 갱신, 아래가 처리 완료 표시와 오프셋 커밋이에요.</p>
+<figure>
+  <img src="assets/frame-023905.webp" alt="queue validated messages → Batch Buffer → flush (1000 msgs / 5s) → Batch Writer → atomic batch insert → Database Cluster, update search &amp; analytics → Index Updater, mark processed → Commit Offset. Batch Writer에서 on failure → Retry &amp; DLQ Handler → retry failed batch">
+  <figcaption>오프셋은 저장이 끝난 뒤에 커밋해요. 중간에 죽어도 커밋 전 메시지는 다시 읽혀서 잃지 않아요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=9545s" target="_blank" rel="noopener">영상 2:39:05에서 보기</a></figcaption>
+</figure>
+<p>그 앞 단계는 이래요. 소비자가 100ms마다 500건씩 꺼내고, 20개 스레드로 병렬 처리해요. 메시지마다 스키마와 크기를 확인하고(첨부가 한도를 넘으면 오류 응답), 중복 제거용 해시를 계산하고, @멘션과 미리보기용 링크를 뽑고, 조회용 인덱스 값을 만들어요. 배치 버퍼는 대상 샤드별로 정렬하고 대화별로 묶어서 삽입문을 준비해요.</p>
+<p>1,000건 중 10건이 실패하면, 간단한 재시도를 먼저 해 봐요. 속도 제한에 걸린 것처럼 단순한 이유일 수 있거든요. 그래도 안 되면 데드 레터 큐로 보내고, 거기서 여러 단계 재시도를 더 한 뒤에야 사용자에게 전송 실패를 알려요.</p>
+<p>배치의 효과를 강사는 숫자로 보여 줘요. 한 건 삽입에 5ms라면 1,000건을 하나씩 넣으면 5초, 한 번에 묶으면 50ms예요. 같은 축으로 그리면 이 정도 차이예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 560 150" role="img" aria-label="1,000건 개별 삽입 5,000ms와 배치 삽입 50ms를 같은 축에 그린 가로 막대">
+    <g id="fig-batch"></g>
+  </svg>
+  <figcaption>배치 막대는 거의 보이지 않아요. 영상은 이걸 약 100배 처리량 향상이라고 해요. 초당 수백만 건을 쓸 때 차이가 드러나요.</figcaption>
+</figure>
+<p>Cassandra에 쓰는 코드 예시예요. <code>BEGIN BATCH</code>와 <code>END BATCH</code> 사이에 <code>INSERT</code>가 이어지고, 주석이 중요해요. 같은 메시지를 두 참여자의 샤드에 모두 쓴다고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-024105.webp" alt="Writing to Cassandra 코드. BEGIN BATCH, INSERT INTO messages (message_id, sender_id, receiver_id, content, ...) VALUES ('20241105120000000001', '123', '456', 'Hello', ...); 같은 message_id로 sender와 receiver를 바꾼 두 번째 INSERT, 주석 Same message written to both participants' shards, (998 more messages), END BATCH">
+  <figcaption>두 <code>INSERT</code>의 메시지 ID가 같고 보낸 사람과 받는 사람만 바뀌었어요. 마지막 섹션의 '대화 상대 샤드에도 복사' 전략이 여기서 미리 나와요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=9665s" target="_blank" rel="noopener">영상 2:41:05에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Cassandra 공식 문서는 <code>BATCH</code>의 역할을 이렇게 적어요. 여러 수정 문을 한 문장으로 묶어 클라이언트와 서버 사이(때로는 코디네이터와 복제본 사이) 왕복을 줄이고, 같은 파티션 키에 속한 수정은 격리되어 적용돼요. 기본은 로그 배치(logged batch)라서, 배치 로그로 묶인 수정이 결국 모두 적용되거나 하나도 적용되지 않게 해 줘요.</p>
+  <p>영상처럼 같은 메시지를 두 사용자의 샤드(서로 다른 파티션)에 쓸 때, 이 로그 배치가 "한쪽에만 남는" 상황을 막는 장치가 돼요. 단일 파티션에 대한 로그 배치는 최적화로 언로그 배치로 바뀐다는 설명도 같은 문서에 있어요.</p>
+  <p class="cite">출처: <a href="https://cassandra.apache.org/doc/latest/cassandra/developing/cql/dml.html" target="_blank" rel="noopener">Apache Cassandra 공식 문서 — Data manipulation (BATCH)</a></p>
+</aside>
+<h3>종단간 암호화</h3>
+<p>WhatsApp에서는 메시지가 보내는 기기에서 암호화되고 받는 기기에서만 풀려요. 사이의 채팅 서버 A와 B도 내용을 못 읽어요. 강사는 Signal 프로토콜로 이걸 설명해요. 다이어그램은 열 셋이에요. 왼쪽 사용자 A, 가운데 초록 키 서버, 오른쪽 사용자 B예요. 강사가 왼쪽에 'Pr'(개인 키), 가운데에 'Pu'(공개 키)라고 적었어요.</p>
+<figure>
+  <img src="assets/frame-024305.webp" alt="End-to-End Encryption: Simplified Signal Protocol Flow. User A (Sender)가 Upload public identity key, User B (Receiver)가 Upload public identity key + prekeys, User A가 Fetch User B's keys (identity + one prekey), Return B's keys, User A에서 User B로 Encrypted message + A's ephemeral public key, User B에서 Decrypt message → secure session established. 손글씨 Pr, Pu">
+  <figcaption>개인 키는 기기를 떠나지 않아요. 키 서버는 공개 키만 갖고 있어서 메시지를 풀 수 없어요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=9785s" target="_blank" rel="noopener">영상 2:43:05에서 보기</a></figcaption>
+</figure>
+<ol class="steps">
+  <li><b>가입 때 신원 키 쌍을 만들어요</b> — 공개 키는 키 서버에 올리고, 개인 키는 기기에만 둬요.</li>
+  <li><b>B는 <span class="term" data-term="프리키" data-en="Prekey" data-desc="받는 사람이 미리 서버에 올려 두는 공개 키 묶음이에요. 받는 사람이 오프라인이어도 보내는 사람이 바로 암호화 세션을 시작할 수 있게 해 줘요." data-g="15">프리키</span>를 미리 올려 둬요</b> — 서명된 프리키 100개 정도를 올려 두면, 서버가 앞으로 대화를 시작할 사람을 위해 보관해요.</li>
+  <li><b>A가 B의 키를 가져와요</b> — B의 신원 키와 프리키 하나를 받아요.</li>
+  <li><b>A가 세션을 만들고 보내요</b> — 두 사람만 아는 키를 맞추고, 암호문과 A의 임시 공개 키를 함께 보내요.
+    <span class="done">B가 받은 메시지를 풀면 보안 세션이 성립해요</span></li>
+</ol>
+<p>강사는 여기에 메시지 카운터를 더하면, 세션 키가 털려도 메시지 하나하나를 풀기가 매우 어려워진다고 덧붙여요. 말로는 "A의 공개 키로 암호화하고 A의 공개 키로 푼다"고 설명하는데, 화면의 시퀀스는 암호문에 'A의 임시 공개 키'를 붙여 보내는 것으로 그려져 있어요. 아래 보충 설명에서 실제 프로토콜을 짚었어요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Signal의 실제 구조는 두 단계예요. 먼저 X3DH(Extended Triple Diffie-Hellman) 키 합의로 공유 비밀을 만들어요. 여기 쓰이는 공개 키는 A의 신원 키와 임시 키, B의 신원 키, 서명된 프리키, 일회용 프리키예요. 일회용 프리키는 이름 그대로 한 번의 합의에만 써요.</p>
+  <p>그다음 메시지는 공개 키로 직접 암호화하지 않아요. Double Ratchet 알고리즘이 공유 비밀에서 메시지마다 다른 대칭 메시지 키를 뽑아 써요. 공식 문서는 보내고 받는 모든 메시지가 고유한 메시지 키로 암호화된다고 설명해요. 영상의 '메시지 카운터'는 이 메시지별 키를 단순하게 표현한 것으로 보면 돼요.</p>
+  <p class="cite">출처: <a href="https://signal.org/docs/specifications/x3dh/" target="_blank" rel="noopener">Signal — The X3DH Key Agreement Protocol</a> · <a href="https://signal.org/docs/specifications/doubleratchet/" target="_blank" rel="noopener">Signal — The Double Ratchet Algorithm</a></p>
+</aside>
+<h3>속도 제한과 남용 방지</h3>
+<p>속도 제한이 없으면 공격자가 데이터를 긁어 가거나 DDoS를 걸 수 있어요. 그림 왼쪽 'User Action'에서 행동 종류에 따라 갈라져요. 위쪽 파란 'PER-USER LIMITS' 상자가 메시지·그룹 생성·미디어 업로드이고, 아래가 연결 시도와 그룹 초대예요. 오른쪽 상자마다 따로 쓰는 카운터가 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-024505.webp" alt="Rate Limiting and Abuse Prevention Flow. User Action → Action Type. PER-USER LIMITS에 Send Message → Check Message Token Bucket, Create Group → Check Group Create Counter, Upload Media → Check Media Quota. 아래 Connect → Connection Attempt → Check IP Connection Counter, Group Invite → Group Invite → Check Group Invite Counter">
+  <figcaption>행동마다 카운터와 한도가 달라요. 강제 절차는 모두 같아요. 넘었으면 막고, 아니면 통과해요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=9905s" target="_blank" rel="noopener">영상 2:45:05에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>행동</th><th>카운터</th><th>영상의 예시 한도</th></tr></thead>
+    <tbody>
+      <tr><td>메시지 전송</td><td>메시지 <span class="term" data-term="토큰 버킷" data-en="Token bucket" data-desc="통에 토큰이 일정 속도로 채워지고, 요청 하나가 토큰 하나를 쓰는 속도 제한 방식이에요. 토큰이 없으면 요청을 막아요." data-g="14">토큰 버킷</span></td><td>분당 100건</td></tr>
+      <tr><td>그룹 생성</td><td>그룹 생성 카운터</td><td>시간당 5개 이상이면 과해요</td></tr>
+      <tr><td>미디어 업로드</td><td>미디어 할당량</td><td>분당 10~100개</td></tr>
+      <tr><td>연결 시도</td><td>IP 연결 카운터</td><td>1분 안에 서로 다른 IP 5곳에서 접속 시도</td></tr>
+      <tr><td>그룹 초대</td><td>그룹 초대 카운터</td><td>—</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>숫자는 예시일 뿐이고, 요구사항 단계에서 정할 값이에요. 한도를 넘었을 때의 대응은 점점 강해져요. 그림의 오른쪽 세로 줄이 단계예요.</p>
+<figure>
+  <img src="assets/frame-024705.webp" alt="Show Error Message → Show Too Many Requests → Require CAPTCHA → Progressive Penalty → Warning, Restriction 1 Hour, Restriction 24 Hours, Account Suspension">
+  <figcaption>비밀번호를 여러 번 틀렸을 때처럼, 반복할수록 제한이 길어져요. 마지막엔 사람이 직접 검토해요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=10025s" target="_blank" rel="noopener">영상 2:47:05에서 보기</a></figcaption>
+</figure>
+<p>처음엔 "1분에 요청이 너무 많아요, 60초 뒤 다시 시도하세요" 같은 경고나 CAPTCHA(Completely Automated Public Turing test to tell Computers and Humans Apart)를 보여요. 반복하면 1시간, 그다음 24시간 제한, 마지막엔 계정을 정지하고 사람이 검토해요. 봇이나 해커인지, 규칙을 몰랐던 사용자인지 확인하고 연락해요. 다시 열어도 같은 한도가 걸리고, 의심 계정 표시가 붙어 한 번 더 걸리면 영구 삭제될 수 있어요.</p>
+<p>토큰 버킷 코드는 이렇게 생겼어요. 생성자에서 용량과 채움 속도를 받고, 요청마다 <code>refill()</code>로 흐른 시간만큼 토큰을 채운 뒤, 토큰이 1개 이상이면 하나 빼고 통과시켜요.</p>
+<figure>
+  <img src="assets/frame-024905.webp" alt="class RateLimiter 코드. __init__(self, capacity, refill_rate)에서 capacity, tokens, refill_rate, last_refill 설정. allow_request(self, user_id)는 refill 후 tokens &gt;= 1이면 1을 빼고 True, 아니면 False (Rate limited). refill은 elapsed = now - last_refill, tokens_to_add = elapsed * refill_rate, tokens = min(capacity, tokens + tokens_to_add). 뒤로 Block Action, All Servers Use Central Store, Redis or Database 상자">
+  <figcaption><code>min(capacity, …)</code> 덕분에 오래 쉬어도 토큰이 용량 이상으로 쌓이지 않아요. 순간적으로 몰려도 용량만큼만 통과해요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=10145s" target="_blank" rel="noopener">영상 2:49:05에서 보기</a></figcaption>
+</figure>
+<p>그림 아래쪽 'All Servers Use Central Store'가 마지막 조건이에요. 사용자마다 다른 채팅 서버에 붙어 있으니, 카운터를 서버마다 따로 두면 서버를 옮겨 다니며 우회할 수 있어요. 그래서 Redis 같은 중앙 저장소를 모두가 쓰고, 원자적 연산으로 정확도를 지켜요. 24시간 정도만 들고 있는 값이라 DB보다 Redis가 맞아요.</p>
+</section>
+
+<section id="s11">
+  <a class="stamp" href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=10330s" target="_blank" rel="noopener">2:52:10</a>
+  <h2>WhatsApp ④: 샤딩, 정리 작업, 장애, 기능 출시</h2>
+<h3>샤딩 기준 고르기</h3>
+<p>서버를 늘리고 속도 제한을 걸어도, DB 하나로는 이 트래픽을 못 받아요. 메시지 DB를 여러 인스턴스로 나눠야 하고, 핵심 결정은 무엇으로 나눌지예요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>기준</th><th>좋은 점</th><th>문제</th></tr></thead>
+    <tbody>
+      <tr><td>사용자 ID</td><td>한 사용자의 메시지가 한 샤드에 모여 한 곳에서 읽어요</td><td>많이 쓰는 사용자가 핫스팟이 돼서 샤드 크기가 불균형해져요</td></tr>
+      <tr><td>메시지 ID</td><td>데이터가 고르게 퍼져요</td><td>한 사람 메시지를 읽으려면 모든 샤드를 뒤지고 합쳐야 해서 느리고 비싸요</td></tr>
+      <tr><td>사용자 ID + 상대 샤드에 복사</td><td>각자 자기 샤드만 읽으면 돼서 읽기가 아주 빨라요</td><td>메시지마다 두 번 써서 쓰기량이 두 배예요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>강사는 하나만 고르는 것보다 여러 방법과 그 트레이드오프를 말하는 게 면접의 핵심이라고 해요. 그러고 나서 세 번째 방법을 권해요. 그림 가운데 'PRIMARY SHARDS (WRITES ONLY)' 상자 안 글씨가 그 내용이에요.</p>
+<figure>
+  <img src="assets/frame-025325.webp" alt="Sharding Router hash(user_id)가 Writes for User A와 Writes for User B를 PRIMARY SHARDS (WRITES ONLY)의 Shard A와 Shard B로 보냄. 상자 안 설명 Conversation A↔B: write copy to each user's shard, Duplicate per participant for fast reads. 각 샤드에서 Replication (async/semisync)으로 오른쪽 READ REPLICAS. User A와 User B는 Read recent/history로 각자의 복제본에서 읽음. 손글씨 msg_id">
+  <figcaption>A와 B의 대화는 A의 샤드와 B의 샤드에 모두 들어가요. 읽기는 각자 자기 샤드의 복제본에서만 해요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=10405s" target="_blank" rel="noopener">영상 2:53:25에서 보기</a></figcaption>
+</figure>
+<p>각 샤드는 다시 복제본을 둬요. 사용자는 복제본에서 기록을 읽고, 쓰기를 받는 주 샤드는 건드리지 않아요. 여기서 강사가 정리하는 원칙이 있어요. 샤딩은 쓰기 확장, 복제는 읽기 확장이에요. 어느 쪽이 더 중요한지는 요구사항 단계에서 물었어야 하고, 놓쳤다면 지금이라도 추측하지 말고 물어요. 답에 따라 복제, 메시지 ID 샤딩, 타임스탬프 샤딩 중에서 고를 수 있어요.</p>
+<p>샤드 하나를 확대하면 이래요. 사용자 ID 1~1,000이 샤드 1의 주 노드로 가고, 주 노드는 복제본 2~3개로 비동기 복제해요. 읽기 쿼리는 오른쪽 'REPLICA NODES (READS ONLY)'로만 가요.</p>
+<figure>
+  <img src="assets/frame-025710.webp" alt="Database Replication Architecture (Per Shard). Client (writes)가 write queries로 Primary Node (writes only), 주 노드가 replication (async/semisync)으로 Replica 1, 2, 3(optional). Client (reads)는 read queries로 REPLICA NODES (READS ONLY)만 사용. 손글씨 us_id 1-1k">
+  <figcaption>읽지 않은 메시지를 열어 보는 건 복제본, 누군가에게 쓰는 건 주 노드예요. 복제본은 최종 일관성으로 따라와요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=10630s" target="_blank" rel="noopener">영상 2:57:10에서 보기</a></figcaption>
+</figure>
+<h3>쓰레기 데이터 정리</h3>
+<p>이 규모에서는 다시 안 읽힐 데이터가 계속 쌓여요. 만료된 미디어, 오래된 미전달 메시지, 끊긴 연결 같은 것들이에요. 그림 왼쪽 위 'Job Scheduler (Airflow / Cron)'가 작업을 만들고, 가운데 'Job Queue'가 쌓아 두고, 왼쪽 아래 'Worker Pool'이 꺼내서 가운데 초록 'CLEANUP JOBS'를 실행해요.</p>
+<figure>
+  <img src="assets/frame-025825.webp" alt="Scheduled Jobs: Cleanup Infrastructure. Job Scheduler (Airflow / Cron) → enqueue scheduled tasks → Job Queue (separate from message queue) → pull jobs → Worker Pool (containerized executors), ack / requeue on failure. CLEANUP JOBS 상자에 Expired Media, Undelivered Messages, Stale Connections, DB Compaction, Analytics Rollups. job status, queue depth, job results는 오른쪽 Monitoring (success/failure, metrics)으로">
+  <figcaption>작업 큐는 메시지 큐와 따로 둬요. 정리 작업이 밀려도 메시지 전달에 영향을 주지 않게요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=10705s" target="_blank" rel="noopener">영상 2:58:25에서 보기</a></figcaption>
+</figure>
+<p>워커는 작업을 받으면 확인 응답을 주고, 실패하면 큐에 되돌려요. 결과는 모니터링으로 보내서 시간이 지나며 얼마나 잘 도는지 보고 고쳐요. 한 번 만들고 잊는 장치가 아니에요. 트레이드오프도 분명해요. 모니터링하고 디버깅할 대상이 하나 더 생겨요. 하지만 하지 않으면 쓰레기가 쌓여 결국 더 큰 비용으로 해야 해요.</p>
+<h3>장애 1: Redis가 죽으면</h3>
+<p>지금까지는 모두가 행복한 정상 흐름이었어요. 실제로는 어디서든 장애가 나요. 먼저 캐시 장애예요. 미전달 메시지 받은편지함이 Redis에 있는데 Redis 클러스터가 죽으면 어떻게 될까요? 그림의 번호가 답이에요. (1)에서 빠른 Redis 받은편지함에 쓰고, (2)에서 오래가는 DB 받은편지함에도 백업으로 써요.</p>
+<figure>
+  <img src="assets/frame-030055.webp" alt="Cache Failure: Dual-Write Pattern (Redis + Database). User A (Sender)가 Send message → Chat Server. (1) Write undelivered message (fast)와 Try fetch pending messages는 Redis Inbox (Fast, 7-day TTL), Redis down이면 fallback to DB. (2) Write backup copy (durable), Fallback if Redis empty/unavailable, Retrieve undelivered message는 Database Inbox (Permanent storage). Deliver message, Comes online → fetch messages로 User B (Offline Receiver)">
+  <figcaption>처음부터 두 곳에 써 뒀기 때문에 Redis가 죽어도 잃는 메시지가 없어요. 느린 경로로 넘어갈 뿐이에요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=10855s" target="_blank" rel="noopener">영상 3:00:55에서 보기</a></figcaption>
+</figure>
+<p>읽을 때는 Redis를 먼저 시도하고, 비었거나 응답이 없으면 DB에서 읽어요. 실패한 사실은 로그로 남겨 나중에 CloudWatch 같은 곳에서 추적해요. 느리지만 전체가 실패하는 것보다 나아요. Redis가 돌아오면 백그라운드 작업이 DB 받은편지함에서 아직 전달되지 않은 행을 골라 Redis에 다시 채우고, DB 기록은 그대로 둬요. 그 뒤로는 다시 Redis 중심으로 돌아가요. 이 그림의 Redis 받은편지함에는 7일 TTL이 적혀 있어요. 요구사항의 30일 보관은 DB 쪽이 맡는 셈이에요.</p>
+<h3>여러 지역으로 펼치기</h3>
+<p>사용자는 전 세계에 있어요. 지역마다 채팅 서버, Redis 클러스터, DB 샤드까지 모두 갖춘 풀스택을 둬서 따로 돌 수 있게 해요. 그림 가운데 'GeoDNS'가 사용자를 가까운 지역으로 보내요. 위 상자가 유럽(아일랜드), 아래 상자가 아시아·태평양(싱가포르)이에요.</p>
+<figure>
+  <img src="assets/frame-030440.webp" alt="Multi-Region &amp; Cross-Region Message Flow. User B (London)와 User A (Tokyo)가 DNS lookup으로 GeoDNS (api.whatsapp.com)에 묻고 nearest IP로 연결. EU WEST (IRELAND)와 APAC (SINGAPORE) 상자 각각에 Load Balancer, Chat Server, Redis Cluster, persistent session. APAC Redis에서 lookup user B, user B in EU West, route to B로 유럽 채팅 서버에 전달, deliver via WebSocket">
+  <figcaption>도쿄의 A는 싱가포르에, 런던의 B는 아일랜드에 붙어요. 상대가 어느 지역에 있는지는 Redis에서 찾아 넘겨요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=11080s" target="_blank" rel="noopener">영상 3:04:40에서 보기</a></figcaption>
+</figure>
+<p>지역마다 사용자 수가 다르니 채팅 서버 수도 달라요. 사용자가 많은 아일랜드에는 많이, 적은 곳에는 적게 둬요.</p>
+<h3>장애 2: Kafka 클러스터가 통째로 죽으면</h3>
+<p>Kafka 클러스터에는 브로커라고 부르는 서버가 여럿 있어요. 토픽은 파티션으로 나뉘고, 파티션마다 리더와 복제본이 있어요. 생산자는 리더에 쓰고, 복제본은 이중화를 맡아요. 브로커 하나가 죽으면 새 브로커를 넣고, Kafka가 시간을 두고 파티션을 다시 나눠요.</p>
+<p>클러스터 전체가 죽는 건 드물지만 가능해요. 그러면 채팅 서버가 메시지를 발행하지 못하고, 저장 서비스도 소비하지 못해 데이터가 사라질 수 있어요. 그림이 복구 순서예요. 왼쪽 위 빨간 'Old Kafka Cluster (destroyed)'가 죽으면 새 클러스터를 띄우고, 저장 서비스가 DB에서 마지막으로 처리한 메시지 ID를 찾아요. 채팅 서버에 그 이후 메시지를 요청해 새 Kafka에 다시 발행하고, 정상 소비로 돌아가요.</p>
+<figure>
+  <img src="assets/frame-030710.webp" alt="Disaster Recovery: Kafka Cluster Restoration. Old Kafka Cluster (destroyed) → Failure detected → new cluster provisioned → New Kafka. Message Storage Service (consumers)가 Query last processed message_id로 Message Database 조회, Chat Servers (producers)에 Request messages since last_id, Return missing messages, Republish missing messages와 Resume normal consumption으로 New Kafka Cluster (provisioned)">
+  <figcaption>'마지막으로 처리한 ID 이후'를 다시 보내는 게 핵심이에요. 그러려면 채팅 서버가 그동안 메시지를 쥐고 있어야 해요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=11230s" target="_blank" rel="noopener">영상 3:07:10에서 보기</a></figcaption>
+</figure>
+<p>그래서 채팅 서버에 로컬 버퍼를 둬요. 발행이 실패하면 오류를 로그에 남기고 메모리 버퍼에 쌓아요. 버퍼는 10만 건까지이고, 넘치면 전체를 실패시키지 않고 가장 오래된 것부터 버려요. 일정 간격으로 Kafka가 돌아왔는지 보고 다시 발행해요. 이 간격은 새 클러스터를 띄우는 시간보다 길게 잡아요. 영상은 2초(2,000ms)를 예로 들어요. 채팅 서버까지 함께 죽을 때를 대비해 로컬 디스크에 추가 전용 로그 파일도 남겨요. 서버가 살아나면 이 파일을 다시 읽어 발행하고, 성공하면 지워요.</p>
+<h3>기능은 조금씩 켜요: 피처 플래그</h3>
+<p>큰 시스템은 새 기능을 모든 사용자에게 한 번에 내보내지 않아요. 그림 왼쪽 채팅 서버가 오른쪽 위 'Feature Flags Store'에 지원 기능을 묻고, 사용자·그룹별로 점진적으로 켜진 기능 목록을 받아요. 아래 두 줄이 받은 결과의 쓰임이에요. 새 앱(v2.24.5)에는 새 기능을 담아 보내고, 구버전(v2.20)에는 지원하지 않는 필드를 빼고 보내요.</p>
+<figure>
+  <img src="assets/frame-031210.webp" alt="Feature Flags 그림. Chat Server가 check supported features로 Feature Flags Store에 묻고, gradual enablement per user/group, return enabled features를 받음. send messages with new features로 Client App (v2.24.5), strip unsupported fields로 Older Client (v2.20). 손글씨 LaunchDarkly">
+  <figcaption>같은 메시지라도 받는 앱 버전에 맞춰 모양을 바꿔요. 구버전 앱이 모르는 필드 때문에 깨지지 않게요. <a href="https://www.youtube.com/watch?v=soTfFFIQQ8U&amp;t=11530s" target="_blank" rel="noopener">영상 3:12:10에서 보기</a></figcaption>
+</figure>
+<p><span class="term" data-term="피처 플래그" data-en="Feature flag" data-desc="코드를 다시 배포하지 않고 기능을 켜고 끄는 설정 값이에요. 환경별, 사용자 비율별로 다르게 켤 수 있어요." data-g="16">피처 플래그</span> 저장소는 클라우드마다 있고, 강사가 전 직장에서 쓴 LaunchDarkly 같은 외부 도구도 있어요. '새 테마 켜짐' 같은 키-값을 환경별로 다르게 둬요. 스테이징에서는 켜서 개발자가 확인하고, 운영에서는 끄거나 20% 사용자에게만 켜요. 오류 로그가 없으면 모두에게 열어요.</p>
+<h3>마지막으로: 어떻게 접근할까요</h3>
+<p>강사는 전체를 접근법으로 정리해요.</p>
+<ul class="checklist">
+  <li>요구사항을 정하고 숫자부터 계산해요. 그래야 저장소와 Kafka가 필요한지 판단할 수 있어요.</li>
+  <li>Redis Pub/Sub나 샤딩으로 바로 뛰지 말고, 수천 명용 단순한 구조에서 시작해 면접관과 대화하며 키워요.</li>
+  <li>병목을 찾아요. 이 사례에서는 Kafka, 속도 제한, DB 장애였어요.</li>
+  <li>결정마다 비용을 말해요. WebSocket은 메모리를 더 쓰지만 메신저에서는 그만한 값어치가 있고, 다른 시스템이라면 폴링이 나을 수도 있어요.</li>
+  <li>설계가 안정된 뒤에 장애를 다뤄요. 주요 구성 요소도 정하기 전에 장애부터 파고들지 않아요.</li>
+</ul>
+<p>외워서 되는 게 아니라, 단계를 알고 시스템마다 흐름을 따라가며 트레이드오프를 말하는 거예요. 한두 시간에 완벽한 시스템을 기대하는 면접은 없어요. 면접관은 어떻게 생각하는지, 그냥 좋아서 고르는 건 아닌지를 봐요. 그래서 설계하면서 생각을 소리 내어 말하라고 해요. 잘못된 길로 가면 면접관이 힌트를 줘서 방향을 잡아 줄 수 있거든요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 이름과 숫자가 잘못 받아적힌 곳이 많아요. 화면과 영상 설명란을 기준으로 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>Hike Simon</td><td>Hayk Simonyan</td><td>강사 이름. 영상 설명란 기준</td></tr>
+      <tr><td>CP theorem</td><td>CAP theorem</td><td></td></tr>
+      <tr><td>lead code</td><td>LeetCode</td><td></td></tr>
+      <tr><td>roundroin / list connections</td><td>round-robin / least connections</td><td>로드 밸런서 알고리즘</td></tr>
+      <tr><td>PostcarSQL / possql / postgrql</td><td>PostgreSQL</td><td></td></tr>
+      <tr><td>radius / Rady&#x27;s / radies</td><td>Redis</td><td></td></tr>
+      <tr><td>elastic search</td><td>Elasticsearch</td><td></td></tr>
+      <tr><td>dbium / bases connector</td><td>Debezium / Debezium connector</td><td>화면 표기 기준</td></tr>
+      <tr><td>popsup</td><td>Pub/Sub</td><td>Redis Pub/Sub</td></tr>
+      <tr><td>acid / ACIT</td><td>ACID</td><td></td></tr>
+      <tr><td>free 9 uptime</td><td>three nines(99.9%)</td><td>화면: 99.9%+ uptime</td></tr>
+      <tr><td>chrome job</td><td>cron job</td><td></td></tr>
+      <tr><td>console</td><td>Consul</td><td>화면: Consul Node</td></tr>
+      <tr><td>capture</td><td>CAPTCHA</td><td></td></tr>
+      <tr><td>large dartly / launch darkly</td><td>LaunchDarkly</td><td></td></tr>
+      <tr><td>OG</td><td>Ogg</td><td>오디오 형식</td></tr>
+      <tr><td>double storage</td><td>blob storage</td><td></td></tr>
+      <tr><td>cashm / time to leave</td><td>cache miss / time to live</td><td></td></tr>
+      <tr><td>list accessed</td><td>least accessed</td><td>LRU 설명</td></tr>
+      <tr><td>log timeouts</td><td>lock timeouts</td><td></td></tr>
+      <tr><td>text selection</td><td>tech stack selection</td><td>화면 피라미드 문구</td></tr>
+      <tr><td>fundamental stickers</td><td>Fundamental seekers</td><td>화면 문구</td></tr>
+      <tr><td>dividing ... with 40 which are the days in the month</td><td>30</td><td>화면: 516.5M / 30 = 17M visits per day</td></tr>
+      <tr><td>2011 status</td><td>201 status</td><td>HTTP 201 Created</td></tr>
+      <tr><td>1,00 queries per second</td><td>1,000 queries per second</td><td></td></tr>
+      <tr><td>server ids</td><td>sender ids</td><td>메시지 테이블 필드</td></tr>
+      <tr><td>suspect the account</td><td>suspend the account</td><td></td></tr>
+      <tr><td>dispatching</td><td>batching</td><td>(추정)</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-8"><dt>격리 수준<span class="en">Isolation level</span></dt><dd>동시에 도는 트랜잭션이 서로의 변경을 얼마나 볼 수 있는지 정하는 DB 설정이에요. 높일수록 안전하지만 동시 처리량이 줄어요.</dd></div>
+    <div class="g" id="g-13"><dt>데드 레터 큐<span class="en">Dead letter queue</span></dt><dd>여러 번 재시도해도 처리하지 못한 메시지를 따로 모아 두는 큐예요. 원래 큐를 막지 않고, 실패한 메시지를 잃지도 않게 해 줘요.</dd></div>
+    <div class="g" id="g-11"><dt>롱 폴링<span class="en">Long polling</span></dt><dd>클라이언트가 요청을 보내면 서버가 새 데이터가 생기거나 시간이 다 될 때까지 응답을 미루는 방식이에요. 응답을 받으면 바로 다시 요청해요.</dd></div>
+    <div class="g" id="g-7"><dt>멱등성 키<span class="en">Idempotency key</span></dt><dd>같은 요청을 여러 번 보내도 한 번만 처리되도록 요청에 붙이는 고유 값이에요. 예약 버튼을 두 번 눌러도 예약이 하나만 생기게 해 줘요.</dd></div>
+    <div class="g" id="g-10"><dt>변경 데이터 캡처<span class="en">Change Data Capture</span></dt><dd>DB의 변경 기록(로그)을 읽어 다른 시스템으로 흘려보내는 방법이에요. 애플리케이션 코드를 고치지 않고 검색 인덱스를 따라가게 할 수 있어요.</dd></div>
+    <div class="g" id="g-3"><dt>서명된 URL<span class="en">Signed URL / Pre-signed URL</span></dt><dd>서버가 서명을 붙여 만든, 정해진 시간 뒤 만료되는 파일 주소예요. 앱이 서버를 거치지 않고 저장소에서 파일을 직접 올리거나 받게 해 줘요.</dd></div>
+    <div class="g" id="g-12"><dt>서비스 디스커버리<span class="en">Service discovery</span></dt><dd>서버가 뜰 때 자기 주소를 등록하고, 헬스 체크로 살아 있는 서버 목록을 유지하는 장치예요. 로드 밸런서가 이 목록을 보고 트래픽을 보내요.</dd></div>
+    <div class="g" id="g-4"><dt>이그레스 비용<span class="en">Egress cost</span></dt><dd>데이터가 클라우드 밖으로 나갈 때 내는 요금이에요. 스트리밍 서비스에서는 저장 비용만큼 큰 비중을 차지해요.</dd></div>
+    <div class="g" id="g-6"><dt>일관된 해싱<span class="en">Consistent hashing</span></dt><dd>서버와 키를 같은 원 위에 놓고, 키를 시계 방향으로 가장 가까운 서버에 두는 방식이에요. 서버를 하나 더해도 그 서버 몫의 키만 옮겨요.</dd></div>
+    <div class="g" id="g-5"><dt>읽기 복제본<span class="en">Read replica</span></dt><dd>주 DB의 변경을 따라 복사해 두고 읽기만 받는 DB예요. 읽기 부하를 나누지만 복제가 늦으면 방금 쓴 값이 안 보일 수 있어요.</dd></div>
+    <div class="g" id="g-2"><dt>최종 일관성<span class="en">Eventual consistency</span></dt><dd>쓰기 직후에는 복제본마다 값이 다를 수 있지만, 시간이 지나면 같아지는 성질이에요. 검색 결과처럼 몇 초 늦어도 되는 데이터에 써요.</dd></div>
+    <div class="g" id="g-14"><dt>토큰 버킷<span class="en">Token bucket</span></dt><dd>통에 토큰이 일정 속도로 채워지고, 요청 하나가 토큰 하나를 쓰는 속도 제한 방식이에요. 토큰이 없으면 요청을 막아요.</dd></div>
+    <div class="g" id="g-15"><dt>프리키<span class="en">Prekey</span></dt><dd>받는 사람이 미리 서버에 올려 두는 공개 키 묶음이에요. 받는 사람이 오프라인이어도 보내는 사람이 바로 암호화 세션을 시작할 수 있게 해 줘요.</dd></div>
+    <div class="g" id="g-16"><dt>피처 플래그<span class="en">Feature flag</span></dt><dd>코드를 다시 배포하지 않고 기능을 켜고 끄는 설정 값이에요. 환경별, 사용자 비율별로 다르게 켤 수 있어요.</dd></div>
+    <div class="g" id="g-9"><dt>행 잠금<span class="en">Row locking (SELECT ... FOR UPDATE)</span></dt><dd>읽은 행을 트랜잭션이 끝날 때까지 다른 트랜잭션이 고치지 못하게 잠그는 방법이에요. 같은 행을 노리는 요청만 줄 세우고 나머지는 그대로 병렬로 가요.</dd></div>
+    <div class="g"><dt>ACID</dt><dd>Atomicity, Consistency, Isolation, Durability</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>ALB</dt><dd>Application Load Balancer</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>AWS</dt><dd>Amazon Web Services</dd></div>
+    <div class="g"><dt>BM25</dt><dd>Best Matching 25</dd></div>
+    <div class="g"><dt>CAP</dt><dd>Consistency, Availability, Partition tolerance</dd></div>
+    <div class="g" id="g-1"><dt>CAP 정리<span class="en">CAP theorem</span></dt><dd>네트워크가 갈라졌을 때 일관성과 가용성 중 하나를 포기해야 한다는 분산 시스템의 원리예요. 영상은 구성 요소마다 다른 쪽을 고를 수 있다고 말해요.</dd></div>
+    <div class="g"><dt>CAPTCHA</dt><dd>Completely Automated Public Turing test to tell Computers and Humans Apart</dd></div>
+    <div class="g"><dt>CDC</dt><dd>Change Data Capture</dd></div>
+    <div class="g"><dt>CDN</dt><dd>Content Delivery Network</dd></div>
+    <div class="g"><dt>CRUD</dt><dd>Create, Read, Update, Delete</dd></div>
+    <div class="g"><dt>DAU</dt><dd>Daily Active Users</dd></div>
+    <div class="g"><dt>DB</dt><dd>Database</dd></div>
+    <div class="g"><dt>FCM</dt><dd>Firebase Cloud Messaging</dd></div>
+    <div class="g"><dt>HTTP</dt><dd>Hypertext Transfer Protocol</dd></div>
+    <div class="g"><dt>ID</dt><dd>Identifier</dd></div>
+    <div class="g"><dt>IP</dt><dd>Internet Protocol</dd></div>
+    <div class="g"><dt>JSON</dt><dd>JavaScript Object Notation</dd></div>
+    <div class="g"><dt>JWT</dt><dd>JSON Web Token</dd></div>
+    <div class="g"><dt>LRU</dt><dd>Least Recently Used</dd></div>
+    <div class="g"><dt>QPS</dt><dd>Queries Per Second</dd></div>
+    <div class="g"><dt>REST</dt><dd>Representational State Transfer</dd></div>
+    <div class="g"><dt>S3</dt><dd>Amazon Simple Storage Service</dd></div>
+    <div class="g"><dt>SQL</dt><dd>Structured Query Language</dd></div>
+    <div class="g"><dt>TPS</dt><dd>Transactions Per Second</dd></div>
+    <div class="g"><dt>TTL</dt><dd>Time To Live</dd></div>
+    <div class="g"><dt>UI</dt><dd>User Interface</dd></div>
+    <div class="g"><dt>URL</dt><dd>Uniform Resource Locator</dd></div>
+    <div class="g"><dt>UUID</dt><dd>Universally Unique Identifier</dd></div>
+    <div class="g"><dt>WAL</dt><dd>Write-Ahead Log</dd></div>
+    <div class="g"><dt>X3DH</dt><dd>Extended Triple Diffie-Hellman</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=soTfFFIQQ8U" target="_blank" rel="noopener">원본 영상 — freeCodeCamp.org, Design Software Systems Like a Senior Engineer – Complete Course</a></li>
+    <li id="src-2"><a href="https://www.postgresql.org/docs/current/transaction-iso.html" target="_blank" rel="noopener">PostgreSQL 공식 문서 — Transaction Isolation</a></li>
+    <li id="src-3"><a href="https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-listeners.html" target="_blank" rel="noopener">AWS 공식 문서 — Listeners for your Application Load Balancers</a></li>
+    <li id="src-4"><a href="https://redis.io/docs/latest/develop/pubsub/" target="_blank" rel="noopener">Redis 공식 문서 — Redis Pub/Sub</a></li>
+    <li id="src-5"><a href="https://cassandra.apache.org/doc/latest/cassandra/developing/cql/dml.html" target="_blank" rel="noopener">Apache Cassandra 공식 문서 — Data manipulation (BATCH)</a></li>
+    <li id="src-6"><a href="https://signal.org/docs/specifications/x3dh/" target="_blank" rel="noopener">Signal 공식 문서 — The X3DH Key Agreement Protocol</a></li>
+    <li id="src-7"><a href="https://signal.org/docs/specifications/doubleratchet/" target="_blank" rel="noopener">Signal 공식 문서 — The Double Ratchet Algorithm</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 23일에 이 영상을 보고 정리했어요. 원본은 freeCodeCamp.org 채널에 있고, 강의는 Hayk Simonyan이 만들었어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+// widgets/figures.js — 해시 링 비교와 배치 쓰기 막대
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+
+// (a) 모듈로 vs (b) 일관된 해싱: 샤드 16개 → 17개
+(() => {
+  const g = document.getElementById('fig-hash');
+  if (!g) return;
+  // 왼쪽: 키 48개를 칸으로 그리고, hash % 16 과 hash % 17 의 결과가 달라지는 키를 빨갛게 칠해요
+  g.append(el('text', { x: 150, y: 22, 'text-anchor': 'middle' }, '(a) hash % 16 → hash % 17'));
+  let seed = 7;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648);
+  for (let i = 0; i < 48; i++) {
+    const h = rnd();
+    const moved = h % 16 !== h % 17;
+    const x = 20 + (i % 8) * 34, y = 40 + Math.floor(i / 8) * 30;
+    g.append(el('rect', { x, y, width: 28, height: 22, rx: 4, class: moved ? 'bad' : 'ok' }));
+  }
+  g.append(el('text', { x: 150, y: 232, 'text-anchor': 'middle', class: 'sub' }, '빨간 칸 = 자리가 바뀌는 키'));
+  g.append(el('text', { x: 150, y: 250, 'text-anchor': 'middle', class: 'sub' }, '거의 전부 다시 섞어요'));
+
+  // 오른쪽: 해시 링. 서버 16개 + 새 서버 1개, 새 서버와 직전 서버 사이 구간만 옮겨요
+  const cx = 470, cy = 130, r = 82;
+  g.append(el('text', { x: cx, y: 22, 'text-anchor': 'middle' }, '(b) 일관된 해싱 (해시 링)'));
+  const pt = (deg, rr) => {
+    const a = (deg - 90) * Math.PI / 180;
+    return [cx + rr * Math.cos(a), cy + rr * Math.sin(a)];
+  };
+  const step = 360 / 16;
+  const prevDeg = 3 * step, newDeg = 3.5 * step;
+  const [x1, y1] = pt(prevDeg, r), [x2, y2] = pt(newDeg, r);
+  g.append(el('path', { d: `M${cx} ${cy} L${x1} ${y1} A${r} ${r} 0 0 1 ${x2} ${y2} Z`, class: 'bad' }));
+  g.append(el('circle', { cx, cy, r, class: 'line' }));
+  for (let i = 0; i < 16; i++) {
+    const [x, y] = pt(i * step, r);
+    g.append(el('circle', { cx: x, cy: y, r: 6, class: 'box' }));
+  }
+  g.append(el('circle', { cx: x2, cy: y2, r: 8, class: 'accent' }));
+  // 링 위의 키(작은 점) — 빨간 구간 안의 키만 새 서버로 가요
+  [10, 40, 75, 100, 130, 170, 200, 245, 280, 320].forEach((d) => {
+    const [x, y] = pt(d, r);
+    const inArc = d > prevDeg && d < newDeg;
+    g.append(el('circle', { cx: x, cy: y, r: 3, class: inArc ? 'bad' : 'c3' }));
+  });
+  const [lx, ly] = pt(newDeg, r + 26);
+  g.append(el('text', { x: lx + 14, y: ly, 'text-anchor': 'start', class: 'sub' }, '새 서버 17'));
+  g.append(el('text', { x: cx, y: 250, 'text-anchor': 'middle', class: 'sub' }, '빨간 구간의 키만 옮겨요 (약 1/17)'));
+  g.append(el('path', { d: 'M300 130 h22', class: 'line', 'marker-end': 'url(#arrow-ring)' }));
+})();
+
+// 1,000건 삽입: 하나씩 5,000ms vs 한 번에 50ms (같은 축)
+(() => {
+  const g = document.getElementById('fig-batch');
+  if (!g) return;
+  const x0 = 150, w = 300, max = 5000;
+  const rows = [['하나씩 1,000번', 5000, ''], ['배치 한 번', 50, 'alt']];
+  g.append(el('line', { x1: x0, y1: 20, x2: x0, y2: 110, class: 'axis' }));
+  rows.forEach(([name, ms, cls], i) => {
+    const y = 30 + i * 42;
+    const bw = Math.max(2, (ms / max) * w);
+    g.append(el('text', { x: x0 - 10, y: y + 17, 'text-anchor': 'end' }, name));
+    g.append(el('rect', { x: x0, y, width: bw, height: 26, class: cls ? 'bar alt' : 'bar' }));
+    const label = ms.toLocaleString('ko-KR') + 'ms';
+    g.append(el('text', { x: x0 + bw + 8, y: y + 17, 'text-anchor': 'start', class: 'mono' }, label));
+  });
+  [0, 1000, 2000, 3000, 4000, 5000].forEach((v) => {
+    const x = x0 + (v / max) * w;
+    g.append(el('line', { x1: x, y1: 110, x2: x, y2: 115, class: 'axis' }));
+    g.append(el('text', { x, y: 132, 'text-anchor': 'middle', class: 'sub' }, v.toLocaleString('ko-KR')));
+  });
+  g.append(el('text', { x: x0 + w, y: 147, 'text-anchor': 'end', class: 'sub' }, 'ms (한 건 삽입 5ms 기준)'));
+})();
+</script>
+<script>
+// widgets/envelope.js
+// widgets/envelope.js — Booking 봉투 뒷면 계산 (영상의 공식 그대로)
+(() => {
+  const root = document.getElementById('envelope');
+  if (!root) return;
+  const NS = 'http://www.w3.org/2000/svg';
+  const [nightsIn, stayIn, visitsIn, readsIn] = root.querySelectorAll('input');
+  const svg = root.querySelector('svg');
+  const out = root.querySelector('.readout');
+  const fmt = (n) => Math.round(n).toLocaleString('ko-KR');
+
+  function model() {
+    const roomNights = +nightsIn.value * 1e8;          // 연간 숙박(박)
+    const bookingsYear = roomNights / +stayIn.value;   // ÷ 평균 숙박
+    const bookingsDay = bookingsYear / 365;
+    const tps = bookingsDay / 86400;
+    const visitsDay = (+visitsIn.value * 1e6) / 30;    // 월 방문 ÷ 30일
+    const visitsSec = visitsDay / 86400;
+    const qps = visitsSec * +readsIn.value;            // × 방문당 백엔드 읽기
+    return { bookingsYear, bookingsDay, tps, visitsDay, visitsSec, qps };
+  }
+
+  function bar(y, value, max, label, cls) {
+    const x0 = 70, w = 250;
+    const bw = Math.max(2, (value / max) * w);
+    const t = document.createElementNS(NS, 'text');
+    t.setAttribute('x', x0 - 8); t.setAttribute('y', y + 18); t.setAttribute('text-anchor', 'end');
+    t.textContent = label;
+    const r = document.createElementNS(NS, 'rect');
+    r.setAttribute('x', x0); r.setAttribute('y', y); r.setAttribute('width', bw); r.setAttribute('height', 26);
+    r.setAttribute('class', cls);
+    const v = document.createElementNS(NS, 'text');
+    v.setAttribute('x', x0 + bw + 6); v.setAttribute('y', y + 18);
+    v.setAttribute('text-anchor', 'start');
+    v.textContent = fmt(value) + (cls === 'bar' ? ' QPS' : ' TPS');
+    svg.append(t, r, v);
+  }
+
+  function draw() {
+    const m = model();
+    svg.replaceChildren();
+    const max = Math.max(m.qps, m.tps, 1);
+    bar(40, m.qps, max, '읽기', 'bar');
+    bar(100, m.tps, max, '쓰기', 'bar alt');
+    const ratio = m.qps / m.tps;
+    out.innerHTML =
+      `<p>연 예약 <span class="val">${fmt(m.bookingsYear / 1e6)}</span>백만 건 → 하루 <span class="val">${fmt(m.bookingsDay)}</span>건 → 초당 <span class="val">${m.tps.toFixed(1)}</span>건(TPS)</p>` +
+      `<p>하루 방문 <span class="val">${fmt(m.visitsDay)}</span> → 초당 <span class="val">${fmt(m.visitsSec)}</span> 방문 → 읽기 <span class="val">${fmt(m.qps)}</span> QPS</p>` +
+      `<p>읽기가 쓰기의 약 <span class="val">${ratio.toFixed(0)}</span>배예요.</p>`;
+  }
+
+  root.addEventListener('input', (e) => {
+    if (e.target.matches('input')) e.target.nextElementSibling.textContent = e.target.value;
+    draw();
+  });
+  draw();
+})();
+</script>
+</body>
+</html>
