@@ -1,0 +1,947 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude의 intent.md와 AI 네이티브 SDLC</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Claude의 intent.md와 AI 네이티브 SDLC</h1>
+  <p class="lede">Anthropic 플레이북이 SDLC 여섯 단계를 어떻게 다시 짜는지 짚어요</p>
+  <div class="meta">
+    <span>단테</span><span class="dot">·</span>
+    <span>영상 14:44</span><span class="dot">·</span>
+    <span>읽는 데 약 16분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=lh2Klr0hcFo" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>에이전트가 빌드를 줄이자 병목은 코드가 아니라 그 앞뒤의 프로세스로 옮겨 갔어요.</li>
+    <li>계획은 에이전트가 나를 인터뷰하는 데서 시작하고, 결과는 <code>intent/</code> 폴더의 <code>intent.md</code>로 남아요.</li>
+    <li>단계마다 <code>intent.md</code> → <code>spec.md</code> → <code>plan.md</code> → 코드·PR(Pull Request)로 문서가 붙어요. <code>plan.md</code> 하나만 넘겨도 다른 에이전트가 구현할 수 있어야 해요.</li>
+    <li>테스트·리뷰·배포도 에이전트가 먼저 보고, <span class="term" data-term="훅" data-en="Hooks" data-desc="파일 편집 전후나 작업이 끝날 때처럼 정해진 순간에 자동으로 도는 명령이에요. 에이전트의 판단에 맡기지 않고 규칙을 매번 확실하게 실행해요." data-g="8">훅</span>과 린팅이 규칙을 지켜요. 사람은 중요한 리뷰 자리에 남아요.</li>
+    <li>유지보수에서는 장애나 지표 이탈이 Claude를 깨우고, Claude가 새 <code>intent.md</code>를 써서 사이클을 다시 돌려요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">병목은 코드가 아니라 프로세스예요</a></li>
+    <li><a href="#s2">계획: 에이전트가 나를 인터뷰해요</a></li>
+    <li><a href="#s3">intent에서 spec, spec에서 plan으로</a></li>
+    <li><a href="#s4">빌드: 거버넌스, 권한, 워크트리, 훅</a></li>
+    <li><a href="#s5">테스트와 배포도 에이전트가 먼저 봐요</a></li>
+    <li><a href="#s6">유지보수, 그리고 정답은 하나가 아니에요</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=2s" target="_blank" rel="noopener">00:02</a>
+  <h2>병목은 코드가 아니라 프로세스예요</h2>
+<p>이 영상은 Anthropic이 공개한 'AI Native SDLC Playbook'을 15분 안에 훑어 줘요. SDLC(Software Development Life Cycle)가 낯설다면 먼저 그림부터 보면 돼요. 가운데 SDLC를 두고 계획, 설계, 빌드, 테스트, 배포, 유지보수 여섯 칸이 원을 그려요. 왼쪽 위 유지보수 칸에만 주황 테두리가 있는데, 유지보수가 끝나면 다음 기능이나 버그를 들고 다시 계획으로 돌아간다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0027.webp" alt="'유지보수 후, 다시 처음으로'라는 제목 아래 SDLC를 가운데 두고 계획·설계·빌드·테스트·배포·유지보수 여섯 단계가 원형으로 이어진 슬라이드">
+  <figcaption>소프트웨어 개발은 한 번 하고 끝나는 직선이 아니라 계속 도는 원이에요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=27s" target="_blank" rel="noopener">영상 00:27에서 보기</a></figcaption>
+</figure>
+<p>이 문서가 내세우는 주장은 한 줄이에요. 슬라이드에서 주황색으로 강조한 부분이 '여러분의 프로세스'라는 점을 눈여겨보면 돼요.</p>
+<figure>
+  <img src="assets/frame-0054.webp" alt="'이제 병목은 코드가 아니라 여러분의 프로세스다'라는 문장만 크게 쓴 슬라이드">
+  <figcaption>코드를 짜는 속도는 더 이상 문제의 중심이 아니에요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=54s" target="_blank" rel="noopener">영상 00:54에서 보기</a></figcaption>
+</figure>
+<h3>빌드가 줄자 나머지가 드러났어요</h3>
+<p>예전에는 여섯 단계 중 빌드가 시간도 가장 오래 걸리고 돈도 가장 많이 들었어요. 에이전트가 오면서 그 구간이 확 줄었죠. 아래 슬라이드는 여섯 칸 중 빌드만 주황으로 칠하고, 그 아래에 '빌드는 두 배 빨라졌다 — 그럼 나머지는?'이라고 적었어요. 이 질문이 영상 전체의 뼈대예요.</p>
+<figure>
+  <img src="assets/frame-0112.webp" alt="'에이전트 이후' 제목 아래 계획·설계·빌드·테스트·배포·유지보수 칸이 한 줄로 놓이고 빌드 칸만 주황으로 강조된 슬라이드. 아래에 '빌드는 두 배 빨라졌다 — 그럼 나머지는?'이라는 문구">
+  <figcaption>나머지 다섯 단계는 아직 사람 속도로 돌아가요. 영상은 이 다섯 칸을 하나씩 다시 짜요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=72s" target="_blank" rel="noopener">영상 01:12에서 보기</a></figcaption>
+</figure>
+<p>아래 그림은 영상 전체를 한 장으로 모은 거예요. 단계마다 남는 문서와 에이전트가 맡는 일을 적었어요. 유지보수에서 나온 새 <code>intent.md</code>가 다시 계획으로 돌아가는 화살표가 이 문서의 결론이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 744 215" role="img" aria-label="계획부터 유지보수까지 여섯 단계와 단계마다 남는 문서, 에이전트가 하는 일. 유지보수에서 나온 새 intent.md가 계획으로 돌아가요">
+    <defs><marker id="arrow-sdlc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-sdlc"></g>
+  </svg>
+  <figcaption>단계마다 문서가 하나씩 쌓이고, 다음 단계의 에이전트는 그 문서만 읽고 일을 시작해요. 영상 전체 흐름을 한 장으로 옮겼어요.</figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상은 이 문서를 Claude Code를 만든 보리스 체르니의 팀이 냈다고 소개하고, 슬라이드에도 '보리스 체르니 · Claude Code 제작자'라고 적었어요. 그런데 Claude 공식 사이트의 원문에는 작성자가 Louis Claxton으로 적혀 있고, 감사의 글에도 보리스 체르니의 이름은 없어요. 원문은 2026년 8월 21일에 올라왔고, 한국어판도 있어요.</p>
+  <p class="cite">출처: <a href="https://claude.com/resources/articles/the-ai-native-sdlc-playbook" target="_blank" rel="noopener">Claude — The AI-native SDLC playbook</a> · <a href="https://claude.com/ko/resources/articles/the-ai-native-sdlc-playbook" target="_blank" rel="noopener">한국어판</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=90s" target="_blank" rel="noopener">01:30</a>
+  <h2>계획: 에이전트가 나를 인터뷰해요</h2>
+<p>계획 단계에서 가장 크게 바뀌는 건 질문하는 쪽이에요. 아래 슬라이드 왼쪽은 예전 방식이고, 요구사항을 모으고 문서를 만들고 워크숍을 열고 이해관계자와 회의해요. 오른쪽 주황 글씨의 AI(Artificial Intelligence) 네이티브 방식은 '에이전트가 먼저 나를 인터뷰'하는 데서 시작해요.</p>
+<figure>
+  <img src="assets/frame-0133.webp" alt="'계획 단계가 뒤집힌다' 슬라이드. 왼쪽 '전통적인 계획 단계'에 요구사항 모으기·문서 만들기·워크숍·이해관계자 회의, 오른쪽 'AI 네이티브 계획 단계'에 에이전트가 먼저 나를 인터뷰·무엇을 만들려는지 캐묻기·완전히 이해할 때까지 반복">
+  <figcaption>사람이 요구사항을 모으러 다니는 대신, 에이전트가 사람에게서 맥락을 끌어내요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=93s" target="_blank" rel="noopener">영상 01:33에서 보기</a></figcaption>
+</figure>
+<p>단테도 이렇게 일한다고 해요. 에이전트가 이해할 때까지 계속 질문하게 하고, 자기 경험과 도메인 지식을 대화에 다 쏟아 넣어요. 에이전트는 그 대화에서 핵심 문제를 뽑아 <code>intent.md</code>로 정리해요. 아래 예시는 '다크모드 기능 추가'예요. 설정에서 전환할 수 있어야 하고, 시스템 테마를 기본값으로 따르고, 선택은 기기별로 저장한다는 세 줄이 들어 있어요. 마지막 파란 줄이 이 파일의 성격을 말해 줘요.</p>
+<figure>
+  <img src="assets/frame-0206.webp" alt="'에이전트가 정리한 결과물' 제목 아래 intent.md 창. 다크모드 기능 추가, 사용자가 설정에서 전환할 수 있어야 함, 시스템 테마를 기본값으로 따라감, 선택은 기기별로 저장, '사람이 읽을 수 있고, 기계가 실행할 수 있게'라는 문구">
+  <figcaption>'사람이 읽을 수 있고, 기계가 실행할 수 있게'가 <code>intent.md</code>의 조건이에요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=126s" target="_blank" rel="noopener">영상 02:06에서 보기</a></figcaption>
+</figure>
+<h3>아이디어가 문서로 이어지는 길</h3>
+<p>예전 SDLC에서 아이디어는 백로그에 들어가 유저 스토리가 되고, 스토리 포인트를 매긴 뒤 담당자에게 넘어갔어요. 아래 슬라이드 오른쪽처럼 AI 네이티브에서는 이슈를 낸 사람이 Claude와 직접 브레인스토밍하고 결과를 바로 <code>intent.md</code>로 남겨요. 중간에 전달하는 사람이 사라지는 거예요.</p>
+<figure>
+  <img src="assets/frame-0230.webp" alt="'아이디어가 전달되는 방식' 슬라이드. 왼쪽 예전 SDLC에 아이디어→백로그, 유저 스토리로 변환, 스토리 포인트 산정, 담당자에게 인계. 오른쪽 AI 네이티브에 이슈를 낸 사람, Claude와 직접 브레인스토밍, 결과를 바로 intent.md로">
+  <figcaption>왼쪽은 네 번 손을 거치고, 오른쪽은 처음 낸 사람의 말이 그대로 문서가 돼요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=150s" target="_blank" rel="noopener">영상 02:30에서 보기</a></figcaption>
+</figure>
+<p>여기서 이어지는 문서 줄을 <span class="term" data-term="아티팩트 체인" data-en="Artifact chain" data-desc="단계마다 문서(아티팩트)를 하나씩 남기고, 다음 단계가 그 문서를 읽고 시작하게 이은 줄이에요. 대화 기록 없이도 일이 이어지고, git 이력이 그대로 감사 기록이 돼요." data-g="1">아티팩트 체인</span>이라고 불러요. 슬라이드의 네 칸을 왼쪽부터 읽으면 <code>intent.md</code> → <code>spec.md</code> → <code>plan.md</code> → 코드·PR이에요. 단계를 넘어갈수록 문서가 하나씩 붙어요.</p>
+<figure>
+  <img src="assets/frame-0254.webp" alt="'아티팩트 체인' 슬라이드. intent.md, spec.md, plan.md, 코드·PR 네 칸이 화살표로 이어지고 아래에 '단계를 넘어갈수록 문서가 하나씩 붙는다'">
+  <figcaption>뒤 단계는 앞 단계 문서를 읽고 시작해요. 그래서 문서 하나하나가 다음 사람에게 넘기는 인수인계서예요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=174s" target="_blank" rel="noopener">영상 02:54에서 보기</a></figcaption>
+</figure>
+<p>파일은 프로젝트 안에 둬요. 아래 폴더 구조에서 <code>my-project/</code> 밑에 <code>intent/</code>, <code>spec/</code>, <code>src/</code>가 나란히 있고, <code>intent/</code> 안에 <code>dark-mode.intent.md</code>와 <code>search-bug.intent.md</code>가 있어요. intent가 쌓이면 이렇게 종류별 접두어를 붙여 구분해요. 파란 줄처럼 Cursor든 Claude Code든 Codex든 방식은 같아요.</p>
+<figure>
+  <img src="assets/frame-0318.webp" alt="'실제로는 이렇게 둔다' 제목의 프로젝트 폴더 창. my-project 아래 intent 폴더(dark-mode.intent.md, search-bug.intent.md), spec 폴더, src 폴더. 아래에 'Cursor · Claude Code · Codex 어디서든 동일'">
+  <figcaption>도구에 묶이지 않는 평범한 마크다운 파일이라 어느 에이전트든 읽을 수 있어요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=198s" target="_blank" rel="noopener">영상 03:18에서 보기</a></figcaption>
+</figure>
+<p>팀마다 다루는 방식은 달라도 돼요. 대신 한 번 정한 방식은 자주 바꾸지 말고 표준으로 삼으라고 해요. 그래야 팀도, 에이전트도, 스킬도 같은 방식으로 굴러가요. 그 위에서 조금씩 키워 가면 돼요.</p>
+<h3>만든 사람이 끝까지 다듬어요</h3>
+<p><code>intent.md</code>는 에이전트가 초안을 쓰고 끝나지 않아요. 아래 슬라이드 가운데 주황 칸처럼 처음 이슈를 낸 원작성자가 다시 돌아와 검토하고 고쳐요. 사람과 에이전트 둘 다 만족할 때까지 반복해요.</p>
+<figure>
+  <img src="assets/frame-0352.webp" alt="'만들었다고 끝이 아니다' 슬라이드. 에이전트가 초안 작성 → 원작성자가 검토·수정(주황 강조) → 둘 다 만족 세 칸">
+  <figcaption>초안은 에이전트가, 확정은 사람이 해요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=232s" target="_blank" rel="noopener">영상 03:52에서 보기</a></figcaption>
+</figure>
+<p>이 원작성자를 <span class="term" data-term="오리지네이터" data-en="Originator" data-desc="intent를 처음 낸 사람이에요. 고객, PM, 개발자 누구든 될 수 있고, 에이전트가 쓴 intent.md 초안을 끝까지 검토하고 고치는 책임을 져요." data-g="2">오리지네이터</span>라고 불러요. 전문가일 필요는 없어요. 슬라이드의 세 줄처럼 버그를 제보하는 고객, 기능을 제안하는 PM(Product Manager), 프로세스를 고치고 싶은 개발자 누구든 될 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0422.webp" alt="'오리지네이터(originator) — intent는 누구나 만든다' 슬라이드. 버그를 제보하는 고객, 기능을 제안하는 PM, 프로세스를 개선하려는 개발자 세 줄">
+  <figcaption>intent를 쓰는 문턱이 낮아서 고객의 말도 바로 개발 입력이 될 수 있어요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=262s" target="_blank" rel="noopener">영상 04:22에서 보기</a></figcaption>
+</figure>
+<p>다만 쌓인 intent를 백로그로 정리하고 검토하는 건 프로덕트 오너의 일이에요. 마크다운 파일 하나에 순서대로 적어도 되고, Notion이나 Linear에 모아도 돼요. 단테는 이 <span class="term" data-term="백로그 트리아지" data-en="Backlog triage" data-desc="쌓인 요청을 훑어 영역, 크기, 종류, 우선순위로 분류하는 일이에요. 응급실에서 환자 순서를 정하는 트리아지에서 따온 말이에요." data-g="3">백로그 트리아지</span>를 에이전트에게 맡기기도 한대요. 그러면 아래 네 가지 태그를 달아 줘요. 프론트엔드·백엔드 영역, 작업 크기, 기능인지 버그인지, 우선순위예요.</p>
+<figure>
+  <img src="assets/frame-0446.webp" alt="'에이전트에게 맡길 수도 있다 — 백로그 트리아지' 슬라이드. 프론트엔드/백엔드 영역 태그, 작업 크기 — 큰지 작은지, 기능인지 버그인지, 우선순위 네 줄">
+  <figcaption>분류는 에이전트가 하고, 무엇부터 할지는 프로덕트 오너가 정해요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=286s" target="_blank" rel="noopener">영상 04:46에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>원문은 <code>intent.md</code>를 프로덕트 오너가 검토하는 초기 스펙으로 보고, 예시 템플릿에 작성자·상태 줄과 다섯 칸을 둬요. 문제(Problem), 바라는 결과(Proposed outcome), 영향받는 사용자와 시스템, 제약(Constraints), 열린 질문(Open questions)이에요. 둘 곳은 제품 하나라면 제품 저장소의 <code>intent/</code> 폴더가 가장 간단하고, 여러 저장소에 걸치면 intent 전용 저장소를, 모노레포라면 디렉터리 하나를 권해요.</p>
+  <p class="cite">출처: <a href="https://claude.com/ko/resources/articles/the-ai-native-sdlc-playbook" target="_blank" rel="noopener">Claude — AI-native SDLC 플레이북 (한국어판)</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=284s" target="_blank" rel="noopener">04:44</a>
+  <h2>intent에서 spec, spec에서 plan으로</h2>
+<p>intent가 확정되거나 승인되면 다음은 스펙이에요. 아래 슬라이드의 세 칸처럼 'intent 확정'이 '훅·자동화'를 거쳐 '<code>spec.md</code> 자동 생성'으로 이어져요. 사람이 스펙을 처음부터 쓰지 않고, 정해진 계기에 자동으로 만들어지게 하라는 거예요.</p>
+<figure>
+  <img src="assets/frame-0508.webp" alt="'intent 아티팩트 → spec 아티팩트' 슬라이드. intent 확정 → 훅·자동화 → spec.md 자동 생성(주황 강조) 세 칸">
+  <figcaption>intent에서 spec으로 넘어가는 길목에 사람 손을 빼는 게 핵심이에요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=308s" target="_blank" rel="noopener">영상 05:08에서 보기</a></figcaption>
+</figure>
+<p>Anthropic은 이 변환에 쓸 샘플 프롬프트도 줘요. 구체적인 스킬까지 주진 않지만, 이걸 바탕으로 직접 스킬을 만들 수 있어요. 창 안의 다섯 줄을 위에서부터 읽으면 이래요. 첨부된 <code>intent.md</code>를 읽고, 요구사항과 설계 스펙을 만들고, 쓸 수 있는 스킬을 적용해 계획하고, 브랜드 가이드라인을 지키고, 마지막으로 전부 <code>spec.md</code>에 문서화하라는 내용이에요.</p>
+<figure>
+  <img src="assets/frame-0522.webp" alt="'Anthropic이 제공한 샘플' 제목의 '스펙 생성 프롬프트' 창. 첨부된 intent.md를 읽어라, 요구사항과 설계 스펙을 만들어라, 사용 가능한 스킬을 적용해 계획하라, 브랜드 가이드라인을 지켜라, 그리고 spec.md에 전부 문서화하라">
+  <figcaption>입력은 <code>intent.md</code>, 출력은 <code>spec.md</code>로 정해 두는 게 체인을 끊기지 않게 하는 방법이에요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=322s" target="_blank" rel="noopener">영상 05:22에서 보기</a></figcaption>
+</figure>
+<p>스펙을 어떻게 만들지에는 정답이 없어요. 슬라이드 왼쪽 '기본 방식'은 Cursor·Claude Code·Codex의 기본 <span class="term" data-term="플랜 모드" data-en="Plan mode" data-desc="에이전트가 코드를 고치지 않고 읽기만 하면서 계획부터 세우는 모드예요. 사람이 계획을 승인한 뒤에야 파일을 고쳐요." data-g="4">플랜 모드</span>를 그대로 쓰는 거예요. 오른쪽 '전용 스킬'은 팀 스타일에 맞춘 스펙 생성기를 만들고, 정책과 스타일 가이드를 강제하고, 조직의 베스트 프랙티스를 반영해요. 이런 정책은 <code>agents.md</code> 파일에 담아도 되고 여러 스킬에 녹여도 돼요. 중요한 건 스펙을 만들 때만이 아니라 체인 전체에서 계속 지켜지게 하는 거예요.</p>
+<figure>
+  <img src="assets/frame-0546.webp" alt="'정답은 하나가 아니다' 슬라이드. 왼쪽 기본 방식: Cursor·Claude Code·Codex의 기본 plan mode를 그대로. 오른쪽 전용 스킬: 팀 스타일에 맞는 스펙 생성기, 정책·스타일 가이드 강제, 조직의 베스트 프랙티스 반영">
+  <figcaption>작은 팀은 왼쪽으로 시작하고, 지켜야 할 규칙이 많아지면 오른쪽으로 옮겨 가면 돼요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=346s" target="_blank" rel="noopener">영상 05:46에서 보기</a></figcaption>
+</figure>
+<h3>plan.md 하나로 넘길 수 있어야 해요</h3>
+<p>빌드는 엔지니어가 intent와 spec을 Claude Code나 Cursor의 플랜 모드에 그대로 넣는 데서 시작해요. 아래 세 칸이 그 흐름이에요. <code>intent.md + spec.md</code>가 plan mode를 거쳐 <code>plan.md</code>가 돼요.</p>
+<figure>
+  <img src="assets/frame-0622.webp" alt="'빌드의 시작' 슬라이드. intent.md + spec.md → plan mode → plan.md(주황 강조) 세 칸">
+  <figcaption>빌드의 첫 산출물은 코드가 아니라 계획 문서예요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=382s" target="_blank" rel="noopener">영상 06:22에서 보기</a></figcaption>
+</figure>
+<p>Anthropic은 이 계획에 대해 무엇이 잘못될 수 있는지 계속 캐물으라고 해요. 슬라이드 아래 회색 줄의 '계획을 심문하라'가 그 말이에요. 목표는 큰 글씨 그대로예요.</p>
+<figure>
+  <img src="assets/frame-0634.webp" alt="인용 슬라이드. '이 plan.md 하나만 넘겨도 다른 엔지니어가 바로 구현할 수 있어야 한다', 아래에 '계획을 심문하라 — 무엇이 잘못될 수 있는가'">
+  <figcaption>intent나 spec을 안 읽어도 구현할 수 있을 만큼 계획이 완결돼야 해요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=394s" target="_blank" rel="noopener">영상 06:34에서 보기</a></figcaption>
+</figure>
+<p>이게 중요한 이유는 한 에이전트가 SDLC 전체를 맡지 않기 때문이에요. 컨텍스트 윈도우에는 한계가 있고, 대화 스레드는 나뉘고, 독립된 에이전트와 서브 에이전트가 단계를 나눠 맡아요. 아래 슬라이드처럼 <code>plan.md</code>가 에이전트 1, 2, 3으로 차례로 넘어가도, 각자 이전 대화를 몰라도 문서만으로 시작할 수 있어야 해요. 단테의 워크플로에서도 여러 에이전트가 동시에 문제를 나눠 맡는대요.</p>
+<figure>
+  <img src="assets/frame-0658.webp" alt="'한 에이전트가 전 단계를 맡지 않는다' 슬라이드. plan.md → 에이전트 1 → 에이전트 2 → 에이전트 3, 아래에 '각자 이전 대화를 몰라도 문서만으로 시작'">
+  <figcaption>대화 기록 대신 문서가 기억을 넘겨줘요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=418s" target="_blank" rel="noopener">영상 06:58에서 보기</a></figcaption>
+</figure>
+<p>계획을 쓰는 방법은 많지만 들어가야 할 건 네 가지예요. 슬라이드 번호 순으로 바꿔야 할 파일들, 작업 순서와 할 일 목록, 리스크와 제약, 그리고 증명이에요. 4번 증명은 계획대로 됐는지 판정할 기준이에요. 린팅이나 테스트처럼 결과가 딱 정해지는 형태여야 해요.</p>
+<figure>
+  <img src="assets/frame-0718.webp" alt="'계획을 쓰는 방법은 많지만 — plan.md에 들어갈 것' 슬라이드. ① 바꿔야 할 파일들 ② 작업 순서·할 일 목록 ③ 리스크와 제약 ④ 증명 — 성공 판정 기준과 체크">
+  <figcaption>'잘 된 것 같다'가 아니라 테스트 통과처럼 기계가 판정할 수 있는 기준을 미리 적어 둬요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=438s" target="_blank" rel="noopener">영상 07:18에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=440s" target="_blank" rel="noopener">07:20</a>
+  <h2>빌드: 거버넌스, 권한, 워크트리, 훅</h2>
+<p>규모 있는 조직이라면 거버넌스가 큰 몫을 차지해요. 아래 슬라이드의 세 줄처럼 intent·spec·plan의 버전을 기록하고, 누가 건드렸는지와 어떻게 바뀌었는지를 남겨요. 이걸 잘하는 회사는 많지 않대요. 하지만 AI가 워크플로에서 실제로 얼마나 효과를 내는지 숫자로 보여 주려면 꼭 필요해요.</p>
+<figure>
+  <img src="assets/frame-0724.webp" alt="'규모 있는 조직에서 특히 — 거버넌스' 슬라이드. intent·spec·plan의 버전 기록, 누가 건드렸는지, 어떻게 바뀌었는지 세 줄">
+  <figcaption>문서가 git에 남으면 변경 이력이 곧 감사 기록이 돼요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=444s" target="_blank" rel="noopener">영상 07:24에서 보기</a></figcaption>
+</figure>
+<h3>오토 모드보다 권한 설계가 먼저예요</h3>
+<p>빌드를 빠르게 하려고 Anthropic은 <span class="term" data-term="오토 모드" data-en="Auto mode" data-desc="Claude Code가 편집할 때마다 허락을 묻지 않고 바로 적용하는 모드예요. 권한, 훅, 테스트 같은 안전장치가 갖춰진 뒤에 쓰라고 해요." data-g="5">오토 모드</span>를 권해요. 단테는 조직마다 다르다며 한 단계 앞을 권해요. 통제된 환경에서 시작해 권한을 세밀하게 조정하며 하나씩 승인해 가라는 거예요. 슬라이드의 세 질문, 곧 어떤 도구에 접근할 수 있는지, 어떤 웹 소스를 쓸 수 있는지, 어떤 패키지를 설치할 수 있는지에 대한 정책이 쌓이면 그대로 Cursor나 Claude Code의 권한 설정에 옮겨요. 그러면 사람이 계속 붙어 있지 않아도 에이전트가 훨씬 빨리 움직여요.</p>
+<figure>
+  <img src="assets/frame-0754.webp" alt="'오토 모드로 가기 전에 — 권한을 먼저 설계한다' 슬라이드. 어떤 도구에 접근할 수 있는지, 어떤 웹 소스를 쓸 수 있는지, 어떤 패키지를 설치할 수 있는지 세 줄">
+  <figcaption>세 질문에 답이 정해져야 매번 승인 버튼을 누르지 않아도 돼요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=474s" target="_blank" rel="noopener">영상 07:54에서 보기</a></figcaption>
+</figure>
+<p>오토 모드를 매끄럽게 돌리려면 신경 쓸 게 많은데, 그중 하나가 <span class="term" data-term="블라스트 반경" data-en="Blast radius" data-desc="무언가 잘못됐을 때 피해가 미치는 범위예요. 에이전트가 건드릴 수 있는 파일, 도구, 권한을 좁히면 사고가 나도 피해가 작아요." data-g="6">블라스트 반경</span>이에요. 아래 인용 슬라이드의 회색 줄 '권한을 하나씩 승인하며 넓혀 간다'가 방법이에요. 영상은 자세한 내용을 다음 영상으로 미뤄요.</p>
+<figure>
+  <img src="assets/frame-0814.webp" alt="인용 슬라이드. '에이전트의 블라스트 반경을 좁게 유지하라', 아래에 '권한을 하나씩 승인하며 넓혀간다'">
+  <figcaption>처음부터 넓게 열지 않고, 믿을 수 있는 만큼만 조금씩 넓혀요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=494s" target="_blank" rel="noopener">영상 08:14에서 보기</a></figcaption>
+</figure>
+<h3>워크트리와 훅</h3>
+<p>Anthropic 팀은 Git <span class="term" data-term="워크트리" data-en="Git worktree" data-desc="한 저장소에서 브랜치마다 작업 폴더를 따로 꺼내 쓰는 Git 기능이에요. 에이전트마다 폴더가 달라서 동시에 일해도 파일이 엉키지 않아요." data-g="7">워크트리</span>도 권해요. 슬라이드의 워크트리 1, 2, 3처럼 작업마다 따로 작업 공간을 두면 여러 에이전트가 동시에 다른 작업을 할 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0824.webp" alt="'Git 워크트리' 슬라이드. 워크트리 1, 워크트리 2, 워크트리 3 세 칸, 아래에 '여러 에이전트가 동시에 다른 작업을'">
+  <figcaption>에이전트끼리 같은 파일을 두고 부딪히지 않게 하는 장치예요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=504s" target="_blank" rel="noopener">영상 08:24에서 보기</a></figcaption>
+</figure>
+<p>프로세스를 알아서 최신 상태로 유지하고 궤도 위에 붙잡아 두는 데는 훅이 큰 역할을 해요. 슬라이드의 세 줄이 예시예요. 구현이 끝나면 계획을 자동으로 업데이트하고, 특정 폴더는 건드리지 못하게 막고, 승인 안 된 npm 패키지는 업그레이드하지 못하게 해요. 린팅도 같은 편이에요. 오래된 개념이지만, 코드나 문서가 기준과 문법에 맞는지를 예/아니요로 딱 갈라 줘요.</p>
+<figure>
+  <img src="assets/frame-0844.webp" alt="'프로세스를 궤도 위에 유지 — 훅(hooks)이 하는 일' 슬라이드. 구현이 끝나면 계획을 자동 업데이트, 특정 폴더는 건드리지 못하게 차단, 승인 안 된 패키지 업그레이드 방지 세 줄">
+  <figcaption>훅은 정해진 순간마다 자동으로 돌아서, 사람이 지켜보지 않아도 규칙이 지켜져요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=524s" target="_blank" rel="noopener">영상 08:44에서 보기</a></figcaption>
+</figure>
+<p>좋은 에이전트 하네스는 서브 에이전트를 돌릴 수 있어요. Cursor, Claude Code, Codex에는 이미 들어 있어요. 아래 세 칸처럼 <code>plan.md</code>를 독립적으로 처리할 수 있는 작업으로 쪼개고, 서브 에이전트가 병렬로 실행해요. 병렬로 돌릴 부분은 워크트리를 써요. 결국 여러 에이전트와 서브 에이전트가 동시에 빌드를 진행하게 돼요.</p>
+<figure>
+  <img src="assets/frame-0922.webp" alt="'Cursor · Claude Code · Codex에 이미 내장' 슬라이드. plan.md → 작업 분할 → 서브 에이전트 병렬 실행(주황 강조)">
+  <figcaption>앞에서 <code>plan.md</code>를 완결되게 쓰라고 한 이유가 여기서 드러나요. 쪼갠 작업을 받는 서브 에이전트는 문서만 보고 일하거든요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=562s" target="_blank" rel="noopener">영상 09:22에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=570s" target="_blank" rel="noopener">09:30</a>
+  <h2>테스트와 배포도 에이전트가 먼저 봐요</h2>
+<p>전통적인 SDLC에서 테스트는 자주 발목을 잡았어요. 슬라이드 왼쪽처럼 작업을 개발 서버에 올려 두고, QA(Quality Assurance)가 봐 줄 때까지 며칠씩 기다리고, 피드백을 받아 고치는 사이클이 시간을 많이 먹었죠. 오른쪽 AI SDLC는 사람 엔지니어나 QA가 손대기 전에 에이전트가 최대한 테스트해 두는 쪽이에요. 빌드가 끝나면 테스트, 린팅, E2E(End-to-End) 리뷰로 바로 넘어가요.</p>
+<figure>
+  <img src="assets/frame-0944.webp" alt="'테스트 단계' 슬라이드. 왼쪽 전통적인 테스트: 개발 서버에 올려두고, QA를 며칠씩 기다리고, 피드백 받고 수정하고. 오른쪽 AI SDLC: 사람이 손대기 전에, 에이전트가 최대한 테스트, 테스트·린팅·E2E 리뷰">
+  <figcaption>기다리는 시간이 사라지는 게 가장 큰 차이예요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=584s" target="_blank" rel="noopener">영상 09:44에서 보기</a></figcaption>
+</figure>
+<p>에이전트가 직접 하는 일은 네 가지예요. 슬라이드 번호대로 ① 테스트를 직접 써서 새 기능이 기존 기능을 깨뜨리지 않는지 확인하고 통과시켜요. ② 린트와 빌드로 에러가 없는지 봐요. ③ Playwright 같은 도구로 실제 화면을 테스트하고, ④ 스크린샷과 화면 녹화까지 남겨요. 영상은 Cursor 클라우드 에이전트가 서버를 직접 띄워 테스트하고 녹화까지 보여 주는 데 특히 강하다고 해요.</p>
+<figure>
+  <img src="assets/frame-1002.webp" alt="'빌드가 끝나면 — 에이전트가 직접 한다' 슬라이드. ① 테스트를 작성하고 통과시킨다 ② 린트와 빌드로 에러를 확인한다 ③ Playwright로 실제 화면을 테스트한다 ④ 스크린샷과 화면 녹화까지 남긴다">
+  <figcaption>테스트가 꼼꼼할수록 사람이 리뷰하는 시간이 줄어요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=602s" target="_blank" rel="noopener">영상 10:02에서 보기</a></figcaption>
+</figure>
+<p>또 하나의 제안은 스킬이 바뀌거나 모델이 업그레이드될 때마다 <span class="term" data-term="eval" data-en="Evaluation" data-desc="정답을 아는 과제 묶음을 에이전트에게 다시 풀게 해서 성능을 재는 시험이에요. 모델이나 스킬을 바꿀 때마다 돌리면 퇴보를 일찍 잡아요." data-g="9">eval</span>을 돌리는 거예요. 영상은 최적화에 가깝다고 하면서도, 핵심은 지속적 통합 안에 상시 평가를 넣어 두는 거라고 해요. 슬라이드 세 칸처럼 이미 해결한 이슈 20개쯤과 각각의 기대 결과를 모아 두고, 새 모델이나 큰 변화가 생기면 돌려서 회귀가 없는지 확인해요.</p>
+<figure>
+  <img src="assets/frame-1032.webp" alt="'지속적 통합 안의 상시 평가' 슬라이드. 이슈 20개 + 기대 결과 → 새 모델·변경 → 회귀 확인(주황 강조)">
+  <figcaption>코드뿐 아니라 '에이전트가 일하는 방식' 자체가 나빠지지 않았는지 검사하는 장치예요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=632s" target="_blank" rel="noopener">영상 10:32에서 보기</a></figcaption>
+</figure>
+<h3>배포: 리뷰하는 쪽도 에이전트예요</h3>
+<p>사람 리뷰가 끝나면 에이전트에게 머지를 시키거나 메인 저장소에 PR을 만들게 해요. 에이전트는 자기 브랜치나 워크트리에서 작업을 끝낸 뒤 '이렇게 바꿨으니 확인해 달라'는 PR을 올려요. 아래 네 칸이 그 길이에요. 에이전트 브랜치 → Pull Request → Claude 리뷰 → 메인 병합. 주황으로 강조한 Claude 리뷰가 Anthropic의 제안이에요. CI(Continuous Integration)가 돌거나 PR이 생길 때마다 Claude가 들어와 정책과 보안 기준으로 리뷰하고, 이 모든 게 비동기로 돌아가요.</p>
+<figure>
+  <img src="assets/frame-1118.webp" alt="'정책과 보안 기준으로 비동기 리뷰' 슬라이드. 에이전트 브랜치 → Pull Request → Claude 리뷰(주황 강조) → 메인 병합 네 칸">
+  <figcaption>사람이 보기 전에 Claude가 먼저 한 번 걸러요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=678s" target="_blank" rel="noopener">영상 11:18에서 보기</a></figcaption>
+</figure>
+<p>리뷰하는 에이전트는 PR에 '이건 못 받아들이겠다', '이 부분을 고쳐 달라' 같은 코멘트를 남길 수 있어요. 슬라이드의 첫 줄처럼 그 코멘트를 읽고 처리하는 Claude 인스턴스가 따로 있어요. 둘째 줄처럼 이 인스턴스는 어떤 <code>agents.md</code>, 어떤 스킬, 어떤 훅·린팅이 걸려 있는지에 따라 정책이 달라져요. 셋째 줄은 거버넌스 쪽이에요. 특정 권한, 특정 담당자의 승인, 릴리스 게이트를 통과해야만 배포되도록 훅을 걸 수 있어요.</p>
+<figure>
+  <img src="assets/frame-1144.webp" alt="'거버넌스 — 리뷰하는 쪽도 에이전트' 슬라이드. PR 코멘트를 읽는 별도 Claude 인스턴스, agents.md·skills.md에 따라 다른 정책, 릴리스 게이트를 통과해야 배포 세 줄">
+  <figcaption>쓰는 에이전트와 고치는 에이전트를 나누고, 배포 문은 훅이 지켜요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=704s" target="_blank" rel="noopener">영상 11:44에서 보기</a></figcaption>
+</figure>
+<p>PR이 끝난 뒤에도 마지막 방어선이 있어요. 또 다른 에이전트가 보안 점검과 CI 리뷰를 돌려요. 린팅이나 게이트 체크처럼 결과가 딱 정해진 방식일 수도 있고, Cursor의 Bugbot이나 Claude 보안 리뷰 같은 에이전트가 들어와 에러를 찾을 수도 있어요.</p>
+<figure>
+  <img src="assets/frame-1208.webp" alt="'마지막 방어선 — PR이 끝난 뒤에도' 슬라이드. 보안 점검·CI 프리뷰, 린팅과 게이트 체크, 버그봇·시큐리티 리뷰 에이전트 세 줄">
+  <figcaption>정해진 규칙 검사와 에이전트의 판단 검사를 겹쳐 둬요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=728s" target="_blank" rel="noopener">영상 12:08에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>원문은 eval 묶음을 최근 작업에서 뽑은 '실제 과제 20~50개'로 잡고, 운영 중 장애가 날 때마다 그것도 eval로 추가하라고 해요. 영상의 '20개 정도'는 이 범위의 아래쪽이에요.</p>
+  <p>Claude의 PR 리뷰는 <code>REVIEW.md</code>에 적은 기준(버그, 보안, 규정 준수)으로 돌아가요. 원문은 리뷰 결과만으로 PR을 승인하거나 막지는 않는다고 못 박아요. 최종 승인은 브랜치 보호 규칙에 따라 코드 오너가 해요.</p>
+  <p class="cite">출처: <a href="https://claude.com/resources/articles/the-ai-native-sdlc-playbook" target="_blank" rel="noopener">Claude — The AI-native SDLC playbook</a></p>
+</aside>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=735s" target="_blank" rel="noopener">12:15</a>
+  <h2>유지보수, 그리고 정답은 하나가 아니에요</h2>
+<p>마지막은 유지보수예요. 단테는 이 부분이 워크플로 전체에서 가장 이상적이고 야심찬 지점이라고 봐요. 아래 슬라이드는 처음의 원형 그림과 같은 모양인데, 가운데가 SDLC에서 Claude로 바뀌었어요. 계획·설계·빌드·테스트·배포를 거쳐 왼쪽 위 주황 칸, 유지보수에 도착했다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-1227.webp" alt="'계획·설계·빌드·테스트·배포 — 그리고' 슬라이드. 가운데 Claude를 두고 여섯 단계가 원형으로 놓이고 유지보수 칸이 주황으로 강조">
+  <figcaption>처음 그림의 가운데 글자가 SDLC에서 Claude로 바뀐 게 이 영상의 요약이에요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=747s" target="_blank" rel="noopener">영상 12:27에서 보기</a></figcaption>
+</figure>
+<p>전통적인 유지보수는 반응적이었어요. 슬라이드 왼쪽처럼 새벽 3시 서버 장애 알림, 온콜 당번 대응, 백로그에 쌓인 채 방치되는 티켓이 전형이에요. 오른쪽 AI SDLC에서는 장애, 새 티켓, Slack 메시지, 정해진 스케줄이 사람 없이 바로 Claude를 불러요. Claude는 비동기로 진단하고 조치에 들어가요.</p>
+<figure>
+  <img src="assets/frame-1241.webp" alt="'유지보수는 반응적인 단계였다' 슬라이드. 왼쪽 전통적인 유지보수: 새벽 3시 서버 장애 알림, 온콜 당번이 대응, 티켓은 백로그에 쌓인 채 방치. 오른쪽 AI SDLC: 장애·티켓·Slack 메시지가, 사람 없이 Claude를 호출, 비동기로 진단하고 조치">
+  <figcaption>사람이 알림을 받고 움직이던 자리에 Claude가 먼저 들어가요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=761s" target="_blank" rel="noopener">영상 12:41에서 보기</a></figcaption>
+</figure>
+<p>이때 Claude는 고치기만 하지 않아요. 아래 세 칸의 마지막처럼 자기가 찾은 로그나 받은 티켓을 바탕으로 <code>intent.md</code>를 스스로 만들어요. 이 문서가 다시 계획 단계의 입력이 되니, 사이클이 사람 없이 한 바퀴 다시 돌기 시작해요.</p>
+<figure>
+  <img src="assets/frame-1253.webp" alt="'사람이 개입하기 전에' 슬라이드. 장애 감지 → Claude 자동 호출 → intent.md 스스로 생성(주황 강조)">
+  <figcaption>처음엔 사람이 쓰던 <code>intent.md</code>를 유지보수 단계에서는 에이전트가 써요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=773s" target="_blank" rel="noopener">영상 12:53에서 보기</a></figcaption>
+</figure>
+<p>가장 이상적인 모습은 지켜야 할 지표를 정해 두는 거예요. 슬라이드의 '지표 이탈 → 원인 진단 → 해결 방안 제시'가 그 흐름이고, 회색 줄에 예시가 있어요. 테스트 중에 페이지가 죽거나 API(Application Programming Interface) 요청 제한이 갑자기 늘면, 그게 에이전트를 깨워 문제를 진단하고 intent를 만들게 해요. 사람이 컴퓨터 앞에 앉기도 전에 몇 가지 해결안까지 나와 있어요.</p>
+<figure>
+  <img src="assets/frame-1315.webp" alt="'여러분이 컴퓨터 앞에 앉기도 전에' 슬라이드. 지표 이탈 → 원인 진단 → 해결 방안 제시, 아래에 '페이지 다운 · API 요청 제한 급증 등'">
+  <figcaption>무엇을 이탈로 볼지는 사람이 미리 정하고, 그다음은 에이전트가 움직여요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=795s" target="_blank" rel="noopener">영상 13:15에서 보기</a></figcaption>
+</figure>
+<h3>여섯 단계를 한 표로</h3>
+<p>영상이 단계마다 보여 준 전통 방식과 AI 방식을 한 표로 모았어요. 설계 단계는 영상이 따로 비교하지 않아서 스펙 이야기로 채웠어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>단계</th><th>예전에는</th><th>AI 네이티브에서는</th><th>남는 문서</th></tr></thead>
+    <tbody>
+      <tr><td>계획</td><td>요구사항 수집, 문서, 워크숍, 이해관계자 회의</td><td>에이전트가 나를 인터뷰하고 정리</td><td><code>intent.md</code></td></tr>
+      <tr><td>설계</td><td>—</td><td>훅·자동화로 스펙 자동 생성, 정책 스킬 적용</td><td><code>spec.md</code></td></tr>
+      <tr><td>빌드</td><td>시간과 비용이 가장 많이 드는 구간</td><td>플랜 모드로 계획, 서브 에이전트가 워크트리에서 병렬 빌드</td><td><code>plan.md</code>, 코드</td></tr>
+      <tr><td>테스트</td><td>개발 서버에 올리고 QA를 며칠 기다림</td><td>에이전트가 테스트·린트·화면 테스트, 상시 eval</td><td>테스트, 스크린샷</td></tr>
+      <tr><td>배포</td><td>—</td><td>Claude가 PR을 정책·보안 기준으로 리뷰, 훅으로 릴리스 게이트</td><td>PR</td></tr>
+      <tr><td>유지보수</td><td>새벽 장애 알림, 온콜, 방치된 티켓</td><td>장애·지표 이탈이 Claude를 호출, 진단 후 새 intent 작성</td><td>새 <code>intent.md</code></td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>사람은 어디에 남을까요</h3>
+<p>영상은 이 문서의 전제를 한 문장으로 모아요. 에이전트를 빌드에서만 쓰지 말고 SDLC 전체에 참여시키자는 거예요. 아래 인용 슬라이드가 그 질문이에요. 각 단계에서 사람이 쓰는 시간은 줄이되, 정말 중요한 리뷰에는 여전히 사람을 남길 수 있을까요. 회색 줄처럼 그 비율은 팀과 위험도에 따라 달라요. 위험이 낮으면 에이전트만 돌려도 돼요.</p>
+<figure>
+  <img src="assets/frame-1341.webp" alt="인용 슬라이드. '각 단계의 사람 시간을 줄이되, 중요한 리뷰에는 사람을 남긴다', 아래에 '팀과 위험도에 따라 비율은 달라진다'">
+  <figcaption>사람을 빼는 게 목표가 아니라, 사람이 꼭 필요한 자리만 남기는 게 목표예요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=821s" target="_blank" rel="noopener">영상 13:41에서 보기</a></figcaption>
+</figure>
+<p>단테는 여러 회사와 AI SDLC를 만들어 보니 정답이 하나가 아니더라고 말해요. 슬라이드 첫 줄처럼 이미 Superpowers나 BMAD(Breakthrough Method for Agile AI-Driven Development) 같은 방식을 쓰거나 자기만의 버전을 만들어 뒀다면, 그걸 버리고 Anthropic 방식으로 갈아탈 필요는 없어요. 나머지 세 줄은 접근법의 폭이에요. 단순한 루프부터 그래프 엔지니어링과 완전 자동화된 루프, 대규모 오케스트레이션까지 있어요. 플랜 모드 정도로 단순하게 쓰든 바이브 코딩으로 가든 괜찮다고 해요.</p>
+<figure>
+  <img src="assets/frame-1405.webp" alt="'여러 회사와 일해보니 — 정답은 하나가 아니다' 슬라이드. 이미 쓰는 체계가 있다면 버릴 필요 없다, 단순한 루프부터, 그래프 엔지니어링·완전 자동화, 대규모 오케스트레이션까지 네 줄">
+  <figcaption>Anthropic의 방식은 정답이 아니라 참고할 지도 중 하나예요. <a href="https://www.youtube.com/watch?v=lh2Klr0hcFo&amp;t=845s" target="_blank" rel="noopener">영상 14:05에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 이름과 파일 이름이 많이 틀려 있어요. 화면의 슬라이드와 자막 글자를 보고 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>클러드, 클러우드, 클로드코드</td><td>Claude, Claude Code</td><td></td></tr>
+      <tr><td>엔트로픽, 엔드로픽</td><td>Anthropic</td><td></td></tr>
+      <tr><td>인텐트닷 md, 인텐드닷m, 인텐트단 MD</td><td>intent.md</td><td></td></tr>
+      <tr><td>스펙.m</td><td>spec.md</td><td></td></tr>
+      <tr><td>에이전치닷d, 에이전트닷 MD</td><td>agents.md</td><td>슬라이드 표기</td></tr>
+      <tr><td>후기, 후가</td><td>훅(hooks)</td><td>08:27, 04:34, 11:41 부근</td></tr>
+      <tr><td>엔트로픽 제한, 제한해요</td><td>Anthropic 제안, 제안해요</td><td></td></tr>
+      <tr><td>해물을 하는</td><td>심문하는</td><td>슬라이드의 &#x27;계획을 심문하라&#x27;</td></tr>
+      <tr><td>직면</td><td>증명</td><td>plan.md의 네 번째 항목</td></tr>
+      <tr><td>샘플 프로트</td><td>샘플 프롬프트</td><td></td></tr>
+      <tr><td>귀시나 워크트리</td><td>Git 워크트리</td><td></td></tr>
+      <tr><td>MPM 패키지</td><td>npm 패키지</td><td></td></tr>
+      <tr><td>얘 아니요</td><td>예/아니요</td><td></td></tr>
+      <tr><td>PD백</td><td>피드백</td><td></td></tr>
+      <tr><td>엔드투 핸드</td><td>엔드투엔드(E2E)</td><td></td></tr>
+      <tr><td>플레이라이트</td><td>Playwright</td><td></td></tr>
+      <tr><td>테스트 스프라이트</td><td>TestSprite</td><td>(추정)</td></tr>
+      <tr><td>커세 클라우드 에이전트</td><td>Cursor 클라우드 에이전트</td><td></td></tr>
+      <tr><td>이밸루에이션</td><td>evaluation(eval)</td><td></td></tr>
+      <tr><td>피하, 피어</td><td>PR</td><td></td></tr>
+      <tr><td>C 과정, C 프리뷰</td><td>CI 과정, CI 리뷰</td><td></td></tr>
+      <tr><td>보완 점검</td><td>보안 점검</td><td></td></tr>
+      <tr><td>세티계</td><td>새 티켓</td><td></td></tr>
+      <tr><td>API 요청 제한이 갑자기 취소면요</td><td>API 요청 제한이 갑자기 늘면</td><td>슬라이드의 &#x27;API 요청 제한 급증&#x27;</td></tr>
+      <tr><td>슈퍼파워스, 비메드</td><td>Superpowers, BMAD</td><td></td></tr>
+      <tr><td>대규모케스트레이션</td><td>대규모 오케스트레이션</td><td></td></tr>
+      <tr><td>플랫 모드</td><td>플랜 모드</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-3"><dt>백로그 트리아지<span class="en">Backlog triage</span></dt><dd>쌓인 요청을 훑어 영역, 크기, 종류, 우선순위로 분류하는 일이에요. 응급실에서 환자 순서를 정하는 트리아지에서 따온 말이에요.</dd></div>
+    <div class="g" id="g-6"><dt>블라스트 반경<span class="en">Blast radius</span></dt><dd>무언가 잘못됐을 때 피해가 미치는 범위예요. 에이전트가 건드릴 수 있는 파일, 도구, 권한을 좁히면 사고가 나도 피해가 작아요.</dd></div>
+    <div class="g" id="g-1"><dt>아티팩트 체인<span class="en">Artifact chain</span></dt><dd>단계마다 문서(아티팩트)를 하나씩 남기고, 다음 단계가 그 문서를 읽고 시작하게 이은 줄이에요. 대화 기록 없이도 일이 이어지고, git 이력이 그대로 감사 기록이 돼요.</dd></div>
+    <div class="g" id="g-2"><dt>오리지네이터<span class="en">Originator</span></dt><dd>intent를 처음 낸 사람이에요. 고객, PM, 개발자 누구든 될 수 있고, 에이전트가 쓴 intent.md 초안을 끝까지 검토하고 고치는 책임을 져요.</dd></div>
+    <div class="g" id="g-5"><dt>오토 모드<span class="en">Auto mode</span></dt><dd>Claude Code가 편집할 때마다 허락을 묻지 않고 바로 적용하는 모드예요. 권한, 훅, 테스트 같은 안전장치가 갖춰진 뒤에 쓰라고 해요.</dd></div>
+    <div class="g" id="g-7"><dt>워크트리<span class="en">Git worktree</span></dt><dd>한 저장소에서 브랜치마다 작업 폴더를 따로 꺼내 쓰는 Git 기능이에요. 에이전트마다 폴더가 달라서 동시에 일해도 파일이 엉키지 않아요.</dd></div>
+    <div class="g" id="g-4"><dt>플랜 모드<span class="en">Plan mode</span></dt><dd>에이전트가 코드를 고치지 않고 읽기만 하면서 계획부터 세우는 모드예요. 사람이 계획을 승인한 뒤에야 파일을 고쳐요.</dd></div>
+    <div class="g" id="g-8"><dt>훅<span class="en">Hooks</span></dt><dd>파일 편집 전후나 작업이 끝날 때처럼 정해진 순간에 자동으로 도는 명령이에요. 에이전트의 판단에 맡기지 않고 규칙을 매번 확실하게 실행해요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>BMAD</dt><dd>Breakthrough Method for Agile AI-Driven Development</dd></div>
+    <div class="g"><dt>CI</dt><dd>Continuous Integration</dd></div>
+    <div class="g"><dt>E2E</dt><dd>End-to-End</dd></div>
+    <div class="g" id="g-9"><dt>eval<span class="en">Evaluation</span></dt><dd>정답을 아는 과제 묶음을 에이전트에게 다시 풀게 해서 성능을 재는 시험이에요. 모델이나 스킬을 바꿀 때마다 돌리면 퇴보를 일찍 잡아요.</dd></div>
+    <div class="g"><dt>PM</dt><dd>Product Manager</dd></div>
+    <div class="g"><dt>PR</dt><dd>Pull Request</dd></div>
+    <div class="g"><dt>QA</dt><dd>Quality Assurance</dd></div>
+    <div class="g"><dt>SDLC</dt><dd>Software Development Life Cycle</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=lh2Klr0hcFo" target="_blank" rel="noopener">원본 영상 — 단테, 클로드, SDD를 네이티브로? INTENT.md</a></li>
+    <li id="src-2"><a href="https://claude.com/resources/articles/the-ai-native-sdlc-playbook" target="_blank" rel="noopener">Claude — The AI-native SDLC playbook (영어 원문)</a></li>
+    <li id="src-3"><a href="https://claude.com/ko/resources/articles/the-ai-native-sdlc-playbook" target="_blank" rel="noopener">Claude — AI-native SDLC 플레이북 (한국어판)</a></li>
+    <li id="src-4"><a href="https://code.claude.com/docs/en/hooks-guide" target="_blank" rel="noopener">Claude Code 공식 문서 — Automate actions with hooks</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 22일에 이 영상을 보고 정리했어요. 원본은 단테 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+(() => {
+  const g = document.getElementById('fig-sdlc');
+  if (!g) return;
+  const steps = [
+    ['계획', 'intent.md', '에이전트가', '나를 인터뷰'],
+    ['설계', 'spec.md', 'intent로', '스펙 자동 생성'],
+    ['빌드', 'plan.md', '서브 에이전트', '병렬 빌드'],
+    ['테스트', '테스트 결과', '테스트·린트', '화면 테스트'],
+    ['배포', 'PR', 'Claude가', 'PR 리뷰'],
+    ['유지보수', '새 intent.md', '장애를 감지해', '진단·해결안']
+  ];
+  const W = 108, GAP = 18, Y = 30, H = 130;
+  steps.forEach(([name, doc, r1, r2], i) => {
+    const x = 6 + i * (W + GAP);
+    const cls = i === 5 ? 'accent' : `c${i + 1} cell`;
+    g.append(el('rect', { x, y: Y, width: W, height: H, rx: 10, class: cls }));
+    g.append(el('text', { x: x + W / 2, y: Y + 26, 'text-anchor': 'middle', 'font-weight': '600' }, name));
+    g.append(el('text', { x: x + W / 2, y: Y + 54, 'text-anchor': 'middle', class: 'mono', 'font-size': '11' }, doc));
+    g.append(el('text', { x: x + W / 2, y: Y + 88, 'text-anchor': 'middle', class: 'sub' }, r1));
+    g.append(el('text', { x: x + W / 2, y: Y + 106, 'text-anchor': 'middle', class: 'sub' }, r2));
+    if (i < steps.length - 1)
+      g.append(el('path', { d: `M${x + W + 2} ${Y + H / 2} h${GAP - 4}`, class: 'line', 'marker-end': 'url(#arrow-sdlc)' }));
+  });
+  const lastX = 6 + 5 * (W + GAP) + W / 2;
+  const firstX = 6 + W / 2;
+  g.append(el('path', { d: `M${lastX} ${Y + H + 2} V${Y + H + 40} H${firstX} V${Y + H + 8}`, class: 'hot', 'marker-end': 'url(#arrow-sdlc)' }));
+  g.append(el('text', { x: (lastX + firstX) / 2, y: Y + H + 32, 'text-anchor': 'middle', class: 'sub' }, '새 intent.md를 들고 다시 계획으로'));
+  g.append(el('text', { x: 372, y: 16, 'text-anchor': 'middle', class: 'sub' }, '단계마다 남는 문서를 다음 단계의 에이전트가 읽어요'));
+})();
+</script>
+</body>
+</html>
