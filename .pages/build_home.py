@@ -160,7 +160,7 @@ def card(v, cat_label=None, show_channel=True, extra_q=""):
     tag = f'<span class="tag">{esc(cat_label)}</span>' if cat_label else ""
     img = f'<img src="{thumb}" alt="" loading="lazy">' if thumb else ""
     return (
-        f'<a class="card" href="{href}" data-q="{esc(search)}">'
+        f'<a class="card" href="{href}" data-q="{esc(search)}" data-day="{esc(v.get("digested", ""))}">'
         f'<div class="thumb">{img}</div>'
         f'<div class="body">{tag}<h4>{esc(v["title"])}</h4>'
         f'<p>{esc(v["subtitle"])}</p>'
@@ -169,24 +169,18 @@ def card(v, cat_label=None, show_channel=True, extra_q=""):
 
 
 def channel_blocks(vs, cat_of):
-    """Same-channel videos (2+) go in one box, oldest upload first; the rest share a plain grid."""
+    """One grid (a shelf on the page): same-channel videos (2+) first and together, oldest upload first,
+    then the rest."""
     by_ch = OrderedDict()
     for v in vs:
         by_ch.setdefault(v["channel"], []).append(v)
-    out, singles = [], []
+    series, singles = [], []
     for ch, items in by_ch.items():
         if len(items) > 1:
-            items.sort(key=upload_order)
-            cards = "".join(card(v, show_channel=False, extra_q=cat_of[v["folder"]]) for v in items)
-            out.append(
-                f'<div class="chgroup" data-group><div class="chhead">{esc(ch)}'
-                f'<span class="n">{len(items)}</span></div><div class="grid">{cards}</div></div>'
-            )
+            series.extend(sorted(items, key=upload_order))
         else:
             singles.extend(items)
-    if singles:
-        out.append('<div class="grid" data-group>' + "".join(card(v, extra_q=cat_of[v["folder"]]) for v in singles) + "</div>")
-    return "".join(out)
+    return '<div class="grid" data-group>' + "".join(card(v, extra_q=cat_of[v["folder"]]) for v in series + singles) + "</div>"
 
 
 def protect_pages(videos, pw_hash):
@@ -341,6 +335,9 @@ def topic_view(videos, cats, cat_of):
 def main():
     videos = load_videos()
     load_uploads(videos)
+    dates = load_dates(videos)
+    for name, v in videos.items():
+        v["digested"] = dates[name][:10]
     cats =json.loads((HERE / "categories.json").read_text(encoding="utf-8"), object_pairs_hook=OrderedDict)
     cat_of = {}
     for big, node in cats.items():
@@ -377,7 +374,6 @@ def main():
         )
 
     # time view: newest first, one group per day (the page can flip the order)
-    dates = load_dates(videos)
     by_day = defaultdict(list)
     for name, v in videos.items():
         by_day[dates[name][:10]].append(v)
