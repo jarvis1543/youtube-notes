@@ -236,39 +236,35 @@ def place_videos(node, path, videos, cat_of):
         place_videos(child, path + [name], videos, cat_of)
 
 
-LEVELS = {1: ("big", "h2", "대분류"), 2: ("mid", "h3", "중분류"), 3: ("sub", "h4", "소분류")}
+LEVELS = {1: ("big", "h2"), 2: ("mid", "h3"), 3: ("sub", "h4")}
 
 
 def tree_section(name, node, level, sec_id, render_here):
-    """One category as <section>, shared by the 주제별 and 묶음별 views: 1 = 대분류 (with a table of contents
-    of its children), 2 = 중분류, 3 = 소분류. render_here(items placed on this category) -> (html, count).
+    """One category as <section>, shared by the 주제별 and 묶음별 views: 1 = 대분류, 2 = 중분류, 3 = 소분류.
+    data-name / data-n feed the page's sidebar tree. render_here(items placed on this category) -> (html, count).
     Items placed on a category that also has children go last, in a child-level "<name> 전반" section.
     Returns (html, count), or ("", 0) when nothing is inside."""
     here, kids = cat_parts(node)
     body, n_here = render_here(here) if here else ("", 0)
-    parts, toc, n = [], [], n_here
+    parts, n = [], n_here
     for j, (kid, child) in enumerate(kids.items()):
         kid_id = f"{sec_id}-{j}"
         h, k = tree_section(kid, child, level + 1, kid_id, render_here)
         if k:
             parts.append(h)
-            toc.append(f'<a href="#{kid_id}">{esc(kid)}<span class="n">{k}</span></a>')
             n += k
     if not n:
         return "", 0
     if parts and n_here:
-        cls, tag, label = LEVELS[min(level + 1, 3)]
+        cls, tag = LEVELS[min(level + 1, 3)]
         parts.append(
-            f'<section class="{cls}" id="{sec_id}-all" data-sec><{tag}><span class="lv lv{min(level + 1, 3)}">{label}</span>'
-            f'{esc(name)} 전반<span class="n">{n_here}</span></{tag}>{body}</section>'
+            f'<section class="{cls}" id="{sec_id}-all" data-sec data-name="{esc(name)} 전반" data-n="{n_here}">'
+            f'<{tag}>{esc(name)} 전반<span class="n">{n_here}</span></{tag}>{body}</section>'
         )
-        toc.append(f'<a href="#{sec_id}-all">{esc(name)} 전반<span class="n">{n_here}</span></a>')
         body = ""
-    cls, tag, label = LEVELS[min(level, 3)]
-    head = f'<{tag}><span class="lv lv{min(level, 3)}">{label}</span>{esc(name)}<span class="n">{n}</span></{tag}>'
-    if level == 1 and toc:
-        head += f'<nav class="toc">{"".join(toc)}</nav>'
-    return f'<section class="{cls}" id="{sec_id}" data-sec>{head}{body}{"".join(parts)}</section>', n
+    cls, tag = LEVELS[min(level, 3)]
+    head = f'<{tag}>{esc(name)}<span class="n">{n}</span></{tag}>'
+    return f'<section class="{cls}" id="{sec_id}" data-sec data-name="{esc(name)}" data-n="{n}">{head}{body}{"".join(parts)}</section>', n
 
 
 def video_cards(videos, cat_of):
@@ -284,7 +280,7 @@ def topic_view(videos, cats, cat_of):
     """topics.json: per big category, a list of {id, title, about, videos} — tight groups of similar
     videos, each meant to become one combined study page later. Each topic sits on the deepest category
     all its videos share, so this view has the same 대분류 › 중분류 › 소분류 shape as the 주제별 one; when
-    its videos span several 대분류 it stays under its topics.json key. Returns (nav, html, n_topics)."""
+    its videos span several 대분류 it stays under its topics.json key. Returns (html, n_topics)."""
     path = HERE / "topics.json"
     topics = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=OrderedDict) if path.exists() else {}
 
@@ -327,22 +323,19 @@ def topic_view(videos, cats, cat_of):
             )
         return "".join(boxes), len(boxes)
 
-    nav, secs = [], []
+    secs = []
     for i, (big, node) in enumerate(tree.items()):
-        sid = f"t{i}"
-        h, n = tree_section(big, node, 1, sid, render)
+        h, n = tree_section(big, node, 1, f"t{i}", render)
         if n:
-            nav.append(f'<a href="#{sid}">{esc(big)}<span class="n">{n}</span></a>')
             secs.append(h)
     loose = sorted((v for n, v in videos.items() if n not in grouped), key=lambda v: (v["channel"], upload_order(v)))
     if loose:
-        nav.append(f'<a href="#t-loose">아직 묶음이 없는 영상<span class="n">{len(loose)}</span></a>')
         secs.append(
-            f'<section class="big" id="t-loose" data-sec><h2>아직 묶음이 없는 영상<span class="n">{len(loose)}</span></h2>'
+            f'<section class="big" id="t-loose" data-sec data-name="아직 묶음이 없는 영상" data-n="{len(loose)}" data-unit="영상"><h2>아직 묶음이 없는 영상<span class="n">{len(loose)}</span></h2>'
             f'<p class="tpabout">비슷한 영상이 하나 더 생기면 묶음으로 옮겨요.</p>'
             f'<div class="grid" data-group>{"".join(card(v) for v in loose)}</div></section>'
         )
-    return "".join(nav), "".join(secs), n_topics
+    return "".join(secs), n_topics
 
 
 def main():
@@ -357,17 +350,14 @@ def main():
         cat_of[f] = "분류 없음"
 
     # category view
-    nav, sections = [], []
+    sections = []
     for i, (big, node) in enumerate(cats.items()):
-        sid = f"c{i}"
-        h, n = tree_section(big, node, 1, sid, video_cards(videos, cat_of))
+        h, n = tree_section(big, node, 1, f"c{i}", video_cards(videos, cat_of))
         if n:
-            nav.append(f'<a href="#{sid}">{esc(big)}<span class="n">{n}</span></a>')
             sections.append(h)
     if rest:
-        nav.append(f'<a href="#c-loose">아직 분류가 없는 영상<span class="n">{len(rest)}</span></a>')
         sections.append(
-            f'<section class="big" id="c-loose" data-sec><h2>아직 분류가 없는 영상<span class="n">{len(rest)}</span></h2>'
+            f'<section class="big" id="c-loose" data-sec data-name="아직 분류가 없는 영상" data-n="{len(rest)}"><h2>아직 분류가 없는 영상<span class="n">{len(rest)}</span></h2>'
             f'<p class="tpabout">맞는 분류가 생기면 그 자리로 옮겨요.</p>'
             f'{channel_blocks([videos[f] for f in rest], cat_of)}</section>'
         )
@@ -378,11 +368,11 @@ def main():
         by_ch[v["channel"]].append(v)
     ch_sorted = sorted(by_ch.items(), key=lambda kv: (-len(kv[1]), kv[0].lower()))
     ch_html = []
-    for ch, vs in ch_sorted:
+    for i, (ch, vs) in enumerate(ch_sorted):
         vs.sort(key=upload_order)
         cards ="".join(card(v, cat_label=cat_of[v["folder"]].split(" › ")[-1], show_channel=False) for v in vs)
         ch_html.append(
-            f'<section class="chsec" data-sec><h3>{esc(ch)}<span class="n">{len(vs)}</span></h3>'
+            f'<section class="chsec" id="ch{i}" data-sec data-name="{esc(ch)}" data-n="{len(vs)}"><h3>{esc(ch)}<span class="n">{len(vs)}</span></h3>'
             f'<div class="grid" data-group>{cards}</div></section>'
         )
 
@@ -398,11 +388,11 @@ def main():
         label = f"{d.year}년 {d.month}월 {d.day}일 ({WEEKDAYS[d.weekday()]})"
         cards = "".join(card(v, cat_label=cat_of[v["folder"]].split(" › ")[-1]) for v in vs)
         time_html.append(
-            f'<section class="chsec" data-sec><h3>{label}<span class="n">{len(vs)}</span></h3>'
+            f'<section class="chsec" id="d{day}" data-sec data-name="{label}" data-n="{len(vs)}"><h3>{label}<span class="n">{len(vs)}</span></h3>'
             f'<div class="grid" data-group>{cards}</div></section>'
         )
 
-    topic_nav, topic_html, n_topics = topic_view(videos, cats, cat_of)
+    topic_html, n_topics = topic_view(videos, cats, cat_of)
 
     tpl = (HERE / "home_template.html").read_text(encoding="utf-8")
     # SHA-256 of the home password, one line. Empty or missing = no lock screen.
@@ -415,9 +405,7 @@ def main():
         .replace("{{COUNT}}", str(len(videos)))
         .replace("{{CATS}}", str(len(cats)))
         .replace("{{CHANNELS}}", str(len(by_ch)))
-        .replace("{{NAV}}", "".join(nav))
         .replace("{{CATEGORY_VIEW}}", "".join(sections))
-        .replace("{{TOPIC_NAV}}", topic_nav)
         .replace("{{TOPIC_VIEW}}", topic_html)
         .replace("{{CHANNEL_VIEW}}", "".join(ch_html))
         .replace("{{TIME_VIEW}}", "".join(time_html))
