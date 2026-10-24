@@ -1,0 +1,1030 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>코드만으로 영상을 만드는 Claude Code 오픈소스 스킬 8가지</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>코드만으로 영상을 만드는 Claude Code 오픈소스 스킬 8가지</h1>
+  <p class="lede">같은 주제를 스킬 8개에 맡겨 결과·시간·비용을 비교해요</p>
+  <div class="meta">
+    <span>코드깎는노인</span><span class="dot">·</span>
+    <span>영상 09:53</span><span class="dot">·</span>
+    <span>읽는 데 약 16분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=IGdo9hR1_rE" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>스타일을 따로 정해 주지 않으면 결과가 빛 입자로 된 사람과 우주 쪽으로 비슷해져요. 스타일을 고르게 하는 <span class="term" data-term="스킬" data-en="Agent Skill" data-desc="에이전트가 특정 일을 할 때 읽고 따르는 지침과 도구를 폴더 하나에 묶은 거예요. 같은 모델이라도 어떤 스킬을 쓰느냐에 따라 작업 순서와 결과물이 달라져요." data-g="1">스킬</span>은 판화, 그림책, 손그림처럼 확실히 다른 그림을 냈어요.</li>
+    <li>조건은 모두 같아요. 주제는 '우리 몸은 별에서 왔다', 길이는 15초, 화면 문장 네 줄이 같고, 그림과 소리를 전부 코드로만 만들었어요.</li>
+    <li>배경음악도 코드로 만들어요. 떨림의 높낮이를 1초에 48,000번 숫자로 계산해 이어 붙이면 소리가 돼요.</li>
+    <li>한 편에 대부분 30~50분, API(Application Programming Interface) 요금은 5.5~11.4달러가 들었어요. GPU(Graphics Processing Unit) 없이 붓 질감을 그린 ClaudeAnimationBase만 1시간 49분이 걸렸어요.</li>
+    <li>홍보 영상은 brag, 화풍 고르기는 lemo-opuscar·mg-styles-15, 손그림 캐릭터는 ClaudeAnimationBase·animate, 설명형 <span class="term" data-term="모션그래픽" data-en="Motion graphics" data-desc="도형, 글자, 그래픽 요소를 움직여 정보를 전달하는 영상이에요. 이 영상의 스킬들은 이 움직임을 코드로 계산해서 만들어요." data-g="2">모션그래픽</span>은 bang-motion·claude-motion-design·motion-graphics가 맞아요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">실험은 이렇게 했어요</a></li>
+    <li><a href="#s2">스타일을 고르는 스킬과 단계마다 확인하는 스킬</a></li>
+    <li><a href="#s3">출시 영상 스킬과 손그림 틀</a></li>
+    <li><a href="#s4">설명형 모션그래픽 세 가지</a></li>
+    <li><a href="#s5">결국 원하는 그림으로 골라요</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>실험은 이렇게 했어요</h2>
+<p>요즘 Claude Opus 5.5는 그림 파일 하나 없이 코드만으로 영상 화면을 그려요. 발표자는 영상을 더 잘 만들게 도와주는 오픈소스 스킬 8개를 골라, 말로 설명하는 대신 같은 주제를 하나씩 맡겨 봤어요.</p>
+
+<p>화면 위쪽에 주제가 적혀 있어요. '우리 몸은 별에서 왔다'를 15초로 만드는 과제예요. 아래 선반의 병 아홉 개는 참가자예요. 맨 왼쪽 병이 '스킬 없음', 나머지 여덟 개가 스킬이에요.</p>
+<figure>
+  <img src="assets/frame-0040.webp" alt="15초, 우리 몸은 별에서 왔다라는 제목 아래 선반에 색깔 뚜껑을 단 병 아홉 개가 놓인 장면">
+  <figcaption>참가자는 스킬 8개와 스킬 없는 기준 하나, 모두 아홉이에요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=40s" target="_blank" rel="noopener">영상 00:40에서 보기</a></figcaption>
+</figure>
+
+<p>공정하게 비교하려고 조건을 똑같이 걸었어요.</p>
+<ul class="checklist">
+  <li>화면에 넣을 문장 네 줄을 모두에게 똑같이 줬어요.</li>
+  <li>그림도 소리도 전부 코드로만 만들어요. 이미지나 영상을 만드는 AI(Artificial Intelligence)는 아예 쓰지 않았어요.</li>
+  <li>사람은 중간에 끼어들지 않아요. 스킬이 묻는 질문도 모델이 알아서 정해요.</li>
+  <li>모델은 모두 Opus 5.5이고, 시간 제한은 두지 않았어요.</li>
+</ul>
+
+<p>오른쪽 코드 판 아래에 '이미지 생성 AI', '영상 생성 AI' 표가 붙어 있어요. 이 둘을 빼고 코드만 쓴다는 뜻이에요. 왼쪽 말풍선 '스타일은?', '언어는?'에는 체크가 돼 있어요. 스킬이 던지는 이런 질문에 모델이 스스로 답했다는 표시예요.</p>
+<figure>
+  <img src="assets/frame-0056.webp" alt="말풍선 스타일은?과 언어는?에 체크 표시가 있고, 오른쪽 코드 판 아래에 이미지 생성 AI와 영상 생성 AI 표가 붙은 장면">
+  <figcaption>사람이 고르는 단계가 없으니, 스킬마다 무엇을 스스로 정하는지가 그대로 드러나요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=56s" target="_blank" rel="noopener">영상 00:56에서 보기</a></figcaption>
+</figure>
+
+<h3>스킬 없이 만든 기준 영상</h3>
+<p>먼저 스킬 없이 Opus 5.5에게만 맡겼어요. 이젤 위 화면에 빛 입자가 하얗게 터지는 장면이 나왔어요. 발표자는 스킬이 없어도 이 정도는 나온다며 이걸 기준으로 삼아요. 31분이 걸렸고 화면을 18번 확인했어요. API 요금은 기록이 없어요.</p>
+<figure>
+  <img src="assets/frame-0128.webp" alt="이젤 위 화면 가운데에서 하얀 빛 입자가 퍼져 나가는 장면">
+  <figcaption>뒤에서 보면 스킬 없는 결과의 빛 입자와 우주가 다른 스킬에서도 자주 나와요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=88s" target="_blank" rel="noopener">영상 01:28에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=94s" target="_blank" rel="noopener">01:34</a>
+  <h2>스타일을 고르는 스킬과 단계마다 확인하는 스킬</h2>
+<p>첫 세 스킬 중 lemo-opuscar와 mg-styles-15는 미리 만들어 둔 스타일 목록에서 하나를 고르는 방식이에요. animate는 단계마다 확인을 받으며 그림책을 만들어요.</p>
+
+<h3>1. lemo-opuscar — 스타일 59가지 라이브러리</h3>
+<p>lemo-opuscar는 영상 스타일 59가지를 모아 둔 라이브러리예요. 화면의 칸마다 스타일 하나와 이름표가 붙어 있어요. impasto, woodcut, engraving, ukiyoe, blueprint 같은 이름이 보여요. 스타일마다 데모 영상이 있어서 마음에 드는 걸 고르면 그 화풍으로 만들어 줘요. 연출 가이드(<code>DIRECTOR.md</code>)와 제작 기법(<code>TECHNIQUE.md</code>) 문서도 들어 있어서, 발표자는 작은 스튜디오를 통째로 빌린 느낌이라고 해요.</p>
+<figure>
+  <img src="assets/frame-0155.webp" alt="작은 스타일 견본 칸이 격자로 놓이고 칸마다 impasto, woodcut, engraving 같은 이름표가 붙은 화면">
+  <figcaption>모델은 이 목록에서 동판화(engraving) 스타일을 스스로 골랐어요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=115s" target="_blank" rel="noopener">영상 01:55에서 보기</a></figcaption>
+</figure>
+
+<p>결과물은 누런 종이 위에 가는 선을 겹쳐 새긴 판화 그림이에요. 가운데 별의 중심을 동심원 선으로 새겼고, 아래에 '별의 중심에서 탄소와 산소가 만들어졌다'는 문장이 들어가요.</p>
+<figure>
+  <img src="assets/frame-0209.webp" alt="베이지색 바탕에 동심원 선과 방사선으로 새긴 별 그림, 아래에 별의 중심에서 탄소와 산소가 만들어졌다는 자막">
+  <figcaption>스킬 없는 기준과 달리 빛 입자 대신 판화의 선으로 같은 문장을 표현했어요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=129s" target="_blank" rel="noopener">영상 02:09에서 보기</a></figcaption>
+</figure>
+
+<h3>2. animate — 단계마다 확인받는 손그림</h3>
+<p>animate는 캔버스 하나에 그림을 그려 애니메이션을 만드는 스킬이에요. 이야기, 그림체, <span class="term" data-term="스토리보드" data-en="Storyboard" data-desc="영상의 장면을 순서대로 미리 그려 둔 설계도예요. 이걸 먼저 확인받으면 다 만든 뒤 크게 뒤집는 일이 줄어요." data-g="3">스토리보드</span>를 단계마다 확인받으면서 만드는 게 특징이에요. 화면의 두 아치가 그 확인 단계예요. 왼쪽 '그림체(look check)'에는 체크가 붙었고, 오른쪽 '스토리보드(storyboard check)'는 아직 물음표예요.</p>
+<figure>
+  <img src="assets/frame-0230.webp" alt="그림체와 스토리보드라고 적힌 두 아치, 그림체에는 체크 표시, 스토리보드에는 물음표가 붙은 장면">
+  <figcaption>한 단계를 통과해야 다음 단계로 넘어가요. 이번 실험에서는 이 확인도 모델이 스스로 했어요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=150s" target="_blank" rel="noopener">영상 02:30에서 보기</a></figcaption>
+</figure>
+<p>그림체는 종이를 오려 붙인 그림책 스타일을 골랐어요. 화면에 넣을 문장이 사실인지 웹 검색으로 확인하는 단계도 거쳤어요. 영상에는 triple-alpha process, human body composition, supernova core collapse 세 검색어에 체크가 붙은 장면이 나와요.</p>
+<p>완성본에서는 종이를 오린 노란 별과 주황색 불가사리 모양이 보라색 종이 위에 붙어 있어요. 가장자리에 종이 결이 남아 있고, 손글씨체 자막이 들어가요. 발표자는 이 부분이 꽤 귀엽게 나왔다고 해요.</p>
+<figure>
+  <img src="assets/frame-0251.webp" alt="오려 붙인 종이 질감의 노란 별과 주황색 별 조각, 아래에 손글씨체로 별이 죽으며 그 재료를 우주로 흩뿌렸다는 자막">
+  <figcaption>같은 문장도 그림책으로 옮기니 분위기가 완전히 달라져요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=171s" target="_blank" rel="noopener">영상 02:51에서 보기</a></figcaption>
+</figure>
+
+<h3>3. mg-styles-15 — 프롬프트와 코드가 공개된 15가지 스타일</h3>
+<p>mg-styles-15는 이름처럼 모션그래픽 스타일 15가지를 정리한 프로젝트예요. lemo-opuscar처럼 스타일을 고르는 방식이지만, 스타일마다 프롬프트와 소스 코드가 전부 공개돼 있어요. 화면 왼쪽 문서가 프롬프트예요. Style, Output(exactly 10.00 s), Suggested technical route, Creative seed, Signature features 항목으로 나뉘어 있어요. 오른쪽에는 소스 파일 index.html, audio.py, cues.json이 보여요.</p>
+<figure>
+  <img src="assets/frame-0314.webp" alt="왼쪽에 Style, Output, Suggested technical route 같은 항목이 적힌 프롬프트 문서, 오른쪽에 index.html, audio.py, cues.json 파일 목록이 놓인 화면">
+  <figcaption>프롬프트와 코드가 다 있으니 주제만 바꿔 그대로 쓸 수 있어요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=194s" target="_blank" rel="noopener">영상 03:14에서 보기</a></figcaption>
+</figure>
+<p>모델은 15개를 쭉 훑어본 뒤 '형태 변형(Shape Morph)'을 골랐어요. 화면 아래 목록에서 3D Render와 Sticker Explainer 사이의 Shape Morph가 선택돼 있어요. 모양이 계속 바뀌며 이야기를 이어 가는 스타일이에요.</p>
+<figure>
+  <img src="assets/frame-0321.webp" alt="스타일 아이콘 격자 아래 목록에서 Shape Morph가 선택되고 오른쪽에 형태 변형이라는 큰 제목이 뜬 화면">
+  <figcaption>이 선택도 사람이 아니라 모델이 했어요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=201s" target="_blank" rel="noopener">영상 03:21에서 보기</a></figcaption>
+</figure>
+
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>mg-styles-15 README는 한 편이 만들어지는 과정을 이렇게 설명해요. 스타일마다 프롬프트 하나를 주면 Claude가 어느 순간이든 그릴 수 있는 웹 페이지로 영상을 써요. 헤드리스 Chrome이 프레임을 하나씩 렌더링하고, audio.py가 같은 큐에 맞춰 음악과 효과음을 합성해요. ffmpeg가 정확히 10초짜리 MP4(MPEG-4 Part 14)로 합친 뒤, 두 번째 AI가 rubric.md로 두 번 검토해 고쳐요. 저장소의 원래 결과물은 10초라서, 영상의 15초 실험과 길이가 달라요.</p>
+  <p class="cite">출처: <a href="https://github.com/Vincentwei1021/mg-styles-15" target="_blank" rel="noopener">Vincentwei1021/mg-styles-15 README</a></p>
+</aside>
+
+<h3>배경음악도 코드로 만들어요</h3>
+<p>mg-styles-15 결과물은 배경음악도 좋았는데, 이 음악이 전부 코드로 만든 소리예요. 원리는 단순해요. 소리는 공기의 떨림이에요. 떨림의 높낮이를 1초에 48,000번 숫자로 계산해 이어 붙이면 그게 소리가 돼요. 화면 왼쪽 위의 'SR = 48000'이 바로 이 숫자예요. 오른쪽 곡선은 그렇게 계산한 떨림을 그린 거예요.</p>
+<figure>
+  <img src="assets/frame-0403.webp" alt="왼쪽에 스피커, 오른쪽에 매끄러운 물결 모양 곡선이 그려지고 왼쪽 위에 SR = 48000이라고 적힌 화면">
+  <figcaption>떨림이 빠르면 높은 음, 느리면 낮은 음이 돼요. 떨림의 모양을 바꾸면 악기 소리가 달라져요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=243s" target="_blank" rel="noopener">영상 04:03에서 보기</a></figcaption>
+</figure>
+
+<p>아래에서 이 규칙을 직접 바꿔 볼 수 있어요. 숫자 48,000개를 1초 동안 계산해 소리를 만드는 방식은 영상과 같아요. 떨림 빠르기의 범위는 실험을 위해 정한 값이에요.</p>
+<div class="explore" id="wave">
+  <span class="tag">직접 돌려 보기</span>
+  <div class="controls">
+    <label>떨림 빠르기 (가정: 110~880) <input type="range" min="110" max="880" step="10" value="220"> <output>220</output>번/초</label>
+    <label>떨림 모양
+      <select>
+        <option value="sine">매끄러운 물결 (사인파)</option>
+        <option value="square">네모난 물결 (사각파)</option>
+        <option value="saw">톱니 물결 (톱니파)</option>
+      </select>
+    </label>
+    <button type="button">0.6초 들어 보기</button>
+  </div>
+  <div class="stage">
+    <svg viewBox="0 0 480 200" aria-label="계산한 떨림 값을 이어 그린 곡선"></svg>
+    <div class="readout"><p></p></div>
+  </div>
+  <div class="try"><b>해 볼 것</b><ol>
+    <li>빠르기를 220에서 440으로 올려 보세요. 같은 구간에 떨림이 두 배로 늘고, 들어 보면 음이 높아져요. 떨림이 빠르면 높은 음이라는 설명 그대로예요.</li>
+    <li>빠르기는 그대로 두고 모양만 사각파로 바꿔 보세요. 음 높이는 같은데 소리 색깔이 거칠어져요. 모양을 바꾸면 악기 소리가 달라진다는 뜻이에요.</li>
+    <li>그래프 아래 숫자를 보세요. 1/100초를 그리는 데도 숫자가 480개 들어가요. 1초면 48,000개예요.</li>
+  </ol></div>
+</div>
+
+<p>이렇게 만든 소리를 박자에 맞춰 차곡차곡 쌓아 전자음악 한 곡을 짰어요. 화면은 120 BPM(Beats Per Minute) 악보예요. kick, snare, hat, chord, bass, pluck 여섯 줄에 파란 칸이 박자마다 찍혀 있어요. 맨 아래 별·사람 모양 표시는 도형이 바뀌는 순간이에요. 그 순간마다 효과음을 딱 맞춰 넣었어요.</p>
+<figure>
+  <img src="assets/frame-0417.webp" alt="전자음악 한 곡이라는 제목 아래 120 BPM, kick, snare, hat, chord, bass, pluck 여섯 줄에 파란 칸이 박자별로 찍힌 악보 화면">
+  <figcaption>실제로 녹음한 소리는 심벌 몇 개뿐이었고, 나머지는 모두 계산으로 만든 소리예요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=257s" target="_blank" rel="noopener">영상 04:17에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=265s" target="_blank" rel="noopener">04:25</a>
+  <h2>출시 영상 스킬과 손그림 틀</h2>
+<p>네 번째와 다섯 번째 스킬은 용도가 분명해요. brag은 출시 영상을 만드는 스킬이고, ClaudeAnimationBase는 손그림 캐릭터 애니메이션의 기본 틀이에요.</p>
+
+<h3>4. brag — 프로젝트를 출시 영상으로</h3>
+<p>brag은 깃허브 별을 17,000개 넘게 받은 스킬이에요. 이름 그대로 '자랑'하는 스킬이에요. 원래는 내가 만든 프로젝트를 20초짜리 출시 영상으로 바꿔 줘요. 화면 위쪽에 '한 번에'라는 제목 아래 음악, 공유 문구(share-copy.txt), 영상 세 가지가 나란히 있어요. 명령(/brag) 하나로 이 셋을 함께 만들어 준다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0443.webp" alt="한 번에라는 제목 아래 음악, 공유 문구 share-copy.txt, 영상 아이콘 세 개가 기계 위에 나란히 놓인 장면">
+  <figcaption>영상만이 아니라 공유할 때 쓸 문구까지 챙기는 게 다른 스킬과 달라요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=283s" target="_blank" rel="noopener">영상 04:43에서 보기</a></figcaption>
+</figure>
+<p>이번 주제로 brag이 고른 장면은 빛 알갱이 4,200개가 사람과 별 사이를 오가는 장면이었어요. 화면 왼쪽 위의 큰 숫자 4,200이 그 알갱이 수예요. 가운데 사람 모양이 그 알갱이로 이뤄져 있어요.</p>
+<figure>
+  <img src="assets/frame-0452.webp" alt="빛 알갱이 4,200이라는 큰 숫자 옆에 주황빛 알갱이로 이뤄진 사람 모양이 무대 위에 선 장면">
+  <figcaption>발표자는 폭발하는 장면이 역동적이었다고 해요. 다만 스타일을 고르지 않는 스킬이라 빛 입자 쪽 그림이에요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=292s" target="_blank" rel="noopener">영상 04:52에서 보기</a></figcaption>
+</figure>
+<p>홍보 영상 스킬답게 공유 문구와 포스터도 따로 나왔어요. 화면 위 말풍선이 share-copy.txt의 첫 줄 '몸무게의 65%는 산소, …'예요. 오른쪽 아래 영수증은 brag의 기록이에요. 제작 32분, API 요금 5.5달러, 화면 확인 19번이에요.</p>
+<figure>
+  <img src="assets/frame-0519.webp" alt="이젤 위 영상 화면 위에 몸무게의 65%는 산소라는 share-copy.txt 말풍선, 오른쪽 아래에 제작 시간 32분, API 요금 5.5달러, 화면 확인 19번이 적힌 영수증">
+  <figcaption>brag은 여덟 스킬 중 API 요금이 가장 적게 들었어요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=319s" target="_blank" rel="noopener">영상 05:19에서 보기</a></figcaption>
+</figure>
+
+<h3>5. ClaudeAnimationBase — 붓으로 칠한 손그림 틀</h3>
+<p>ClaudeAnimationBase는 결이 조금 달라요. 붓으로 그린 듯한 손그림 애니메이션을 만드는 기본 틀이에요. 틀에는 기본 캐릭터 하나가 들어 있고, 감정 표현이 31가지나 돼요. 모델이 읽고 따르는 연출 규칙도 함께 들어 있어요. 화면 왼쪽 책장의 <code>ANIMATION_GUIDE.md</code>가 그 규칙 문서예요.</p>
+<figure>
+  <img src="assets/frame-0528.webp" alt="ClaudeAnimationBase 제목과 별 1,526개 표시, 왼쪽 책장에 ANIMATION_GUIDE.md라고 적힌 상자가 놓인 방">
+  <figcaption>오른쪽 위 숫자는 이 저장소가 받은 깃허브 별 수 1,526개예요. 시계는 오래 걸린 제작 시간을 떠올리게 해요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=328s" target="_blank" rel="noopener">영상 05:28에서 보기</a></figcaption>
+</figure>
+<p>이번 실험 환경에는 GPU가 없었어요. 그래서 붓 질감을 그리느라 1시간 49분이 걸렸어요. 다른 작품들의 세 배쯤 되는 시간이에요. 대신 결과물은 손으로 칠한 듯한 수채화 질감이 확실히 달라요. 아래 장면은 별의 중심을 주황색 붓 터치로 겹겹이 칠한 모습이에요.</p>
+<figure>
+  <img src="assets/frame-0604.webp" alt="주황색과 노란색 붓 터치가 동심원처럼 겹친 별의 중심 안에 작은 원 알갱이가 흩어진 손그림">
+  <figcaption>가장자리가 고르지 않은 붓 자국이 수채화 느낌을 내요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=364s" target="_blank" rel="noopener">영상 06:04에서 보기</a></figcaption>
+</figure>
+<p>이 틀의 기본 캐릭터는 Claude Code의 마스코트예요. 그래서 발표자는 다른 캐릭터를 따로 만들어 바꿔 넣었어요. 화면의 파란 물방울 캐릭터가 새로 만든 '별먼지 방울'이에요. 별이 뜬 밤 언덕 위에서 '우리는 별의 먼지로 만들어졌다'는 문장과 함께 나와요.</p>
+<figure>
+  <img src="assets/frame-0613.webp" alt="별이 뜬 밤하늘 아래 초록 언덕 위에 눈이 반짝이는 파란 물방울 캐릭터가 서 있고, 우리는 별의 먼지로 만들어졌다는 자막이 붙은 손그림">
+  <figcaption>캐릭터는 바꿨지만 붓 질감과 연출 규칙은 틀의 것을 그대로 썼어요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=373s" target="_blank" rel="noopener">영상 06:13에서 보기</a></figcaption>
+</figure>
+
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>ClaudeAnimationBase README도 같은 점을 짚어요. 전용 GPU가 없으면 p5.brush의 수채화 채우기 때문에 렌더링이 프레임마다 몇 초씩 걸린다고 해요. 내장 그래픽만 있다면 그 채우기를 피하고 다른 표현으로 바꾸라고 모델에게 요청하라고 권해요. 기본 캐릭터 이름은 Clawd이고, p5.js와 p5.brush로 그려요.</p>
+  <p>이 저장소는 설치하는 스킬이라기보다 내려받아 여는 시작 키트예요. 저장소를 클론해 Claude Code로 연 다음, 'ANIMATION_GUIDE.md를 읽고 15초 영상을 만들어 줘'처럼 요청하는 방식이에요.</p>
+  <p class="cite">출처: <a href="https://github.com/JohnHeibel/ClaudeAnimationBase" target="_blank" rel="noopener">JohnHeibel/ClaudeAnimationBase README</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=381s" target="_blank" rel="noopener">06:21</a>
+  <h2>설명형 모션그래픽 세 가지</h2>
+<p>마지막 세 스킬은 깔끔한 설명형 모션그래픽에 강해요. 셋 다 스타일을 고르게 하지는 않지만, 영상을 짜는 방식이 저마다 달라요.</p>
+
+<h3>6. motion-graphics — 끊기지 않는 원테이크 설명</h3>
+<p>motion-graphics는 설명 영상, 효과음 같은 스킬 6개를 한데 묶은 프로젝트예요. 화면 목록에 motion-broll, object-separation, explainer-high-energy, explainer-default, explainer-engaging, sound-effects가 차례로 있어요. 이번에는 한 요소가 끊기지 않고 이야기를 따라가는 <span class="term" data-term="원테이크" data-en="One-take" data-desc="컷을 나누지 않고 한 번에 이어 찍은 것처럼 보이는 연출이에요. 여기서는 수소 원자 하나를 끝까지 따라가며 장소를 바꿔요." data-g="5">원테이크</span> 설명 스킬을 골랐어요. 목록에서 강조된 줄은 explainer-engaging이에요.</p>
+<figure>
+  <img src="assets/frame-0628.webp" alt="motion-graphics 제목과 별 798개 표시 아래 motion-broll부터 sound-effects까지 스킬 여섯 개가 나열되고 explainer-engaging 줄이 강조된 화면">
+  <figcaption>한 저장소 안에 용도가 다른 스킬이 여섯 개 들어 있어요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=388s" target="_blank" rel="noopener">영상 06:28에서 보기</a></figcaption>
+</figure>
+<p>원테이크로 따라간 이야기는 수소 원자 하나의 여행이에요. 빅뱅에서 생긴 수소 원자가 별 속에서 산소가 되고, 지구를 지나 사람 몸까지 가요. 화면에는 빅뱅, 별, 지구, 몸이 점선 하나로 이어져 있어요.</p>
+<figure>
+  <img src="assets/frame-0642.webp" alt="빅뱅에서 시작한 점선이 별, 지구를 거쳐 사람 몸 모양까지 이어지는 경로 그림">
+  <figcaption>컷을 나누지 않고 원자 하나를 계속 따라가서, 네 장소가 한 흐름으로 이어져요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=402s" target="_blank" rel="noopener">영상 06:42에서 보기</a></figcaption>
+</figure>
+
+<h3>7. bang-motion — HTML 한 파일로 나오는 모션그래픽</h3>
+<p>bang-motion은 결과물이 HTML(HyperText Markup Language) 파일 하나로 나와요. 이 스킬은 '슬라이드 말고 영상처럼'이라는 규칙을 모델이 스스로 점검하게 해 놨어요. 설명서가 인도네시아어로 쓰여 있어서, Claude도 인도네시아어로 생각하면서 작업했어요. 완성본에서는 여러 색 빛 알갱이가 모여 사람 모양을 이뤄요.</p>
+<figure>
+  <img src="assets/frame-0724.webp" alt="어두운 붉은 배경의 화면 안에 여러 색 빛 알갱이가 모여 사람 모양을 이룬 장면">
+  <figcaption>이 스킬도 빛 입자로 된 사람이 나와요. 스타일을 따로 정하지 않으면 생기는 경향이에요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=444s" target="_blank" rel="noopener">영상 07:24에서 보기</a></figcaption>
+</figure>
+<p>발표자가 가장 돋보인다고 꼽은 건 <span class="term" data-term="타이포그래피" data-en="Kinetic typography" data-desc="글자 자체를 움직이고 꾸며서 보여 주는 연출이에요. bang-motion은 문장을 한 글자씩 써 내려가는 방식으로 영상다운 움직임을 만들었어요." data-g="6">타이포그래피</span>예요. 아래 장면에서 '우리는 별의 먼지로 만들어졌다'가 한 글자씩 써지는 중이에요. 글자 간격이 아직 벌어져 있는 게 그 흔적이에요.</p>
+<figure>
+  <img src="assets/frame-0738.webp" alt="흩어진 빛 알갱이 앞에 우리는 별의 먼지로 만들어졌다는 문장이 한 글자씩 나타나는 장면">
+  <figcaption>문장을 한꺼번에 띄우지 않고 써 내려가서 영상다운 움직임이 생겨요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=458s" target="_blank" rel="noopener">영상 07:38에서 보기</a></figcaption>
+</figure>
+
+<h3>8. claude-motion-design — 시간 함수 하나와 비평 에이전트</h3>
+<p>claude-motion-design은 만든 사람이 자기 서비스의 출시 영상을 실제로 이 스킬로 만들었다고 해요. 영상 전체를 <span class="term" data-term="시간 함수" data-en="Time function, seek(t)" data-desc="시각 t를 넣으면 그 순간의 화면을 그려 주는 함수예요. 영상 전체가 함수 하나라서 아무 순간이나 다시 그리거나 한 장면만 고치기 쉬워요." data-g="7">시간 함수</span> 하나로 그리고, 음악 박자에 맞춰 컷을 넣는 방식이에요. 화면의 seek(t)가 그 함수예요. 아래 타임라인은 0초부터 15초까지이고, 지금 t = 2.6s 지점의 장면이 칸에 채워져 있어요.</p>
+<figure>
+  <img src="assets/frame-0755.webp" alt="큰 글씨 seek(t) 아래 0초부터 15초까지의 타임라인과 장면 칸들이 있고, t = 2.6s 지점에 표시가 있는 화면">
+  <figcaption>어느 순간이든 t만 넣으면 그 장면이 나오니, 한 장면만 고치기도 쉬워요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=475s" target="_blank" rel="noopener">영상 07:55에서 보기</a></figcaption>
+</figure>
+<p>여기서 끝이 아니에요. 다 만든 뒤에는 화면만 보고 평가하는 <span class="term" data-term="비평 에이전트" data-en="Critic agent" data-desc="만든 에이전트와 따로 불러서 결과 화면만 보고 평가하게 하는 에이전트예요. 만든 쪽의 사정을 모르니 더 냉정하게 반려할 수 있어요." data-g="8">비평 에이전트</span>를 따로 불러 심사를 받았어요. 화면에서 드론처럼 생긴 카메라가 비평 에이전트예요. 타임라인의 한 장면에 '반려' 도장이 찍혀 있어요. 7.5초 지점에는 'drop' 표시가 있어서, 음악이 터지는 순간에 맞춰 장면을 놓았다는 걸 알 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0805.webp" alt="비평 에이전트라는 글씨와 카메라 드론 아래 장면 타임라인이 있고, 한 장면에 반려 도장이 찍혔으며 7.5초 지점에 drop 표시가 있는 화면">
+  <figcaption>반려된 장면은 고쳐서 다시 심사를 받아요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=485s" target="_blank" rel="noopener">영상 08:05에서 보기</a></figcaption>
+</figure>
+<p>그래서 화면을 확인한 횟수가 59번이에요. 왼쪽 눈 모양 기호 줄들이 다른 작품의 확인 횟수 17~30번이고, 아래 긴 두 줄이 claude-motion-design의 59번이에요. 다른 작품 평균의 두 배가 넘어요. 발표자는 한마디로 가장 꼼꼼했다고 해요.</p>
+<figure>
+  <img src="assets/frame-0810.webp" alt="위쪽에 눈 모양 기호가 17번부터 30번까지 줄지어 있고 아래 claude-motion-design 줄에는 59개가 이어지며 오른쪽에 큰 글씨로 59번이라고 적힌 화면">
+  <figcaption>확인 횟수가 곧 다듬은 횟수예요. 대신 제작 시간도 52분으로 길었어요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=490s" target="_blank" rel="noopener">영상 08:10에서 보기</a></figcaption>
+</figure>
+<p>마지막 장면에서는 몸의 90%만 별빛으로 물들어요. 왼쪽 위 90%와, 사람 모양 아래 '수소 10% · 몸무게 기준'이라는 작은 글씨가 그 근거예요. 우리 몸무게의 90% 정도가 별에서 만들어진 원소라서, 그 비율을 그림에 그대로 살린 거예요.</p>
+<figure>
+  <img src="assets/frame-0840.webp" alt="왼쪽에 90%라는 숫자와 노란 빛 알갱이로 채워진 사람 모양, 그 아래 수소 10% 몸무게 기준이라는 작은 글씨, 오른쪽 화면에 별빛 사람이 선 장면">
+  <figcaption>나머지 10%인 수소는 별이 아니라 빅뱅에서 생긴 원소라 물들지 않아요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=520s" target="_blank" rel="noopener">영상 08:40에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=523s" target="_blank" rel="noopener">08:43</a>
+  <h2>결국 원하는 그림으로 골라요</h2>
+<p>아홉 편을 나란히 놓으면 한 가지 공통점이 보여요. 스타일을 따로 정해 주지 않으면 빛 입자로 된 사람과 우주로 모이는 경향이 있었어요. 화면 왼쪽 글씨 '빛 입자 · 우주'가 그 묶음이에요. 왼쪽 작품들은 검은 바탕에 빛 알갱이가 흩어진 그림이에요. 오른쪽의 판화(lemo-opuscar), 그림책(animate), 손그림(ClaudeAnimationBase)은 한눈에 봐도 다른 그림이에요.</p>
+<figure>
+  <img src="assets/frame-0901.webp" alt="왼쪽에 빛 알갱이로 된 사람과 어두운 우주 장면 작품들이, 오른쪽에 판화 그림, 그림책, 물방울 캐릭터 손그림 작품이 액자처럼 떠 있고 아래에 빛 입자 · 우주라는 글씨가 있는 화면">
+  <figcaption>스타일을 고르게 하는 스킬만 빛 입자에서 벗어났어요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=541s" target="_blank" rel="noopener">영상 09:01에서 보기</a></figcaption>
+</figure>
+
+<h3>시간과 비용</h3>
+<p>영상은 아홉 편의 영수증을 한 줄로 걸어 보여 줘요. 영수증이 길수록 오래 걸린 거예요. 맨 오른쪽 ClaudeAnimationBase만 유난히 길고, 나머지는 대부분 30~50분이에요. API 요금은 한 편에 5.5~11.4달러라서, 발표자는 국밥 한 그릇 값 정도라고 해요.</p>
+<figure>
+  <img src="assets/frame-0912.webp" alt="스킬 없음부터 ClaudeAnimationBase까지 영수증 아홉 장이 줄에 걸려 있고, 아래에 API 요금 5.5~11.4달러라는 큰 글씨가 있는 화면">
+  <figcaption>영수증 글씨가 작아서 아래 표로 옮겼어요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=552s" target="_blank" rel="noopener">영상 09:12에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>스킬</th><th>제작 시간</th><th>API 요금</th><th>화면 확인</th><th>이번에 고른 방식</th></tr></thead>
+    <tbody>
+      <tr><td>스킬 없음</td><td>31분</td><td>기록 없음</td><td>18번</td><td>빛 입자가 터지는 장면</td></tr>
+      <tr><td>brag</td><td>32분</td><td>$5.5</td><td>19번</td><td>빛 알갱이 4,200개, 공유 문구·포스터</td></tr>
+      <tr><td>animate</td><td>32분</td><td>$8.9</td><td>24번</td><td>종이 오려 붙인 그림책</td></tr>
+      <tr><td>mg-styles-15</td><td>33분</td><td>$7.9</td><td>17번</td><td>형태 변형(Shape Morph)</td></tr>
+      <tr><td>motion-graphics</td><td>36분</td><td>$6.9</td><td>18번</td><td>원테이크 설명</td></tr>
+      <tr><td>lemo-opuscar</td><td>40분</td><td>$11.4</td><td>29번</td><td><span class="term" data-term="동판화" data-en="Engraving" data-desc="구리판에 가는 선을 새겨 찍어 내는 판화예요. 선을 촘촘히 겹쳐 명암을 내서, 빛 입자 그림과는 결이 완전히 달라요." data-g="4">동판화</span></td></tr>
+      <tr><td>bang-motion</td><td>40분</td><td>$10.2</td><td>21번</td><td>한 글자씩 써지는 타이포그래피</td></tr>
+      <tr><td>claude-motion-design</td><td>52분</td><td>$8.8</td><td>59번</td><td>시간 함수 + 비평 에이전트 심사</td></tr>
+      <tr><td>ClaudeAnimationBase</td><td>1시간 49분</td><td>$9.5</td><td>30번</td><td>수채화 붓 터치, 캐릭터 교체</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>요금이 가장 적은 건 brag(5.5달러)이고 가장 많은 건 lemo-opuscar(11.4달러)예요. 시간이 가장 긴 ClaudeAnimationBase는 GPU가 없는 환경 탓이었어요. 화면 확인은 비평 에이전트를 쓴 claude-motion-design이 59번으로 압도적이에요.</p>
+
+<h3>무엇을 고를까요</h3>
+<p>발표자의 결론은 원하는 그림에 따라 고르라는 거예요. 아래 그림은 영상 끝의 이정표 네 개를 한 장에 모은 거예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="만들고 싶은 영상 네 가지와 각각에 맞는 스킬">
+    <g id="fig-pick"></g>
+  </svg>
+  <figcaption>스타일을 직접 고르고 싶다면 가운데 두 칸, 메시지를 깔끔하게 전하고 싶다면 오른쪽 칸을 보면 돼요. <a href="https://www.youtube.com/watch?v=IGdo9hR1_rE&amp;t=554s" target="_blank" rel="noopener">영상 09:14에서 보기</a></figcaption>
+</figure>
+<p>같은 주제, 같은 네 줄로 시작했는데도 스킬에 따라 이렇게 다른 영상이 나왔어요. 스킬이 화풍과 작업 순서를 정해 주기 때문에, 모델이 같아도 결과가 달라져요.</p>
+
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>각 저장소 README에 적힌 Claude Code 설치 방법이에요. 별 수는 2026년 10월 24일에 깃허브에서 확인한 값이라 영상 속 숫자와 조금 달라요.</p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>스킬</th><th>설치 방법</th><th>별</th></tr></thead>
+      <tbody>
+        <tr><td>lemo-opuscar</td><td><code>claude plugin marketplace add lemomo-ai/lemo-opuscar</code> 후 <code>claude plugin install lemo-opuscar@lemolab</code></td><td>6,231</td></tr>
+        <tr><td>animate</td><td><code>/plugin marketplace add cth9191/animate</code> 후 <code>/plugin install animate@animate</code>. Playwright·Chromium·ffmpeg가 필요해요</td><td>938</td></tr>
+        <tr><td>mg-styles-15</td><td>설치형이 아니에요. 스타일별 프롬프트와 소스를 열어 가져다 써요</td><td>1,971</td></tr>
+        <tr><td>brag</td><td><code>/plugin marketplace add latent-spaces/brag</code> 후 <code>/plugin install brag@brag</code>, 실행은 <code>/brag</code></td><td>18,170</td></tr>
+        <tr><td>ClaudeAnimationBase</td><td>저장소를 클론해 Claude Code로 열고 ANIMATION_GUIDE.md를 읽게 해요</td><td>1,662</td></tr>
+        <tr><td>motion-graphics</td><td><code>npx skills add Barty-Bart/motion-graphics</code></td><td>823</td></tr>
+        <tr><td>bang-motion</td><td><code>/plugin marketplace add bangtutorial/bang-motion</code> 후 <code>/plugin install bang-motion@bang-motion</code></td><td>701</td></tr>
+        <tr><td>claude-motion-design</td><td><code>skill/motion-design</code> 폴더를 <code>~/.claude/skills/</code>에 복사하고 Python 의존성을 설치해요. 실행은 <code>/motion-design</code></td><td>658</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>bang-motion의 <code>SKILL.md</code>는 실제로 인도네시아어로 쓰여 있어요. 영상에서 Claude가 인도네시아어로 생각했다는 이유가 이거예요.</p>
+  <p class="cite">출처: <a href="https://github.com/lemomo-ai/lemo-opuscar" target="_blank" rel="noopener">lemo-opuscar</a> · <a href="https://github.com/cth9191/animate" target="_blank" rel="noopener">animate</a> · <a href="https://github.com/Vincentwei1021/mg-styles-15" target="_blank" rel="noopener">mg-styles-15</a> · <a href="https://github.com/latent-spaces/brag" target="_blank" rel="noopener">brag</a> · <a href="https://github.com/JohnHeibel/ClaudeAnimationBase" target="_blank" rel="noopener">ClaudeAnimationBase</a> · <a href="https://github.com/Barty-Bart/motion-graphics" target="_blank" rel="noopener">motion-graphics</a> · <a href="https://github.com/bangtutorial/bang-motion" target="_blank" rel="noopener">bang-motion</a> · <a href="https://github.com/howseen-ai/claude-motion-design" target="_blank" rel="noopener">claude-motion-design</a> README</p>
+</aside>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 스킬 이름이 소리 나는 대로 적혔어요. 화면 글자와 업로더의 챕터 제목을 기준으로 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>레모 오퍼스카, 레무 오퍼스카</td><td>lemo-opuscar</td><td></td></tr>
+      <tr><td>애니메이트</td><td>animate</td><td></td></tr>
+      <tr><td>MG 스타일즈 피프틴, 15틴, 피프팅</td><td>mg-styles-15</td><td></td></tr>
+      <tr><td>브레그</td><td>brag</td><td></td></tr>
+      <tr><td>기터브</td><td>깃허브(GitHub)</td><td></td></tr>
+      <tr><td>클로드 애니메이션 베이스</td><td>ClaudeAnimationBase</td><td></td></tr>
+      <tr><td>GP</td><td>GPU</td><td></td></tr>
+      <tr><td>모션 그래픽스</td><td>motion-graphics</td><td></td></tr>
+      <tr><td>백 모션, 100모션, 백모션</td><td>bang-motion</td><td></td></tr>
+      <tr><td>클로드 모션 디자인</td><td>claude-motion-design</td><td></td></tr>
+      <tr><td>동판로</td><td>동판화</td><td></td></tr>
+      <tr><td>수채와</td><td>수채화</td><td></td></tr>
+      <tr><td>높낮지</td><td>높낮이</td><td></td></tr>
+      <tr><td>손림</td><td>손그림</td><td></td></tr>
+      <tr><td>빚 입자</td><td>빛 입자</td><td></td></tr>
+      <tr><td>내줄, 네줄</td><td>네 줄</td><td>화면에 넣을 문장 네 줄 (추정)</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-4"><dt>동판화<span class="en">Engraving</span></dt><dd>구리판에 가는 선을 새겨 찍어 내는 판화예요. 선을 촘촘히 겹쳐 명암을 내서, 빛 입자 그림과는 결이 완전히 달라요.</dd></div>
+    <div class="g" id="g-2"><dt>모션그래픽<span class="en">Motion graphics</span></dt><dd>도형, 글자, 그래픽 요소를 움직여 정보를 전달하는 영상이에요. 이 영상의 스킬들은 이 움직임을 코드로 계산해서 만들어요.</dd></div>
+    <div class="g" id="g-8"><dt>비평 에이전트<span class="en">Critic agent</span></dt><dd>만든 에이전트와 따로 불러서 결과 화면만 보고 평가하게 하는 에이전트예요. 만든 쪽의 사정을 모르니 더 냉정하게 반려할 수 있어요.</dd></div>
+    <div class="g" id="g-1"><dt>스킬<span class="en">Agent Skill</span></dt><dd>에이전트가 특정 일을 할 때 읽고 따르는 지침과 도구를 폴더 하나에 묶은 거예요. 같은 모델이라도 어떤 스킬을 쓰느냐에 따라 작업 순서와 결과물이 달라져요.</dd></div>
+    <div class="g" id="g-3"><dt>스토리보드<span class="en">Storyboard</span></dt><dd>영상의 장면을 순서대로 미리 그려 둔 설계도예요. 이걸 먼저 확인받으면 다 만든 뒤 크게 뒤집는 일이 줄어요.</dd></div>
+    <div class="g" id="g-7"><dt>시간 함수<span class="en">Time function, seek(t)</span></dt><dd>시각 t를 넣으면 그 순간의 화면을 그려 주는 함수예요. 영상 전체가 함수 하나라서 아무 순간이나 다시 그리거나 한 장면만 고치기 쉬워요.</dd></div>
+    <div class="g" id="g-5"><dt>원테이크<span class="en">One-take</span></dt><dd>컷을 나누지 않고 한 번에 이어 찍은 것처럼 보이는 연출이에요. 여기서는 수소 원자 하나를 끝까지 따라가며 장소를 바꿔요.</dd></div>
+    <div class="g" id="g-6"><dt>타이포그래피<span class="en">Kinetic typography</span></dt><dd>글자 자체를 움직이고 꾸며서 보여 주는 연출이에요. bang-motion은 문장을 한 글자씩 써 내려가는 방식으로 영상다운 움직임을 만들었어요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>BPM</dt><dd>Beats Per Minute</dd></div>
+    <div class="g"><dt>GPU</dt><dd>Graphics Processing Unit</dd></div>
+    <div class="g"><dt>HTML</dt><dd>HyperText Markup Language</dd></div>
+    <div class="g"><dt>MP4</dt><dd>MPEG-4 Part 14</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=IGdo9hR1_rE" target="_blank" rel="noopener">원본 영상 — 코드깎는노인</a></li>
+    <li id="src-2"><a href="https://github.com/lemomo-ai/lemo-opuscar" target="_blank" rel="noopener">lemomo-ai/lemo-opuscar (GitHub)</a></li>
+    <li id="src-3"><a href="https://github.com/cth9191/animate" target="_blank" rel="noopener">cth9191/animate (GitHub)</a></li>
+    <li id="src-4"><a href="https://github.com/Vincentwei1021/mg-styles-15" target="_blank" rel="noopener">Vincentwei1021/mg-styles-15 (GitHub)</a></li>
+    <li id="src-5"><a href="https://github.com/latent-spaces/brag" target="_blank" rel="noopener">latent-spaces/brag (GitHub)</a></li>
+    <li id="src-6"><a href="https://github.com/JohnHeibel/ClaudeAnimationBase" target="_blank" rel="noopener">JohnHeibel/ClaudeAnimationBase (GitHub)</a></li>
+    <li id="src-7"><a href="https://github.com/Barty-Bart/motion-graphics" target="_blank" rel="noopener">Barty-Bart/motion-graphics (GitHub)</a></li>
+    <li id="src-8"><a href="https://github.com/bangtutorial/bang-motion" target="_blank" rel="noopener">bangtutorial/bang-motion (GitHub)</a></li>
+    <li id="src-9"><a href="https://github.com/howseen-ai/claude-motion-design" target="_blank" rel="noopener">howseen-ai/claude-motion-design (GitHub)</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 24일에 이 영상을 보고 정리했어요. 원본은 코드깎는노인 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+// widgets/figures.js — 영상 끝 이정표 네 개를 한 장으로
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+(() => {
+  const g = document.getElementById('fig-pick');
+  if (!g) return;
+  const groups = [
+    ['홍보 영상', ['brag']],
+    ['화풍 고르기', ['lemo-opuscar', 'mg-styles-15']],
+    ['손그림 캐릭터', ['ClaudeAnimationBase', 'animate']],
+    ['설명형 모션그래픽', ['bang-motion', 'claude-motion-design', 'motion-graphics']],
+  ];
+  groups.forEach(([name, skills], i) => {
+    const x = 10 + i * 157;
+    const cx = x + 72;
+    g.append(el('rect', { x, y: 16, width: 144, height: 44, rx: 10, class: `c${i + 1} cell` }));
+    g.append(el('text', { x: cx, y: 43, 'text-anchor': 'middle' }, name));
+    skills.forEach((s, j) => {
+      const y = 86 + j * 44;
+      g.append(el('path', { d: `M${cx} ${j === 0 ? 60 : y - 10} V${y}`, class: 'line' }));
+      g.append(el('rect', { x: x - 2, y, width: 148, height: 34, rx: 8, class: 'box' }));
+      g.append(el('text', { x: cx, y: y + 22, 'text-anchor': 'middle', class: 'mono', style: 'font-size:10px' }, s));
+    });
+  });
+})();
+</script>
+<script>
+// widgets/wave.js
+// widgets/wave.js — 떨림을 1초에 48,000번 계산해 소리를 만드는 원리
+(() => {
+  const root = document.getElementById('wave');
+  if (!root) return;
+  const SR = 48000;                 // 영상의 SR = 48000
+  const WINDOW = SR / 100;          // 1/100초 = 숫자 480개
+  const NS = 'http://www.w3.org/2000/svg';
+  const range = root.querySelector('input[type=range]');
+  const shape = root.querySelector('select');
+  const play = root.querySelector('button');
+  const svg = root.querySelector('svg');
+  const readout = root.querySelector('.readout p');
+  play.classList.add('primary');
+
+  // n번째 숫자: 떨림 빠르기 f(1초에 몇 번)와 모양에 따라 -1~1 사이 값
+  function sample(n, f, kind) {
+    const phase = (n * f) / SR;
+    if (kind === 'square') return Math.sin(2 * Math.PI * phase) >= 0 ? 1 : -1;
+    if (kind === 'saw') return 2 * (phase - Math.floor(phase + 0.5));
+    return Math.sin(2 * Math.PI * phase);
+  }
+
+  function draw() {
+    const f = +range.value, kind = shape.value;
+    const pts = [];
+    for (let n = 0; n < WINDOW; n++) pts.push(`${n},${(95 - 65 * sample(n, f, kind)).toFixed(1)}`);
+    svg.innerHTML = '';
+    const add = (tag, attrs, text) => {
+      const e = document.createElementNS(NS, tag);
+      for (const k in attrs) e.setAttribute(k, attrs[k]);
+      if (text !== undefined) e.textContent = text;
+      svg.append(e);
+    };
+    add('line', { x1: 0, y1: 95, x2: 480, y2: 95, class: 'axis' });
+    add('polyline', { points: pts.join(' '), class: 'hot' });
+    add('text', { x: 4, y: 186, class: 'sub' }, '0초');
+    add('text', { x: 476, y: 186, 'text-anchor': 'end', class: 'sub' }, '1/100초 · 숫자 480개');
+    readout.textContent = `1/100초 동안 떨림이 ${(f / 100).toFixed(1)}번 들어 있어요. ` +
+      `1초면 ${f}번이에요. 어느 빠르기든 소리를 만드는 숫자는 1초에 48,000개예요.`;
+  }
+
+  let ctx;
+  play.addEventListener('click', () => {
+    try {
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SR });
+    } catch (e) {
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const rate = ctx.sampleRate, len = Math.round(rate * 0.6);
+    const buf = ctx.createBuffer(1, len, rate);
+    const data = buf.getChannelData(0);
+    const f = +range.value, kind = shape.value, fade = rate * 0.02;
+    for (let n = 0; n < len; n++) {
+      const env = Math.min(1, n / fade, (len - n) / fade);
+      data[n] = 0.15 * env * sample((n * SR) / rate, f, kind);
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start();
+  });
+
+  root.addEventListener('input', (e) => {
+    if (e.target === range) range.nextElementSibling.textContent = range.value;
+    draw();
+  });
+  shape.addEventListener('change', draw);
+  draw();
+})();
+</script>
+</body>
+</html>
