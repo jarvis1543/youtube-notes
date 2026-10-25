@@ -1,0 +1,786 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>16.9MB 음성 인식 모델 Whistle로 만든 로컬 받아쓰기 도구</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>16.9MB 음성 인식 모델 Whistle로 만든 로컬 받아쓰기 도구</h1>
+  <p class="lede">7개 언어 받아쓰기와 단어별 시간, 어디까지 믿을 수 있는지 짚어요</p>
+  <div class="meta">
+    <span>Consulting Joe</span><span class="dot">·</span>
+    <span>영상 03:51</span><span class="dot">·</span>
+    <span>읽는 데 약 7분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=b8N4QGKfE_E" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>Whistle은 16.9MB 모델 하나로 유럽 7개 언어를 CPU(Central Processing Unit)에서 받아써요. 한국어는 지원 언어에 없어요.</li>
+    <li>단어마다 시작·끝 시간과 확률을 줘서 자막이나 재생 중 강조에 쓸 수 있지만, 추정값이라 중요한 자막은 검토해야 해요.</li>
+    <li>발표자의 프로젝트 이름은 Whisper Speech 2 Text지만, 소리를 알아듣는 엔진은 OpenAI Whisper가 아니라 Whistle이에요.</li>
+    <li>명령 하나로 txt·JSON(JavaScript Object Notation)·CSV(Comma-Separated Values)·SRT(SubRip Subtitle)·VTT(Video Text Tracks) 다섯 파일이 나오고, 말을 멈출 때마다 받아쓰는 마이크 스크립트도 있어요.</li>
+    <li>확인한 건 영어 녹음 하나와 자동 테스트 12개뿐이에요. 언어·억양·기기별 정확도를 잰 결과는 아니에요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">Whistle은 어떤 모델인가요</a></li>
+    <li><a href="#s2">파이썬 도구로 써 보기</a></li>
+    <li><a href="#s3">로컬로 돌린다는 것과 확인한 범위</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=b8N4QGKfE_E&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>Whistle은 어떤 모델인가요</h2>
+<p>Whistle은 Cactus Compute가 2026년 10월 2일에 낸 음성 인식 모델이에요. 첫 슬라이드 왼쪽의 큰 숫자 16.9MB가 모델 파일 크기예요. 그 아래 'CPU inference. Timed words. Local tools.'라는 한 줄이 영상 전체의 요약이에요. GPU(Graphics Processing Unit) 없이 CPU로 돌고, 단어마다 시간을 붙이고, 내 컴퓨터에서 쓰는 도구라는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0008.webp" alt="16.9 MB라는 큰 숫자와 7 LANGUAGES, WORD TIMESTAMPS 배지, 오른쪽에 음성 파형과 'Whistle by Cactus Compute' 문구가 있는 슬라이드">
+  <figcaption>
+    휴대폰 사진 한 장보다 작은 크기가 이 모델을 소개하는 첫 번째 이유예요.
+    <a href="https://www.youtube.com/watch?v=b8N4QGKfE_E&amp;t=8s" target="_blank" rel="noopener">영상 00:08에서 보기</a>
+  </figcaption>
+</figure>
+<h3>프로젝트 이름은 Whisper, 엔진은 Whistle</h3>
+<p>발표자 Joe(Joseph Sammarco)는 Whistle을 감싼 작은 파이썬 프로젝트를 만들었어요. 슬라이드 왼쪽 칸이 인식 엔진인 Whistle이고, 화살표 오른쪽이 발표자의 프로젝트 Whisper Speech 2 Text예요. 이름에 Whisper가 들어가서 헷갈리기 쉬운데, 소리를 알아듣는 건 Whistle이에요. 오른쪽 아래 'WHISTLE POWERS THE AUDIO' 배지가 그 점을 짚어요.</p>
+<figure>
+  <img src="assets/frame-0030.webp" alt="왼쪽에 RECOGNITION ENGINE Whistle(Cactus Compute, Released October 2, 2026), 화살표 오른쪽에 OUR PYTHON PROJECT Whisper Speech 2 Text가 적힌 슬라이드">
+  <figcaption>
+    OpenAI의 Whisper와는 다른 모델이에요. 이름만 보고 Whisper 문서를 찾으면 엉뚱한 곳으로 가요.
+    <a href="https://www.youtube.com/watch?v=b8N4QGKfE_E&amp;t=30s" target="_blank" rel="noopener">영상 00:30에서 보기</a>
+  </figcaption>
+</figure>
+<h3>7개 언어와 이름 힌트</h3>
+<p>지원 언어는 영어, 독일어, 프랑스어, 스페인어, 이탈리아어, 네덜란드어, 폴란드어 일곱 개예요. 한국어는 없어요. 슬라이드 오른쪽 'AUTO DETECT' 배지처럼 언어를 모델이 알아내게 둘 수도 있고, 직접 정해 줄 수도 있어요. 회사 이름이나 제품 코드처럼 자주 나올 말을 미리 넘기면, 발음이 비슷한 단어 사이에서 그쪽을 고르도록 도와요.</p>
+<figure>
+  <img src="assets/frame-0050.webp" alt="EN English, DE German, FR French, ES Spanish, IT Italian, NL Dutch, PL Polish 일곱 칸과 AUTO DETECT 배지가 있는 슬라이드">
+  <figcaption>
+    일곱 언어 모두 유럽 언어예요. 언어를 알고 있다면 직접 정해 주는 편이 안전해요.
+    <a href="https://www.youtube.com/watch?v=b8N4QGKfE_E&amp;t=50s" target="_blank" rel="noopener">영상 00:50에서 보기</a>
+  </figcaption>
+</figure>
+<h3>단어마다 붙는 시간</h3>
+<p>발표자가 이 모델을 '텍스트 상자 이상'이라고 보는 이유가 <span class="term" data-term="단어 타임스탬프" data-en="Word timestamps" data-desc="받아쓴 단어마다 몇 초에 시작해 몇 초에 끝났는지 붙인 시간 정보예요. 이게 있어야 자막을 만들거나 특정 단어로 바로 이동할 수 있어요." data-g="1">단어 타임스탬프</span>예요. 슬라이드 왼쪽에는 인식한 단어 Kilo, Echo, Niner, Golf, Delta, Hotel이 파형 아래 한 칸씩 놓여 있어요. 오른쪽 JSON은 실제 프로젝트 결과인데, Kilo라는 단어가 0.16초에 시작해 0.56초에 끝났고 확률이 0.797이라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0106.webp" alt="파형 아래 Kilo, Echo, Niner, Golf, Delta, Hotel 단어 칸과 오른쪽에 word Kilo, start 0.16, end 0.56, probability 0.797이 적힌 JSON이 있는 슬라이드">
+  <figcaption>
+    시작·끝·확률 세 값이 있으면 재생 중 강조, 구절로 이동하기, 자막 만들기가 가능해져요.
+    <a href="https://www.youtube.com/watch?v=b8N4QGKfE_E&amp;t=66s" target="_blank" rel="noopener">영상 01:06에서 보기</a>
+  </figcaption>
+</figure>
+<p>다만 이 시간은 모델이 추정한 정렬이에요. 발표자도 중요한 자막은 사람이 한 번 더 봐야 한다고 못 박아요.</p>
+<blockquote>
+  <p>These are estimated alignments, so important captions still deserve a review.</p>
+  <p>이건 추정한 정렬이라서, 중요한 자막은 여전히 검토가 필요해요.</p>
+  <cite>— 영상 00:34</cite>
+</blockquote>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Whistle 모델 카드를 보면 한 번에 최대 30초를 처리하고, 그보다 긴 소리는 구간을 나눠(windowing) 이어서 처리해요. 침묵이나 일정한 잡음에는 빈 결과를 내지만, 음악 같은 소리는 글자로 나올 수 있어요. 그래서 마이크를 계속 켜 두는 앱이라면 앞에 VAD(Voice Activity Detection)나 웨이크 워드를 두라고 권해요. 영상에서 말한 '이름 힌트'는 모델 카드에서 키워드 바이어싱(keyword biasing)이라고 불러요.</p>
+  <p class="cite">출처: <a href="https://huggingface.co/Cactus-Compute/whistle" target="_blank" rel="noopener">Hugging Face — Cactus-Compute/whistle 모델 카드</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=b8N4QGKfE_E&amp;t=70s" target="_blank" rel="noopener">01:10</a>
+  <h2>파이썬 도구로 써 보기</h2>
+<p>발표자의 저장소는 설치 방법과 테스트에 쓴 파이썬 패키지 버전을 고정해 두었어요. 슬라이드의 명령은 위에서부터 저장소 받기, 가상 환경 만들기, 의존성 설치, 받아쓰기 실행 순서예요. 마지막 줄처럼 WAV(Waveform Audio File Format) 파일 하나를 <code>transcribe.py</code>에 넘기면 돼요.</p>
+<figure>
+  <img src="assets/frame-0120.webp" alt="git clone, cd Whisper-Speech-2-Text, python -m venv .venv, pip install -r requirements.txt, python transcribe.py recording.wav --output output/recording 명령이 적힌 터미널 슬라이드">
+  <figcaption>
+    아래 초록 글씨대로 처음 한 번은 엔진과 모델을 내려받고, 그 뒤로는 내 컴퓨터에서 인식해요.
+    <a href="https://www.youtube.com/watch?v=b8N4QGKfE_E&amp;t=80s" target="_blank" rel="noopener">영상 01:20에서 보기</a>
+  </figcaption>
+</figure>
+<pre><code class="language-bash">git clone https://github.com/jsammarco/Whisper-Speech-2-Text.git
+cd Whisper-Speech-2-Text
+python -m venv .venv
+# .venv를 활성화한 뒤 설치
+python -m pip install -r requirements.txt
+python transcribe.py recording.wav --output output/recording</code></pre>
+<h3>녹음 하나에서 나오는 다섯 가지 파일</h3>
+<p>명령 하나로 다섯 형식이 한꺼번에 나와요. 슬라이드의 다섯 카드가 각각 어디에 쓰는지를 적어 뒀어요.</p>
+<figure>
+  <img src="assets/frame-0132.webp" alt=".TXT Read the transcript, .JSON Keep model fields, .CSV Inspect timed words, .SRT Create captions, .VTT Caption the web 다섯 카드와 'One command / six words per caption cue by default' 문구가 있는 슬라이드">
+  <figcaption>
+    카드 아래 작은 글씨처럼 자막은 기본으로 큐 하나에 여섯 단어씩 묶어요.
+    <a href="https://www.youtube.com/watch?v=b8N4QGKfE_E&amp;t=92s" target="_blank" rel="noopener">영상 01:32에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>형식</th><th>슬라이드 설명</th><th>쓰임</th></tr></thead>
+    <tbody>
+      <tr><td>.txt</td><td>Read the transcript</td><td>받아쓴 글만 읽기</td></tr>
+      <tr><td>.json</td><td>Keep model fields</td><td>모델이 준 값을 그대로 보관</td></tr>
+      <tr><td>.csv</td><td>Inspect timed words</td><td>단어별 시간을 한 줄씩 살펴보기</td></tr>
+      <tr><td>.srt</td><td>Create captions</td><td>영상 편집용 자막</td></tr>
+      <tr><td>.vtt</td><td>Caption the web</td><td>웹 플레이어용 자막(WebVTT)</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>단어 하나씩 끊는 자막이 필요하면 그 옵션도 있어요. 이미 만든 파일은 덮어쓰기를 직접 고르기 전까지는 건드리지 않아요.</p>
+<h3>말하고, 멈추면, 받아써요</h3>
+<p>마이크 스크립트는 슬라이드의 네 칸 순서로 움직여요. 마이크에서 소리를 받고(Capture), 큐에 쌓고(Queue), CPU에서 Whistle로 인식하고(Recognize), 글자와 단어 시간을 내보내요(Export). 말이 잠깐 멈추면 그 구절을 하나로 끊어 받아써요.</p>
+<figure>
+  <img src="assets/frame-0205.webp" alt="01 Capture, 02 Queue, 03 Recognize, 04 Export 네 칸이 화살표로 이어지고 아래에 'Pause detection + bounded buffer + capture-clock timestamps'가 적힌 슬라이드">
+  <figcaption>
+    아래 한 줄이 핵심 장치 세 가지예요. 멈춤 감지, 크기가 정해진 버퍼, 녹음 시작 기준의 시간.
+    <a href="https://www.youtube.com/watch?v=b8N4QGKfE_E&amp;t=125s" target="_blank" rel="noopener">영상 02:05에서 보기</a>
+  </figcaption>
+</figure>
+<p>앞 구절을 처리하는 동안 들어온 소리는 <span class="term" data-term="바운디드 큐" data-en="Bounded queue" data-desc="담을 수 있는 양에 상한이 정해진 대기열이에요. 처리가 밀려도 메모리를 끝없이 먹지 않고, 넘치면 그 사실을 알릴 수 있어요." data-g="2">바운디드 큐</span>에 쌓여 기다려요. 시간 값은 녹음을 시작한 시점을 기준으로 매겨요. 큐가 넘치면 소리를 조용히 버리지 않고 오류를 분명히 내요. 멈춤 길이와 민감도는 쓰는 마이크에 맞게 조절할 수 있어요.</p>
+<h3>호출부호 예제: 말을 구조화된 데이터로</h3>
+<p>발표자는 아마추어 무선을 예로 들어요. 무선에서는 알파벳을 헷갈리지 않게 Kilo(K), Echo(E)처럼 단어로 불러요. 이걸 <span class="term" data-term="포네틱 알파벳" data-en="Phonetic alphabet" data-desc="무선 통신에서 글자를 헷갈리지 않게 K는 Kilo, E는 Echo처럼 단어로 부르는 약속이에요. 숫자 9는 Niner라고 불러요." data-g="3">포네틱 알파벳</span>이라고 해요. 슬라이드 왼쪽의 'Kilo Echo Niner Golf Delta Hotel'이 오른쪽에서 호출부호 <code>KE9GDH</code>로 바뀌어요. 그 아래 <code>process_callsign</code>이 Needle 3가 만든 <span class="term" data-term="툴 콜" data-en="Tool call" data-desc="언어 모델이 어떤 함수를 어떤 인자로 부를지 정해서 구조화된 형태로 내놓은 결과예요. 앱은 이걸 받아 실제 동작을 실행해요." data-g="5">툴 콜</span>이에요.</p>
+<figure>
+  <img src="assets/frame-0222.webp" alt="왼쪽 PHONETIC WORDS 칸에 Kilo Echo Niner Golf Delta Hotel, 화살표 오른쪽 DETERMINISTIC DECODE 아래 KE9GDH, 그 아래 Optional Needle 3 tool call과 process_callsign callsign KE9GDH가 적힌 슬라이드">
+  <figcaption>
+    단어를 알아듣는 일과 글자로 바꾸는 일을 서로 다른 부품이 맡아요.
+    <a href="https://www.youtube.com/watch?v=b8N4QGKfE_E&amp;t=142s" target="_blank" rel="noopener">영상 02:22에서 보기</a>
+  </figcaption>
+</figure>
+<p>일을 나눈 방식을 한 그림으로 보면 이래요. 단어 인식만 모델이 하고, 단어를 글자로 바꾸는 건 <span class="term" data-term="결정적 디코더" data-en="Deterministic decoder" data-desc="같은 입력에 늘 같은 결과를 내는, 정해진 규칙대로만 움직이는 변환기예요. 모델처럼 추측하지 않아서 결과를 믿고 쓸 수 있어요." data-g="4">결정적 디코더</span>가 해요. Needle 3 단계는 선택이에요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["음성: Kilo Echo Niner Golf Delta Hotel"] --> B["Whistle: 단어 인식"]
+  B --> C["결정적 디코더: KE9GDH"]
+  C -.->|선택| D["Needle 3: process_callsign 툴 콜"]
+  C --> E["화면에 출력해 확인"]
+  D --> E
+</pre>
+  <figcaption>모델이 틀릴 수 있는 일은 인식 하나로 좁히고, 정해진 규칙으로 풀 수 있는 변환은 디코더에 맡겼어요. 결과는 다른 시스템에 연결하기 전에 화면으로 먼저 확인해요.</figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Needle 3는 Whistle을 만든 Cactus Compute의 작은 언어 모델이에요. 파일 하나가 8~29MB이고, 앱이 내놓은 함수 가운데 맞는 것을 골라 인자를 채우는 툴 콜과 구조화된 추출에 맞춰져 있어요. Whistle과 같은 엔진에서 돌아서, 두 모델을 함께 올리면 소리를 넣고 툴 콜을 받는 일을 한 번의 호출로 할 수 있어요.</p>
+  <p class="cite">출처: <a href="https://huggingface.co/Cactus-Compute/needle3" target="_blank" rel="noopener">Hugging Face — Cactus-Compute/needle3 모델 카드</a></p>
+</aside>
+<h3>ESP32에서 돌린 사례</h3>
+<p>다른 개발자가 Whistle을 <span class="term" data-term="ESP32" data-en="ESP32" data-desc="Espressif가 만든 값싼 마이크로컨트롤러 칩이에요. 메모리가 아주 작아서, 여기서 음성 인식이 돈다는 건 모델이 그만큼 작다는 뜻이에요." data-g="6">ESP32</span> 보드에서 돌리는 모습을 보여 줬어요. 슬라이드 오른쪽처럼 하드웨어, 쓸 수 있는 메모리, 모델 변형, 런타임 포팅에 따라 결과가 달라져요. 맨 아래 주황 글씨가 중요해요. 발표자는 이 보드 빌드를 직접 따라 해 보지 않았어요.</p>
+<figure>
+  <img src="assets/frame-0241.webp" alt="ESP32 칩 그림 옆에 A builder's demonstration, Hardware + available memory + model variant + runtime port, VIDEO LINK IN DESCRIPTION, Not reproduced in this desktop project가 적힌 슬라이드">
+  <figcaption>
+    작은 모델이 어디까지 갈 수 있는지 보여 주는 사례일 뿐, 이 저장소는 데스크톱 파이썬 도구만 다뤄요.
+    <a href="https://www.youtube.com/watch?v=b8N4QGKfE_E&amp;t=161s" target="_blank" rel="noopener">영상 02:41에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=b8N4QGKfE_E&amp;t=171s" target="_blank" rel="noopener">02:51</a>
+  <h2>로컬로 돌린다는 것과 확인한 범위</h2>
+<p>로컬 처리가 쓸모 있는 건 작업 흐름을 예측할 수 있고, 녹음을 내가 쥐고 있고 싶을 때예요. 슬라이드의 세 카드가 이 프로젝트가 지키는 세 가지예요.</p>
+<figure>
+  <img src="assets/frame-0305.webp" alt="LOCAL Inference on your CPU, PREPARE Provision downloads first, INSPECT Readable Python tools 세 카드와 각 카드 아래 Keep control of recordings, Package + runtime + weights, Telemetry disabled by utilities가 적힌 슬라이드">
+  <figcaption>
+    가운데 'PREPARE' 카드처럼, 로컬이라도 패키지·런타임·가중치는 미리 받아 둬야 해요.
+    <a href="https://www.youtube.com/watch?v=b8N4QGKfE_E&amp;t=185s" target="_blank" rel="noopener">영상 03:05에서 보기</a>
+  </figcaption>
+</figure>
+<ul>
+  <li><b>'LOCAL'</b> — 인식은 내 CPU에서 해서, 녹음이 내 손을 떠나지 않아요.</li>
+  <li><b>'PREPARE'</b> — 설치와 첫 다운로드에는 인터넷이 필요해요. 오프라인으로 쓰려면 먼저 받아 둬야 해요.</li>
+  <li><b>'INSPECT'</b> — 스크립트를 읽어 보고 내 앱에 어떻게 맞출지 정할 수 있어요. 상위 패키지의 텔레메트리는 이 도구들이 꺼 둬요.</li>
+</ul>
+<p>녹음, 모델 파일, 만들어진 받아쓰기 결과는 공개 Git 기록에 들어가지 않게 막아 뒀어요. 개인 녹음이 실수로 커밋되는 일을 막는 장치예요.</p>
+<h3>무엇을 확인했고, 무엇은 아닌가요</h3>
+<p>발표자는 확인한 범위를 숫자로 밝혀요. 슬라이드의 12는 자동 테스트 수, 6은 영어 샘플에서 시간이 붙은 단어 수, 5는 내보내기 형식 수예요. 그 아래 파란 글씨는 파이썬 3.10·3.12·3.13에서 검사를 통과했다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0321.webp" alt="12 Automated tests, 6 Timed words in sample, 5 Export formats 세 숫자 카드와 Python checks passed: 3.10 / 3.12 / 3.13, Functional verification on one English recording / no broad accuracy benchmark 문구가 있는 슬라이드">
+  <figcaption>
+    맨 아래 작은 글씨가 이 숫자의 한계예요. 영어 녹음 하나로 기능을 확인했을 뿐, 넓은 정확도 벤치마크는 아니에요.
+    <a href="https://www.youtube.com/watch?v=b8N4QGKfE_E&amp;t=201s" target="_blank" rel="noopener">영상 03:21에서 보기</a>
+  </figcaption>
+</figure>
+<p>영어 녹음 하나가 단어 6개를 시간과 함께 다섯 형식 모두로 내보냈고, 호출부호 예제도 기대한 툴 콜을 돌려줬어요. 자동 테스트 12개는 보조 함수와 가상의 마이크 흐름을 확인해요. 실제 마이크를 연 테스트가 아니라는 점도 기억해 둘 만해요.</p>
+<p>그래서 발표자의 권유는 단순해요. 내용을 잘 아는 녹음으로 시작해서, 나온 단어를 원래 소리와 맞춰 보라는 거예요. 한국어는 지원 언어에 없으니, 한국어 음성이라면 이 모델은 맞지 않아요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 이름 몇 개가 화면과 다르게 받아적혔어요. 슬라이드를 기준으로 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>Whisper Speech to Text</td><td>Whisper Speech 2 Text</td><td>발표자의 프로젝트 이름. 저장소 이름은 Whisper-Speech-2-Text</td></tr>
+      <tr><td>needle three-step</td><td>Needle 3 step</td><td>Cactus Compute의 Needle 3 모델을 쓰는 선택 단계</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-4"><dt>결정적 디코더<span class="en">Deterministic decoder</span></dt><dd>같은 입력에 늘 같은 결과를 내는, 정해진 규칙대로만 움직이는 변환기예요. 모델처럼 추측하지 않아서 결과를 믿고 쓸 수 있어요.</dd></div>
+    <div class="g" id="g-1"><dt>단어 타임스탬프<span class="en">Word timestamps</span></dt><dd>받아쓴 단어마다 몇 초에 시작해 몇 초에 끝났는지 붙인 시간 정보예요. 이게 있어야 자막을 만들거나 특정 단어로 바로 이동할 수 있어요.</dd></div>
+    <div class="g" id="g-2"><dt>바운디드 큐<span class="en">Bounded queue</span></dt><dd>담을 수 있는 양에 상한이 정해진 대기열이에요. 처리가 밀려도 메모리를 끝없이 먹지 않고, 넘치면 그 사실을 알릴 수 있어요.</dd></div>
+    <div class="g" id="g-5"><dt>툴 콜<span class="en">Tool call</span></dt><dd>언어 모델이 어떤 함수를 어떤 인자로 부를지 정해서 구조화된 형태로 내놓은 결과예요. 앱은 이걸 받아 실제 동작을 실행해요.</dd></div>
+    <div class="g" id="g-3"><dt>포네틱 알파벳<span class="en">Phonetic alphabet</span></dt><dd>무선 통신에서 글자를 헷갈리지 않게 K는 Kilo, E는 Echo처럼 단어로 부르는 약속이에요. 숫자 9는 Niner라고 불러요.</dd></div>
+    <div class="g"><dt>CPU</dt><dd>Central Processing Unit</dd></div>
+    <div class="g"><dt>CSV</dt><dd>Comma-Separated Values</dd></div>
+    <div class="g" id="g-6"><dt>ESP32<span class="en">ESP32</span></dt><dd>Espressif가 만든 값싼 마이크로컨트롤러 칩이에요. 메모리가 아주 작아서, 여기서 음성 인식이 돈다는 건 모델이 그만큼 작다는 뜻이에요.</dd></div>
+    <div class="g"><dt>GPU</dt><dd>Graphics Processing Unit</dd></div>
+    <div class="g"><dt>JSON</dt><dd>JavaScript Object Notation</dd></div>
+    <div class="g"><dt>SRT</dt><dd>SubRip Subtitle</dd></div>
+    <div class="g"><dt>VAD</dt><dd>Voice Activity Detection</dd></div>
+    <div class="g"><dt>VTT</dt><dd>Video Text Tracks</dd></div>
+    <div class="g"><dt>WAV</dt><dd>Waveform Audio File Format</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=b8N4QGKfE_E" target="_blank" rel="noopener">원본 영상 — Consulting Joe</a></li>
+    <li id="src-2"><a href="https://github.com/jsammarco/Whisper-Speech-2-Text" target="_blank" rel="noopener">발표자 저장소 — jsammarco/Whisper-Speech-2-Text</a></li>
+    <li id="src-3"><a href="https://huggingface.co/Cactus-Compute/whistle" target="_blank" rel="noopener">Hugging Face — Cactus-Compute/whistle 모델 카드</a></li>
+    <li id="src-4"><a href="https://huggingface.co/Cactus-Compute/needle3" target="_blank" rel="noopener">Hugging Face — Cactus-Compute/needle3 모델 카드</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 25일에 이 영상을 보고 정리했어요. 원본은 Consulting Joe 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
