@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>무료 AI 목소리 만들기, 내 목소리 복제까지</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>무료 AI 목소리 만들기, 내 목소리 복제까지</h1>
+  <p class="lede">Gemini로 골라 쓰고, Qwen3로 내 목소리를 복제하는 법을 짚어요</p>
+  <div class="meta">
+    <span>피프</span><span class="dot">·</span>
+    <span>영상 05:13</span><span class="dot">·</span>
+    <span>읽는 데 약 8분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=qkc_SDjAac4" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>정해진 목소리를 골라 쓰거나 두 사람 대화가 필요하면 구글 AI(Artificial Intelligence) 스튜디오의 Gemini TTS(Text-to-Speech)를 써요.</li>
+    <li>Gemini에서는 말투를 '차분하게', '신나게'처럼 글로 적으면 그대로 읽어 줘요.</li>
+    <li>내 목소리로 읽게 하려면 Qwen3예요. 10~15초 녹음과 그 녹음을 받아 적은 글만 있으면 <span class="term" data-term="음성 복제" data-en="Voice cloning" data-desc="짧은 녹음에서 목소리의 특징을 뽑아, 그 목소리로 새 문장을 읽게 하는 기술이에요. 녹음이 깨끗할수록 결과도 좋아져요." data-g="1">음성 복제</span>가 돼요.</li>
+    <li>조용한 녹음, 한 덩어리 글, 영어·숫자는 한글로, 끝에 한 마디 덧붙이기. 이 네 가지가 결과를 바꿔요.</li>
+    <li>95분 녹음으로 학습시킨 것보다 15초만 들려준 쪽이 더 자연스러웠어요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">Gemini: 정해진 목소리를 골라 쓰기</a></li>
+    <li><a href="#s2">Qwen3: 15초 녹음으로 내 목소리 복제</a></li>
+    <li><a href="#s3">잘 만드는 팁 네 가지와 95분 vs 15초</a></li>
+    <li><a href="#s4">주의할 점과 무엇을 고를까</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>Gemini: 정해진 목소리를 골라 쓰기</h2>
+<p>이 영상은 처음부터 끝까지 AI 목소리로 말해요. 첫 30초 동안 들리는 목소리는 Gemini가 만든 것이고, 그 뒤로 이어지는 진행자 목소리는 두 번째 도구인 Qwen3로 만든 복제 목소리예요. 영상 자체가 두 도구의 결과물을 들려주는 시연인 셈이에요.</p>
+
+<h3>구글 AI 스튜디오의 음성 생성 화면</h3>
+<p>첫 번째 방법은 구글 AI 스튜디오에서 Gemini의 TTS 기능을 쓰는 거예요. 구글 계정만 있으면 무료로 바로 쓸 수 있어요. 음성 만들기 메뉴에 들어가면 가운데에 대사 블록 하나가 나와요. 블록 위쪽에 <code>Speaker 1 - Fola</code>(목소리), <code>Style</code>(말투) 선택 칸이 있고, 아래가 텍스트를 넣는 칸이에요. 영상은 이걸 텍스트·목소리·말투 세 칸으로 설명해요. 오른쪽 패널에는 지금 쓰는 모델이 <code>Gemini 3.8 Flash TTS</code>라고 나와 있어요.</p>
+<figure>
+  <img src="assets/frame-0054.webp" alt="구글 AI 스튜디오 Playground 화면. 가운데 대사 블록에 Speaker 1 - Fola, Style, + Expression 메뉴와 텍스트 칸이 있고, 오른쪽 패널에 Gemini 3.8 Flash TTS 모델 설명이 있어요">
+  <figcaption>
+    목소리·말투·텍스트, 이 세 가지만 정하면 음성이 나와요.
+    <a href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=54s" target="_blank" rel="noopener">영상 00:54에서 보기</a>
+  </figcaption>
+</figure>
+
+<p>목소리는 <code>Speaker</code> 메뉴에서 골라요. 영상은 '수십 가지'라고 말하지만, 화면 검색창에는 <code>Search 2,000+ voices</code>라고 적혀 있어요. 언어·성별·음높이(Pitch)·스타일·용도로 걸러 볼 수 있고, 목소리마다 'Quiet and intimate · Low pitch' 같은 짧은 설명이 붙어 있어요. 오른쪽 재생 버튼을 누르면 고르기 전에 미리 들어 볼 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0107.webp" alt="목소리 선택 목록. 위에 Search 2,000+ voices 검색창과 Language, Gender, Pitch, Style, Use case 필터가 있고, Tutor 분류 아래 Bodi, Lumi, Sola, Commercial Voiceover 분류 아래 Koda, Nika 목소리가 설명과 함께 나열돼 있어요">
+  <figcaption>
+    용도별로 묶여 있어서 강의용, 광고 내레이션용처럼 찾아보기 쉬워요.
+    <a href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=67s" target="_blank" rel="noopener">영상 01:07에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>가장 중요한 건 말투예요</h3>
+<p>영상이 제일 강조하는 칸은 <code>Style</code>이에요. 메뉴를 열면 맨 위에 'Describe the voice style'이라는 입력 칸이 있어요. 여기에 '차분하게 설명하듯이', '신나게 조금 빠르게'처럼 원하는 느낌을 그냥 글로 적으면 돼요. 아래에는 Whisper(속삭이듯), Friendly, Narration, Promote 같은 기본 말투도 준비돼 있어요.</p>
+<figure>
+  <img src="assets/frame-0100.webp" alt="Style 메뉴를 펼친 화면. 맨 위에 Describe the voice style 입력 칸이 있고, 아래에 Whisper, Friendly, Narration, Promote 같은 기본 말투가 설명과 함께 나열돼 있어요">
+  <figcaption>
+    말투는 목록에서 고를 수도 있고, 원하는 느낌을 글로 적을 수도 있어요.
+    <a href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=60s" target="_blank" rel="noopener">영상 01:00에서 보기</a>
+  </figcaption>
+</figure>
+
+<p>영상은 같은 문장을 말투만 바꿔서 두 번 들려줘요. '오늘 회의는 여기까지 하겠습니다'를 차분하게 하면 잔잔하게, 신나게 하면 높낮이가 크게 출렁이는 목소리로 나와요. 실행을 누르면 몇 초 만에 결과가 나오고, 다운로드 버튼으로 바로 저장할 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0126.webp" alt="같은 문장 '오늘 회의는 여기까지 하겠습니다'를 두고, 위에는 명상하는 사람과 차분하게 라벨이 붙은 잔잔한 파형, 아래에는 뛰어오르는 사람과 신나게 라벨이 붙은 크고 진한 파형을 그린 그림">
+  <figcaption>
+    문장은 그대로 두고 말투 지시만 바꿨는데 파형부터 달라져요.
+    <a href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=86s" target="_blank" rel="noopener">영상 01:26에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>두 사람 대화도 만들 수 있어요</h3>
+<p>대사 블록을 하나 더 추가하면 두 사람이 주고받는 대화가 돼요. 화면에서는 진행자 역할의 <code>Speaker 1 - Nika</code>와 손님 역할의 <code>Speaker 2 - Mako</code>가 번갈아 말하도록 블록 세 개를 쌓았어요. 오른쪽 <code>Speaker settings</code>에서 두 사람에게 각각 목소리를 정해 두면, 라디오처럼 주고받는 음성이 한 번에 나와요.</p>
+<figure>
+  <img src="assets/frame-0142.webp" alt="대사 블록 세 개가 쌓인 화면. Speaker 1 - Nika, Speaker 2 - Mako, Speaker 1 - Nika 순서로 대사가 이어지고, 오른쪽 Speaker settings에 Nika(Speaker 1)와 Mako(Speaker 2)가 설정돼 있어요">
+  <figcaption>
+    블록마다 누가 말할지 정하면 대본이 그대로 대화 음성이 돼요.
+    <a href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=102s" target="_blank" rel="noopener">영상 01:42에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>Gemini의 단점 세 가지</h3>
+<p>영상은 단점도 세 장의 카드로 짚어요. 첫째, 정해진 목소리 안에서만 골라야 해서 내 목소리는 만들 수 없어요. 둘째, 무료라서 하루에 쓸 수 있는 양이 정해져 있어요. 셋째, 무료로 쓰면 넣은 글이 구글 서비스 개선에 쓰일 수 있어요. 그래서 개인 정보 같은 건 넣지 않는 게 좋다고 해요.</p>
+<figure>
+  <img src="assets/frame-0211.webp" alt="카드 세 장을 나란히 놓은 그림. 마이크에 X 표시가 된 '내 목소리 X', 모래시계가 그려진 '하루 사용량 제한', 문서를 AI 캐릭터가 읽는 '학습에 쓰일 수 있음'">
+  <figcaption>
+    세 번째 카드가 실제로 가장 신경 써야 할 부분이에요.
+    <a href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=131s" target="_blank" rel="noopener">영상 02:11에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>구글의 Gemini API(Application Programming Interface) 추가 약관은 AI 스튜디오처럼 무료로 쓰는 서비스를 '<span class="term" data-term="무료 서비스" data-en="Unpaid Services" data-desc="구글 약관에서 AI 스튜디오처럼 돈을 내지 않고 쓰는 경우를 부르는 말이에요. 이때 넣은 내용은 구글의 제품 개선에 쓰일 수 있어요." data-g="2">무료 서비스</span>(Unpaid Services)'로 따로 정해 둬요. 이때 넣은 내용과 생성 결과를 구글이 제품과 머신러닝 기술을 개선하는 데 쓸 수 있고, 사람 검토자가 읽을 수도 있다고 적혀 있어요. 약관 스스로 민감하거나 기밀이거나 개인적인 정보는 넣지 말라고 해요.</p>
+  <p>같은 기능 문서를 보면, 대화형 음성은 미리 만들어진 목소리로 최대 두 사람까지 설정할 수 있어요.</p>
+  <p class="cite">출처: <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener">Gemini API 추가 서비스 약관</a> · <a href="https://ai.google.dev/gemini-api/docs/speech-generation" target="_blank" rel="noopener">Gemini API 문서 — Speech generation</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=136s" target="_blank" rel="noopener">02:16</a>
+  <h2>Qwen3: 15초 녹음으로 내 목소리 복제</h2>
+<p>영상은 여기서 반전을 하나 보여 줘요. 지금까지 들린 진행자 목소리가 바로 두 번째 방법인 Qwen3로 만든 복제 목소리라는 거예요. Qwen3는 알리바바가 누구나 무료로 쓸 수 있게 공개한 AI예요. 내 컴퓨터에 설치하지 않아도, <span class="term" data-term="허깅페이스" data-en="Hugging Face" data-desc="AI 모델을 올려 두고 내려받거나 웹에서 바로 체험해 볼 수 있는 사이트예요. 체험 페이지는 Spaces라고 불러요." data-g="3">허깅페이스</span>에 올라온 공식 체험 페이지에서 바로 써 볼 수 있어요.</p>
+
+<h3>체험 페이지의 목소리 복제 탭</h3>
+<p>체험 페이지 이름은 <code>Qwen3-TTS Demo</code>예요. 위쪽 탭이 세 개인데, 그중 가운데 <code>Voice Clone (Base)</code>를 고르면 돼요. 왼쪽 위 <code>Reference Audio</code>에 내 목소리 녹음을, 그 아래 <code>Reference Text</code>에 녹음에서 한 말을 받아 적은 글을 넣어요. 오른쪽 <code>Target Text</code>에는 새로 읽게 할 글을 넣고, 아래 보라색 <code>Clone &amp; Generate</code> 버튼을 누르면 끝이에요.</p>
+<figure>
+  <img src="assets/frame-0236.webp" alt="허깅페이스의 Qwen3-TTS Demo 페이지. Voice Design, Voice Clone (Base), TTS (CustomVoice) 탭 중 Voice Clone이 선택돼 있고, 왼쪽에 Reference Audio 업로드 칸과 Reference Text 칸, 오른쪽에 Target Text 칸과 Language, Model Size 1.7B, Clone & Generate 버튼이 있어요">
+  <figcaption>
+    왼쪽은 '내 목소리가 어떤지', 오른쪽은 '무슨 말을 시킬지'를 넣는 칸이에요.
+    <a href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=156s" target="_blank" rel="noopener">영상 02:36에서 보기</a>
+  </figcaption>
+</figure>
+
+<p>준비물은 두 가지예요. 10초에서 15초쯤 되는 내 목소리 녹음 파일, 그리고 그 녹음 내용을 그대로 받아 적은 글이에요. 여기에 읽게 할 글을 더하면 세 가지 입력이 하나의 결과로 모여요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="내 목소리 녹음, 녹음을 받아 적은 글, 읽게 할 글 세 가지가 Qwen3-TTS로 들어가 내 목소리로 읽은 음성이 나오는 흐름">
+    <defs><marker id="arrow-clone" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="c1 cell" x="10" y="15" width="200" height="56" rx="10"/>
+    <text x="110" y="39" text-anchor="middle">내 목소리 녹음</text>
+    <text x="110" y="59" text-anchor="middle" class="sub">10~15초면 충분</text>
+    <rect class="c1 cell" x="10" y="87" width="200" height="56" rx="10"/>
+    <text x="110" y="111" text-anchor="middle">녹음을 받아 적은 글</text>
+    <text x="110" y="131" text-anchor="middle" class="sub">한 말을 그대로</text>
+    <rect class="c2 cell" x="10" y="159" width="200" height="56" rx="10"/>
+    <text x="110" y="183" text-anchor="middle">읽게 할 글</text>
+    <text x="110" y="203" text-anchor="middle" class="sub">한 덩어리로</text>
+    <path class="line" d="M212 43 L278 105" marker-end="url(#arrow-clone)"/>
+    <path class="line" d="M212 115 L278 115" marker-end="url(#arrow-clone)"/>
+    <path class="line" d="M212 187 L278 125" marker-end="url(#arrow-clone)"/>
+    <rect class="accent" x="282" y="85" width="140" height="60" rx="10"/>
+    <text x="352" y="120" text-anchor="middle">Qwen3-TTS</text>
+    <path class="line" d="M424 115 L456 115" marker-end="url(#arrow-clone)"/>
+    <rect class="ok" x="460" y="85" width="170" height="60" rx="10"/>
+    <text x="545" y="111" text-anchor="middle">내 목소리로</text>
+    <text x="545" y="131" text-anchor="middle">읽은 음성</text>
+  </svg>
+  <figcaption>파란 두 칸은 목소리를 알려 주는 재료, 아래 칸은 새로 시킬 말이에요. 받아 적은 글은 녹음에서 한 말 그대로 적어야 해요.</figcaption>
+</figure>
+
+<p>영상은 15초 녹음으로 '안녕하세요. 피피티프로입니다. 잘 부탁드립니다. 반갑습니다.'를 읽게 해요. 왼쪽 위에 0:15짜리 녹음 파형이, 왼쪽 아래에 생성된 6초짜리 음성이 보여요. 오른쪽 <code>Status</code>에는 'Voice clone generation completed successfully!'가 떠요. <code>Language</code>는 Korean, <code>Model Size</code>는 1.7B로 둔 상태예요.</p>
+<figure>
+  <img src="assets/frame-0253.webp" alt="복제가 끝난 Qwen3-TTS 화면. 왼쪽 위에 15초 길이의 녹음 파형, 오른쪽 Target Text에 '안녕하세요. 피피티프로입니다. 잘 부탁드립니다. 반갑습니다.', Language Korean, Model Size 1.7B, 왼쪽 아래에 생성된 음성 파형, Status 칸에 Voice clone generation completed successfully! 문구가 있어요">
+  <figcaption>
+    채널 이름을 '피피티프로'라고 한글로 적은 점도 눈여겨보세요. 다음 섹션의 세 번째 팁이 바로 이거예요.
+    <a href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=173s" target="_blank" rel="noopener">영상 02:53에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Qwen3-TTS 공식 저장소는 Apache-2.0 라이선스로 공개돼 있어요. 한국어를 포함해 10개 언어를 지원하고, 목소리 복제용 Base 모델은 '3초 분량 녹음으로 빠르게 복제할 수 있다'고 소개해요.</p>
+  <p>체험 화면의 <code>Use x-vector only</code> 체크 칸은 받아 적은 글 없이 녹음만으로 복제하는 옵션이에요. 저장소 설명에 따르면 이때는 <span class="term" data-term="x-vector" data-en="x-vector" data-desc="녹음에서 &#x27;누구 목소리인지&#x27;만 담은 짧은 숫자 묶음이에요. 받아 적은 글 없이도 쓸 수 있지만 복제 품질은 떨어질 수 있어요." data-g="5">x-vector</span>라는 목소리 특징값만 써서 복제 품질이 떨어질 수 있어요. 영상이 받아 적은 글을 준비물로 꼽은 이유예요.</p>
+  <p class="cite">출처: <a href="https://github.com/QwenLM/Qwen3-TTS" target="_blank" rel="noopener">QwenLM/Qwen3-TTS GitHub 저장소</a> · <a href="https://huggingface.co/spaces/Qwen/Qwen3-TTS" target="_blank" rel="noopener">Qwen3-TTS 공식 체험 페이지</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=181s" target="_blank" rel="noopener">03:01</a>
+  <h2>잘 만드는 팁 네 가지와 95분 vs 15초</h2>
+<p>발표자가 직접 써 보면서 알게 된 팁 네 가지예요. 이것만 지켜도 결과가 확 달라진다고 해요.</p>
+<ol class="steps">
+  <li><b>녹음은 조용한 곳에서 또박또박 말한 걸로 골라요</b> — AI는 들려준 녹음을 말버릇까지 그대로 따라 해요.</li>
+  <li><b>글은 한 문장씩 나누지 말고 한 덩어리로 넣어요</b> — 하나씩 만들어 이어 붙이면 문장마다 말투가 달라져서 어색해요.</li>
+  <li><b>영어와 숫자는 한글로 적어 줘요</b> — 그대로 두면 엉뚱하게 읽을 때가 있어요.</li>
+  <li><b>끝 글자가 잘리면 한 마디를 더 붙여요</b> — 만든 뒤에 덧붙인 부분만 잘라 내요.</li>
+</ol>
+
+<h3>녹음 상태가 그대로 옮겨 가요</h3>
+<p>첫 번째 팁 그림은 사람이 북적이는 카페 사진에 X를, 조용한 녹음실 사진에 체크를 쳤어요. 각 사진 아래 파형을 보면 카페 쪽은 내내 꽉 차 있고, 녹음실 쪽은 말하는 부분만 솟아 있어요. 잡음이 섞인 녹음을 주면 복제 목소리에도 그 잡음이 따라온다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0311.webp" alt="왼쪽에 X 표시가 된 붐비는 카페 사진과 빽빽한 파형, 오른쪽에 체크 표시가 된 조용한 녹음실 사진과 말하는 부분만 솟은 파형">
+  <figcaption>
+    녹음 15초를 고를 때 내용보다 환경을 먼저 보세요.
+    <a href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=191s" target="_blank" rel="noopener">영상 03:11에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>영어·숫자는 한글로, 끝은 한 마디 더</h3>
+<p>세 번째 팁 그림은 'AI 15초'를 예로 들어요. 그대로 넣으면 '아이 일오 초'처럼 읽을 수 있으니, 처음부터 '에이아이 십오 초'라고 적어 주라는 거예요. 앞 섹션 데모에서 채널 이름을 '피피티프로'라고 적은 것도 같은 이유예요.</p>
+<figure>
+  <img src="assets/frame-0331.webp" alt="화면 가운데에 '에이아이 십오 초'라고 크게 적혀 있고, 아래에 물음표와 함께 '아이 일오 초...?'라는 잘못 읽은 예가 있어요">
+  <figcaption>
+    AI가 어떻게 읽을지 고민하지 않게, 소리 나는 대로 적어 주는 게 핵심이에요.
+    <a href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=211s" target="_blank" rel="noopener">영상 03:31에서 보기</a>
+  </figcaption>
+</figure>
+
+<p>네 번째 팁 그림은 파형 끝에 점선을 긋고 '감사합니다'를 덧붙였어요. '…알려드리겠습니다'로 끝나는 글 뒤에 한 마디를 더 붙여서 만들고, 점선 뒤쪽만 잘라 내면 원래 끝 글자가 온전히 남아요.</p>
+<figure>
+  <img src="assets/frame-0337.webp" alt="'…알려드리겠습니다.'로 끝나는 파형 뒤에 점선으로 구분해 '+ 감사합니다' 파형을 덧붙인 그림">
+  <figcaption>
+    잘릴 걸 미리 알고 여분을 붙이는 방식이에요. 편집 프로그램에서 점선 뒤만 지우면 돼요.
+    <a href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=217s" target="_blank" rel="noopener">영상 03:37에서 보기</a>
+  </figcaption>
+</figure>
+<p>하나 더 있어요. 같은 글이라도 만들 때마다 조금씩 다르게 나와요. 그래서 서너 번 만들어서 가장 좋은 걸 고르라고 해요.</p>
+
+<h3>95분 학습보다 15초가 나았어요</h3>
+<p>발표자는 욕심을 내서 자기 영상 녹음 95분으로 AI를 직접 학습시켜 보기도 했어요. 모델을 내 데이터로 더 가르치는 <span class="term" data-term="파인튜닝" data-en="Fine-tuning" data-desc="이미 학습된 모델에 내 데이터를 더 학습시켜 맞춤형으로 만드는 거예요. 영상의 95분 학습이 이 방식이에요." data-g="4">파인튜닝</span>이에요. 결과는 오히려 15초만 들려준 쪽이 더 자연스러웠어요. 그림의 저울도 '95분 학습' 쪽이 위로 들리고, 왕관을 쓴 '15초' 쪽이 내려가 있어요. 그러니 처음에는 15초면 충분하다는 게 결론이에요.</p>
+<figure>
+  <img src="assets/frame-0356.webp" alt="저울 그림. 왼쪽 접시에는 필름 릴과 '95분 학습' 라벨, 오른쪽 접시에는 왕관을 쓴 스톱워치와 '15초' 라벨이 있고, 15초 쪽으로 기울어 있으며 체크 표시가 붙어 있어요">
+  <figcaption>
+    더 많이 학습시킨다고 꼭 더 자연스러워지지는 않았어요. 발표자 한 사람의 경험이라는 점은 감안해서 보세요.
+    <a href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=236s" target="_blank" rel="noopener">영상 03:56에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=239s" target="_blank" rel="noopener">03:59</a>
+  <h2>주의할 점과 무엇을 고를까</h2>
+<h3>Qwen3 체험 페이지의 한계</h3>
+<p>Qwen3에도 단점이 있어요. 그림 왼쪽 모래시계는 무료 체험 페이지라 쓸 수 있는 양이 정해져 있다는 뜻이에요. 가운데 문 앞에 줄 선 사람들은 사람이 몰리면 기다려야 한다는 뜻이고요. 오른쪽 '살짝 높게' 라벨은 목소리가 실제보다 조금 높게 나올 때가 있다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0409.webp" alt="세 가지 단점을 나란히 그린 그림. 왼쪽에 '사용량 제한' 라벨의 모래시계, 가운데에 문 앞에 줄 선 사람들과 진행 막대, 오른쪽에 위쪽 화살표가 붙은 파형과 '살짝 높게' 라벨">
+  <figcaption>
+    공짜로 열려 있는 체험 페이지라서 생기는 한계가 대부분이에요.
+    <a href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=249s" target="_blank" rel="noopener">영상 04:09에서 보기</a>
+  </figcaption>
+</figure>
+<p>자주 쓸 거라면 내 컴퓨터에 설치해서 제한 없이 쓸 수도 있어요. 다만 성능 좋은 컴퓨터가 필요해서 영상에서는 다루지 않아요.</p>
+
+<h3>남의 목소리는 허락 없이 만들면 안 돼요</h3>
+<p>발표자가 꼭 지켜 달라고 한 규칙이에요. 그림에서 옆 사람 목소리는 손바닥으로 막혀 있고, 마이크에는 'OK'와 체크가 붙어 있어요. 내 목소리나 허락받은 목소리만 써야 한다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0424.webp" alt="마이크 앞에 앉은 사람 옆에 다른 사람의 모습이 손바닥으로 가려져 있고, 오른쪽 마이크에는 OK 라벨과 체크 표시가 있는 그림">
+  <figcaption>
+    15초면 누구 목소리든 따라 할 수 있다는 건, 그만큼 조심해야 한다는 뜻이기도 해요.
+    <a href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=264s" target="_blank" rel="noopener">영상 04:24에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>무엇을 고를까요</h3>
+<p>마무리 그림은 갈림길 양쪽에 Gemini와 Qwen3를 세워 둬요. 목소리를 골라 쓰고 싶거나 두 사람 대화가 필요하면 Gemini, 내 목소리로 읽게 하고 싶으면 Qwen3예요.</p>
+<figure>
+  <img src="assets/frame-0434.webp" alt="가운데 갈림길 표지판을 두고 왼쪽에 '제미나이' 라벨의 초록 캐릭터, 오른쪽에 'Qwen3' 라벨의 주황 캐릭터와 노란 파형이 있는 그림">
+  <figcaption>
+    둘 중 무엇이 더 좋은지가 아니라, 하려는 일에 따라 고르는 구도예요.
+    <a href="https://www.youtube.com/watch?v=qkc_SDjAac4&amp;t=274s" target="_blank" rel="noopener">영상 04:34에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상에서 다룬 내용을 한 표로 모으면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th></th><th>구글 Gemini</th><th>Qwen3</th></tr></thead>
+    <tbody>
+      <tr><td>어디서 쓰나요</td><td>구글 AI 스튜디오</td><td>허깅페이스 공식 체험 페이지</td></tr>
+      <tr><td>목소리</td><td>정해진 목소리 중에서 골라요</td><td>내 목소리를 복제해요</td></tr>
+      <tr><td>준비물</td><td>구글 계정</td><td>10~15초 녹음, 녹음을 받아 적은 글</td></tr>
+      <tr><td>잘하는 것</td><td>말투를 글로 지시하기, 두 사람 대화</td><td>15초 녹음만으로 비슷한 목소리</td></tr>
+      <tr><td>단점</td><td>내 목소리 불가, 하루 사용량 제한, 넣은 글이 서비스 개선에 쓰일 수 있음</td><td>사용량 제한, 몰리면 대기, 목소리가 살짝 높게 나올 때가 있음</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>돈을 내는 서비스로는 ElevenLabs 같은 것도 있어요. 하지만 영상의 결론은 시작은 무료로도 충분하다는 거예요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 도구 이름이 잘못 받아적힌 곳이 있어요. 화면 자막과 슬라이드를 기준으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>구글 재미 / 구글 재미나이</td><td>구글 Gemini(제미나이)</td><td>화면 자막과 그림 라벨 기준</td></tr>
+      <tr><td>Q앤3 / QN3</td><td>Qwen3</td><td>알리바바의 Qwen3-TTS</td></tr>
+      <tr><td>목소리 복재</td><td>목소리 복제</td><td>체험 페이지의 Voice Clone 탭</td></tr>
+      <tr><td>한 글로 적어 주는게</td><td>한글로 적어 주는 게</td><td></td></tr>
+      <tr><td>선어번 만들어서</td><td>서너 번 만들어서 (추정)</td><td></td></tr>
+      <tr><td>일레븐 랩스</td><td>ElevenLabs</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-2"><dt>무료 서비스<span class="en">Unpaid Services</span></dt><dd>구글 약관에서 AI 스튜디오처럼 돈을 내지 않고 쓰는 경우를 부르는 말이에요. 이때 넣은 내용은 구글의 제품 개선에 쓰일 수 있어요.</dd></div>
+    <div class="g" id="g-1"><dt>음성 복제<span class="en">Voice cloning</span></dt><dd>짧은 녹음에서 목소리의 특징을 뽑아, 그 목소리로 새 문장을 읽게 하는 기술이에요. 녹음이 깨끗할수록 결과도 좋아져요.</dd></div>
+    <div class="g" id="g-4"><dt>파인튜닝<span class="en">Fine-tuning</span></dt><dd>이미 학습된 모델에 내 데이터를 더 학습시켜 맞춤형으로 만드는 거예요. 영상의 95분 학습이 이 방식이에요.</dd></div>
+    <div class="g" id="g-3"><dt>허깅페이스<span class="en">Hugging Face</span></dt><dd>AI 모델을 올려 두고 내려받거나 웹에서 바로 체험해 볼 수 있는 사이트예요. 체험 페이지는 Spaces라고 불러요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>TTS</dt><dd>Text-to-Speech</dd></div>
+    <div class="g" id="g-5"><dt>x-vector<span class="en">x-vector</span></dt><dd>녹음에서 &#x27;누구 목소리인지&#x27;만 담은 짧은 숫자 묶음이에요. 받아 적은 글 없이도 쓸 수 있지만 복제 품질은 떨어질 수 있어요.</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=qkc_SDjAac4" target="_blank" rel="noopener">원본 영상 — 피프</a></li>
+    <li id="src-2"><a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener">Gemini API 추가 서비스 약관 (Unpaid Services)</a></li>
+    <li id="src-3"><a href="https://ai.google.dev/gemini-api/docs/speech-generation" target="_blank" rel="noopener">Gemini API 문서 — Speech generation</a></li>
+    <li id="src-4"><a href="https://github.com/QwenLM/Qwen3-TTS" target="_blank" rel="noopener">QwenLM/Qwen3-TTS GitHub 저장소</a></li>
+    <li id="src-5"><a href="https://huggingface.co/spaces/Qwen/Qwen3-TTS" target="_blank" rel="noopener">Qwen3-TTS 공식 체험 페이지 (Hugging Face Spaces)</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 25일에 이 영상을 보고 정리했어요. 원본은 피프 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
