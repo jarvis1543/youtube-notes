@@ -4,8 +4,9 @@
 categories.json nests up to three levels: {대분류: {중분류: {소분류: [folder names]}}}. A video can stop at
 any level: "_videos" lists the folders that sit on that 대분류 or 중분류 itself.
 Folders not listed anywhere show up under "아직 분류가 없는 영상" so a new digest never goes missing.
+Folders with guide.json instead of content.json are 합본 (built by build_guide.py) and get their own view.
 Fetches each video's YouTube upload date once (yt-dlp) into uploads.json; same-channel videos sort by it.
-Also puts the password lock into every document page (see protect_pages).
+Also puts the password lock into every document page, 합본 included (see protect_pages).
 Run: python3 .pages/build_home.py
 """
 import datetime as dt
@@ -79,6 +80,30 @@ def load_videos():
             "vid": c.get("video_id") or (m.group(1) if m else ""),
         }
     return videos
+
+
+def load_guides(videos):
+    """합본 folders: guide.json + index.html. guide.json "videos" maps a short slug to a video folder."""
+    guides = []
+    for d in sorted(ROOT.iterdir()):
+        gj, page = d / "guide.json", d / "index.html"
+        if d.name in EXCLUDE or not (gj.exists() and page.exists()):
+            continue
+        g = json.loads(gj.read_text(encoding="utf-8"))
+        names = [unicodedata.normalize("NFC", f) for f in g.get("videos", {}).values()]
+        for f in names:
+            if f not in videos:
+                print(f"warn: {d.name}/guide.json lists a missing video folder: {f}")
+        st = page.stat()
+        guides.append({
+            "folder": unicodedata.normalize("NFC", d.name),
+            "page": page,
+            "title": g.get("title", d.name),
+            "subtitle": g.get("subtitle", ""),
+            "videos": [videos[f] for f in names if f in videos],
+            "updated": dt.datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d"),
+        })
+    return guides
 
 
 WEEKDAYS = "월화수목금토일"
@@ -183,11 +208,25 @@ def channel_blocks(vs, cat_of):
     return '<div class="grid" data-group>' + "".join(card(v, extra_q=cat_of[v["folder"]]) for v in series + singles) + "</div>"
 
 
-def protect_pages(videos, pw_hash):
+def guide_card(g):
+    """A 합본 card: the first four videos' thumbnails in a 2×2 grid."""
+    thumbs = "".join(f'<img src="https://i.ytimg.com/vi/{esc(v["vid"])}/mqdefault.jpg" alt="" loading="lazy">'
+                     for v in g["videos"][:4] if v["vid"])
+    search = " ".join([g["title"], g["subtitle"]] + [v["title"] for v in g["videos"]]).lower()
+    return (
+        f'<a class="card" href="./{quote(g["folder"])}/" data-q="{esc(search)}" data-day="">'
+        f'<div class="thumb quad">{thumbs}</div>'
+        f'<div class="body"><span class="tag">영상 {len(g["videos"])}편 합본</span><h4>{esc(g["title"])}</h4>'
+        f'<p>{esc(g["subtitle"])}</p>'
+        f'<div class="meta"><span>{esc(g["updated"].replace("-", "."))} 갱신</span></div></div></a>'
+    )
+
+
+def protect_pages(pages, pw_hash):
     """Put the lock (or remove it when there is no password) in every document page. Safe to rerun."""
     block = re.compile(re.escape(LOCK_START) + r".*?" + re.escape(LOCK_END) + r"\n?", re.S)
     changed = 0
-    for v in videos.values():
+    for v in pages:
         page = v["page"]
         src = page.read_text(encoding="utf-8")
         out = block.sub("", src)
@@ -390,6 +429,15 @@ def main():
 
     topic_html, n_topics = topic_view(videos, cats, cat_of)
 
+    # 합본 view: one shelf of combined study pages
+    guides = load_guides(videos)
+    guide_html = (
+        f'<section class="chsec" id="g-all" data-sec data-name="합본" data-n="{len(guides)}" data-unit="합본">'
+        f'<h3>합본<span class="n">{len(guides)}</span></h3>'
+        f'<p class="tpabout">한 주제의 영상 여러 편을 한 페이지로 엮은 공부용 정리예요.</p>'
+        f'<div class="grid" data-group>{"".join(guide_card(g) for g in guides)}</div></section>'
+    ) if guides else ""
+
     tpl = (HERE / "home_template.html").read_text(encoding="utf-8")
     # SHA-256 of the home password, one line. Empty or missing = no lock screen.
     hash_file = HERE / "password.sha256"
@@ -405,11 +453,12 @@ def main():
         .replace("{{TOPIC_VIEW}}", topic_html)
         .replace("{{CHANNEL_VIEW}}", "".join(ch_html))
         .replace("{{TIME_VIEW}}", "".join(time_html))
+        .replace("{{GUIDE_VIEW}}", guide_html)
     )
     (ROOT / "index.html").write_text(out, encoding="utf-8")
-    changed = protect_pages(videos, pw_hash)
+    changed = protect_pages(list(videos.values()) + guides, pw_hash)
     print(f"document pages {'locked' if pw_hash else 'unlocked'}: {changed} changed")
-    print(f"index.html: {len(videos)} videos, {len(cats)} categories, {n_topics} topics, {len(by_ch)} channels"
+    print(f"index.html: {len(videos)} videos, {len(guides)} guides, {len(cats)} categories, {n_topics} topics, {len(by_ch)} channels"
           + (f", 아직 분류가 없는 영상 {len(rest)}: {rest}" if rest else ""))
 
 

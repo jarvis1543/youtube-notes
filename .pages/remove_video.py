@@ -96,6 +96,12 @@ def main():
             del data[name]
             save(p, data)
 
+    for gj in sorted(ROOT.glob("*/guide.json")):
+        used = [unicodedata.normalize("NFC", f) for f in json.loads(gj.read_text(encoding="utf-8")).get("videos", {}).values()]
+        if name in used:
+            print(f"note: 합본 {gj.parent.name} uses this video; drop it from guide.json and its sections, "
+                  f"then rerun .pages/build_guide.py {gj.parent.name}")
+
     print(f"deleted: {name}", flush=True)
     subprocess.run([sys.executable, str(HERE / "build_home.py")], check=True)
 
