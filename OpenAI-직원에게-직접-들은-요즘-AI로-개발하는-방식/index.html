@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenAI 직원에게 직접 들은, 요즘 AI로 개발하는 방식</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>OpenAI 직원에게 직접 들은, 요즘 AI로 개발하는 방식</h1>
+  <p class="lede">행사에서 들은 이야기로 다시 짚는 AI 개발의 기본기예요</p>
+  <div class="meta">
+    <span>StefanCho</span><span class="dot">·</span>
+    <span>영상 13:35</span><span class="dot">·</span>
+    <span>읽는 데 약 11분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=MU6bMRkP0tE" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>에이전트에게는 글보다 그림이 잘 통해요. 화면을 찍고 그 위에 표시해서 보내요.</li>
+    <li>GPT(Generative Pre-trained Transformer)와 Codex는 일부러 취향 없이, 시킨 범위 안에서만 움직이게 설계됐어요.</li>
+    <li>한 번에 다 만들려 하지 말고 한 단계씩(<span class="term" data-term="턴바이턴" data-en="Turn-by-turn" data-desc="작업을 한 번에 맡기지 않고, 한 단계씩 시키고 확인한 뒤 다음 단계로 넘어가는 방식이에요. 중간에 틀어져도 바로 바로잡을 수 있어요." data-g="2">턴바이턴</span>) 시키면 뭐든 만들 수 있다고 해요.</li>
+    <li>펠리컨 그림 같은 <span class="term" data-term="벤치마크" data-en="Benchmark" data-desc="모델 실력을 비교하려고 모두 같은 문제를 풀게 하는 시험이에요. 점수가 기준처럼 쓰이다 보니, 그 시험만 잘 보게 맞추는 일이 생겨요." data-g="5">벤치마크</span>는 마음먹으면 끌어올릴 수 있는 점수예요.</li>
+    <li><span class="term" data-term="하네스" data-en="Harness" data-desc="모델을 감싸서 실제로 일하게 만드는 바깥 장치예요. 지침 파일, 도구, 작업 흐름, 검사 규칙 같은 것들이 다 여기에 들어가요." data-g="7">하네스</span>와 모델은 세트예요. 새 도구보다 <code>AGENTS.md</code>·<code>CLAUDE.md</code> 같은 지침 파일부터 챙겨요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">그림으로 말하기</a></li>
+    <li><a href="#s2">GPT는 일부러 취향을 빼요</a></li>
+    <li><a href="#s3">목소리로 말하기, 그리고 Always on</a></li>
+    <li><a href="#s4">다 같이 리셋, 그리고 한 단계씩</a></li>
+    <li><a href="#s5">펠리컨 벤치마크와 Jev</a></li>
+    <li><a href="#s6">결국 기본기, 그리고 하네스</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=29s" target="_blank" rel="noopener">00:29</a>
+  <h2>그림으로 말하기</h2>
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>발표자가 개발자 행사에 다녀와서, 메모 없이 기억나는 대로 정리한 영상이에요. 실제 발언과 다를 수 있고 발표자 본인 생각도 섞여 있다고 처음에 밝혀요. 이 문서도 '누가 한 말인지'를 영상이 말한 만큼만 나눠 적었어요.</p>
+</aside>
+<p>요즘 모델은 <span class="term" data-term="멀티모달" data-en="Multimodal" data-desc="글, 이미지, 소리처럼 여러 형태의 입력을 함께 받고 내놓을 수 있는 모델의 성질이에요. 이 덕분에 화면을 찍어 보내는 대화가 가능해요." data-g="1">멀티모달</span>이라 글뿐 아니라 이미지도 읽고, 이미지를 만들 수도 있어요. 화이트보드 왼쪽의 문서 아이콘과 그림 아이콘이 함께 로봇으로 들어가고, 로봇이 다시 그림을 내놓는 흐름이 그 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0046.webp" alt="Multimodal 제목 아래 문서와 이미지가 로봇으로 들어가고 로봇이 이미지를 내놓는 손그림">
+  <figcaption>입력도 출력도 글로만 제한되지 않는다는 게 출발점이에요.
+    <a href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=46s" target="_blank" rel="noopener">영상 00:46에서 보기</a></figcaption>
+</figure>
+<p>행사에서 강조한 건 이 능력을 대화에 쓰라는 거였어요. OpenAI 개발자들은 각자 스크린샷 도구를 직접 만들어 쓴다고 해요. 발표자도 비슷하게 일해요. UI(User Interface)에서 마음에 안 드는 곳이 있으면 화면을 찍고 그 위에 낙서로 표시해서 고쳐 달라고 던져요. 브라우저에서 모르는 게 생기면 화면 전체를 찍어서 보내요.</p>
+<p>아래 그림에서 Button에 동그라미를 치고 'Fix!'라고 적은 화살표가 로봇으로 가는 부분이 바로 그 방식이에요. 아래쪽에는 글 말풍선 옆에 물음표, 그림 말풍선 옆에 느낌표를 붙였어요. 글로 말하면 헷갈리고, 그림으로 보여 주면 바로 통한다는 대비예요.</p>
+<figure>
+  <img src="assets/frame-0155.webp" alt="Screenshot 스크린샷 도구 제목 아래 웹 화면의 버튼에 동그라미와 Fix 표시를 하고 로봇에게 보내는 그림, 아래에 글 말풍선과 물음표, 그림 말풍선과 느낌표">
+  <figcaption>머릿속 그림을 정확히 전하려면 이미지 위에 직접 그려 주는 게 좋다는 게 발표자의 결론이에요.
+    <a href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=115s" target="_blank" rel="noopener">영상 01:55에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=120s" target="_blank" rel="noopener">02:00</a>
+  <h2>GPT는 일부러 취향을 빼요</h2>
+<p>OpenAI 직원은 OpenAI와 Anthropic이 모델을 만드는 철학이 다르다고 했어요. GPT와 Codex는 '취향이 없게' 만들었다는 거예요. 사람이 시킨 것 밖으로 자기 주관을 넣지 않고, 시킨 범위 안에서만 처리하도록 일부러 설계했대요.</p>
+<p>화이트보드가 이 차이를 잘 보여 줘요. 왼쪽 GPT · Codex 아래에는 Instruction following(시킨 범위만)이라고 쓰고, 점선으로 그린 범위(Scope) 안에 칸 세 개만 놓았어요. 오른쪽 Claude 아래에는 Opinionated(자기 취향)라고 쓰고, 점선 범위 밖으로 칸 두 개가 더 튀어나가 있어요.</p>
+<figure>
+  <img src="assets/frame-0241.webp" alt="Design philosophy 설계 철학 제목 아래 GPT·Codex는 Instruction following, 시킨 범위만, Claude는 Opinionated, 자기 취향이라고 적고 점선 범위 안팎의 칸으로 비교한 그림">
+  <figcaption>체크 표시는 GPT 쪽에 붙어 있어요. 시킨 범위 안에서 끝내는 걸 OpenAI가 목표로 삼는다는 뜻이에요.
+    <a href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=161s" target="_blank" rel="noopener">영상 02:41에서 보기</a></figcaption>
+</figure>
+<p>이유는 사람이 요청한 걸 정확히 처리하고, 의도하지 않은 일을 하지 않게 하는 걸 가장 중요하게 보기 때문이에요. 발표자는 영상 끝에서 이 이야기를 다시 꺼내요. GPT와 Claude가 다르게 느껴졌던 게 실력 차이가 아니라 의도된 설계 차이였다는 거예요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th></th><th>GPT · Codex</th><th>Claude</th></tr></thead>
+    <tbody>
+      <tr><td>화이트보드 표현</td><td>Instruction following · 시킨 범위만</td><td>Opinionated · 자기 취향</td></tr>
+      <tr><td>일하는 범위</td><td>요청한 범위 안에서만</td><td>요청 밖으로 자기 판단을 더해요</td></tr>
+      <tr><td>설명</td><td>OpenAI 직원이 '의도된 설계'라고 했어요</td><td>발표자가 GPT와 비교하며 느낀 차이예요</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=176s" target="_blank" rel="noopener">02:56</a>
+  <h2>목소리로 말하기, 그리고 Always on</h2>
+<p>보이스 코딩은 OpenAI 직원이 아니라 다른 세션 발표자가 한 이야기예요. 보이스 코딩을 많이 한다는 발표가 있었고, 영상의 발표자도 보이스 프롬프팅을 많이 쓴다고 해요. 생각을 두서없이 말로 다 던져 놓고, 정리는 에이전트에게 맡기는 식이에요.</p>
+<p>화이트보드에는 마이크에서 나온 음파가 로봇으로 가고, 로봇 옆에 체크리스트가 생기는 그림이 있어요. 말로 던진 생각이 정리된 할 일 목록이 된다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0327.webp" alt="Voice coding 말로 코딩 제목 아래 마이크의 음파가 로봇으로 가고 옆에 체크리스트 세 줄이 있는 그림">
+  <figcaption>체크된 두 줄과 빈 한 줄은 에이전트가 정리한 할 일이에요. 말은 흩어져도 정리는 에이전트 몫이에요.
+    <a href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=207s" target="_blank" rel="noopener">영상 03:27에서 보기</a></figcaption>
+</figure>
+<p>발표자는 의사 전달이 훨씬 빠르다는 점을 확실한 장점으로 꼽아요. 다만 항상 말로 하는 게 정답은 아니에요. 손으로 치기 피곤하면 말로, 말하기 피곤하면 타이핑으로 고를 수 있다는 선택지가 생긴 것 자체가 중요하다고 봐요.</p>
+<h3>Always on</h3>
+<p>Always on은 행사 발표 내용이 아니라 발표자 본인의 생각이에요. 음성 인식이 늘 켜져 있으면 지나가다 말을 걸어 일을 시키고, 다시 물어보면 답을 듣는 식으로 일할 수 있어요. 그림의 귀와 'ON' 스위치가 '늘 듣고 있음'을, 말풍선이 로봇으로 갔다가 답 말풍선이 돌아오는 화살표가 그 대화를 나타내요.</p>
+<figure>
+  <img src="assets/frame-0413.webp" alt="Always On 항시 음성 인식 제목 아래 귀와 ON 스위치, 말풍선이 로봇에게 가고 답 말풍선이 나오는 그림">
+  <figcaption>로봇 아래 진행 막대는 말 한마디로 시작된 작업이 돌아가는 모습이에요. 발표자는 이런 방식을 지금 직접 만들어 시험하고 있어요.
+    <a href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=253s" target="_blank" rel="noopener">영상 04:13에서 보기</a></figcaption>
+</figure>
+<p>발표자는 이렇게 일하려면 기본 입력 방식이 목소리가 돼야 한다고 봐요.</p>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=267s" target="_blank" rel="noopener">04:27</a>
+  <h2>다 같이 리셋, 그리고 한 단계씩</h2>
+<p>AI(Artificial Intelligence) 이전에는 무엇을 하든 어느 정도 정해진 로드맵이 있었고, 각자 쌓아 온 경력이 있었어요. 행사에서는 AI 시대가 오면서 모두가 함께 리셋된 상황이라는 이야기가 나왔어요.</p>
+<p>화이트보드는 'RESET' 버튼 아래에 '쌓아 온 경력'을 놓고, 높이가 조금씩 다른 칸들을 그렸어요. 오른쪽 위 Gap(격차) 화살표가 가리키는 칸 높이 차이가 크지 않다는 게 요점이에요.</p>
+<figure>
+  <img src="assets/frame-0509.webp" alt="RESET 버튼과 Career 쌓아온 경력 글자 아래 높이가 비슷한 칸 다섯 개와 Gap 격차 화살표가 있는 그림">
+  <figcaption>경력 차이가 아주 없지는 않지만, 점점 좁아져서 사실상 리셋에 가깝다는 뜻이에요.
+    <a href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=309s" target="_blank" rel="noopener">영상 05:09에서 보기</a></figcaption>
+</figure>
+<p>발표자도 공감해요. 지식이 많은 사람이 여전히 조금 유리하지만 그 격차가 갈수록 의미가 없어진다고 느꼈대요. 그래서 자신도 리셋된 상황을 받아들이고, 모든 사람과 똑같이 경쟁을 다시 시작한다고 생각하게 됐다고 해요.</p>
+<h3>한 번에 말고, 한 단계씩</h3>
+<p>많은 사람이 '딸깍' 한 번으로 뭔가를 다 만들려다 실망해요. OpenAI 직원은 턴바이턴, 즉 한 단계씩 진행시키면 뭐든 만들 수 있다고 했어요. 화면 목록에는 이 항목이 '턴바이턴 vs 한번에 <span class="term" data-term="Ultracode" data-desc="Claude Code의 설정으로, 켜 두면 큰 작업마다 Claude가 여러 에이전트를 묶은 작업 흐름을 스스로 짜서 돌려요. 화면 목록에서 &#x27;한번에&#x27; 쪽 예로 적혀 있어요." data-g="4">Ultracode</span>'라고 적혀 있어요.</p>
+<p>그림 왼쪽 One-shot(한 번에)은 딸깍 버튼 위로 칸들이 흩어져 무너져 있고 X 표시가 붙었어요. 오른쪽 Turn-by-turn(한 단계씩)은 칸을 하나씩 쌓아 탑을 만들고, 그 옆에 Iteration(반복 수정)과 되돌아오는 화살표가 있어요.</p>
+<figure>
+  <img src="assets/frame-0701.webp" alt="One-shot 한 번에는 딸깍 버튼 위에 흩어진 칸과 X 표시, Turn-by-turn 한 단계씩은 쌓아 올린 칸과 체크, Iteration 반복 수정이 적힌 비교 그림">
+  <figcaption>칸 하나를 올릴 때마다 체크하는 것, 그게 턴바이턴이에요.
+    <a href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=421s" target="_blank" rel="noopener">영상 07:01에서 보기</a></figcaption>
+</figure>
+<p>발표자도 같은 생각이에요. 요즘 게임 개발을 시도하고 있는데, 게임 개발 유튜버들도 한 번에 다 만들지 말고 <span class="term" data-term="이터레이션" data-en="Iteration" data-desc="만들고, 확인하고, 고치기를 여러 번 되풀이하는 작업 방식이에요. 처음부터 완성본을 노리지 않는 게 핵심이에요." data-g="3">이터레이션</span>을 하라고 말한대요. 큰 작업을 아예 안 맡기는 건 아니지만, 한 단계씩 해도 시간이 비슷하게 걸린다면 한 방에 맡기는 건 다시 생각하게 됐다고 해요. 사람들이 한 방에 완성하려다 안 돼서 불만을 갖다 보니 이런 말이 나온 것 같다는 해석도 덧붙여요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=425s" target="_blank" rel="noopener">07:05</a>
+  <h2>펠리컨 벤치마크와 Jev</h2>
+<p>새 모델이 나오면 '자전거 타는 펠리컨'을 SVG(Scalable Vector Graphics)로 그려 보는 게 일종의 벤치마크처럼 됐어요. 잘 그리면 잘하는 모델이라는 느낌으로요. 행사에서는 이 그림도 마음먹으면 잘 그리게 만들 수 있다는 이야기가 나왔어요.</p>
+<p>화이트보드 오른쪽 계기판(Benchmark) 아래에 Benchmaxxing이라고 적혀 있고, 펠리컨에서 점선이 reference 그림으로 이어져요. 펠리컨 참고 이미지를 잘 주기만 해도 결과가 좋아진다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0741.webp" alt="Pelican on a bicycle 펠리컨 SVG 벤치마크 제목 아래 자전거 탄 펠리컨, Benchmark 계기판과 Benchmaxxing 라벨, reference 이미지로 이어지는 점선">
+  <figcaption>기준처럼 쓰이는 결과물도 의도하면 끌어올릴 수 있어요. 점수 하나로 모델을 판단하지 말라는 이야기예요.
+    <a href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=461s" target="_blank" rel="noopener">영상 07:41에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>이 벤치마크는 Simon Willison이 새 모델마다 'Generate an SVG of a pelican riding a bicycle'이라는 같은 요청을 넣어 보는 데서 시작했어요. 그도 '연구소들이 펠리컨만 따로 학습시키면 어떻게 되느냐'는 질문을 자주 받는다고 해요. 그의 답은, 그러면 다른 동물과 다른 탈것으로 바꿔 시험했을 때 결과가 눈에 띄게 나빠져서 들통난다는 거예요.</p>
+  <p class="cite">출처: <a href="https://simonwillison.net/2025/Nov/13/training-for-pelicans-riding-bicycles/" target="_blank" rel="noopener">Simon Willison — What happens if AI labs train for pelicans riding bicycles?</a></p>
+</aside>
+<p>OpenAI 직원은 Anthropic 사람들과 친하게 지내고 적대 관계가 아니라고도 했어요. 발표자는 이 말이 왜 나왔는지는 기억나지 않는다고 해요. 화이트보드에는 OpenAI와 Anthropic 로봇 사이에 하트를 그리고 Not rivals(적대 관계 아님)라고 적었어요.</p>
+<figure>
+  <img src="assets/frame-0805.webp" alt="OpenAI 로봇과 Anthropic 로봇 사이에 하트, 아래에 Not rivals 적대 관계 아님이라고 쓴 그림">
+  <figcaption>짧게 지나간 이야기예요. 앞 섹션의 설계 철학 차이가 경쟁심 때문은 아니라는 맥락으로 읽으면 돼요.
+    <a href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=485s" target="_blank" rel="noopener">영상 08:05에서 보기</a></figcaption>
+</figure>
+<h3>Jev와 Decisions API</h3>
+<p>Jev는 판단만 해 주고 대화는 못 하는 모델이에요. 발표자는 이런 모델을 <span class="term" data-term="시스템 1" data-en="System 1" data-desc="대화하지 않고 판단만 빠르게 내놓는 모델을 부르는 말이에요. 사람의 빠른 직관 사고와 느린 숙고 사고를 나누는 시스템 1·2 구분에서 따왔어요." data-g="6">시스템 1</span>, 우리가 평소 쓰는 대화형 모델을 시스템 2라고 부른다고 설명해요. OpenAI도 Decisions API(Application Programming Interface)라는 시스템 1 성격의 제품을 내놓았어요.</p>
+<p>그림 왼쪽 System 1(판단만) 로봇은 'YES' 하나만 내놓고 대화 아이콘에는 X가 쳐져 있어요. 오른쪽 System 2(대화) 로봇은 말풍선 두 개를 주고받아요. 아래에서는 Jev와 Decision API를 한 지붕 아래 넣고 Same family(같은 식구)라고 적었어요.</p>
+<figure>
+  <img src="assets/frame-0917.webp" alt="System 1 판단만 로봇은 YES와 X 표시, System 2 대화 로봇은 말풍선 두 개, 아래에 Jev와 Decision API가 한 집 안에 있고 Same family 같은 식구라고 쓴 그림">
+  <figcaption>경쟁이냐는 질문에 '같은 식구'라고 답했다는 걸 그림 하나로 정리했어요.
+    <a href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=557s" target="_blank" rel="noopener">영상 09:17에서 보기</a></figcaption>
+</figure>
+<p>행사에서는 둘이 경쟁 관계냐는 질문이 나왔어요. 답은 경쟁이라고 생각하지 않는다는 거였어요. Jev를 만든 엔지니어가 원래 OpenAI 직원이라 같은 식구였고, Jev를 보고 좋아서 OpenAI도 만들게 됐다는 설명이에요. 발표자는 아직 Decisions API를 써 보진 않았다고 해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Jev는 TypeSafe AI가 2026년 9월 15일에 공개한 첫 'System One Model'이에요. 창업자 Diogo Almeida는 OpenAI에서 ChatGPT의 바탕이 된 연구에 참여했다고 밝혀요. Jev는 글을 생성하지 않는 대신, 미리 정한 형태의 답(선택지, 점수, 예/아니오)을 확률과 함께 돌려줘요. 회사가 밝힌 응답 시간은 70~500ms예요.</p>
+  <p>OpenAI 공식 문서는 Decisions API를 'Responses API보다 약 10배 빠르게 타입이 정해진 답을 돌려주는' API로 설명해요. 조건이 참일 확률(predicate), 정해진 선택지 중 하나(choice), 기준표에 따른 점수(score) 세 가지를 물을 수 있고, 지금은 gpt-6-luna 모델 하나만 지원해요. 문서상 이름은 화면에 적힌 'Decision API'가 아니라 'Decisions API'예요.</p>
+  <p class="cite">출처: <a href="https://typesafe.ai/blog/introducing-system-one-models-and-jev" target="_blank" rel="noopener">TypeSafe AI — Introducing System One Models &amp; Jev</a> · <a href="https://developers.openai.com/api/docs/guides/decisions" target="_blank" rel="noopener">OpenAI API 문서 — Decisions</a></p>
+</aside>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=558s" target="_blank" rel="noopener">09:18</a>
+  <h2>결국 기본기, 그리고 하네스</h2>
+<p>발표자는 오늘 들은 이야기에 새로운 내용은 크게 없다고 말해요. 대신 AI를 잘 쓰기 위한 기본기가 더 강조되고 있다고 느꼈대요. 화이트보드에는 Fundamentals(기본기)라는 지붕 아래 기둥 세 개를 세웠어요. Image, Voice, 그리고 <code>CLAUDE.md</code> · <code>AGENTS.md</code>예요.</p>
+<figure>
+  <img src="assets/frame-1130.webp" alt="Fundamentals 기본기 제목 아래 신전 모양 그림, 기둥 세 개에 Image, Voice, CLAUDE.md AGENTS.md라고 적고 세 번째 기둥에 돋보기가 있는 그림">
+  <figcaption>세 번째 기둥에 그린 돋보기는 지침을 주기적으로 들여다보라는 뜻이에요.
+    <a href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=690s" target="_blank" rel="noopener">영상 11:30에서 보기</a></figcaption>
+</figure>
+<h3>기둥 하나씩</h3>
+<p><b>이미지.</b> 모델에게 이미지를 넘겨 해석하게 하는 건 꽤 오래전부터 됐어요. 문제는 사람들이 이걸 정말 잘 쓰느냐예요. AI가 못 알아듣는다고 불평하는 경우의 상당수는, 글로만 설명해서 생기는 한계라는 게 발표자의 진단이에요. 사람끼리도 참고 이미지나 영상 없이 말하면 서로 다르게 이해하잖아요.</p>
+<p><b>목소리.</b> 보이스 코딩이 맞는 흐름이라는 확신이 점점 서고 있다고 해요. 누가 맞다고 해서 하는 게 아니라, 일시적인 유행이 아니라는 거예요.</p>
+<p><b>지침 파일.</b> <code>AGENTS.md</code>, <code>CLAUDE.md</code>는 사실 제일 중요해요. 이걸 제대로 세팅하지 않고 하네스를 쌓는 건 핵심을 빼놓고 엉뚱한 걸 챙기는 셈이라고 봐요. 발표자는 모델이 새로 나오거나 하네스가 낡았다 싶으면 <span class="term" data-term="글로벌 지침" data-desc="특정 프로젝트가 아니라 모든 작업에 공통으로 적용되는 에이전트 지침이에요. 발표자는 모델이 바뀔 때마다 이것부터 다시 검토시켜요." data-g="8">글로벌 지침</span>부터 다시 검토시켜요. 최신 유행 도구에 눈이 가다 보면 이런 유지보수를 놓치기 쉽다는 거예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p><code>AGENTS.md</code>는 코딩 에이전트에게 빌드 방법, 테스트, 코드 규칙 같은 지침을 주는 공개 형식이에요. 공식 사이트는 '에이전트를 위한 README'라고 소개해요. Claude Code는 <code>CLAUDE.md</code>를 읽고, 저장소에 <code>AGENTS.md</code>만 있으면 그 파일을 대신 지침으로 쓸 수 있다고 공식 문서에 적혀 있어요.</p>
+  <p class="cite">출처: <a href="https://agents.md/" target="_blank" rel="noopener"><code>AGENTS.md</code> 공식 사이트</a> · <a href="https://code.claude.com/docs/en/memory" target="_blank" rel="noopener">Claude Code 문서 — How Claude remembers your project</a></p>
+</aside>
+<h3>하네스와 모델은 세트</h3>
+<p>마지막으로 나온 이야기는 하네스와 모델이 함께 간다는 거예요. 저울 그림 왼쪽 접시에 Harness, 오른쪽 접시에 Model을 올려 균형을 맞췄어요.</p>
+<figure>
+  <img src="assets/frame-1236.webp" alt="Harness + Model 둘은 세트 제목 아래 왼쪽 접시에 Harness, 오른쪽 접시에 Model 로봇을 올린 저울 그림">
+  <figcaption>하네스 없이 모델만 믿는 것도, 하네스만 믿고 모델은 아무래도 된다는 것도 둘 다 말이 안 된다는 뜻이에요.
+    <a href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=756s" target="_blank" rel="noopener">영상 12:36에서 보기</a></figcaption>
+</figure>
+<p>요즘 하네스가 필요 없지 않냐는 말이 나오다 보니 이 이야기가 다시 나온 것 같다고 발표자는 봐요. 그러면서도 본인은 하네스를 가볍게 줄이는 중이라고 해요. 예전에 넣어 둔 규칙이 새로운 시도를 막을 때가 있어서예요. 그림의 Lightweight(경량화) 체크리스트에서 두 줄에 취소선이 그어진 게 그 모습이에요.</p>
+<figure>
+  <img src="assets/frame-1258.webp" alt="Lightweight 경량화 제목 아래 Harness 체크리스트 열 줄 중 두 줄에 취소선이 그어진 그림">
+  <figcaption>지침 열 개 중 한두 개는 주기적으로 지우고, 그만큼 새로 넣는다고 해요. 줄이는 것과 버리는 것은 달라요.
+    <a href="https://www.youtube.com/watch?v=MU6bMRkP0tE&amp;t=778s" target="_blank" rel="noopener">영상 12:58에서 보기</a></figcaption>
+</figure>
+<h3>누가 한 말인가요</h3>
+<p>발표자는 OpenAI 직원 말과 다른 세션 이야기, 자기 생각이 섞여 있다고 밝혀요. 영상에서 출처를 말한 만큼만 나누면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>주제</th><th>누구의 이야기인가요</th></tr></thead>
+    <tbody>
+      <tr><td>개발자들이 스크린샷 도구를 만들어 써요</td><td>OpenAI 직원</td></tr>
+      <tr><td>GPT·Codex는 취향이 없어요</td><td>OpenAI 직원</td></tr>
+      <tr><td>보이스 코딩을 많이 해요</td><td>다른 세션 발표자</td></tr>
+      <tr><td>Always on</td><td>영상 발표자 본인 생각</td></tr>
+      <tr><td>다 같이 리셋</td><td>행사에서 나온 이야기 (발표자 공감)</td></tr>
+      <tr><td>턴바이턴이면 뭐든 만들어요</td><td>OpenAI 직원</td></tr>
+      <tr><td>Jev와 Decisions API는 같은 식구예요</td><td>행사 질의응답</td></tr>
+      <tr><td>지침 파일과 하네스 경량화</td><td>영상 발표자 본인 경험</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>발표자는 AI 개발에는 정해진 정답이 없고, 오늘 맞다고 생각한 게 내일 바뀔 수 있다는 말로 마무리해요. 의견이 다르면 그게 당연하다고 덧붙여요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 이름이 한글로 잘못 받아적힌 곳이 있어요. 화이트보드 글씨와 공식 문서를 기준으로 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>오픈아, 오픈 AI</td><td>OpenAI</td><td></td></tr>
+      <tr><td>엔트로픽</td><td>Anthropic</td><td></td></tr>
+      <tr><td>클러드</td><td>Claude</td><td></td></tr>
+      <tr><td>멀티모델</td><td>멀티모달(Multimodal)</td><td>화면에 Multimodal로 적혀 있어요</td></tr>
+      <tr><td>낙설</td><td>낙서</td><td></td></tr>
+      <tr><td>always웨이 on, 어웨이즈 온</td><td>Always on</td><td></td></tr>
+      <tr><td>팰리콘</td><td>펠리컨(pelican)</td><td></td></tr>
+      <tr><td>벤치 맥싱</td><td>벤치맥싱(Benchmaxxing)</td><td>화면 글씨 기준</td></tr>
+      <tr><td>제브, 제부, 재부</td><td>Jev</td><td>TypeSafe AI의 모델 이름</td></tr>
+      <tr><td>디시전 API</td><td>Decisions API</td><td>화면에는 Decision API, 공식 이름은 Decisions API예요</td></tr>
+      <tr><td>LM, LRM</td><td>LLM</td><td>(추정)</td></tr>
+      <tr><td>한네스</td><td>하네스(Harness)</td><td></td></tr>
+      <tr><td>에이전트 MD, 클로드 MD</td><td>AGENTS.md, CLAUDE.md</td><td></td></tr>
+      <tr><td>코한 걸</td><td>핵심(코어)을</td><td>(추정)</td></tr>
+      <tr><td>규식</td><td>규칙</td><td></td></tr>
+      <tr><td>주먹 구식</td><td>주먹구구식</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-8"><dt>글로벌 지침</dt><dd>특정 프로젝트가 아니라 모든 작업에 공통으로 적용되는 에이전트 지침이에요. 발표자는 모델이 바뀔 때마다 이것부터 다시 검토시켜요.</dd></div>
+    <div class="g" id="g-1"><dt>멀티모달<span class="en">Multimodal</span></dt><dd>글, 이미지, 소리처럼 여러 형태의 입력을 함께 받고 내놓을 수 있는 모델의 성질이에요. 이 덕분에 화면을 찍어 보내는 대화가 가능해요.</dd></div>
+    <div class="g" id="g-5"><dt>벤치마크<span class="en">Benchmark</span></dt><dd>모델 실력을 비교하려고 모두 같은 문제를 풀게 하는 시험이에요. 점수가 기준처럼 쓰이다 보니, 그 시험만 잘 보게 맞추는 일이 생겨요.</dd></div>
+    <div class="g" id="g-6"><dt>시스템 1<span class="en">System 1</span></dt><dd>대화하지 않고 판단만 빠르게 내놓는 모델을 부르는 말이에요. 사람의 빠른 직관 사고와 느린 숙고 사고를 나누는 시스템 1·2 구분에서 따왔어요.</dd></div>
+    <div class="g" id="g-3"><dt>이터레이션<span class="en">Iteration</span></dt><dd>만들고, 확인하고, 고치기를 여러 번 되풀이하는 작업 방식이에요. 처음부터 완성본을 노리지 않는 게 핵심이에요.</dd></div>
+    <div class="g" id="g-2"><dt>턴바이턴<span class="en">Turn-by-turn</span></dt><dd>작업을 한 번에 맡기지 않고, 한 단계씩 시키고 확인한 뒤 다음 단계로 넘어가는 방식이에요. 중간에 틀어져도 바로 바로잡을 수 있어요.</dd></div>
+    <div class="g" id="g-7"><dt>하네스<span class="en">Harness</span></dt><dd>모델을 감싸서 실제로 일하게 만드는 바깥 장치예요. 지침 파일, 도구, 작업 흐름, 검사 규칙 같은 것들이 다 여기에 들어가요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>GPT</dt><dd>Generative Pre-trained Transformer</dd></div>
+    <div class="g"><dt>SVG</dt><dd>Scalable Vector Graphics</dd></div>
+    <div class="g"><dt>UI</dt><dd>User Interface</dd></div>
+    <div class="g" id="g-4"><dt>Ultracode</dt><dd>Claude Code의 설정으로, 켜 두면 큰 작업마다 Claude가 여러 에이전트를 묶은 작업 흐름을 스스로 짜서 돌려요. 화면 목록에서 &#x27;한번에&#x27; 쪽 예로 적혀 있어요.</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=MU6bMRkP0tE" target="_blank" rel="noopener">원본 영상 — StefanCho</a></li>
+    <li id="src-2"><a href="https://simonwillison.net/2025/Nov/13/training-for-pelicans-riding-bicycles/" target="_blank" rel="noopener">Simon Willison — What happens if AI labs train for pelicans riding bicycles?</a></li>
+    <li id="src-3"><a href="https://typesafe.ai/blog/introducing-system-one-models-and-jev" target="_blank" rel="noopener">TypeSafe AI — Introducing System One Models &amp; Jev</a></li>
+    <li id="src-4"><a href="https://developers.openai.com/api/docs/guides/decisions" target="_blank" rel="noopener">OpenAI API 문서 — Decisions</a></li>
+    <li id="src-5"><a href="https://agents.md/" target="_blank" rel="noopener">AGENTS.md 공식 사이트</a></li>
+    <li id="src-6"><a href="https://code.claude.com/docs/en/memory" target="_blank" rel="noopener">Claude Code 문서 — How Claude remembers your project</a></li>
+    <li id="src-7"><a href="https://code.claude.com/docs/en/model-config" target="_blank" rel="noopener">Claude Code 문서 — Model configuration (Ultracode)</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 27일에 이 영상을 보고 정리했어요. 원본은 StefanCho 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

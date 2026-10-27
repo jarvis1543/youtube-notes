@@ -1,0 +1,1112 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>비개발자가 Claude Code에 일을 맡기는 법</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>비개발자가 Claude Code에 일을 맡기는 법</h1>
+  <p class="lede">네이트 허크의 데모 네 개와 CLAUDE.md·스킬·검증을 처음부터 따라가요</p>
+  <div class="meta">
+    <span>The Calum Johnson Show</span><span class="dot">·</span>
+    <span>영상 1:24:33</span><span class="dot">·</span>
+    <span>읽는 데 약 28분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=DD-SiFV93sQ" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>Claude Code를 잘 쓰는 데 코딩은 필요 없어요. 원하는 것과 '좋은 결과'의 기준을 분명히 말하면 돼요.</li>
+    <li>첫 결과물에 실망하지 마세요. 스크린샷, <span class="term" data-term="서브 에이전트" data-en="Subagent" data-desc="메인 에이전트가 일부 작업을 맡기려고 따로 띄우는 에이전트예요. 자기 컨텍스트에서 일하고 결과만 돌려줘서 메인 대화가 어지러워지지 않아요." data-g="9">서브 에이전트</span> 팩트체크, <span class="term" data-term="브라우저 조작" data-en="Browser use" data-desc="AI가 브라우저 화면을 보고 어디를 누를지 판단해 직접 클릭하고 입력하는 기능이에요. 만든 앱을 사람처럼 써 보며 테스트할 때 써요." data-g="13">브라우저 조작</span>으로 AI(Artificial Intelligence)가 스스로 검증하게 하면 여덟 번째 결과물을 받아요.</li>
+    <li>자전거 가르치듯 처음엔 지켜보며 피드백하고, 그 피드백을 '앞으로 매번' 규칙으로 <span class="term" data-term="스킬" data-en="Skill" data-desc="Claude가 특정 작업을 할 때 따르는 지시문 묶음이에요. SKILL.md 파일(스킬 설명 파일)로 저장해 두고 이름으로 부르거나, 요청이 맞으면 Claude가 알아서 불러와요." data-g="8">스킬</span>에 넣어야 다음 번이 좋아져요.</li>
+    <li>시작은 <code>CLAUDE.md</code> 하나예요. 프로젝트 맥락과 규칙을 적어 두면 같은 설명을 반복하지 않아요.</li>
+    <li>이번 주말엔 grill me 세션으로 AI가 나를 인터뷰하게 해서 맥락을 한 번에 쌓아요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">비개발자도 Claude Code를 쓸 수 있을까요?</a></li>
+    <li><a href="#s2">골드만삭스 인턴에서 사업가로, 첫 경험은 n8n</a></li>
+    <li><a href="#s3">두 가지 마음가짐과 리드 50개 데모</a></li>
+    <li><a href="#s4">첫 결과가 별로인 이유: 자전거 방식과 AIOS의 4C</a></li>
+    <li><a href="#s5">/goal로 밤새 돌리기: 영상 편집과 Calendly 클론</a></li>
+    <li><a href="#s6">지금 AI로 돈 버는 가장 쉬운 길</a></li>
+    <li><a href="#s7">처음 열면 할 일: CLAUDE.md 만들기</a></li>
+    <li><a href="#s8">스킬 만들기와 세 가지 검증</a></li>
+    <li><a href="#s9">이번 주말에 할 일: grill me 세션</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=87s" target="_blank" rel="noopener">01:27</a>
+  <h2>비개발자도 Claude Code를 쓸 수 있을까요?</h2>
+<p>진행자 캘럼 존슨은 비개발자의 자리에서 질문을 시작해요. Claude Code라는 이름에 'Code'가 들어 있고 터미널 화면이 낯설어서, 많은 사람이 '개발자용'이라고 여기고 손을 떼요. 게스트 네이트 허크(Nate Herk)는 기술 배경 없이 콘텐츠, 교육, 행사, 컨설팅 사업을 작은 팀으로 굴리고 있다고 소개돼요.</p>
+<p>네이트의 답은 짧아요. AI에서 결과를 얻는 건 이제 <b>원하는 것을 분명히 말하는 일</b>이고, 하나 더 붙이면 <b>'잘된 결과'가 어떤 모습인지 말하는 일</b>이에요. 사람은 원래 자기가 뭘 원하는지 잘 알면서 스스로 발목을 잡는다고 봐요. Claude Code를 만든 보리스 체르니나 샘 올트먼처럼 AI 모델을 만드는 쪽 사람들도 'AI가 못 할 것 같은 일을 시켜 보라'고 조언한다고 덧붙여요.</p>
+<blockquote>
+  <p>Getting results out of AI at this point is just about communicating clearly what you want.</p>
+  <p>지금 AI에서 결과를 얻는 건 결국 원하는 걸 분명하게 전달하는 일이에요.</p>
+  <cite>— 영상 02:16</cite>
+</blockquote>
+<h3>두 세계 사이의 간극</h3>
+<p>진행자는 미리 나눈 대화에서 네이트가 한 말을 꺼내요. 한쪽에는 매일 쏟아지는 새 도구를 따라가는 사람들이 있고, 다른 쪽에는 ChatGPT를 한 번도 안 열어 본 사람들이 있다는 거예요. 네이트는 대학 동기들 얘기를 해요. 회사에서 Copilot 정도만 허락되다 보니 'AI는 엑셀 수식도 틀리게 넣는다, 과대광고다'라고 느낀대요.</p>
+<p>그래서 전환점은 남의 데모를 보는 게 아니라 직접 겪는 순간이라고 해요. 프롬프트 하나를 넣었는데 고칠 게 남은 결과가 아니라 '한 시간 걸릴 일이 2분 만에 끝났다'는 결과가 돌아오는 순간이에요.</p>
+<h3>챗봇과 무엇이 다른가요</h3>
+<p>Claude나 ChatGPT를 자주 쓰는 사람도 매번 우선순위, 팀 구성, 브랜드 가이드를 다시 설명해야 하는 피로를 느껴요. 네이트는 Claude Code나 Codex에서 만드는 건 <b>기억이 있는 시스템</b>이라고 설명해요. 팀원들에게 '나한테 묻느니 내 AI 운영체제에 물어보는 게 빠르고 기억도 더 정확하다'고 농담할 정도래요. 게다가 손이 있어서 복사·붙여넣기 대신 직접 실행하고, 내가 자는 동안에도 일해요.</p>
+<p>네이트는 이 변화를 숫자로 표현해요. 지금 노력 1을 들여 산출 3을 얻는다면, 새 방식에 익숙해진 뒤에는 노력 1로 산출 10을 얻는 게 '새 기본값'이 된다는 거예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 560 190" role="img" aria-label="노력 1당 산출 3과 산출 10을 비교한 막대">
+    <line class="axis" x1="150" y1="20" x2="150" y2="160"/>
+    <text x="140" y="62" text-anchor="end">지금</text>
+    <text x="140" y="80" text-anchor="end" class="sub">노력 1</text>
+    <rect class="bar alt" x="150" y="50" width="111" height="34" rx="4"/>
+    <text x="270" y="72">산출 3</text>
+    <text x="140" y="122" text-anchor="end">새 기본값</text>
+    <text x="140" y="140" text-anchor="end" class="sub">노력 1</text>
+    <rect class="bar" x="150" y="110" width="370" height="34" rx="4"/>
+    <text x="510" y="132" text-anchor="end" fill="currentColor">산출 10</text>
+    <text x="150" y="178" class="sub">같은 노력, 막대 길이는 산출에 비례</text>
+  </svg>
+  <figcaption>네이트가 말로 든 비유를 그대로 그렸어요. 실제 측정값이 아니라 '체감 생산성'을 비유한 숫자예요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=435s" target="_blank" rel="noopener">영상 07:15에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=473s" target="_blank" rel="noopener">07:53</a>
+  <h2>골드만삭스 인턴에서 사업가로, 첫 경험은 n8n</h2>
+<p>진행자는 네이트의 이력을 이렇게 요약해요. 몇 년 전에는 골드만삭스 인턴이었던 비개발자였는데, 지금은 사업 여러 개를 굴리고 한때 월 수십만 달러를 버는 에이전시도 운영했다는 거예요. 네이트는 처음부터 '사람 없이 키우자'가 아니라 '작은 팀이 더 많이 하게 돕자'는 생각이었다고 말해요.</p>
+<p>방법은 단순했대요. 자기 업무에서 <b>반복되고 지루한 과정</b>을 찾아 하나씩 시스템으로 만든 거예요. 그 효과를 실감한 건 아팠을 때예요. 11월에 사업을 시작했는데 12월에 크게 아파 입원했어요. 그 한 달 동안 매출도 조회수도 꺾이지 않았대요. 에이전트들이 보내야 할 것을 알려 주고, 고객에게 병목이 생겼다고 연락하는 일을 대신했기 때문이에요.</p>
+<h3>n8n 워크플로를 말로 만든 날</h3>
+<p>Claude Code를 진지하게 쓴 건 약 7개월 전인 1월부터예요. 그전까지 네이트는 자동화 도구 n8n으로 브랜드를 쌓은 'n8n 전문가'였어요. 그래서 처음 해 본 일도 'Claude Code로 n8n 워크플로를 만들 수 있을까?'였어요. 계정을 연결해 달라고 하자 자격 증명만 달라고 했고, 워크플로 목록과 오늘 실행 횟수까지 읽어 냈대요.</p>
+<p>네이트는 마이크에 대고 2분쯤 원하는 걸 말하고 간식을 가지러 갔어요. 돌아오니 거의 완성된 워크플로가 있었어요. 변수 몇 개를 연결하고 테스트 데이터를 넣어 돌리니 끝까지 실행됐어요. 아래 그림은 그가 말한 시간을 나란히 놓은 거예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 600 170" role="img" aria-label="직접 만들 때 30~45분, Claude Code로는 약 10분">
+    <line class="axis" x1="170" y1="20" x2="170" y2="130"/>
+    <text x="160" y="52" text-anchor="end">직접 만들기</text>
+    <rect class="bar alt" x="170" y="34" width="270" height="28" rx="4"/>
+    <rect class="bar alt dim" x="440" y="34" width="135" height="28" rx="4"/>
+    <text x="580" y="80" text-anchor="end" class="sub">30~45분 집중 작업</text>
+    <text x="160" y="112" text-anchor="end">Claude Code</text>
+    <rect class="bar" x="170" y="94" width="18" height="28" rx="4"/>
+    <rect class="box" x="188" y="94" width="72" height="28" rx="4"/>
+    <text x="265" y="113">약 10분 (말하기 2분 + 기다리기)</text>
+    <text x="170" y="155" class="sub">눈금: 1분 = 9px. 진한 칸은 사람이 직접 쓴 시간</text>
+  </svg>
+  <figcaption>사람이 손을 쓴 시간은 말로 설명한 2분뿐이에요. 나머지는 간식을 먹는 동안 지나갔어요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=1010s" target="_blank" rel="noopener">영상 16:50에서 보기</a></figcaption>
+</figure>
+<h3>터미널은 몰라도 돼요</h3>
+<p>진행자는 자신도 터미널 때문에 Claude Code를 미뤘다고 털어놔요. 네이트는 이제 데스크톱 앱이 꽤 쓸 만하고, 웹에서 쓰던 Claude와 거의 똑같이 생겼다고 답해요. 원하지 않으면 터미널을 볼 일이 없다는 거예요. 자동화에는 Cowork도 좋지만 가장 강력한 건 Claude Code라고 하면서, 'Code'라는 이름이 사람들을 쫓아내는 게 아쉽다고 해요.</p>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=1158s" target="_blank" rel="noopener">19:18</a>
+  <h2>두 가지 마음가짐과 리드 50개 데모</h2>
+<p>네이트가 화면을 공유하며 처음 띄운 건 Claude 데스크톱 앱이에요. 가운데 입력창 하나, 그 아래 Chat과 Cowork를 고르는 버튼, 오른쪽에 모델 선택(화면에는 Fable 5 High)이 보여요. 왼쪽에는 지난 대화와 프로젝트 목록이 있어요. 네이트는 '그냥 말을 걸면 된다'는 점에서 Claude Code도 똑같이 대하면 된다고 해요.</p>
+<figure>
+  <img src="assets/frame-1938.webp" alt="Claude 데스크톱 앱 첫 화면. Good afternoon, Nate 인사말 아래 입력창과 Chat·Cowork 버튼, Fable 5 High 모델 표시">
+  <figcaption>웹의 Claude와 거의 같은 모양이에요. 터미널은 어디에도 없어요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=1178s" target="_blank" rel="noopener">영상 19:38에서 보기</a></figcaption>
+</figure>
+<h3>두 가지 마음가짐</h3>
+<p>네이트는 AI를 다루는 일의 대부분이 마음가짐이라고 해요. 그래서 『Becoming AI Native』라는 책까지 썼대요. 사람을 관리해 본 사람이라면 기대치를 정하고 '좋은 결과는 이런 모습'이라고 알려 주는 기술이 그대로 에이전트 관리로 옮겨 간다는 거예요. 그가 꼽는 전환점은 두 가지예요.</p>
+<ol class="steps">
+  <li><b>호기심</b> — 'AI가 이걸 할 수 있나, 없나'가 아니라 '어디까지 할 수 있나'를 물어요. 답이 예·아니요로 갈리지 않아요.</li>
+  <li><b>AI가 스스로 증명하게 하기</b> — 사람이 결과를 검사하는 대신, 에이전트나 에이전트 팀이 서로 검토하고 고친 뒤에 넘기게 해요. 그러면 첫 번째가 아니라 여덟 번째 결과물을 받아요. 70%짜리 초안 대신 가볍게 훑어보면 되는 결과가 와요.</li>
+</ol>
+<h3>데모 1: Clay로 리드 50개 찾기</h3>
+<p>첫 데모 프롬프트는 짧아요. 'Clay 프로젝트로 오늘 연락할 수 있는 <span class="term" data-term="보강된" data-en="Enriched" data-desc="리드에 직함, 이메일, 웹사이트, 리뷰 같은 추가 정보를 붙여 쓸모를 높인 상태예요. 개인화 메시지를 쓰려면 이 정보가 있어야 해요." data-g="4">보강된</span> 최적의 <span class="term" data-term="리드" data-en="Lead" data-desc="앞으로 고객이 될 가능성이 있는 사람이나 회사예요. 영업에서는 연락처와 기본 정보가 확보된 잠재 고객을 말해요." data-g="3">리드</span> 50개를 찾고, 개인화된 연락 메시지와 함께 구글 시트로 달라'는 내용이에요. 네이트가 짚는 건 <b>빠진 정보</b>예요. '최적'이 뭔지, 자기 사업이 뭔지 말하지 않았어요. Claude가 프로젝트 폴더를 읽고 네이트가 누구에게 팔려는지, <span class="term" data-term="ICP" data-en="Ideal Customer Profile" data-desc="내 제품이나 서비스에 가장 잘 맞는 고객의 모습이에요. 업종, 규모, 직함 같은 조건으로 정해서 리드를 고르는 기준이 돼요." data-g="5">ICP(Ideal Customer Profile)</span>가 뭔지 스스로 알아내기 때문이에요.</p>
+<figure>
+  <img src="assets/frame-2258.webp" alt="Leads 대화 화면. 사용자 프롬프트 아래 Claude가 Clay 스킬을 불러오고, Clay CLI가 낡아서 업그레이드하겠다고 말하는 진행 로그">
+  <figcaption>프롬프트 아래로 Claude가 메모리를 불러오고, Clay CLI(Command Line Interface)가 낡았다며 직접 업그레이드하는 과정이 이어져요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=1378s" target="_blank" rel="noopener">영상 22:58에서 보기</a></figcaption>
+</figure>
+<p>그 뒤로 Claude는 도구를 부르고, 생각하고, 결과를 확인하는 일을 계속 되풀이해요. 네이트는 이걸 <span class="term" data-term="에이전트 루프" data-en="Agentic loop" data-desc="AI가 생각하고, 도구를 써서 행동하고, 결과를 확인하는 과정을 목표를 채울 때까지 되풀이하는 방식이에요. 사람이 단계마다 지시하지 않아도 일이 굴러가는 이유예요." data-g="1">에이전트 루프</span>라고 불러요. 아래 그림이 그 순환이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 520 200" role="img" aria-label="생각, 행동, 확인을 도는 에이전트 루프">
+    <defs><marker id="arrow-loop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="c1 cell" x="30" y="70" width="120" height="50" rx="10"/>
+    <text x="90" y="100" text-anchor="middle">생각하기</text>
+    <rect class="c2 cell" x="200" y="70" width="120" height="50" rx="10"/>
+    <text x="260" y="100" text-anchor="middle">행동하기</text>
+    <rect class="c3 cell" x="370" y="70" width="120" height="50" rx="10"/>
+    <text x="430" y="100" text-anchor="middle">확인하기</text>
+    <path class="line" d="M152 95 H196" marker-end="url(#arrow-loop)"/>
+    <path class="line" d="M322 95 H366" marker-end="url(#arrow-loop)"/>
+    <path class="line" d="M430 122 V160 H90 V124" marker-end="url(#arrow-loop)"/>
+    <text x="260" y="180" text-anchor="middle" class="sub">목표를 채울 때까지 반복</text>
+    <rect class="accent" x="190" y="12" width="140" height="34" rx="8"/>
+    <text x="260" y="34" text-anchor="middle">결과물 전달</text>
+    <path class="hot" d="M430 68 V29 H334" marker-end="url(#arrow-loop)"/>
+    <text x="440" y="52" class="sub">충분할 때만</text>
+  </svg>
+  <figcaption>Claude는 확인 단계에서 부족하다고 판단하면 다시 생각하기로 돌아가요. 네이트의 리드는 이 고리를 여러 번 돈 결과예요.</figcaption>
+</figure>
+<p>진행자가 Clay가 뭐냐고 묻자, 네이트는 B2B(Business to Business) 리드 데이터베이스이자 자동화 도구라고 답해요. 핵심은 그 도구의 화면을 배우지 않았다는 점이에요. API(Application Programming Interface) 키, 그러니까 Clay 비밀번호만 줬더니 Claude가 Clay를 어떻게 쓰는지 알아내서 리드를 가져왔어요.</p>
+<blockquote>
+  <p>You can outsource the thinking but you cannot outsource the understanding.</p>
+  <p>생각은 맡길 수 있어도, 이해는 맡길 수 없어요.</p>
+  <cite>— 영상 24:02</cite>
+</blockquote>
+<p>그래서 왜 이 일을 시키는지, 돌아온 데이터가 무슨 뜻인지는 사람이 알아야 해요. 네이트는 유튜브 영상으로 다룰 내용도 Claude에게 조사하고 테스트하게 한 다음 '알아야 할 것'을 가르쳐 달라고 한대요.</p>
+<h3>10분 만에 나온 시트</h3>
+<p>결과는 10분이 안 걸렸어요. 시트 왼쪽 열을 보면 회사명과 의사결정권자 직함(대표, 소유주, 총괄 매니저 등)이 있고, 그 옆으로 이메일, 웹사이트, 설립 연도, 리뷰 수, 24시간 영업 광고 여부, 온라인 예약 여부가 이어져요. 리드 50개가 모두 한 업종(HVAC(Heating, Ventilation, and Air Conditioning) 업체)에 맞춰져 있어요. 데모용 가짜 사업 프로젝트에서 돌린 결과예요.</p>
+<figure>
+  <img src="assets/frame-2458.webp" alt="HVAC Leads 2026-08-26 구글 시트. Business, Decision Maker Title, Email, Website, Established, Reviews, 24/7 Advertised, Online Booking 열">
+  <figcaption>리드를 찾는 데서 끝나지 않고 회사마다 조사한 정보가 붙어 있어요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=1498s" target="_blank" rel="noopener">영상 24:58에서 보기</a></figcaption>
+</figure>
+<p>시트를 오른쪽으로 넘기면 개인화 훅의 근거, 이메일 제목, 이메일 본문, 검토 필요 여부 열이 나와요. 네이트는 이걸 읽고 승인한 뒤 'Clay로 보내거나 예약해 줘'라고만 하면 <span class="term" data-term="콜드 아웃리치" data-en="Cold outreach" data-desc="관계가 없던 잠재 고객에게 먼저 메일이나 메시지를 보내는 영업 방식이에요. 개인화가 얼마나 잘됐느냐가 답장률을 크게 좌우해요." data-g="6">콜드 아웃리치</span>가 끝난다고 해요.</p>
+<figure>
+  <img src="assets/frame-2538.webp" alt="같은 시트의 오른쪽 부분. Personalization Hook Source, Email Subject, Email Body, Needs Review 열">
+  <figcaption>메일 제목과 본문까지 리드마다 따로 쓰여 있어요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=1538s" target="_blank" rel="noopener">영상 25:38에서 보기</a></figcaption>
+</figure>
+<h3>보이지 않던 검증 과정</h3>
+<p>네이트가 마지막으로 보여 준 건 Claude가 남긴 실행 요약이에요. 미국 2~50인 규모 HVAC 업체 대표 1,250명에서 출발해 중복을 빼고 247명으로 줄였어요. 연구 에이전트 9개가 각 회사 웹사이트를 직접 확인해 렌털, 상업 전용, 프랜차이즈 업체를 걸러 냈어요. 다섯 번째 줄이 핵심이에요. 적대적 검증자 2개가 모든 주장을 팩트체크해 진짜 문제 5개를 잡았고, 다 고쳤대요. 7월 31일에 끝난 프로모션을 근거로 쓴 훅도 그중 하나예요.</p>
+<figure>
+  <img src="assets/frame-2738.webp" alt="실행 요약. Sourced 1,250 people, 9 research agents, Two adversarial verifiers fact-checked every claim, Cost 245 Clay credits about 17달러 등의 항목">
+  <figcaption>요약 아래쪽에는 비용도 있어요. Clay 크레딧 245개, 약 17달러로 깨끗한 리드 하나에 0.35달러꼴이에요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=1658s" target="_blank" rel="noopener">영상 27:38에서 보기</a></figcaption>
+</figure>
+<p>진행자가 이 검증이 기본 기능이냐고 묻자, 네이트는 반반이라고 답해요. Claude Code는 모델을 감싼 <span class="term" data-term="하네스" data-en="Harness" data-desc="AI 모델을 감싸서 파일 읽기, 명령 실행, 검색 같은 도구를 쓰게 해 주는 실행 환경이에요. 네이트는 모델을 엔진, 하네스를 차체에 비유해요." data-g="2">하네스</span>이고, 하네스도 약간의 확인은 해요. 업데이트마다 나아질 거라고 봐요. 하지만 '첫 초안은 절대 넘기지 말라'는 건 그가 지시문과 스킬, 프롬프트에 직접 넣어 둔 규칙이에요. 이 검증이 없었다면 틀린 정보로 엉뚱한 사람에게 메일을 보냈을 수도 있어요.</p>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=1661s" target="_blank" rel="noopener">27:41</a>
+  <h2>첫 결과가 별로인 이유: 자전거 방식과 AIOS의 4C</h2>
+<p>진행자는 많은 사람이 여기서 떨어져 나간다고 짚어요. 신이 나서 Claude Code에 말을 걸었는데 첫 결과가 평범하거나 별로면 'AI는 과대광고였다'며 떠나요. 네이트는 이 문제를 '자전거 방식'이라는 비유로 풀어요.</p>
+<h3>자전거 방식</h3>
+<p>스킬이든 워크플로든 처음 만들 때는 아이에게 자전거를 가르치듯 해야 해요. 아이를 자전거에 태우고 그냥 가 버리면 넘어져요. 옆에서 지켜보며 '왼쪽으로 너무 기울었어, 가운데로 와'처럼 피드백해야 해요. 그다음에 보조바퀴를 달고 한발 물러서고, 보조바퀴를 떼도 헬멧은 씌워요. 아래 그림은 그가 말한 순서를 그대로 옮긴 거예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 660 170" role="img" aria-label="자전거 방식 네 단계: 옆에서 잡아 주기, 보조바퀴, 헬멧만, 혼자 달리기">
+    <defs><marker id="arrow-bike" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-bike"></g>
+  </svg>
+  <figcaption>처음 두 단계에 시간을 들여야 마지막 단계에서 신경을 끌 수 있어요. 첫 결과에 실망해 떠나는 건 첫 칸에서 그만두는 셈이에요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=1707s" target="_blank" rel="noopener">영상 28:28에서 보기</a></figcaption>
+</figure>
+<h3>데모 2: 유튜브 분석 리포트</h3>
+<p>두 번째 데모 프롬프트는 2026년 유튜브 분석을 Q1, Q2, 오늘까지의 Q3로 나눠 달라는 내용이에요. 눈여겨볼 건 두 번째 문단이에요. '추세와 잘된 것을 보고 Q4에 어떤 콘텐츠에 집중할지 정하려는 것'이라고 <b>동기</b>를 적었어요. 이유를 알려 주면 Claude가 그 맥락에 맞춰 결과를 다듬는다는 게 네이트의 설명이에요. 결과 형식(구글 시트)도 분명히 정했어요.</p>
+<figure>
+  <img src="assets/frame-3041.webp" alt="YT Analytics 대화. Q1, Q2, Q3 보고서를 요청하고 동기와 구글 시트 형식을 적은 프롬프트, 그 아래 Claude가 기존 Analytics API 스크립트를 읽는 로그">
+  <figcaption>API 키나 데이터를 새로 주지 않았어요. Claude가 예전에 쓴 분석 스크립트를 기억에서 꺼내 다시 써요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=1841s" target="_blank" rel="noopener">영상 30:41에서 보기</a></figcaption>
+</figure>
+<p>결과 시트의 Overview 탭 위쪽 '분기 점수판'에는 분기별 조회수, 일 평균 조회수, 시청 시간, 평균 시청 지속 시간, 구독자 증감이 나란히 있어요. 아래 '월별 추세'에는 1월부터 8월 26일까지가 정리돼 있어요. 맨 아래 탭을 보면 Overview, Q1·Q2·Q3 보고서, 콘텐츠 추세, Q4 집중 방향까지 탭이 6개예요.</p>
+<figure>
+  <img src="assets/frame-3105.webp" alt="Nate Herk YouTube 2026 Quarterly Report 시트의 Overview 탭. Quarter Scoreboard와 Monthly Trend 표, 하단에 탭 6개">
+  <figcaption>150개쯤 되는 영상 통계를 모아 평균을 내고 서식을 입히는 일이에요. 네이트는 직접 하면 서너 시간, 여기선 약 10분이라고 해요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=1865s" target="_blank" rel="noopener">영상 31:05에서 보기</a></figcaption>
+</figure>
+<p>그다음에 뭘 하느냐는 질문에 네이트는 데이터를 직접 보고 이야기를 만든다고 답해요. 이해는 맡길 수 없으니까요. 대신 'Q3에 왜 튀었을까?'처럼 Claude를 생각 파트너로 써요. 이 데모에 없는 활용도 소개해요. 댓글 10만 개를 5분 안에 훑어 공통 주제를 뽑는 거예요. 매주 '이번 주 댓글 300개에서 나온 큰 고민 세 가지'를 알려 주는 자동화가 돌고, 자기 Skool 커뮤니티 질문도 같은 식으로 정리해요. 그래서 영상 아이디어가 모자랄 일이 없대요.</p>
+<h3>AIOS의 4C</h3>
+<p>진행자가 'Claude가 어떻게 이 모든 계정에 접근하느냐'고 묻자, 네이트는 화이트보드를 띄워요. 그는 컴퓨터로 하는 모든 일을 Chrome이나 각 앱 대신 Claude Code로만 해 보는 도전을 했고, 그렇게 만든 걸 AIOS(AI Operating System)라고 불러요. 화면 맨 위 'AI OS' 아래에 네 칸이 있어요.</p>
+<figure>
+  <img src="assets/frame-3541.webp" alt="화이트보드. 위쪽 AI OS 상자에서 아래 Context, Connections, Capabilities, Cadence 네 상자로 화살표">
+  <figcaption>왼쪽부터 순서대로 쌓아 가는 단계예요. 맥락이 있어야 연결이 쓸모 있고, 능력이 있어야 주기가 의미 있어요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=2141s" target="_blank" rel="noopener">영상 35:41에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>C</th><th>뜻</th><th>네이트의 설명</th></tr></thead>
+    <tbody>
+      <tr><td>Context</td><td>맥락</td><td>나, 사업, 우선순위, 목표를 AI가 다 알아요. 여기까지 오면 같은 설명을 반복하지 않아요. 1단계예요</td></tr>
+      <tr><td>Connections</td><td>연결</td><td>메일, 캘린더, Slack, Skool, 유튜브처럼 매일 만지는 것을 AI도 만질 수 있어요</td></tr>
+      <tr><td>Capabilities</td><td>능력</td><td>자동화와 스킬을 만들어 둬요</td></tr>
+      <tr><td>Cadence</td><td>주기</td><td>내가 시키지 않아도 일정이나 이벤트로 돌아가게 켜 둬요. 자는 동안, 휴가 중에도요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>네이트는 맥락, 연결, 능력을 날마다 조금씩 더한다고 해요. 기초가 탄탄하면 그 위에 계속 쌓기만 하면 된다는 거예요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=2211s" target="_blank" rel="noopener">36:51</a>
+  <h2>/goal로 밤새 돌리기: 영상 편집과 Calendly 클론</h2>
+<p>세 번째 데모는 영상 제작이에요. 네이트는 이 팟캐스트 출연 직전에 Claude에게 에피소드 브리프 문서를 주고 부탁했어요. 진행자에게 고마움을 전하는 10~15초짜리 애니메이션을 만들되, 오늘 다룰 내용에 맞추고 HyperFrames로 '모던하고 깔끔한 리퀴드 글래스 <span class="term" data-term="모션 그래픽" data-en="Motion graphics" data-desc="글자, 도형, 아이콘을 움직여 정보를 전달하는 애니메이션이에요. 설명 영상에서 흐름도나 숫자를 보여 줄 때 많이 써요." data-g="10">모션 그래픽</span>, 글자만이 아니라 이야기를 담아'라고요.</p>
+<figure>
+  <img src="assets/frame-3711.webp" alt="Animation 대화. 팟캐스트 브리프 구글 문서 링크와 10~15초 감사 애니메이션 요청, HyperFrames 렌더 노트를 불러오는 로그">
+  <figcaption>Claude는 브리프를 읽고, 예전에 만든 HyperFrames 스킬과 렌더 노트를 함께 불러와요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=2231s" target="_blank" rel="noopener">영상 37:11에서 보기</a></figcaption>
+</figure>
+<p>결과는 14초짜리 영상이에요. 'Calum, thanks for having me'라는 큰 문구 아래 '많은 가치를 얻어 가시길'이라는 문장이 떠요. 네이트도 대단한 결과물은 아니라고 인정해요. 다만 키프레임을 잡아 가며 손으로 만들면 15초짜리도 한 시간은 걸린다는 점을 짚어요.</p>
+<figure>
+  <img src="assets/frame-3751.webp" alt="어두운 배경에 Calum, thanks for having me 문구와 Hope you guys get a ton of value out of this one 부제가 있는 애니메이션 재생 화면">
+  <figcaption>프롬프트 한 번으로 나온 감사 영상이에요. 실제 활용은 다음 예시에서 드러나요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=2271s" target="_blank" rel="noopener">영상 37:51에서 보기</a></figcaption>
+</figure>
+<h3>원본을 넣으면 편집된 영상이 나와요</h3>
+<p>더 인상적인 건 실제로 올린 유튜브 영상이에요. 15분짜리 원본을 파이프라인에 넣고 '유튜브용으로 편집해'라고 하자 약 10분짜리 영상이 나왔대요. 아래 장면을 보면 'LEAD QUAL' 사례를 설명하는 동안 리드 → 보강 → 점수 → 분류 → 예약·후속 연락으로 이어지는 흐름도가 그려지고, 가운데 '10 AGENTS'가 떠 있어요. 사례 하나가 끝나면 그 장면을 뒤로 밀어 두고 다음 번호로 넘어가요.</p>
+<figure>
+  <img src="assets/frame-3911.webp" alt="01 LEAD QUAL 장면. LEAD, ENRICH, SCORE, ROUTE, BOOK, FOLLOW UP, CRM 상자와 가운데 10 AGENTS를 둘러싼 에이전트 카드들">
+  <figcaption>네이트는 이걸 <span class="term" data-term="오픈 루프" data-en="Open loop" data-desc="다음 내용을 일부러 열어 둔 채 넘어가 시청자가 궁금해서 계속 보게 만드는 연출이에요. 1번 사례를 끝내며 2, 3, 4번이 있다는 걸 보여 주는 식이에요." data-g="11">오픈 루프</span>라고 불러요. 남은 2, 3, 4번이 궁금해지게 만드는 연출이에요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=2351s" target="_blank" rel="noopener">영상 39:11에서 보기</a></figcaption>
+</figure>
+<p>진행자가 '카메라 화면과 애니메이션을 언제 바꿀지도 AI가 정하느냐'고 묻자 네이트는 그렇다고 해요. 그가 설명한 파이프라인 순서를 그림으로 옮기면 이래요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["원본 영상"] --> B["자막 뽑고 맥락 파악"]
+  B --> C["에이전트들이 넣을 애니메이션 토론"]
+  C --> D["HyperFrames로 제작"]
+  D --> E["브라우저에서 렌더링"]
+  E --> F["3초마다 스크린샷"]
+  F --> G{"화면 밖 요소, 브랜드 어긋남?"}
+  G -- "있음" --> C
+  G -- "없음" --> H["완성본"]
+</pre>
+  <figcaption>스크린샷으로 다시 보는 단계가 검증 고리예요. 이 고리 덕분에 보여 준 영상은 여덟 번째 버전이었어요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=2435s" target="_blank" rel="noopener">영상 40:35에서 보기</a></figcaption>
+</figure>
+<p>작업 폴더를 열어 보면 plan, qa, renders, scripts 폴더 아래로 index-intro, index-f01~f04, index-s02~s05, index-master 같은 HTML(HyperText Markup Language) 파일이 쌓여 있어요. 장면마다, 버전마다 따로 저장해 둔 거예요. 네이트는 최종 렌더가 'version 8 master'였다고 말해요. qa 폴더에는 검증 때 찍은 스크린샷이 들어 있어요.</p>
+<figure>
+  <img src="assets/frame-4131.webp" alt="윈도 탐색기 five-automations-v2 폴더. plan, qa, renders, scripts 폴더와 ARCHITECTURE, DESIGN-SYSTEM, index-f01 등 HTML 파일, VERIFY 문서">
+  <figcaption>파일 이름이 장면과 버전을 나눠 보여 줘요. <code><code>VERIFY</code></code> 문서가 따로 있는 것도 검증을 단계로 둔 흔적이에요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=2491s" target="_blank" rel="noopener">영상 41:31에서 보기</a></figcaption>
+</figure>
+<p>한 편에 6~10시간 걸리기도 해서 자기 전에 돌려 두고 아침에 확인한대요. 그리고 매번 '여긴 좋았고 여긴 싫었어, 다음엔 이건 더 하고 저건 덜 하게 스킬을 고쳐'라고 말해요. 그래서 쓸수록 좋아진다고 해요.</p>
+<h3>/goal: 다 될 때까지 멈추지 않게</h3>
+<p>얼마나 자율적이냐는 질문에 네이트는 /goal을 꺼내요. 목표를 정하면 그 조건을 채울 때까지 멈추지 않는 기능이에요. 화면 입력창에 /goal을 치면 '조건을 만족할 때까지 계속 작업'이라는 설명이 떠요. 그는 Claude Code뿐 아니라 Hermes Agent, Codex에도 비슷한 기능이 있다고 말해요. 다만 연결과 권한이 제대로 안 잡혀 있으면 '이거 허락해 줘'라며 중간에 막힌대요.</p>
+<figure>
+  <img src="assets/frame-4331.webp" alt="Claude Code 데스크톱 새 대화 화면. 사용 통계(세션 554, 메시지 93,787, 토큰 182.4M) 아래 입력창에 /goal 입력">
+  <figcaption>입력창에 /goal 다음 조건만 적으면 돼요. 네이트는 6일 동안 쉬지 않고 돈 목표도 있었다고 해요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=2611s" target="_blank" rel="noopener">영상 43:31에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 문서를 보면 /goal은 매 턴이 끝날 때마다 별도 모델이 조건이 채워졌는지 판단하고, 아직이면 다음 턴을 시작해요. 일하는 모델이 아니라 새 모델이 완료를 판정하는 구조예요. 판정 모델은 직접 명령을 실행하지 않고 대화에 드러난 내용만 보므로, '테스트가 모두 통과'처럼 결과가 화면에 찍히는 조건이 좋아요. 사람 손 없이 돌리려면 auto 모드에서 쓰라고 안내해요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/goal" target="_blank" rel="noopener">Claude Code 공식 문서 — Keep Claude working toward a goal</a></p>
+</aside>
+<h3>데모 4: 4일 반 걸린 Calendly 클론</h3>
+<p>/goal로 4일 반 동안 만든 게 'SnagTime'이에요. 프롬프트는 '팀이 무료로 쓸 Calendly 클론을 만들고 싶어. Calendly를 조사해 좋은 기능을 정리하고, 계획하고, 만들고, 테스트해서 다 되면 줘'였어요. 네이트는 Calendly를 몰라도 이렇게 시킬 수 있다고 강조해요. 조사부터 Claude가 하니까요. 로그인하면 예약 유형 목록이 나와요. 무료 상담, 결제가 필요한 범위 확인 세션 같은 유형을 켜고 끌 수 있어요.</p>
+<figure>
+  <img src="assets/frame-4511.webp" alt="SnagTime 관리자 화면의 Event types. Duration test, Paid Scoping Session, Stripe QA Paid Call, Strategy Call 카드">
+  <figcaption>디자인은 꾸미지 않은 개념 증명 수준이지만, 예약 서비스의 기본 구조는 다 있어요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=2711s" target="_blank" rel="noopener">영상 45:11에서 보기</a></figcaption>
+</figure>
+<p>Integrations 화면에서는 무엇이 실제로 연결됐는지 보여요. 구글 캘린더는 Connected, Stripe는 아직 설정이 필요한 테스트 결제 상태, 예약 메일 발송은 Running이에요. 네이트도 Stripe는 <span class="term" data-term="샌드박스" data-en="Sandbox" data-desc="실제 돈이나 데이터에 영향을 주지 않고 시험해 볼 수 있게 분리된 환경이에요. Stripe는 테스트 결제용 샌드박스를 따로 줘요." data-g="12">샌드박스</span>라고 말해요.</p>
+<figure>
+  <img src="assets/frame-4531.webp" alt="SnagTime Integrations 화면. Google Calendar Connected, Stripe Setup Needed 테스트 결제, Booking delivery Running">
+  <figcaption>캘린더 연동은 실제로 돼 있고, 결제는 테스트 단계예요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=2731s" target="_blank" rel="noopener">영상 45:31에서 보기</a></figcaption>
+</figure>
+<p>예약하는 사람이 보는 화면도 있어요. 왼쪽에 'Strategy Call' 설명, 오른쪽에 30분·60분 선택과 날짜·시간 칸이 있어요. 네이트는 금요일 칸이 자기 실제 캘린더와 맞물려 있다는 걸 보여 줘요. 캘린더에 일정을 넣고 새로고침하면 그 시간이 사라져요.</p>
+<figure>
+  <img src="assets/frame-4551.webp" alt="Uppit AI의 Strategy Call 예약 페이지. 30분과 60분 선택, 8월 27일부터 9월 4일 날짜, 시간 슬롯">
+  <figcaption>비어 있는 시간만 보여요. 캘린더와 실시간으로 동기화된다는 증거예요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=2751s" target="_blank" rel="noopener">영상 45:51에서 보기</a></figcaption>
+</figure>
+<p>예약을 확정하면 주인에게 알림이, 예약한 사람에게 메일이 가요. 다시 구글 캘린더를 열면 'Strategy Call with Nate' 일정이 새로 생겨 있어요.</p>
+<figure>
+  <img src="assets/frame-4711.webp" alt="구글 캘린더 2026년 8월 주간 보기. 금요일 4시 30분 부근에 새 Strategy Call 일정">
+  <figcaption>방금 예약한 일정이 실제 캘린더에 들어왔어요. 네이트는 자동화 기능은 빠졌지만 '링크 보내 예약받기'만 필요하면 구독료를 낼 필요가 없다고 해요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=2831s" target="_blank" rel="noopener">영상 47:11에서 보기</a></figcaption>
+</figure>
+<p>버그가 적은 이유도 설명해요. 에이전트 최소 50개가 가짜 계정과 가짜 예약을 만들고, 관리자처럼 로고를 바꾸고, 떠올릴 수 있는 거의 모든 경우의 버튼을 눌러 봤대요. 베타 사용자가 겪었을 버그를 미리 잡은 거예요. 아직 버그가 남아 있을 거라는 말도 덧붙여요. 그는 '에이전트 50개로 앱을 테스트해 줘'라는 말은 누구나 할 수 있지만, 그렇게 시킬 생각을 하는 사람이 적을 뿐이라고 해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>HyperFrames는 HeyGen이 공개한 오픈 소스 프로젝트예요. 저장소 소개 문구는 'HTML을 쓰면 영상으로 렌더링하고, 에이전트용으로 만들었다'예요. 그래서 Claude 같은 에이전트가 HTML로 장면을 짜고 영상으로 뽑는 흐름과 잘 맞아요.</p>
+  <p class="cite">출처: <a href="https://github.com/heygen-com/hyperframes" target="_blank" rel="noopener">GitHub — heygen-com/hyperframes</a></p>
+</aside>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=2911s" target="_blank" rel="noopener">48:31</a>
+  <h2>지금 AI로 돈 버는 가장 쉬운 길</h2>
+<p>진행자는 대학을 막 졸업한 네이트에게 조언한다면 뭐라고 하겠느냐고 물어요. 답은 <b>AI 서비스업</b>이에요. 소상공인이 AI를 쓸 수 있게 역량을 키워 주는 일이에요. 그가 운영했던 에이전시와 컨설팅 회사가 바로 그 모델이었어요. 채워야 할 간극이 크고, 그 간극을 메워 줄 전문가를 찾는 사람이 많다는 게 이유예요.</p>
+<p>서비스업에는 덤이 있어요. 아무도 AI가 어디로 갈지 정확히 모르는데, 기업과 일하면 업계마다 무엇을 걱정하고 어디서 막히는지 직접 들을 수 있어요. 그래서 방향을 틀어야 할 때 빨리 틀 수 있어요.</p>
+<h3>'AI'라는 접두어는 곧 떨어져요</h3>
+<p>지금은 'AI 컨설턴트'가 잘나가는 말이에요. 네이트는 이 접두어가 곧 떨어져 그냥 '컨설턴트'가 될 거라고 봐요. 인터넷 초기에 '인터넷 마케터', '디지털 마케터'가 있었지만 이제는 그냥 마케팅인 것과 같아요. AI를 안 쓰는 컨설턴트는 좋은 컨설턴트가 아니게 된다는 거예요. 초기에는 기업에 ChatGPT 사용법을 가르치며 월 1만 달러 넘게 벌던 사람들도 있었고, 그들은 이제 Cowork 같은 도구를 가르친대요.</p>
+<p>제품을 만들고 싶다면 필요한 감각도 같아요. 어떤 고통이 있는지, 내 서비스가 그걸 어떻게 푸는지, 아주 구체적으로 누가 그 고통을 느끼는지 알아봐야 해요. 사람을 가르치며 패턴을 보는 게 그 훈련이라고 해요.</p>
+<h3>비개발자의 첫걸음</h3>
+<p>진행자가 '아직 Claude Code도 안 써 본 비개발자는 뭐부터 하느냐'고 묻자, 네이트는 기업과 일하며 예상 못 한 일이 '막막함 관리'였다고 말해요. 그래서 배우는 사람의 막막함을 자산으로 삼으라고 해요. 그가 말한 순서를 그림으로 옮겼어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 680 160" role="img" aria-label="AI 서비스업 첫걸음 네 단계">
+    <defs><marker id="arrow-start" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-start"></g>
+  </svg>
+  <figcaption>세 번째 칸이 핵심이에요. 실력이 붙기 전에 돈을 받으면 평판이 다쳐요. 네이트는 '돈보다 경험'을 먼저 두라고 해요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=3209s" target="_blank" rel="noopener">영상 53:29에서 보기</a></figcaption>
+</figure>
+<p>그는 지금은 모두가 같은 출발선에 있다고 봐요. 우리는 수십 년 경력의 전문가에게 큰 가치를 두지만, 실제로 가장 배우기 쉬운 사람은 나보다 한두 걸음 앞선 사람이래요. 막 배우기 시작한 사람도 누군가에게는 그 한두 걸음 앞의 사람이 될 수 있다는 뜻이에요.</p>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=3298s" target="_blank" rel="noopener">54:58</a>
+  <h2>처음 열면 할 일: CLAUDE.md 만들기</h2>
+<p>진행자는 '데스크톱 앱을 처음 연 사람이 무엇부터 해야 하느냐'고 물어요. 네이트는 Claude Code가 <b>내 컴퓨터의 폴더 안에서</b> 일한다는 것부터 설명해요. 다운로드 폴더의 파일을 옮기고 이름을 바꾸고 정리할 수 있어요. 그래서 새 대화를 열 때마다 어떤 프로젝트 폴더에서 일할지 골라야 해요. 지금까지 데모는 전부 그의 AI 운영체제인 'Herk-2' 폴더에서 했어요.</p>
+<p>그 폴더에서 '안녕'이라고만 쳐도 Claude는 먼저 <code>CLAUDE.md</code>를 읽어요. 네이트는 이 파일을 <span class="term" data-term="시스템 프롬프트" data-en="System prompt" data-desc="대화가 시작되기 전에 AI에게 주는 기본 지시문이에요. 역할, 규칙, 말투를 정해서 모든 답에 영향을 줘요." data-g="7">시스템 프롬프트</span>라고 설명해요. 그의 <code><code>CLAUDE.md</code></code> 첫 줄은 '당신은 네이트 허크의 AI 운영체제'예요. 운영, 사람 관리, 행정에 쓰는 시간을 줄여 AI 도구를 배우고 유튜브 영상을 만드는 데 집중하게 돕는 게 최우선이고, 나머지는 다 그걸 받쳐 준다고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-5638.webp" alt="CLAUDE.md 파일 상단. Nate Herk's AI Operating System 제목과 역할 설명, 그 아래 Routing Map 표가 시작됨">
+  <figcaption>맨 위 두 줄이 역할과 최우선 목표예요. 이 파일이 모든 대화의 출발점이 돼요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=3398s" target="_blank" rel="noopener">영상 56:38에서 보기</a></figcaption>
+</figure>
+<p>파일 대부분은 '라우팅 맵' 표예요. 왼쪽 열이 필요한 것, 가운데가 찾을 위치, 오른쪽이 규칙이에요. 사업·팀·지표가 필요하면 위키를, 말투가 필요하면 references/voice 폴더를, 유튜브 데이터가 필요하면 youtube-os 폴더를 보라는 식이에요. 법인·세금 같은 민감한 정보는 '공개 콘텐츠에 절대 드러내지 말라'는 규칙도 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-5658.webp" alt="CLAUDE.md의 라우팅 맵 표. Need, Path, Rule 세 열에 Business, Voice and style, Course knowledge, YouTube video work, Skool communities 등의 행">
+  <figcaption><code>CLAUDE.md</code>는 내용을 다 담지 않고 어디를 볼지 알려 줘요. 그래서 Claude가 헤매지 않고 바로 해당 파일로 가요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=3418s" target="_blank" rel="noopener">영상 56:58에서 보기</a></figcaption>
+</figure>
+<p>네이트는 이걸 처음부터 다 알 필요는 없다고 해요. 새로운 걸 알게 되거나 파일이 생기면서 매일 바뀌는 파일이래요.</p>
+<h3>빈 폴더에서 <code><code>CLAUDE.md</code></code> 만들기</h3>
+<p>이제 처음부터 해 봐요. 'Herkules Advisory'라는 가상 컨설팅 회사 폴더에는 브랜드 가이드 PDF(Portable Document Format)와 로고 파일 세 개만 있어요. 오른쪽 Files 패널에서 그 네 파일이 보여요. 네이트가 '안녕'이라고 치자 Claude는 '오늘 뭘 할까요?'라고만 답해요. 아직 아는 게 없으니까요.</p>
+<figure>
+  <img src="assets/frame-5718.webp" alt="Herkules Advisory 새 세션. 왼쪽에 hi와 Hey! What are we working on today? 응답, 오른쪽 Files 패널에 브랜드 가이드 PDF와 로고 PNG 세 개">
+  <figcaption>파일 네 개뿐인 빈 프로젝트예요. 이 상태에서 <code>CLAUDE.md</code>를 만들어 가는 과정을 보여 줘요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=3438s" target="_blank" rel="noopener">영상 57:18에서 보기</a></figcaption>
+</figure>
+<p>네이트는 말로 회사를 소개해요. '이건 Herkules Advisory라는 컨설팅 회사 프로젝트고, 여기서 자동화를 만들 거야. 지금 폴더엔 로고와 브랜드 가이드가 있고, 내 이름은 네이트야.' 그런데 Claude는 파일을 훑고 만들 만한 자동화(제안서 생성기, 주간 보고, 마케팅 자료)를 제안하기만 했어요. 네이트가 <code>CLAUDE.md</code>를 만들라고 하지 않았기 때문이에요. 그래서 '<code>CLAUDE.md</code>를 만들어 줘'라고 한 줄 더 쳤어요.</p>
+<figure>
+  <img src="assets/frame-010142.webp" alt="Claude가 제안한 자동화 목록 아래 사용자가 Set up the Claude.md라고 입력하고, Created CLAUDE.md +58과 구성 요약이 이어지는 화면">
+  <figcaption>요청하지 않은 건 만들지 않아요. 한 줄로 분명히 말하자 58줄짜리 <code>CLAUDE.md</code>가 생겼어요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=3702s" target="_blank" rel="noopener">영상 1:01:42에서 보기</a></figcaption>
+</figure>
+<p>만들어진 파일을 열면 맨 위에 프로젝트 개요와 포지셔닝 문구가 있어요. 그 아래 Files 목록이 각 파일을 언제 쓰는지 알려 줘요. 기본 로고는 밝은 배경에, 반전 로고는 남색 배경에, H 마크는 파비콘 같은 작은 곳에 쓰라는 식이에요. 그 밑으로 색, 서체, 말투, 표기 규칙이 이어져요. 'Herkules는 k로 쓴다'는 규칙도 있어요.</p>
+<figure>
+  <img src="assets/frame-010038.webp" alt="Herkules Advisory의 CLAUDE.md. Project Overview, Positioning line, Files 목록에 브랜드 가이드 PDF와 로고 세 개의 용도, Brand Rules 시작">
+  <figcaption>파일 네 개가 무엇인지 Claude가 이제 알아요. 다음부터는 묻지 않아도 브랜드를 지켜요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=3638s" target="_blank" rel="noopener">영상 1:00:38에서 보기</a></figcaption>
+</figure>
+<p>네이트는 여기에 직접 '규칙' 섹션을 더해요. 결과물을 넘기기 전에 검증 단계를 거치고, 시각물이라면 스크린샷을 찍어 이미 확인했다는 걸 증명하라는 내용이에요. 마크다운 파일이라 메모장처럼 직접 고칠 수 있어요. 아래 화면은 파일 맨 끝에 '## Rules' 제목을 막 넣은 순간이에요.</p>
+<figure>
+  <img src="assets/frame-010118.webp" alt="CLAUDE.md 편집 화면. Logo Usage, Voice, Conventions 섹션 아래 62행에 ## Rules 제목 추가, 오른쪽 위 Save 버튼">
+  <figcaption>규칙은 사람이 손으로 넣어도 돼요. 스크린샷, 팩트체크, 클릭 테스트 모두 검증 방법이 될 수 있대요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=3678s" target="_blank" rel="noopener">영상 1:01:18에서 보기</a></figcaption>
+</figure>
+<p>진행자는 이 과정이 신입 직원 온보딩과 같다고 정리해요. 첫 몇 주 동안 매니저 옆에서 직무 설명서와 온보딩 문서를 받는 것처럼, AI에게도 내 머릿속에 있는 걸 옮겨 줘야 해요. 네이트도 동의해요. 한 번 알게 된 건 저장해 두고 잊지 않으니까요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 문서는 <code>CLAUDE.md</code>를 '매번 다시 설명하게 되는 것을 적어 두는 곳'으로 소개해요. 매 세션 시작 때 읽히고, 모든 프로젝트에 적용할 개인 설정은 ~/.claude/CLAUDE.md에, 팀이 함께 쓸 프로젝트 규칙은 프로젝트 폴더의 <code>CLAUDE.md</code>에 둬요. 여러 단계로 된 절차나 일부 작업에만 필요한 내용은 스킬로 빼라고 권해요. 네이트가 <code>CLAUDE.md</code>는 길 안내만 하고 세부는 다른 파일로 보내는 것도 같은 생각이에요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/memory" target="_blank" rel="noopener">Claude Code 공식 문서 — How Claude remembers your project</a></p>
+</aside>
+</section>
+
+<section id="s8">
+  <a class="stamp" href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=3708s" target="_blank" rel="noopener">1:01:48</a>
+  <h2>스킬 만들기와 세 가지 검증</h2>
+<p>이제 자전거 방식을 직접 보여 줘요. 만들 건 스킬이에요. 네이트는 스킬을 '반복해서 쓰는 레시피'라고 설명해요. 초코칩 팬케이크를 한 번 맛있게 만들었다면 다음에도 그렇게 만들려고 레시피를 적어 두잖아요. 그는 LinkedIn 글쓰기 스킬이 있어서, 글을 부탁할 때마다 정해 둔 형식과 훅 구조를 따른다고 해요.</p>
+<p>일부러 짧게 시켜요. 'market analysis라는 스킬을 만들고, 지금 SMB 대상 컨설팅 시장 리서치 리포트를 HTML로 만들어 줘.' 브랜드를 쓰라는 말도, 검증하라는 말도 없어요. 방금 만든 <code>CLAUDE.md</code>를 읽을지는 지켜봐야 해요. 같은 대화 안에서는 새로 읽지 않을 수도 있대요.</p>
+<figure>
+  <img src="assets/frame-010303.webp" alt="Herkules Advisory 대화. CLAUDE.md 설정 완료 요약 아래 사용자가 market analysis 스킬과 SMB 컨설팅 시장 HTML 리포트를 요청">
+  <figcaption>아이를 자전거에 태운 순간이에요. 여기서부터는 무엇을 하는지 지켜보는 게 사람의 일이에요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=3783s" target="_blank" rel="noopener">영상 1:03:03에서 보기</a></figcaption>
+</figure>
+<p>네이트는 프롬프트를 보내 놓고 다른 창으로 가 버리는 게 가장 흔한 실수라고 해요. 아래 화면을 보면 Claude가 <code>SKILL.md</code>를 만든 뒤 웹 검색을 다섯 번 해요. SMB(Small and Midsize Business) 컨설팅 시장 규모, 업계 동향, 중소기업의 고민, 파트타임 CFO(Chief Financial Officer) 시장, 부티크 컨설팅과 빅4 비교예요. 그다음 '리서치 완료, 로고를 넣어 리포트를 만든다'고 적어요. 브랜드를 쓰라고 하지 않았는데 <code>CLAUDE.md</code>를 읽은 거예요.</p>
+<figure>
+  <img src="assets/frame-010558.webp" alt="Claude 진행 로그. Searched web 다섯 줄과 Research is done. Now building the report. First, embedding the logo 문장">
+  <figcaption>검색어 한 줄 한 줄이 Claude의 생각을 보여 줘요. 이상한 방향으로 가면 여기서 바로 바로잡을 수 있어요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=3958s" target="_blank" rel="noopener">영상 1:05:58에서 보기</a></figcaption>
+</figure>
+<p>네이트는 Claude Code를 영상으로 배우지 않았대요. 며칠 동안 이렇게 지켜보기만 했어요. 예전엔 bash, glob, grep 같은 낯선 단어가 떴는데, 그 줄을 복사해 붙이고 '여기서 뭘 했어? 왜 glob을 썼어?'라고 물었대요. 어떻게 움직이는지 이해하니 더 잘 시키는 법이 보였다고 해요. 그는 Claude Code를 자동차에 비유해요. Fable 5 같은 모델은 엔진이고, Claude Code는 그 엔진을 감싼 차체, 즉 하네스예요. 엔진은 바꿔 끼울 수 있어요.</p>
+<h3>첫 결과와 피드백</h3>
+<p>약 4분 반 뒤 결과물 두 개가 나왔어요. 하나는 /market-analysis로 부를 수 있는 스킬 파일이고, 다른 하나는 로고가 들어간 HTML 리포트예요. 스킬 설명을 보면 '웹 리서치, 브랜드 HTML, <code>CLAUDE.md</code>의 브랜드 규칙, 새 규칙에 따른 스크린샷 검증'이 들어 있어요. 방금 추가한 규칙을 따른 거예요. 네이트는 '이 뉴스가 내 사업에 어떤 영향이 있을까?'처럼 물어도 Claude가 알아서 이 스킬을 쓸 거라고 말해요.</p>
+<figure>
+  <img src="assets/frame-010803.webp" alt="Done. Two deliverables 요약. 1. The skill .claude/skills/market-analysis/SKILL.md, 2. The report reports/smb-consulting-market-analysis.html, 오른쪽에 리포트 Recommended moves 섹션">
+  <figcaption>오른쪽 브라우저 패널에 리포트가 바로 열려요. 스크린샷 검증은 했지만 출처 검증은 없었어요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=4083s" target="_blank" rel="noopener">영상 1:08:03에서 보기</a></figcaption>
+</figure>
+<p>네이트가 보기엔 첫 결과로 괜찮아요. 브랜드도 맞고, 날짜와 요약, 시장 규모 섹션, 출처 16개도 있어요. 하지만 주장끼리 충돌하지 않는지, 출처가 믿을 만한지는 확인하지 않았어요. 그래서 이렇게 말해요. '시장 규모와 성장 부분이 더 필요해. 이런 리포트는 <b>앞으로 매번</b> 이 부분에 집중해 줘. 스크린샷 검증은 잘했는데, 다른 에이전트로 모든 사실이 맞고 낡지 않았는지 출처 검증도 항상 해. 그리고 스킬을 업데이트해.'</p>
+<p>진행자는 '앞으로 매번'과 '스킬 업데이트'가 아주 작지만 중요한 차이라고 짚어요. 이걸 빼먹으면 다음 리포트도 똑같이 나오고, 같은 피드백을 반복하느라 시간을 잃어요. 아래 고리가 네이트가 말하는 자전거 방식의 한 바퀴예요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["스킬 실행"] --> B["결과 지켜보기"]
+  B --> C["피드백: 좋은 점과 아쉬운 점"]
+  C --> D["'앞으로 매번' 규칙으로 정리"]
+  D --> E["스킬 파일 업데이트"]
+  E --> A
+</pre>
+  <figcaption>피드백이 스킬 파일에 들어가야 다음 실행에 남아요. 대화로만 말하면 그 대화에서 끝나요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=4203s" target="_blank" rel="noopener">영상 1:10:03에서 보기</a></figcaption>
+</figure>
+<p>네이트는 사람들이 이 단계를 미루는 이유도 짚어요. 직접 하면 30분이면 끝날 일을, 자동화하느라 두 시간 쓰는 게 아깝게 느껴지거든요. 만드는 동안은 생산성이 잠깐 떨어지지만 장기적으로 얻는 건 훨씬 크다는 거예요. 진행자는 '한 걸음 물러서는 것 같지만 실은 물러서는 게 아니다'라고 받아요.</p>
+<h3>서브 에이전트가 팩트체크하는 장면</h3>
+<p>피드백을 받은 Claude는 시장 규모 섹션을 키우고 스크린샷으로 다시 확인해요. 동시에 '1 running task'가 떠요. 별도 에이전트를 만들어 수치를 하나하나 확인하게 한 거예요. 오른쪽 패널이 메인 에이전트가 서브 에이전트에게 보낸 지시문이에요. '너는 이 리포트의 팩트체커야'로 시작해 확인할 주장 21개를 번호로 나열하고, 각각 확인됨·낡음·근거 없음으로 판정해 돌려 달라고 해요.</p>
+<figure>
+  <img src="assets/frame-011353.webp" alt="오른쪽 Verify report facts and sources 패널에 15번부터 21번까지 확인할 주장 목록과 판정 형식 지시, 왼쪽 메인 대화에 1 running task">
+  <figcaption>메인 에이전트가 즉석에서 서브 에이전트를 만들어 일을 맡긴 장면이에요. 메인은 그동안 스킬을 고쳐요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=4433s" target="_blank" rel="noopener">영상 1:13:53에서 보기</a></figcaption>
+</figure>
+<p>결과가 돌아왔어요. 왼쪽 가운데를 보면 '주장 21개 중 18개 확인, 1개 낡음, 2개 문제'라고 적혀 있고, 모두 고쳤대요. 오른쪽 리포트에는 커진 시장 규모 섹션이 보여요. 네이트는 이 검증이 없었다면 틀린 정보를 내보냈을 거라고 말해요.</p>
+<figure>
+  <img src="assets/frame-011648.webp" alt="The fact-check came back: 18 of 21 claims confirmed, 1 outdated, 2 with problems 문장과 오른쪽 리포트의 Market Size and Growth 섹션 371B, 420B, 10.25%">
+  <figcaption>21개 중 3개가 문제였어요. 첫 결과를 그대로 썼다면 7분의 1이 틀린 리포트였던 셈이에요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=4608s" target="_blank" rel="noopener">영상 1:16:48에서 보기</a></figcaption>
+</figure>
+<h3>검증 방식 세 가지</h3>
+<p>진행자는 네이트가 말한 검증을 세 가지로 묶고, 언제 무엇을 쓰는지 물어요. 네이트의 답을 표로 정리했어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>방식</th><th>언제 쓰나요</th><th>잡아내는 것</th></tr></thead>
+    <tbody>
+      <tr><td>스크린샷</td><td>보이는 결과물: 영상 프레임, HTML·PDF 리포트, 웹사이트</td><td>화면 밖으로 나간 요소, 밝은 배경 위 흰 글씨처럼 코드로는 모르는 문제</td></tr>
+      <tr><td>서브 에이전트 팩트체크</td><td>밖으로 나갈 모든 내용</td><td>틀리거나 낡은 수치, 근거 없는 주장</td></tr>
+      <tr><td>브라우저 조작</td><td>직접 만든 앱이나 사이트</td><td>버튼, 입력, 예약 흐름에서 나는 버그와 느린 동작</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>브라우저 조작은 Claude Code가 Chrome 같은 브라우저를 열고 화면을 보며 어디를 누를지 판단해 클릭하고 입력하는 거예요. Calendly 클론 때는 브라우저 50개를 띄워 예약하고 로고를 바꿔 봤고, 버그를 고친 뒤 다시 50개를 보내는 고리를 돌렸대요.</p>
+<p>마지막으로 업데이트된 스킬 파일을 열어 보면 단계가 적혀 있어요. 주제 정하기, 리서치, 리포트 작성, 브랜드 HTML, 차분한 말투, 출처 검증(필수), 시각 검증이에요. 리서치 단계에는 '시장 규모와 성장은 네이트가 가장 중시하는 부분이라 깊게 파라'는 문장도 들어갔어요. 방금 준 피드백이 그대로 레시피가 된 거예요.</p>
+<figure>
+  <img src="assets/frame-011738.webp" alt=".claude/skills/market-analysis/SKILL.md 파일. name market-analysis, description, argument hint, Market Analysis Report 제목과 Steps 1 Scope the topic, 2 Research">
+  <figcaption>이 마크다운 파일 하나를 다른 사람에게 주면, 그 사람의 Claude도 같은 검증을 거친 리포트를 만들어요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=4658s" target="_blank" rel="noopener">영상 1:17:38에서 보기</a></figcaption>
+</figure>
+<p>진행자는 네이트가 다른 영상에서 한 말을 꺼내요. 검증 없이 첫 결과만 보면 원하는 것의 60% 정도이고, 피드백과 검증이 붙어야 100%에 다가간다는 거예요. 사람들이 'AI 슬롭'이라 부르는 결과는 그 60%를 본 것이라고요. 네이트는 기대치를 맞추는 문제라고 덧붙여요. '좋은 결과'가 뭔지, 왜 필요한지 말해 줄수록 첫 결과부터 나아진대요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 문서에 따르면 스킬은 <code><code>SKILL.md</code></code> 파일 하나로 만들어요. 맨 위 설정 부분의 description을 보고 Claude가 언제 이 스킬을 불러올지 판단하고, 직접 부를 때는 /스킬이름을 쳐요. 네이트가 '/market-analysis로 부르거나 Claude가 알아서 쓴다'고 한 게 이 두 경로예요. 예전의 사용자 정의 명령(.claude/commands)도 지금은 스킬로 합쳐졌어요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code 공식 문서 — Extend Claude with skills</a></p>
+</aside>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>서브 에이전트는 자기만의 컨텍스트 창에서 일하고 요약만 돌려줘요. 그래서 팩트체크처럼 검색 결과가 많이 쌓이는 일을 맡기면 메인 대화가 깨끗하게 유지돼요. 새 서브 에이전트는 메인 대화를 보지 못하고, 메인이 써 준 지시문만 받아요. 네이트 화면에서 지시문에 주장 21개를 다 적어 보낸 이유예요. 서브 에이전트도 사용량 한도는 메인과 함께 써요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code 공식 문서 — Create custom subagents</a></p>
+</aside>
+</section>
+
+<section id="s9">
+  <a class="stamp" href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=4768s" target="_blank" rel="noopener">1:19:28</a>
+  <h2>이번 주말에 할 일: grill me 세션</h2>
+<p>진행자의 마지막 질문은 이거예요. 영상을 다 보고 자극받은 사람에게 토요일 오후나 일요일 저녁 몇 시간이 생겼다면, 3개월·6개월·12개월 뒤를 바꾸기 위해 무엇을 해야 하나요?</p>
+<p>네이트의 답은 <b>grill me 세션</b>이에요. grill me는 원하는 주제를 다 이해할 때까지 끈질기게 인터뷰하는 스킬이에요. 아무것도 없는 새 Claude에 이 스킬을 넣고 '내 개인 라이프 코치가 돼 줘. 내 배경, 동기, 중요한 것, 가고 싶은 방향을 다 알아서 거기까지 가도록 도와줘'라고 하면 돼요. 질문이 50개쯤 나올 수도 있대요. 몇 시간 들여 머릿속을 다 쏟아 내라는 거예요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["빈 Claude 프로젝트"] --> B["grill me 스킬로 인터뷰"]
+  B --> C["배경·동기·목표를 몇 시간 쏟아 내기"]
+  C --> D["맥락을 파일로 저장"]
+  D --> E["이후 모든 대화와 도구에서 재사용"]
+</pre>
+  <figcaption>4C의 첫 칸인 Context를 한 번에 채우는 방법이에요. 이후 대화마다 같은 설명을 반복하지 않아도 돼요. <a href="https://www.youtube.com/watch?v=DD-SiFV93sQ&amp;t=4876s" target="_blank" rel="noopener">영상 1:21:16에서 보기</a></figcaption>
+</figure>
+<p>인터뷰가 끝나면 시스템이 그걸 느낀대요. 평생 알던 사람과 이야기하는 기분이 들 수도 있다고 해요. 그 뒤로는 뭘 만들든, 아이디어를 검증하든 그 맥락을 바탕으로 훨씬 빨리 움직여요. 네이트가 가장 답답해하는 건 같은 말을 반복하거나 도구끼리 맞물리지 않는 거예요.</p>
+<p>그는 자기 AI 운영체제 폴더를 Claude Code, Codex, Hermes Agent, OpenClaw 등 어떤 새 도구에든 꽂아 쓴다고 해요. 그러면 그 도구가 곧바로 자기를 다 알아요. 그래서 그 파일과 폴더가 지금 가진 가장 값진 자산, 자기 IP(Intellectual Property)라고 말해요.</p>
+<blockquote>
+  <p>That's like the most valuable thing I have right now is all those files and folders.</p>
+  <p>지금 제가 가진 가장 값진 건 그 파일과 폴더들이에요.</p>
+  <cite>— 영상 1:22:55</cite>
+</blockquote>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>grill me는 Matt Pocock이 공개한 스킬 모음에 들어 있어요. 저장소 설명은 '계획이나 설계에 대해, 모든 갈래가 정리될 때까지 끈질기게 인터뷰받는다'예요. 코드가 아닌 용도에 쓰는 /grill-me와, 용어집과 결정 기록까지 함께 만드는 /grill-with-docs가 따로 있어요. 네이트가 말한 개인 맥락 정리에는 /grill-me가 맞아요.</p>
+  <p class="cite">출처: <a href="https://github.com/mattpocock/skills" target="_blank" rel="noopener">GitHub — mattpocock/skills</a></p>
+</aside>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 영어 자막이라 이름과 도구명이 잘못 받아적힌 곳이 있어요. 화면에 보인 표기를 기준으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>Boris Churnney</td><td>Boris Cherny</td><td>Claude Code 개발자</td></tr>
+      <tr><td>Sam Alman</td><td>Sam Altman</td><td></td></tr>
+      <tr><td>C-pilot, co-pilot</td><td>Copilot</td><td></td></tr>
+      <tr><td>NAN, NADN, Nident, Nen</td><td>n8n</td><td>자동화 워크플로 도구</td></tr>
+      <tr><td>Calendarly, Kalanly</td><td>Calendly</td><td></td></tr>
+      <tr><td>Up AI</td><td>Uppit AI</td><td>예약 화면에 보인 회사명</td></tr>
+      <tr><td>Herk 2</td><td>Herk-2 / Herk-2.0</td><td>화면의 프로젝트 이름</td></tr>
+      <tr><td>Hercules Advisory</td><td>Herkules Advisory</td><td>CLAUDE.md에 &#x27;k로 쓴다&#x27;고 적혀 있어요</td></tr>
+      <tr><td>claw.md, cloud MD</td><td>CLAUDE.md</td><td></td></tr>
+      <tr><td>clawed code, cloud code</td><td>Claude Code</td><td></td></tr>
+      <tr><td>codeex</td><td>Codex</td><td></td></tr>
+      <tr><td>Chachi PT, Chatbt</td><td>ChatGPT</td><td></td></tr>
+      <tr><td>school community</td><td>Skool</td><td>커뮤니티 플랫폼 이름</td></tr>
+      <tr><td>OTAAS</td><td>OTAs</td><td>CLAUDE.md 라우팅 맵의 표기</td></tr>
+      <tr><td>SLGO, slashgoal</td><td>/goal</td><td></td></tr>
+      <tr><td>hyperframes</td><td>HyperFrames</td><td></td></tr>
+      <tr><td>Crockbot</td><td>확인 못 함</td><td>도구 목록 중 하나로, 화면에 표기가 없어 본문에서 뺐어요</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-3"><dt>리드<span class="en">Lead</span></dt><dd>앞으로 고객이 될 가능성이 있는 사람이나 회사예요. 영업에서는 연락처와 기본 정보가 확보된 잠재 고객을 말해요.</dd></div>
+    <div class="g" id="g-10"><dt>모션 그래픽<span class="en">Motion graphics</span></dt><dd>글자, 도형, 아이콘을 움직여 정보를 전달하는 애니메이션이에요. 설명 영상에서 흐름도나 숫자를 보여 줄 때 많이 써요.</dd></div>
+    <div class="g" id="g-4"><dt>보강된<span class="en">Enriched</span></dt><dd>리드에 직함, 이메일, 웹사이트, 리뷰 같은 추가 정보를 붙여 쓸모를 높인 상태예요. 개인화 메시지를 쓰려면 이 정보가 있어야 해요.</dd></div>
+    <div class="g" id="g-13"><dt>브라우저 조작<span class="en">Browser use</span></dt><dd>AI가 브라우저 화면을 보고 어디를 누를지 판단해 직접 클릭하고 입력하는 기능이에요. 만든 앱을 사람처럼 써 보며 테스트할 때 써요.</dd></div>
+    <div class="g" id="g-12"><dt>샌드박스<span class="en">Sandbox</span></dt><dd>실제 돈이나 데이터에 영향을 주지 않고 시험해 볼 수 있게 분리된 환경이에요. Stripe는 테스트 결제용 샌드박스를 따로 줘요.</dd></div>
+    <div class="g" id="g-9"><dt>서브 에이전트<span class="en">Subagent</span></dt><dd>메인 에이전트가 일부 작업을 맡기려고 따로 띄우는 에이전트예요. 자기 컨텍스트에서 일하고 결과만 돌려줘서 메인 대화가 어지러워지지 않아요.</dd></div>
+    <div class="g" id="g-8"><dt>스킬<span class="en">Skill</span></dt><dd>Claude가 특정 작업을 할 때 따르는 지시문 묶음이에요. SKILL.md 파일(스킬 설명 파일)로 저장해 두고 이름으로 부르거나, 요청이 맞으면 Claude가 알아서 불러와요.</dd></div>
+    <div class="g" id="g-7"><dt>시스템 프롬프트<span class="en">System prompt</span></dt><dd>대화가 시작되기 전에 AI에게 주는 기본 지시문이에요. 역할, 규칙, 말투를 정해서 모든 답에 영향을 줘요.</dd></div>
+    <div class="g" id="g-1"><dt>에이전트 루프<span class="en">Agentic loop</span></dt><dd>AI가 생각하고, 도구를 써서 행동하고, 결과를 확인하는 과정을 목표를 채울 때까지 되풀이하는 방식이에요. 사람이 단계마다 지시하지 않아도 일이 굴러가는 이유예요.</dd></div>
+    <div class="g" id="g-11"><dt>오픈 루프<span class="en">Open loop</span></dt><dd>다음 내용을 일부러 열어 둔 채 넘어가 시청자가 궁금해서 계속 보게 만드는 연출이에요. 1번 사례를 끝내며 2, 3, 4번이 있다는 걸 보여 주는 식이에요.</dd></div>
+    <div class="g" id="g-6"><dt>콜드 아웃리치<span class="en">Cold outreach</span></dt><dd>관계가 없던 잠재 고객에게 먼저 메일이나 메시지를 보내는 영업 방식이에요. 개인화가 얼마나 잘됐느냐가 답장률을 크게 좌우해요.</dd></div>
+    <div class="g" id="g-2"><dt>하네스<span class="en">Harness</span></dt><dd>AI 모델을 감싸서 파일 읽기, 명령 실행, 검색 같은 도구를 쓰게 해 주는 실행 환경이에요. 네이트는 모델을 엔진, 하네스를 차체에 비유해요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>AIOS</dt><dd>AI Operating System</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>B2B</dt><dd>Business to Business</dd></div>
+    <div class="g"><dt>CFO</dt><dd>Chief Financial Officer</dd></div>
+    <div class="g"><dt>CLI</dt><dd>Command Line Interface</dd></div>
+    <div class="g"><dt>HTML</dt><dd>HyperText Markup Language</dd></div>
+    <div class="g"><dt>HVAC</dt><dd>Heating, Ventilation, and Air Conditioning</dd></div>
+    <div class="g" id="g-5"><dt>ICP<span class="en">Ideal Customer Profile</span></dt><dd>내 제품이나 서비스에 가장 잘 맞는 고객의 모습이에요. 업종, 규모, 직함 같은 조건으로 정해서 리드를 고르는 기준이 돼요.</dd></div>
+    <div class="g"><dt>IP</dt><dd>Intellectual Property</dd></div>
+    <div class="g"><dt>PDF</dt><dd>Portable Document Format</dd></div>
+    <div class="g"><dt>SMB</dt><dd>Small and Midsize Business</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=DD-SiFV93sQ" target="_blank" rel="noopener">원본 영상 — The Calum Johnson Show</a></li>
+    <li id="src-2"><a href="https://code.claude.com/docs/en/goal" target="_blank" rel="noopener">Claude Code 공식 문서 — Keep Claude working toward a goal (/goal)</a></li>
+    <li id="src-3"><a href="https://code.claude.com/docs/en/memory" target="_blank" rel="noopener">Claude Code 공식 문서 — How Claude remembers your project (CLAUDE.md)</a></li>
+    <li id="src-4"><a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code 공식 문서 — Extend Claude with skills</a></li>
+    <li id="src-5"><a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code 공식 문서 — Create custom subagents</a></li>
+    <li id="src-6"><a href="https://github.com/heygen-com/hyperframes" target="_blank" rel="noopener">GitHub — heygen-com/hyperframes</a></li>
+    <li id="src-7"><a href="https://github.com/mattpocock/skills" target="_blank" rel="noopener">GitHub — mattpocock/skills (grill-me)</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 27일에 이 영상의 영어 자동생성 자막과 화면을 보고 정리했어요. 원본은 The Calum Johnson Show 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+function steps(id, marker, items, opts) {
+  const g = document.getElementById(id);
+  if (!g) return;
+  const w = opts.w, gap = opts.gap, y = opts.y, h = opts.h;
+  items.forEach(([name, sub, sub2], i) => {
+    const x = 10 + i * (w + gap);
+    g.append(el('rect', { x, y, width: w, height: h, rx: 10, class: `c${i + 1} cell` }));
+    g.append(el('text', { x: x + w / 2, y: y + 30, 'text-anchor': 'middle' }, name));
+    g.append(el('text', { x: x + w / 2, y: y + 54, 'text-anchor': 'middle', class: 'sub' }, sub));
+    if (sub2) g.append(el('text', { x: x + w / 2, y: y + 72, 'text-anchor': 'middle', class: 'sub' }, sub2));
+    if (i < items.length - 1)
+      g.append(el('path', { d: `M${x + w + 2} ${y + h / 2} h${gap - 6}`, class: 'line', 'marker-end': `url(#${marker})` }));
+  });
+  if (opts.note) g.append(el('text', { x: 10, y: y + h + 28, class: 'sub' }, opts.note));
+}
+steps('fig-bike', 'arrow-bike', [
+  ['옆에서 잡아 주기', '지켜보며 피드백', '기울면 바로잡기'],
+  ['보조바퀴', '한발 물러서기', ''],
+  ['헬멧만 쓰고', '보조바퀴 떼기', '안전장치는 유지'],
+  ['혼자 달리기', '시속 20마일', '걱정할 필요 없음'],
+], { w: 145, gap: 22, y: 20, h: 90, note: '처음 만들 때 사람이 하는 일 → 점점 손을 떼는 순서' });
+steps('fig-start', 'arrow-start', [
+  ['막막함 적기', '배우며 생긴 질문', '걱정을 기록'],
+  ['믿는 사람 가르치기', '부모님, 친구', '자신감 쌓기'],
+  ['무료로 경험', '돈보다 경험 먼저', '평판 지키기'],
+  ['서비스 시작', '모르는 사람에게도', '자신 있게'],
+], { w: 148, gap: 20, y: 20, h: 90, note: '1단계 기록이 나중에 고객의 막막함을 미리 풀어 주는 자료가 돼요' });
+</script>
+</body>
+</html>

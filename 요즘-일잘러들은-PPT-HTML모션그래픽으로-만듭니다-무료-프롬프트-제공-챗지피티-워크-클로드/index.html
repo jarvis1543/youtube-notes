@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTML 슬라이드와 모션 그래픽으로 발표 자료 만들기</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>HTML 슬라이드와 모션 그래픽으로 발표 자료 만들기</h1>
+  <p class="lede">ChatGPT Work나 Claude로 초안부터 영상까지, 세 단계로 따라 해요</p>
+  <div class="meta">
+    <span>에이커, 돈이되는 AI와 이커머스</span><span class="dot">·</span>
+    <span>영상 15:25</span><span class="dot">·</span>
+    <span>읽는 데 약 15분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=byShnblO4Oc" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>순서는 <b>초안 → 수정 → <span class="term" data-term="모션 그래픽" data-en="Motion graphics" data-desc="글자와 도형이 역동적으로 움직이는 짧은 영상이에요. 이 영상에서는 AI가 코드로 만들어 mp4로 내보내요." data-g="8">모션 그래픽</span></b> 세 단계예요. ChatGPT와 Claude 어느 쪽이든 프롬프트는 같고 세팅만 달라요.</li>
+    <li>준비의 중심은 폴더 하나예요. 발표 자료와 '<span class="term" data-term="디자인 레퍼런스" data-en="Design reference" data-desc="AI에게 &#x27;이런 느낌으로&#x27; 보여 주는 참고 이미지예요. 파일 이름을 맞춰 두면 프롬프트에서 이름으로 가리킬 수 있어요." data-g="3">디자인 레퍼런스</span>'를 넣고, 두 앱이 이 폴더를 읽고 결과도 여기에 저장해요.</li>
+    <li><span class="term" data-term="마스터 프롬프트" data-en="Master prompt" data-desc="초안을 만들 때 쓰는 기본 지시문이에요. 디자인, 줄바꿈, 반응형 같은 공통 지시가 들어 있고 괄호 칸만 바꿔 써요." data-g="2">마스터 프롬프트</span>에서 채울 곳은 괄호 세 칸, <b>주제·분량·폰트 주소</b>예요.</li>
+    <li>효과를 요청할 때는 '어느 페이지에서, 무엇을 하면, 무엇이 어떻게 나오는지'를 적어요. 채우기 효과, <span class="term" data-term="연동 효과" data-desc="화면 틀은 그대로 두고, 고른 사양이나 연도에 맞춰 세부 내용만 바꿔 보여 주는 효과예요." data-g="6">연동 효과</span>, <span class="term" data-term="사이드 페이지" data-desc="항목을 누르면 세부 내용이 옆이나 아래 패널, 또는 가운데 팝업으로 열리는 구성이에요. 화면을 넘기지 않고 세부를 보여 줘요." data-g="7">사이드 페이지</span>가 이렇게 만들어져요.</li>
+    <li>완성본은 파일로 열거나 링크로 공유해요. 민감한 자료는 파일로, PPT(PowerPoint)나 PDF(Portable Document Format)만 받는 곳에는 그 형식으로 내요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">HTML 슬라이드가 PPT와 다른 점</a></li>
+    <li><a href="#s2">시작 전 세팅: 폴더 하나와 데스크톱 앱</a></li>
+    <li><a href="#s3">1단계 초안: 마스터 프롬프트의 괄호 세 칸</a></li>
+    <li><a href="#s4">2단계 수정 ①: 내용 고치기와 편집 모드</a></li>
+    <li><a href="#s5">2단계 수정 ②: 시선을 잡는 효과 세 가지</a></li>
+    <li><a href="#s6">3단계: 레퍼런스로 모션 그래픽 만들기</a></li>
+    <li><a href="#s7">쓰는 법, 두 AI 비교, 주의할 점</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>HTML 슬라이드가 PPT와 다른 점</h2>
+<p><span class="term" data-term="HTML 슬라이드" data-en="HTML slides" data-desc="웹 페이지로 만든 발표 자료예요. 브라우저에서 열리고, 마우스나 클릭에 반응하는 효과를 코드로 넣을 수 있어요." data-g="1">HTML(HyperText Markup Language) 슬라이드</span>는 웹 페이지로 만든 발표 자료예요. 첫 화면부터 PPT와 결이 달라요. 왼쪽 위에는 큰 제목과 '발표 시작하기' 버튼이 있고, 왼쪽 가장자리에는 장표 번호가 세로로 늘어서 있어요. 브라우저에서 열리는 페이지라서 마우스에 반응하는 효과를 자유롭게 넣을 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0001.webp" alt="'테슬라가 AI 시대에 하늘을 나는 자동차를 만드는 이유'라는 제목과 자동차·로봇·배터리 이미지가 있는 HTML 슬라이드 첫 화면">
+  <figcaption>영상 전체에서 예시로 쓰는 테슬라 브리핑 슬라이드예요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=1s" target="_blank" rel="noopener">영상 00:01에서 보기</a></figcaption>
+</figure>
+<p>발표자가 꼽는 장점은 이래요. 마우스를 대면 숫자와 그래프가 움직이고, 항목을 누르면 세부 내용이 원하는 자리에서 열려요. 연도를 고르면 같은 화면에서 수치만 바뀌고, 레버를 움직이면 관련 내용이 나타나요. 글자는 슬라이드 안에서 바로 고칠 수 있고 모션 그래픽 영상도 넣을 수 있어요. 폰트 깨질 걱정 없이 어디서든 열려서 발표뿐 아니라 클라이언트 미팅이나 견적 상담에도 쓰기 좋다고 해요.</p>
+<p>만드는 과정은 세 단계로 정리돼요. 화면 아래 동그라미 번호를 보면 ① 초안, ② 수정, ③ 모션그래픽 순서예요. ChatGPT와 Claude 어느 쪽에서 해도 순서와 프롬프트는 같고, 두 앱의 세팅과 버튼 위치만 조금 달라요.</p>
+<figure>
+  <img src="assets/frame-0120.webp" alt="세 장의 화면 위에 1 초안, 2 수정, 3 모션그래픽 번호가 붙은 단계 그림">
+  <figcaption>이 문서도 이 세 단계를 따라가요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=80s" target="_blank" rel="noopener">영상 01:20에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=90s" target="_blank" rel="noopener">01:30</a>
+  <h2>시작 전 세팅: 폴더 하나와 데스크톱 앱</h2>
+<p>세팅은 세 가지예요. 모든 작업이 폴더 하나를 중심으로 돌아가요. 자료를 넣는 곳도, AI(Artificial Intelligence)가 결과를 저장하는 곳도 이 폴더예요. 영상 여러 군데에 흩어진 흐름을 한 장으로 모으면 이래요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 660 220" role="img" aria-label="폴더에 자료와 레퍼런스를 넣고, ChatGPT Work나 Claude가 폴더를 읽어 HTML 파일을 같은 폴더에 저장하고, 그 파일을 열거나 링크로 공유하는 흐름">
+    <defs><marker id="arrow-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="c1 cell" x="10" y="30" width="180" height="160" rx="10"/>
+    <text x="100" y="58" text-anchor="middle">작업 폴더</text>
+    <text x="100" y="92" text-anchor="middle" class="sub">발표 자료</text>
+    <text x="100" y="110" text-anchor="middle" class="sub">PDF · 워드 · 엑셀</text>
+    <text x="100" y="138" text-anchor="middle" class="sub">디자인 레퍼런스</text>
+    <text x="100" y="166" text-anchor="middle" class="sub">모션 그래픽 레퍼런스</text>
+    <path class="line" d="M192 110 h46" marker-end="url(#arrow-flow)"/>
+    <rect class="c2 cell" x="240" y="45" width="160" height="56" rx="10"/>
+    <text x="320" y="70" text-anchor="middle">ChatGPT Work</text>
+    <text x="320" y="89" text-anchor="middle" class="sub">GPT-6.1 Sol · High</text>
+    <rect class="c3 cell" x="240" y="119" width="160" height="56" rx="10"/>
+    <text x="320" y="144" text-anchor="middle">Claude</text>
+    <text x="320" y="163" text-anchor="middle" class="sub">Opus 5.5 · 높음</text>
+    <path class="line" d="M402 110 h46" marker-end="url(#arrow-flow)"/>
+    <rect class="accent" x="450" y="80" width="200" height="60" rx="10"/>
+    <text x="550" y="106" text-anchor="middle">HTML 슬라이드</text>
+    <text x="550" y="125" text-anchor="middle" class="sub">같은 폴더에 저장</text>
+    <path class="line" d="M550 142 v24" marker-end="url(#arrow-flow)"/>
+    <text x="550" y="186" text-anchor="middle" class="sub">파일로 열기 · 링크로 공유</text>
+    <path class="line" d="M550 78 v-24" marker-end="url(#arrow-flow)"/>
+    <text x="550" y="44" text-anchor="middle" class="sub">대화창에서 이어서 수정</text>
+  </svg>
+  <figcaption>폴더가 입력과 출력을 모두 맡아요. 레퍼런스를 바꾸고 싶으면 폴더 속 파일만 바꾸면 돼요.</figcaption>
+</figure>
+<h3>폴더에 자료와 디자인 레퍼런스 넣기</h3>
+<p>먼저 PC(Personal Computer)에 폴더를 하나 만들고 발표 자료를 넣어요. PDF, 워드, 엑셀 모두 되고, 한 개든 여러 개든 괜찮아요. 아래 화면에는 테슬라 재무 분석 PDF, 로드스터 보고서 워드 파일, 3년치 재무제표 엑셀이 들어 있어요. 맨 아래 빨간 테두리가 이번에 추가한 '디자인 레퍼런스.jpg'예요. 발표자는 핀터레스트에서 'PPT'로 검색해 마음에 드는 이미지를 받고, 파일 이름을 이렇게 바꿨어요.</p>
+<figure>
+  <img src="assets/frame-0146.webp" alt="'테슬라 기업분석 및 신제품' 폴더에 PDF, 워드, 엑셀 파일과 '디자인 레퍼런스.jpg'가 있는 파일 탐색기">
+  <figcaption>파일 이름을 '디자인 레퍼런스'로 맞춰 두면 마스터 프롬프트가 이 이름으로 찾아 써요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=106s" target="_blank" rel="noopener">영상 01:46에서 보기</a></figcaption>
+</figure>
+<h3>ChatGPT 데스크톱 앱 세팅</h3>
+<p>ChatGPT 데스크톱 앱을 설치해 열고 위쪽에서 Work로 들어가요. 입력창 오른쪽 아래의 <span class="term" data-term="추론 수준" data-en="Reasoning effort" data-desc="모델이 답하기 전에 얼마나 오래 생각할지 정하는 설정이에요. 높일수록 느리지만 복잡한 작업을 더 꼼꼼히 해요. Claude에서는 &#x27;노력&#x27;이라고 불러요." data-g="4">추론 수준</span> 선택을 누르면 모델과 수준을 고를 수 있어요. 빨간 테두리처럼 GPT-6.1 Sol에 High로 맞춰요.</p>
+<figure>
+  <img src="assets/frame-0218.webp" alt="ChatGPT Work 입력창에서 추론 수준 선택 메뉴를 열어 GPT-6.1 Sol High를 고른 화면">
+  <figcaption>자막에는 '6.1 쏘'로 적혔지만 화면의 모델 이름은 GPT-6.1 Sol이에요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=138s" target="_blank" rel="noopener">영상 02:18에서 보기</a></figcaption>
+</figure>
+<p>이어서 '프로젝트 선택 → 새 프로젝트'로 프로젝트를 만들고, 폴더 추가로 앞의 폴더를 연결해요. 마지막으로 플러그인 메뉴에서 Sites를 켜요. 켜고 나면 입력창 위에 Sites 표시가 붙고, 아래쪽에는 연결한 폴더 이름 '테슬라 기업분석 및 신제품'이 보여요.</p>
+<figure>
+  <img src="assets/frame-0250.webp" alt="ChatGPT Work 입력창 위에 Sites가 켜져 있고 아래에 연결한 프로젝트 폴더 이름이 보이는 화면">
+  <figcaption>폴더와 Sites, 두 가지가 다 보이면 ChatGPT 쪽 세팅은 끝이에요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=170s" target="_blank" rel="noopener">영상 02:50에서 보기</a></figcaption>
+</figure>
+<h3>Claude 데스크톱 앱 세팅</h3>
+<p>Claude는 더 간단해요. 데스크톱 앱을 설치해 열고 입력창 오른쪽 아래 모델 메뉴에서 Opus 5.5를 고르고, 그 아래 '노력'을 '높음'으로 둬요. 그다음 '프로젝트 또는 폴더 → 폴더 추가'로 같은 폴더를 연결하면 끝이에요.</p>
+<figure>
+  <img src="assets/frame-0306.webp" alt="Claude 데스크톱 앱 모델 메뉴에서 Opus 5.5가 선택되어 있고 노력 항목이 높음으로 표시된 화면">
+  <figcaption>메뉴에는 Fable 5.1, Sonnet 5.5, Haiku 5.5도 있지만 영상은 Opus 5.5를 권해요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=186s" target="_blank" rel="noopener">영상 03:06에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=205s" target="_blank" rel="noopener">03:25</a>
+  <h2>1단계 초안: 마스터 프롬프트의 괄호 세 칸</h2>
+<p>마스터 프롬프트는 영상 설명란과 고정 댓글에 있어요. 수정용, 모션 그래픽용 예시 프롬프트와 레퍼런스 사이트도 같이 정리돼 있다고 해요. 프롬프트를 복사해 앞에서 세팅한 ChatGPT나 Claude에 붙여 넣고, 대괄호로 표시된 세 칸만 채우면 돼요.</p>
+<p>화면에 보이는 앞부분을 보면 대괄호가 [주제], [5~10장], [눈누 폰트 주소] 세 군데예요. 나머지 문장은 그대로 둬요. 폴더의 '디자인 레퍼런스'를 쓰라는 지시, 단어가 중간에서 끊기지 않게 줄바꿈하라는 지시, 마우스에 반응하는 HTML로 만들고 이해를 돕는 이미지도 직접 만들어 넣으라는 지시가 이미 들어 있어요.</p>
+<figure>
+  <img src="assets/frame-0357.webp" alt="'마스터 프롬프트 (챗지피티, 클로드 공통)' 제목 아래 주제, 5~10장, 눈누 폰트 주소가 대괄호로 표시된 프롬프트 문장">
+  <figcaption>화면은 프롬프트의 앞부분만 보여 줘요. 전문은 영상 설명란에 있어요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=237s" target="_blank" rel="noopener">영상 03:57에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>괄호</th><th>영상의 예시</th><th>발표자의 조언</th></tr></thead>
+    <tbody>
+      <tr><td>주제</td><td>테슬라의 사업 현황과 계획, 그리고 새로 나온 로드스터</td><td>발표 목적, 청중의 정보, 발표 장소 같은 맥락까지 자세히 적을수록 잘 맞는 슬라이드가 나와요</td></tr>
+      <tr><td>분량</td><td>5~10장</td><td>나중에 장표 추가나 사이드 페이지로 늘릴 수 있으니 대략 이 정도로 시작해요</td></tr>
+      <tr><td>폰트 주소</td><td>https://noonnu.cc/font_page/34</td><td>가장 중요한 칸이에요. 폰트만 깔끔해도 발표의 완성도가 크게 올라가요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>폰트는 눈누라는 무료 폰트 사이트에서 골라요. 무료 폰트 목록에서 허용 범위를 정하면 쓸 수 있는 폰트만 추려져요. 마음에 드는 폰트를 눌러 그 페이지 주소를 복사하고, 세 번째 괄호에 넣어요. 아래 화면의 빨간 칸이 그 자리이고, 바로 아래 'https://noonnu.cc/font_page/34'가 복사한 주소예요.</p>
+<figure>
+  <img src="assets/frame-0453.webp" alt="마스터 프롬프트의 눈누 폰트 주소 칸이 빨간 테두리로 강조되고 아래에 복사한 폰트 주소 https://noonnu.cc/font_page/34가 표시된 화면">
+  <figcaption>폰트 이름이 아니라 폰트 페이지 주소를 통째로 넣어요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=293s" target="_blank" rel="noopener">영상 04:53에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상이 예시로 넣은 주소(font_page/34)는 눈누의 '본고딕 (Noto Sans)' 페이지예요. 눈누의 폰트 페이지에는 인쇄, 웹폰트, 임베딩 같은 쓰임마다 허용 여부를 정리한 라이선스 요약표가 있어요. 눈누는 사용 범위가 저작권자의 규정에 따라 다를 수 있으니, 조건부 허용이면 원본 라이선스를 꼭 확인하라고 안내해요. 고객에게 보내거나 공개 링크로 올릴 슬라이드라면 고른 폰트의 웹폰트 허용 여부를 한 번 보고 넣는 게 좋아요.</p>
+  <p class="cite">출처: <a href="https://noonnu.cc/font_page/34" target="_blank" rel="noopener">눈누 — 본고딕 (Noto Sans) 폰트 페이지</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=307s" target="_blank" rel="noopener">05:07</a>
+  <h2>2단계 수정 ①: 내용 고치기와 편집 모드</h2>
+<p>초안이 나와도 끝이 아니에요. 두 번째 단계인 결과물 수정은 둘로 나뉘어요. 아래 화면에서 왼쪽 ① 내용 수정에는 '구성'과 '문구' 꼬리표가, 오른쪽 ② 효과 추가에는 '시각적 퀄리티' 꼬리표가 붙어 있어요. 장표 구성과 문구를 먼저 다듬고, 그다음 효과로 보기 좋게 만드는 순서예요.</p>
+<figure>
+  <img src="assets/frame-0523.webp" alt="STEP 2 결과물 수정 아래 1 내용 수정과 2 효과 추가 두 갈래로 나뉜 그림. 효과 추가 쪽에 빨간 테두리가 있어요">
+  <figcaption>이 섹션은 왼쪽 갈래, 다음 섹션은 오른쪽 갈래를 다뤄요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=323s" target="_blank" rel="noopener">영상 05:23에서 보기</a></figcaption>
+</figure>
+<h3>프롬프트로 구성부터 잡기</h3>
+<p>내용은 전체 장표부터 보고 개별 문구로 내려가는 게 편해요. 초안을 만든 대화창에 이어서 한 줄씩 요청하면 돼요. 영상이 보여 준 요청은 이 네 가지예요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>하고 싶은 것</th><th>영상의 예시 프롬프트</th></tr></thead>
+    <tbody>
+      <tr><td>글자 크기 조정</td><td>전체 텍스트를 지금보다 조금 더 키워줘</td></tr>
+      <tr><td>장표 추가</td><td>2페이지와 3페이지 사이에 최근 3년 동안의 매출과 차량 생산 개수를 조사해서 추가해줘</td></tr>
+      <tr><td>장표 삭제</td><td>중간에 4페이지는 삭제해줘</td></tr>
+      <tr><td>순서 변경</td><td>2페이지와 3페이지의 순서를 서로 바꿔줘</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>장표를 추가할 때는 어느 자리에 어떤 내용이 필요한지를 적는 게 요령이에요. 위 요청으로 생긴 장표가 아래 화면이에요. 제목은 '최근 3년의 매출과 차량 생산 추이'이고, 2023·2024·2025 버튼 아래에 연간 매출과 연간 차량 생산량 막대그래프가 나란히 있어요.</p>
+<figure>
+  <img src="assets/frame-0547.webp" alt="'최근 3년의 매출과 차량 생산 추이' 장표. 연도 버튼 아래 연간 매출 967.73과 연간 차량 생산량 1,845,985 막대그래프">
+  <figcaption>AI가 자료를 조사해 장표 하나를 통째로 채워 넣었어요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=347s" target="_blank" rel="noopener">영상 05:47에서 보기</a></figcaption>
+</figure>
+<h3>문구가 많으면 편집 모드</h3>
+<p>구성이 잡히면 페이지마다 읽으며 문구를 고쳐요. 그런데 고칠 곳이 많으면 매번 프롬프트를 쓰기 번거로워요. 이때 "글자를 직접 클릭해서 수정할 수 있는 <span class="term" data-term="편집 모드" data-en="Edit mode" data-desc="슬라이드 위 글자를 직접 클릭해 고칠 수 있게 AI가 넣어 주는 기능이에요. 다 고친 뒤 해제해 달라고 하면 버튼이 사라져요." data-g="5">편집 모드</span>를 넣어 줘"라고 요청해요. 그러면 ChatGPT와 Claude 모두 화면 위에 편집 버튼을 달아 줘요. 아래 화면 왼쪽(ChatGPT)은 '글자 편집', 오른쪽(Claude)은 '편집'이라는 이름이에요.</p>
+<figure>
+  <img src="assets/frame-0627.webp" alt="ChatGPT가 만든 슬라이드 상단의 '글자 편집' 버튼과 Claude가 만든 슬라이드 상단의 '편집' 버튼을 나란히 비교한 화면">
+  <figcaption>같은 요청에도 버튼 이름과 위치는 앱마다 조금씩 달라요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=387s" target="_blank" rel="noopener">영상 06:27에서 보기</a></figcaption>
+</figure>
+<p>버튼을 누르고 원하는 글자를 클릭하면 바로 고칠 수 있어요. 다 고치면 저장을 누르고 '편집 완료'나 '끝내기'를 눌러요. 그다음 "앞서 설정한 편집 모드를 해제해 줘. 수정한 텍스트는 모두 그대로 저장해 줘"라고 요청하면 편집 버튼이 사라져요. 발표 중에 버튼이 보이지 않게 하려는 거예요. 또 고칠 일이 생기면 편집 모드를 다시 넣어 달라고 하면 돼요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=423s" target="_blank" rel="noopener">07:03</a>
+  <h2>2단계 수정 ②: 시선을 잡는 효과 세 가지</h2>
+<p>발표자가 HTML 슬라이드의 핵심이라고 부르는 부분이에요. 프롬프트는 짧지만 시선을 잡는 효과 세 가지를 보여 줘요. 셋 다 요청 문장에 들어가야 할 요소가 정해져 있어서, 먼저 표로 모아 둘게요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>효과</th><th>어떻게 움직이나요</th><th>요청에 적을 것</th><th>잘 맞는 자리</th></tr></thead>
+    <tbody>
+      <tr><td>채우기 효과</td><td>마우스를 대면 숫자가 올라가고 그래프가 차올라요</td><td>한 줄이면 돼요</td><td>기업 성과, 재무 상태 같은 수치 강조</td></tr>
+      <tr><td>연동 효과</td><td>화면은 그대로, 고른 사양이나 연도에 맞춰 세부 내용만 바뀌어요</td><td>어느 페이지에서 · 무엇을 고르면 · 어떤 내용이 바뀌는지</td><td>고객 견적 상담, 클라이언트 미팅</td></tr>
+      <tr><td>사이드 페이지</td><td>항목을 누르면 세부 내용이 패널이나 팝업으로 열려요</td><td>어디를 누르면 · 무슨 내용이 · 어느 방향에서</td><td>자료나 분량이 많을 때</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>① 채우기 효과</h3>
+<p>요청은 "숫자랑 그래프에 마우스를 대면 자동으로 채워지는 효과를 추가해 줘" 한 줄이에요. 아래 화면은 이 효과를 넣은 애플 실적 슬라이드예요. 왼쪽 막대그래프에 마우스를 올린 자리에 작은 수치 상자가 떠 있고, 오른쪽 노란 카드에는 391.0과 31.5%가 크게 나와요.</p>
+<figure>
+  <img src="assets/frame-0733.webp" alt="'매출 회복과 함께, 영업이익이 더 빠르게 성장' 제목의 애플 실적 슬라이드. 3년치 막대그래프와 391.0, 31.5%가 적힌 노란 카드">
+  <figcaption>숫자가 차오르는 움직임 덕에 강조하고 싶은 수치로 눈이 먼저 가요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=453s" target="_blank" rel="noopener">영상 07:33에서 보기</a></figcaption>
+</figure>
+<h3>② 연동 효과</h3>
+<p>특정 사양이나 연도를 고르면 화면 틀은 그대로 두고 세부 내용만 바뀌는 효과예요. 예시는 로드스터의 세 사양이에요. 아래 프롬프트에서 빨간 꼬리표 세 개가 요청의 뼈대를 짚어 줘요. ① 어느 페이지에, ② 무엇을 선택하면, ③ 어떤 내용이 연동되는지예요.</p>
+<figure>
+  <img src="assets/frame-0753.webp" alt="효과 추가 예시 프롬프트 8 연동 효과. 6페이지의 Performance, Thrust, Rocket을 세로 레버로 고르면 관련 내용과 이미지가 오른쪽에 나오게 하라는 문장">
+  <figcaption>세 요소만 들어가면 표현은 자유롭게 바꿔도 돼요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=473s" target="_blank" rel="noopener">영상 07:53에서 보기</a></figcaption>
+</figure>
+<p>결과 화면의 이미지 오른쪽에 세로 레버가 생겼어요. 레버를 맨 위 Rocket에 두자 오른쪽 설명이 '비행 기능을 설명하는 Rocket'으로 바뀌었어요. 슬라이드를 여러 장 넘기지 않고 한 화면에서 원하는 내용만 보여 줄 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0813.webp" alt="'테슬라가 제시하는 로드스터의 3가지 스펙' 슬라이드. 로켓처럼 연기를 내뿜는 차량 이미지 옆에 Rocket, Thrust, Performance 세로 레버와 Rocket 설명">
+  <figcaption>레버 위치에 맞춰 이미지와 설명이 같이 바뀌어요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=493s" target="_blank" rel="noopener">영상 08:13에서 보기</a></figcaption>
+</figure>
+<p>같은 방식을 연도에도 쓸 수 있어요. "3페이지에 2023, 2024, 2025 연도가 있는데 연도를 누르면 매출과 차량 생산량뿐 아니라 주요 재무 수치가 연동돼서 그래프로 나오게 해 줘"라고 요청했어요. 화면에서 2024를 누르자 연간 매출, 차량 생산량 막대 중 2024년 것이 강조되고, 오른쪽에 '2024년 수익성' 가로 막대가 새로 나와요.</p>
+<figure>
+  <img src="assets/frame-0823.webp" alt="'연도로 살펴보는 테슬라의 주요 실적' 슬라이드에서 2024 버튼을 누른 상태. 연간 매출, 차량 생산량 막대와 2024년 수익성 가로 막대">
+  <figcaption>조건에 따라 숫자만 바꿔 보여 줄 수 있어 상담 자리에서 쓰기 좋다고 해요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=503s" target="_blank" rel="noopener">영상 08:23에서 보기</a></figcaption>
+</figure>
+<h3>③ 사이드 페이지</h3>
+<p>내용을 누르면 세부 항목이 열리는 기능이에요. PPT라면 사업별 세부 내용을 보여 주려고 화면을 넘겨야 하지만, HTML 슬라이드는 사이드 페이지만 붙이면 돼요. 요청 프롬프트는 '어디를 누르면'(5페이지의 사이버캡 생산, 로봇 택시 서비스 확대), '어느 방향에서'(아래에서 사이드 바가 올라와서), '무슨 내용이'(관련된 세부 내용)를 다 담고 있어요. 주변을 어둡게 하고 <span class="term" data-term="흐림 효과" data-en="Blur effect" data-desc="팝업 뒤 화면을 뿌옇게 처리하는 효과예요. 보기에는 좋지만 화면이 바뀔 때마다 브라우저가 다시 계산해야 해서 버벅임의 원인이 되기도 해요." data-g="10">흐림 효과</span>는 넣지 말라는 모양 지시도 붙였어요.</p>
+<figure>
+  <img src="assets/frame-0913.webp" alt="효과 추가 예시 프롬프트 9 사이드 페이지. 5페이지 아래 사이버캡 생산, 로봇 택시 서비스 확대를 누르면 아래에서 사이드 바가 올라오게 하라는 문장">
+  <figcaption>'흐림 효과는 넣지 말아 줘'라는 한 줄은 뒤에서 나오는 버벅임 문제와도 이어져요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=553s" target="_blank" rel="noopener">영상 09:13에서 보기</a></figcaption>
+</figure>
+<p>패널은 위아래 좌우는 물론 가운데 팝업으로도 띄울 수 있어요. 아래는 가운데 팝업으로 연 예시예요. 뒤 화면은 어둡게 깔리고, 팝업에는 '로보택시 확장 속도' 제목 아래 148만, 1개 도시, 240만 마일, 300대+ 같은 숫자 카드가 모여 있어요.</p>
+<figure>
+  <img src="assets/frame-0943.webp" alt="어두워진 슬라이드 위에 '로보택시 확장 속도' 팝업이 열려 148만, 1개 도시, 240만 마일, 300대+ 숫자 카드를 보여 주는 화면">
+  <figcaption>전체 장표를 띄워 둔 채 세부만 열어서 청중이 큰 그림을 놓치지 않아요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=583s" target="_blank" rel="noopener">영상 09:43에서 보기</a></figcaption>
+</figure>
+<p>발표자는 그래서 모든 장표를 한 번에 만들기보다 주요 챕터만 만들고 세부는 사이드 페이지로 붙이라고 권해요.</p>
+<h3>PPT처럼 하나씩 나타나게 하기</h3>
+<p>PPT의 애니메이션처럼 클릭이나 엔터를 누를 때마다 요소가 나타나게 할 수도 있어요. 아래 프롬프트처럼 '빈 화면에서 시작하고, 클릭하거나 엔터를 칠 때마다 요소들이 순서대로 나오게'라고 적으면 돼요. "발표 시작하기를 누르면 자동 발표가 진행되도록 바꿔 줘"라고 하면 처음부터 자동으로 넘어가요.</p>
+<figure>
+  <img src="assets/frame-1013.webp" alt="효과 추가 예시 프롬프트 10 클릭 시 요소 등장 효과. 각 장표별로 빈 화면에서 시작하고 클릭이나 엔터 때마다 요소들이 순서대로 나오게 하라는 문장">
+  <figcaption>효과를 다 쓸 필요는 없어요. 원고와 상황에 맞는 것만 골라요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=613s" target="_blank" rel="noopener">영상 10:13에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=634s" target="_blank" rel="noopener">10:34</a>
+  <h2>3단계: 레퍼런스로 모션 그래픽 만들기</h2>
+<p>마지막 단계는 모션 그래픽이에요. 발표자는 이걸 'AI가 코드로 만드는 동영상'이라고 설명해요. 글자와 그래픽이 역동적으로 움직이는 짧은 영상이고, 완성하면 슬라이드 안에 바로 넣을 수 있어요. 아래가 완성된 모습이에요. '15초 영상으로 만나는 테슬라'라는 장표 가운데에 테슬라 로고가 나오는 영상 플레이어가 들어 있어요.</p>
+<figure>
+  <img src="assets/frame-1050.webp" alt="'15초 영상으로 만나는 테슬라' 제목 아래 TESLA 로고가 보이는 영상 플레이어가 들어간 슬라이드">
+  <figcaption>슬라이드 속 영상은 따로 파일을 열지 않고 발표 흐름 안에서 재생돼요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=650s" target="_blank" rel="noopener">영상 10:50에서 보기</a></figcaption>
+</figure>
+<h3>레퍼런스 영상 고르기</h3>
+<p>여러 방법 중 가장 쉬운 건 좋은 영상을 보여 주고 "이거 참고해서 만들어 줘"라고 하는 거예요. 발표자는 '백 번 듣는 것보다 한 번 보는 게 낫다'는 속담을 빌려 설명해요. 레퍼런스 사이트 주소는 설명란과 고정 댓글에 있어요. 화면에 나온 곳은 JasonZhu.AI의 프롬프트 라이브러리예요. 위쪽 필터에서 'Motion graphics'를 고르면 아래에 모션 그래픽 예시 영상 카드가 늘어서요.</p>
+<figure>
+  <img src="assets/frame-1114.webp" alt="JasonZhu.AI 프롬프트 라이브러리에서 Motion graphics 필터를 고르고 모션 그래픽 예시 영상 카드 세 개가 보이는 화면">
+  <figcaption>여러 개를 직접 재생해 보고 마음에 드는 하나를 내려받아요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=674s" target="_blank" rel="noopener">영상 11:14에서 보기</a></figcaption>
+</figure>
+<p>받은 영상은 앞에서 만든 폴더에 넣고 이름을 '모션 그래픽 레퍼런스'로 바꿔요. 아래 탐색기 맨 아래 빨간 칸이 '모션 그래픽 레퍼런스.mp4'예요. 발표 자료, 디자인 레퍼런스와 같은 폴더에 있어서 AI가 바로 찾을 수 있어요.</p>
+<figure>
+  <img src="assets/frame-1122.webp" alt="발표 자료와 디자인 레퍼런스.jpg가 있는 폴더 맨 아래에 '모션 그래픽 레퍼런스.mp4'가 추가된 파일 탐색기">
+  <figcaption>디자인 레퍼런스 때와 같은 방식이에요. 이름을 맞춰 두면 프롬프트에서 이름으로 가리킬 수 있어요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=682s" target="_blank" rel="noopener">영상 11:22에서 보기</a></figcaption>
+</figure>
+<h3>영상 만들고 슬라이드에 넣기</h3>
+<p>작업하던 대화창에서 요청해요. 프롬프트에는 참고할 파일(폴더 속 '모션그래픽 레퍼런스' 영상), 내용(슬라이드 내용 요약), 길이(15초), 분위기(최대한 역동적으로)가 들어 있어요. 주제와 길이를 주고 역동적으로 만들어 달라는 게 요점이에요.</p>
+<figure>
+  <img src="assets/frame-1138.webp" alt="효과 추가 예시 프롬프트 12 모션 그래픽 생성 프롬프트. 폴더 속 모션그래픽 레퍼런스 영상을 참고해 슬라이드 내용을 요약한 15초 모션그래픽 영상을 최대한 역동적으로 만들어 달라는 문장">
+  <figcaption>참고 영상, 내용, 길이, 분위기 네 가지만 적었어요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=698s" target="_blank" rel="noopener">영상 11:38에서 보기</a></figcaption>
+</figure>
+<p>잠시 기다리면 mp4 파일이 나와요. 미리보기 화면은 반으로 갈려 있어요. 왼쪽 검은 면에는 '282.4억 달러, 2분기 매출·사상 최대'가, 오른쪽 빨간 면에는 '1.4%, 판매는 회복'이 큰 숫자로 나와요. 슬라이드에 있던 실적 숫자를 영상용으로 다시 짠 거예요.</p>
+<figure>
+  <img src="assets/frame-1154.webp" alt="'테슬라_요약_모션그래픽_슬라이드컬러.mp4' 미리보기. 검은 면에 282.4억 달러, 빨간 면에 1.4%가 크게 적힌 장면">
+  <figcaption>짧은 프롬프트 하나로 나온 결과물이에요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=714s" target="_blank" rel="noopener">영상 11:54에서 보기</a></figcaption>
+</figure>
+<p>이 영상을 슬라이드에 넣을 때도 어디에 어떻게 넣을지만 말해요. 영상의 예시는 "방금 만든 영상을 넣어 마지막 페이지를 추가해 줘. '테슬라, 가능성을 움직이다'를 이 마지막 페이지의 제목으로 해 줘"예요.</p>
+<p>모션 그래픽 프롬프트 뒤에 "쇼츠용으로 만들어 줘"만 붙이면 휴대폰에 맞는 세로 영상이 나와요. 아래는 서울 여행 슬라이드에 넣은 예시예요. 오른쪽에 'SEOUL METRO'라는 세로 영상이 장표 한쪽을 차지하고, 왼쪽에는 '서울에서 해보고 싶은 한 가지를 골라보세요' 문구와 선택지 네 개가 있어요.</p>
+<figure>
+  <img src="assets/frame-1218.webp" alt="'서울에서 해보고 싶은 한 가지를 골라보세요' 슬라이드 오른쪽에 SEOUL METRO 세로 영상이 들어간 화면">
+  <figcaption>세로 영상은 장표 전체가 아니라 한쪽 칸에 넣기 좋아요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=738s" target="_blank" rel="noopener">영상 12:18에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=739s" target="_blank" rel="noopener">12:19</a>
+  <h2>쓰는 법, 두 AI 비교, 주의할 점</h2>
+<h3>파일로 열기, 링크로 공유하기</h3>
+<p>완성한 슬라이드를 쓰는 방법은 두 가지예요. 기본은 파일을 크롬으로 여는 거예요. 처음 연결한 폴더에 가 보면 HTML 파일이 저장돼 있어요. 아래 화면에서는 outputs 폴더 안의 '테슬라_사업현황과_로드스터_7장.html'이 그 파일이에요. 더블 클릭해서 크롬으로 열면 돼요. 화면 아래에는 'PC에 크롬 설치 필요'라는 안내도 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-1239.webp" alt="outputs 폴더 안의 '테슬라_사업현황과_로드스터_7장.html' 파일이 빨간 테두리로 강조된 파일 탐색기">
+  <figcaption>같은 폴더에 이미지 폴더와 미리보기 그림도 함께 저장돼 있어요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=759s" target="_blank" rel="noopener">영상 12:39에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상은 폰트 깨질 걱정이 없다는 점을 장점으로 꼽아요. 다만 폰트를 인터넷 주소로 불러오는 페이지라면, 브라우저는 그 폰트 파일을 내려받아 써요. 인터넷이 안 되는 발표장 PC에서 파일로 열면 폰트를 못 받아 기본 글꼴로 보일 수 있어요. 발표 전에 그 PC에서 한 번 열어 보는 게 안전해요.</p>
+  <p class="cite">출처: <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face" target="_blank" rel="noopener">MDN — @font-face</a></p>
+</aside>
+<p>두 번째는 인터넷 주소로 여는 방법이에요. ChatGPT는 공유 창의 '링크 접근 권한'을 '공개'로 바꾸고 '링크 복사'를 눌러요. 그러면 주소만 있으면 누구나 슬라이드를 열어 볼 수 있어요.</p>
+<figure>
+  <img src="assets/frame-1249.webp" alt="ChatGPT의 'Tesla 사업 현황과 Roadster 공유' 창에서 링크 접근 권한을 공개로 고르고 링크 복사 버튼이 빨간 테두리로 강조된 화면">
+  <figcaption>'공개'를 고르면 링크를 아는 사람 누구나 볼 수 있다는 뜻이에요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=769s" target="_blank" rel="noopener">영상 12:49에서 보기</a></figcaption>
+</figure>
+<p>Claude는 공유 창의 '일반 액세스'를 '링크가 있는 모든 사용자'로 바꿔요. 공유 화면이 보이지 않으면 "<span class="term" data-term="아티팩트" data-en="Artifact" data-desc="Claude가 대화와 별도로 띄워 주는 결과물 창이에요. 여기서 HTML 결과물을 보고 링크로 공유할 수 있어요." data-g="9">아티팩트</span>로 결과물을 열어 줘"라고 요청하면 돼요.</p>
+<figure>
+  <img src="assets/frame-1259.webp" alt="Claude의 '테슬라 2026 브리핑' 공유 창에서 일반 액세스를 '링크가 있는 모든 사용자'로 고른 화면">
+  <figcaption>발표자는 회사 내부 자료나 민감한 내용은 링크 대신 파일로 쓰라고 권해요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=779s" target="_blank" rel="noopener">영상 12:59에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Claude 도움말에 따르면 '링크가 있는 모든 사용자'로 공유한 아티팩트는 링크를 가진 사람 중 Claude에 로그인한 사람이 열 수 있어요. Claude 계정이 없는 사람은 링크가 있어도 열지 못하고, 예외는 채팅에서 게시한 예전 방식의 아티팩트뿐이라고 해요. Team·Enterprise 요금제에서는 아티팩트가 기본적으로 조직 안에만 머물고, 외부 공유는 관리자가 켜야 쓸 수 있어요. 받는 사람이 Claude를 안 쓴다면 파일로 보내는 편이 확실해요.</p>
+  <p class="cite">출처: <a href="https://support.claude.com/en/articles/9547008-discovering-publishing-customizing-and-sharing-artifacts" target="_blank" rel="noopener">Claude 도움말 — 아티팩트 게시와 공유</a></p>
+</aside>
+<h3>막히면 AI에게 원인부터 물어보기</h3>
+<p>완성한 슬라이드의 움직임이 느리거나 어색하면 AI에게 해결 방법을 물어보면 돼요. 영상에서는 "사이드바와 팝업을 열면 애니메이션이 느려지고 버벅거리는데, PC 문제인지 네가 해결할 수 있는지 답부터 해 줘. 작업은 아직 하지 말고"라고 물었어요. AI는 PC보다 코드 탓이 크다고 답하고, 원인으로 뒷배경 흐림 효과, 팝업 뒤에서 계속 움직이는 효과, 한꺼번에 겹치는 동작을 짚어요.</p>
+<figure>
+  <img src="assets/frame-1322.webp" alt="버벅임 원인을 묻는 질문과 '버벅거리는 주된 이유 (코드 쪽)' 아래 뒷배경 흐림 효과, 뒤에서 계속 움직이는 효과, 한꺼번에 겹치는 동작을 나열한 AI의 답">
+  <figcaption>'작업은 아직 하지 말고'를 붙이면 고치기 전에 원인부터 들을 수 있어요. 사이드 페이지 프롬프트에 흐림 효과를 빼라고 적은 이유도 여기에 있어요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=802s" target="_blank" rel="noopener">영상 13:22에서 보기</a></figcaption>
+</figure>
+<p>발표자가 정리한 요령은 원하는 걸 잘 전달하고, 생각과 다르게 나오면 무엇이 문제인지 물어보며 고치는 거예요.</p>
+<h3>ChatGPT와 Claude, 어느 쪽이 나을까요</h3>
+<p>발표자의 경험으로는 HTML 슬라이드는 ChatGPT가, 모션 그래픽 영상은 Claude가 더 잘 만드는 경우가 많았어요. 아래 화면도 왼쪽 'HTML 슬라이드 최적화', 오른쪽 '모션 그래픽 영상 강점'으로 나눠 보여 줘요. 다만 발표 주제, 쓴 효과, 모델에 따라 다를 수 있다고 덧붙여요. Claude에서 만든 모션 그래픽을 ChatGPT의 HTML 슬라이드에 넣는 식으로 섞어 써도 돼요.</p>
+<figure>
+  <img src="assets/frame-1349.webp" alt="챗지피티 아래 'HTML 슬라이드 최적화', 클로드 아래 '모션 그래픽 영상 강점'이라고 적은 비교 그림">
+  <figcaption>어디까지나 한 사람의 경험이에요. 두 앱에서 같은 프롬프트로 만들어 비교해 보는 것도 방법이에요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=829s" target="_blank" rel="noopener">영상 13:49에서 보기</a></figcaption>
+</figure>
+<h3>HTML 슬라이드가 늘 답은 아니에요</h3>
+<p>영상은 주의할 점으로 끝나요. 정부나 공공기관은 PDF나 PPT 형식만 받는 경우가 있고, 회사 문화나 부서장 취향에 따라 PPT가 필요할 수도 있어요. 아래 화면이 그 예로, 정부 및 공공기관에서 'PDF나 PPT 형식 요구'로 화살표가 이어져요.</p>
+<figure>
+  <img src="assets/frame-1439.webp" alt="'실무 환경이 요구하는 지정된 포맷들' 제목 아래 정부 및 공공기관 아이콘에서 'PDF나 PPT 형식 요구' 상자로 이어지는 그림">
+  <figcaption>받는 쪽이 정한 형식이 있으면 그게 먼저예요. <a href="https://www.youtube.com/watch?v=byShnblO4Oc&amp;t=879s" target="_blank" rel="noopener">영상 14:39에서 보기</a></figcaption>
+</figure>
+<p>효과와 모션 그래픽도 늘 다 쓸 필요는 없어요. 발표 자료의 본질은 청중이나 고객과의 소통이라서, 상황에 맞게 골라 쓰는 게 중요하다고 해요.</p>
+<blockquote>
+  <p>아예 몰라서 못 쓰는 것보다 활용법을 일단 익혀 둔 다음 적재적소에 골라 쓰는 능력이 요즘 같은 AI 시대에 정말 중요하다 생각합니다.</p>
+  <cite>— 영상 14:52</cite>
+</blockquote>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 앱·모델 이름과 몇몇 단어가 잘못 받아적혔어요. 화면을 기준으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>채치피티, 최치T, 제pt, 채피pt</td><td>ChatGPT</td><td>같은 이름이 여러 형태로 적혔어요</td></tr>
+      <tr><td>글로드</td><td>Claude</td><td></td></tr>
+      <tr><td>6.1 쏘</td><td>GPT-6.1 Sol</td><td>ChatGPT Work의 모델 메뉴</td></tr>
+      <tr><td>출론 수준</td><td>추론 수준</td><td></td></tr>
+      <tr><td>사이트 (플러그인)</td><td>Sites</td><td>ChatGPT Work의 플러그인 이름</td></tr>
+      <tr><td>오프스 5.5</td><td>Opus 5.5</td><td>Claude 모델 메뉴</td></tr>
+      <tr><td>초환</td><td>초안</td><td></td></tr>
+      <tr><td>자별화</td><td>차별화</td><td></td></tr>
+      <tr><td>구동료</td><td>구독료</td><td></td></tr>
+      <tr><td>발퍼</td><td>발표</td><td></td></tr>
+      <tr><td>로드</td><td>로드스터</td><td>테슬라 신제품 이름</td></tr>
+      <tr><td>쓰러스트</td><td>Thrust</td><td>로드스터 사양 이름</td></tr>
+      <tr><td>로봇시 서비스</td><td>로봇 택시 서비스</td><td></td></tr>
+      <tr><td>차량 세상량</td><td>차량 생산량</td><td></td></tr>
+      <tr><td>홀더</td><td>폴더</td><td></td></tr>
+      <tr><td>타일을</td><td>파일명을</td><td></td></tr>
+      <tr><td>무섭해</td><td>분석해 (추정)</td><td></td></tr>
+      <tr><td>더량, 더보기량</td><td>더보기란</td><td></td></tr>
+      <tr><td>적제적소</td><td>적재적소</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-3"><dt>디자인 레퍼런스<span class="en">Design reference</span></dt><dd>AI에게 &#x27;이런 느낌으로&#x27; 보여 주는 참고 이미지예요. 파일 이름을 맞춰 두면 프롬프트에서 이름으로 가리킬 수 있어요.</dd></div>
+    <div class="g" id="g-2"><dt>마스터 프롬프트<span class="en">Master prompt</span></dt><dd>초안을 만들 때 쓰는 기본 지시문이에요. 디자인, 줄바꿈, 반응형 같은 공통 지시가 들어 있고 괄호 칸만 바꿔 써요.</dd></div>
+    <div class="g" id="g-8"><dt>모션 그래픽<span class="en">Motion graphics</span></dt><dd>글자와 도형이 역동적으로 움직이는 짧은 영상이에요. 이 영상에서는 AI가 코드로 만들어 mp4로 내보내요.</dd></div>
+    <div class="g" id="g-7"><dt>사이드 페이지</dt><dd>항목을 누르면 세부 내용이 옆이나 아래 패널, 또는 가운데 팝업으로 열리는 구성이에요. 화면을 넘기지 않고 세부를 보여 줘요.</dd></div>
+    <div class="g" id="g-9"><dt>아티팩트<span class="en">Artifact</span></dt><dd>Claude가 대화와 별도로 띄워 주는 결과물 창이에요. 여기서 HTML 결과물을 보고 링크로 공유할 수 있어요.</dd></div>
+    <div class="g" id="g-6"><dt>연동 효과</dt><dd>화면 틀은 그대로 두고, 고른 사양이나 연도에 맞춰 세부 내용만 바꿔 보여 주는 효과예요.</dd></div>
+    <div class="g" id="g-4"><dt>추론 수준<span class="en">Reasoning effort</span></dt><dd>모델이 답하기 전에 얼마나 오래 생각할지 정하는 설정이에요. 높일수록 느리지만 복잡한 작업을 더 꼼꼼히 해요. Claude에서는 &#x27;노력&#x27;이라고 불러요.</dd></div>
+    <div class="g" id="g-5"><dt>편집 모드<span class="en">Edit mode</span></dt><dd>슬라이드 위 글자를 직접 클릭해 고칠 수 있게 AI가 넣어 주는 기능이에요. 다 고친 뒤 해제해 달라고 하면 버튼이 사라져요.</dd></div>
+    <div class="g" id="g-10"><dt>흐림 효과<span class="en">Blur effect</span></dt><dd>팝업 뒤 화면을 뿌옇게 처리하는 효과예요. 보기에는 좋지만 화면이 바뀔 때마다 브라우저가 다시 계산해야 해서 버벅임의 원인이 되기도 해요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>HTML</dt><dd>HyperText Markup Language</dd></div>
+    <div class="g" id="g-1"><dt>HTML 슬라이드<span class="en">HTML slides</span></dt><dd>웹 페이지로 만든 발표 자료예요. 브라우저에서 열리고, 마우스나 클릭에 반응하는 효과를 코드로 넣을 수 있어요.</dd></div>
+    <div class="g"><dt>PC</dt><dd>Personal Computer</dd></div>
+    <div class="g"><dt>PDF</dt><dd>Portable Document Format</dd></div>
+    <div class="g"><dt>PPT</dt><dd>PowerPoint</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=byShnblO4Oc" target="_blank" rel="noopener">원본 영상 — 에이커, 돈이되는 AI와 이커머스</a></li>
+    <li id="src-2"><a href="https://noonnu.cc/font_page/34" target="_blank" rel="noopener">눈누 — 본고딕 (Noto Sans) 폰트 페이지 (영상의 예시 주소)</a></li>
+    <li id="src-3"><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face" target="_blank" rel="noopener">MDN — @font-face</a></li>
+    <li id="src-4"><a href="https://support.claude.com/en/articles/9547008-discovering-publishing-customizing-and-sharing-artifacts" target="_blank" rel="noopener">Claude 도움말 — 아티팩트 게시와 공유</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 27일에 이 영상을 보고 정리했어요. 원본은 에이커, 돈이되는 AI와 이커머스 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

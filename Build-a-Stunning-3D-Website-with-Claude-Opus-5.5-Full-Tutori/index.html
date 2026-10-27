@@ -1,0 +1,1080 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Opus 5.5로 3D 게임 웹사이트 만들기</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Claude Opus 5.5로 3D 게임 웹사이트 만들기</h1>
+  <p class="lede">녹화 영상으로 움직임을 설명하고, 테스트 실패를 Claude에게 돌려줘요</p>
+  <div class="meta">
+    <span>MiladiCode</span><span class="dot">·</span>
+    <span>영상 23:16</span><span class="dot">·</span>
+    <span>읽는 데 약 18분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=TnduiS4kyg8" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>재료는 미리 준비해요. 캐릭터 그림을 Higgsfield에서 전신·투명 배경으로 다듬고, Tripo에서 <span class="term" data-term="GLB" data-en="GLB (binary glTF)" data-desc="3D 모델의 형태·텍스처·장면 구조를 파일 하나에 담는 형식이에요. 이 영상에서는 Claude가 이 파일 하나를 열어 보고 웹 장면에 넣어요." data-g="1">GLB(GL Transmission Format Binary)</span> 3D 모델로 바꿔 프로젝트 폴더에 넣어요.</li>
+    <li>원하는 움직임은 글 대신 참고 사이트를 녹화한 영상으로 보여 주고, 요구 사항은 번호를 매겨 적어요.</li>
+    <li><span class="term" data-term="리깅" data-en="Rigging" data-desc="3D 모델 안에 뼈대를 심고 겉면이 뼈를 따라 움직이게 묶는 작업이에요. 뼈대가 없으면 걷기 같은 동작을 줄 수 없어요." data-g="5">리깅</span> 안 된 모델을 줘도 Claude가 Blender로 리깅하고 걷기 동작을 만들었어요. 첫 걸음이 어색하자 엉덩이 높이 5cm라는 원인까지 찾아 고쳤어요.</li>
+    <li>3D 모델 없이 참고 영상만으로 검 둘레를 카드 14장이 나선형으로 도는 갤러리를 만들었어요.</li>
+    <li>TestSprite CLI(Command-Line Interface)를 붙이면 Claude가 테스트를 짜서 돌리고, 실패 상세를 읽고 고친 뒤 다시 돌려요. 겉모습뿐인 검색창과 상태가 안 보이는 사운드 버튼이 이렇게 드러났어요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">무엇을 만들고 왜 Claude Code인가</a></li>
+    <li><a href="#s2">캐릭터 그림을 3D 모델로 바꾸기</a></li>
+    <li><a href="#s3">히어로 섹션: 움직임은 녹화 영상으로</a></li>
+    <li><a href="#s4">걸음걸이와 첫 장면 다듬기</a></li>
+    <li><a href="#s5">모델 없이 만든 3D 나선 카드 갤러리</a></li>
+    <li><a href="#s6">TestSprite 연결하기</a></li>
+    <li><a href="#s7">테스트 돌리고 고치기</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=46s" target="_blank" rel="noopener">00:46</a>
+  <h2>무엇을 만들고 왜 Claude Code인가</h2>
+<p>완성품은 'Oni Ronin'이라는 가상 게임의 소개 사이트예요. 아래 첫 화면을 보면 붉은 옷의 사무라이 캐릭터가 가운데 서 있고, 몸 둘레로 불꽃 같은 오라가 피어올라요. 이 캐릭터가 제자리에서 걷고, 스크롤하면 카메라가 캐릭터 둘레를 돌아요.</p>
+<figure>
+  <img src="assets/frame-0100.webp" alt="어두운 배경에 붉은 옷과 하얀 가면을 쓴 사무라이 캐릭터가 서 있고 몸 둘레로 주황빛 오라가 번지는 히어로 섹션">
+  <figcaption>
+    3D 모델 하나로 만든 첫 화면이에요. 걷는 동작과 오라는 모두 Claude가 붙였어요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=60s" target="_blank" rel="noopener">영상 01:00에서 보기</a>
+  </figcaption>
+</figure>
+<p>아래로 내려가면 'Special Services' 섹션이 나와요. 가운데 세로로 선 검을 축으로 유리 질감 카드가 돌고, 오른쪽에는 지금 앞에 온 카드의 번호와 이름(44, 'GFN7XIN PASS')이 떠요. 이 섹션은 3D 모델 없이 참고 영상 하나로 만들었어요.</p>
+<figure>
+  <img src="assets/frame-0110.webp" alt="검이 세로로 선 축 둘레에 'THE GOLDEN VAULT', 'MOUNTAIN PASS' 같은 제목의 유리 카드가 떠 있고 오른쪽에 카드 번호 44가 보이는 화면">
+  <figcaption>
+    카드가 검 둘레를 나선형으로 돌며 내려와요. 만드는 과정은 다섯 번째 섹션에서 봐요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=70s" target="_blank" rel="noopener">영상 01:10에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 Claude Code에서 Opus 5.5와 Sonnet 5.5를 썼어요. 다른 AI(Artificial Intelligence) 도구나 IDE(Integrated Development Environment)로도 따라 할 수 있다고 하면서도, 자기가 비교해 본 바로는 3D 환경·캐릭터 모델·애니메이션 작업에서 Claude Code가 가장 나았다고 말해요. 프롬프트, 이미지, 영상, 3D 모델은 설명란의 GitHub 저장소에 모두 올라와 있어서 생성 도구 비용 없이 따라 할 수 있어요.</p>
+<p>영상 전체의 흐름을 한 장으로 그리면 이래요. 앞의 두 칸은 재료 준비, 가운데 두 칸은 Claude Code로 화면 만들기, 마지막 칸은 테스트예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 210" role="img" aria-label="캐릭터 그림에서 테스트까지 여섯 단계 흐름">
+    <defs><marker id="arrow-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-flow"></g>
+  </svg>
+  <figcaption>Claude Code가 맡는 건 아래 줄이에요. 위 줄의 재료(전신 그림, GLB 파일)가 좋을수록 아래 줄이 수월해져요.</figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=119s" target="_blank" rel="noopener">01:59</a>
+  <h2>캐릭터 그림을 3D 모델로 바꾸기</h2>
+<p>먼저 영감을 얻어요. 발표자는 Awwwards나 Pinterest를 둘러보다 마음에 드는 사무라이 캐릭터 그림을 찾아 받아 뒀어요. 그대로는 3D로 바꾸기 어려워서 한 번 다듬어요.</p>
+<h3>Higgsfield로 전신·투명 배경 이미지 만들기</h3>
+<p>Higgsfield의 이미지 생성 화면에 그림을 올리고 프롬프트에 세 가지를 적었어요. 아래 화면 하단 입력창을 보면 '칼·다리·신발까지 전신이 보이게', '3D 모델로 만들기 좋게', '배경을 투명하게'가 차례로 있어요. 그 아래 설정 줄에는 모델 GPT(Generative Pre-trained Transformer) Image 2.5, 해상도 4K가 골라져 있어요. 맨 왼쪽이 그 결과예요. 나머지 두 장(기린 그림)은 이 계정에 남아 있던 다른 생성물이라 이 작업과는 관계없어요.</p>
+<figure>
+  <img src="assets/frame-0329.webp" alt="Higgsfield 이미지 화면. 왼쪽에 전신이 다 보이는 투명 배경의 사무라이 캐릭터, 하단에 세 문장짜리 프롬프트와 GPT Image 2.5 Sunburst, 4K 설정">
+  <figcaption>
+    전신이 다 보여야 3D 변환에서 다리나 칼이 잘리지 않아요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=209s" target="_blank" rel="noopener">영상 03:29에서 보기</a>
+  </figcaption>
+</figure>
+<h3>Tripo로 3D 모델 만들기</h3>
+<p>3D 모델을 얻는 길은 세 가지예요. 발표자가 올려 둔 모델을 그대로 쓰거나, Sketchfab에서 무료·유료 모델을 받거나, Tripo처럼 이미지로 3D를 만드는 도구를 써요. 발표자는 Tripo를 골랐어요.</p>
+<p>Tripo에 이미지를 올리면 Clean Topology와 Best Quality 중 하나를 고르게 해요. 앞의 것은 <span class="term" data-term="토폴로지" data-en="Topology" data-desc="메시의 다각형이 어떤 모양과 흐름으로 이어져 있는지를 말해요. 깔끔할수록 움직이게 만들기 쉽고, Tripo의 Clean Topology가 이쪽을 우선하는 옵션이에요." data-g="4">토폴로지</span>를 깔끔하게 만드는 쪽, 뒤의 것은 디테일을 살리는 쪽이에요. 발표자는 둘 다 해 봤는데 이 캐릭터는 Best Quality 쪽이 디테일이 더 살았다고 해요. 아래 화면 왼쪽 패널 위쪽에 'HD Model'이 선택돼 있고, 그 아래에 올린 캐릭터 이미지가 보여요. 왼쪽 세로 메뉴 아래쪽의 Rig(리깅)는 일부러 건너뛰었어요. Claude Code가 리깅까지 해낼 수 있는지 시험하려고요.</p>
+<figure>
+  <img src="assets/frame-0429.webp" alt="Tripo 3D Workspace. 왼쪽 Generate Model 패널에 HD Model 탭과 업로드한 캐릭터 이미지, 오른쪽에 생성 중인 3D 사무라이 모델">
+  <figcaption>
+    리깅을 Tripo에서 하지 않은 건 Claude Code의 실력을 보려는 의도예요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=269s" target="_blank" rel="noopener">영상 04:29에서 보기</a>
+  </figcaption>
+</figure>
+<p>다 만들면 내보내요. Export 창의 Format 칸에 GLB가 골라져 있고, 텍스처 해상도는 4k예요. 오른쪽 위 수치를 보면 <span class="term" data-term="버텍스" data-en="Vertex" data-desc="메시를 이루는 다각형의 꼭짓점이에요. 개수가 많을수록 세밀하지만 무거워요. 이 모델은 약 110만 개예요." data-g="3">버텍스</span>가 약 105만 개예요. 나중에 Claude가 이 모델을 '버텍스 약 110만 개'로 읽어 내는데, 같은 모델이에요. 받은 GLB 파일은 프로젝트 폴더에 옮겨 둬요. Claude가 이 파일을 직접 열어 봐야 하거든요.</p>
+<figure>
+  <img src="assets/frame-0444.webp" alt="Tripo에서 3D 사무라이 모델 옆에 Export 창이 열려 있고 파일 이름 demon samurai character 3d model, Format GLB, Texture Resolution 4k가 보이는 화면">
+  <figcaption>
+    형식은 꼭 GLB로 골라요. 발표자 말로는 이 내보내기 옵션은 Tripo 유료 구독이 필요해요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=284s" target="_blank" rel="noopener">영상 04:44에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>GLB는 3D 표준 형식 glTF의 바이너리판이에요. glTF는 엔진과 앱이 3D 장면과 모델을 효율적으로 주고받고 불러오도록 만든 로열티 없는 규격이에요. 장면 구조를 적은 JSON(JavaScript Object Notation)과 메시·텍스처 데이터를 GLB 파일 하나에 묶을 수 있어서, 파일 하나만 프로젝트에 넣으면 돼요.</p>
+  <p class="cite">출처: <a href="https://www.khronos.org/gltf/" target="_blank" rel="noopener">Khronos Group — glTF Overview</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=293s" target="_blank" rel="noopener">04:53</a>
+  <h2>히어로 섹션: 움직임은 녹화 영상으로</h2>
+<p>발표자가 참고한 사이트는 Awwwards에서 찾은 'HAPE'의 런던 페이지예요. 로딩 애니메이션 뒤 캐릭터 얼굴 클로즈업으로 시작하고, 스크롤하면 카메라가 원을 그리며 캐릭터 주위를 돌아요. 아래 화면은 그중 한 장면이에요. 하얀 옷의 캐릭터를 카메라가 옆에서 비추고, 오른쪽에 'STREET FASHION, YOUR STYLE' 문구가 떠 있어요.</p>
+<figure>
+  <img src="assets/frame-0513.webp" alt="밝은 배경에 하얀 옷을 입은 3D 캐릭터를 옆에서 비춘 참고 사이트 화면, 오른쪽에 STREET FASHION, YOUR STYLE 문구">
+  <figcaption>
+    이 사이트의 스크롤 카메라 움직임을 그대로 따라 하는 게 목표예요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=313s" target="_blank" rel="noopener">영상 05:13에서 보기</a>
+  </figcaption>
+</figure>
+<h3>글 대신 녹화 영상을 붙여요</h3>
+<p>이런 움직임은 글로 설명하기 어려워요. 그래서 발표자는 참고 사이트의 로딩 장면과 스크롤 동작을 짧게 화면 녹화해서 프롬프트에 붙여요. 아래 화면 맨 위에 붙은 MP4(MPEG-4 Part 14) 파일이 그 녹화예요. 그 아래 프롬프트는 요구 사항을 번호로 나눠 적었어요.</p>
+<figure>
+  <img src="assets/frame-0613.webp" alt="Claude 입력창에 MP4 파일이 첨부돼 있고 그 아래 1. 3D Character Animation, 2. Scroll-Based Camera Animation 등 번호 붙은 요구 사항이 적힌 프롬프트">
+  <figcaption>
+    녹화 영상이 '무엇을'을, 번호 붙은 문장이 '어디까지'를 맡아요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=373s" target="_blank" rel="noopener">영상 06:13에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>번호</th><th>요구 사항</th><th>영상과 다르게 한 점</th></tr></thead>
+    <tbody>
+      <tr><td>1. 3D 캐릭터 애니메이션</td><td>영상처럼 천천히, 자연스럽게 제자리 걷기를 반복해요</td><td>—</td></tr>
+      <tr><td>2. 스크롤 카메라</td><td>스크롤하면 카메라가 캐릭터 둘레를 돌아요</td><td>첫 장면이 얼굴에 너무 붙지 않게 거리를 둬요</td></tr>
+      <tr><td>3. 배경 음악</td><td>Higgsfield MCP(Model Context Protocol)로 영상 분위기에 맞는 음악을 만들어요</td><td>—</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>끝에는 "영상을 보고 똑같은 애니메이션과 상호작용을 적용하고, <span class="term" data-term="히어로 섹션" data-en="Hero section" data-desc="웹사이트에 들어가자마자 첫 화면을 채우는 큰 영역이에요. 이 영상에서는 걷는 3D 캐릭터와 큰 제목이 있는 곳이에요." data-g="6">히어로 섹션</span>에만 집중하라"고 범위를 못 박았어요. 한 번에 사이트 전체를 시키지 않고 히어로 섹션 하나로 좁힌 거예요.</p>
+<h3>Higgsfield를 MCP로 연결해요</h3>
+<p>음악을 만들려면 보내기 전에 Higgsfield를 Claude에 연결해야 해요. Higgsfield 상단 메뉴의 MCP에서 Claude 앱 연결을 고르면, Claude 쪽 <span class="term" data-term="커스텀 커넥터" data-en="Custom connector" data-desc="Claude 앱에 원격 MCP 서버를 직접 추가하는 기능이에요. 이름과 서버 주소를 넣고 인증하면 그 서비스의 도구를 쓸 수 있어요." data-g="8">커스텀 커넥터</span> 추가 화면으로 넘어가요. 이름(Higgsfield)과 <span class="term" data-term="MCP 서버" data-en="MCP server" data-desc="AI 도구에 외부 서비스의 기능을 연결해 주는 서버예요. Higgsfield MCP 서버를 붙이면 Claude가 대화 중에 이미지·영상·음악을 만들 수 있어요." data-g="7">MCP 서버</span> 주소는 이미 채워져 있어요. 인증 방식은 그대로 두고 추가한 뒤 Higgsfield 계정으로 승인하면 돼요.</p>
+<p>함정이 하나 있었어요. 연결을 마친 뒤 Claude 앱을 완전히 껐다 켜야 새 연결이 보였어요. 발표자는 첫 시도에서 재시작을 안 해서 Claude가 Higgsfield를 찾지 못했다고 해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Higgsfield 공식 MCP 페이지는 Claude, Claude Code를 비롯한 MCP 호환 클라이언트에 붙이는 방법을 따로 안내하고, 서버 주소로 <code>https://mcp.higgsfield.ai/mcp</code>를 적어 둬요. Claude 앱에서 원격 MCP 서버를 커스텀 커넥터로 추가하는 일반 절차는 Claude 도움말에 있어요.</p>
+  <p class="cite">출처: <a href="https://higgsfield.ai/mcp" target="_blank" rel="noopener">Higgsfield MCP</a> · <a href="https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp" target="_blank" rel="noopener">Claude 도움말 — Getting started with custom connectors using remote MCP</a></p>
+</aside>
+<h3>Claude가 먼저 모델을 진단해요</h3>
+<p>무거운 작업이라 <span class="term" data-term="effort" data-en="Effort level" data-desc="Claude Code에서 모델이 단계마다 얼마나 깊이 생각할지 정하는 설정이에요. 높을수록 느리고 비싸지만 복잡한 작업을 더 잘 따져요." data-g="9">effort</span>를 Max로 올려 보냈어요. 아래 화면 파란 강조 부분이 Claude의 첫 진단이에요. GLB가 Tripo로 만든 모델이고, <span class="term" data-term="메시" data-en="Mesh" data-desc="3D 모델의 겉면을 이루는 작은 다각형들의 묶음이에요. Claude는 이 캐릭터가 메시 조각 34개로 나뉘어 있다고 읽었어요." data-g="2">메시</span> 조각 34개에 버텍스 약 110만 개인데 뼈대(skeleton)도 애니메이션도 없다고 읽었어요. 그래서 걷게 하려면 리깅부터 해야 한다며 Blender를 쓸 수 있는지, Higgsfield MCP가 연결됐는지 확인하겠다고 해요. 바로 위 문장에서는 녹화 영상을 '걷는 캐릭터, 스크롤 카메라 궤도, 필름 그레인, 따뜻한 림 라이팅'으로 요약했어요.</p>
+<figure>
+  <img src="assets/frame-0813.webp" alt="Claude Code 대화 화면. 'The GLB is a Tripo-generated model with 34 mesh parts and ~1.1M vertices but no skeleton or animations' 문장이 파란색으로 강조됨, 아래에 Opus 5.5, Max 표시">
+  <figcaption>
+    리깅 안 된 모델을 받아도 Claude가 스스로 리깅이 먼저라고 판단했어요. 프롬프트에 오타로 들어간 'Hexfield'를 Claude도 그대로 따라 썼어요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=493s" target="_blank" rel="noopener">영상 08:13에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>effort는 Claude Code에서 모델이 단계마다 얼마나 깊이 생각할지 정하는 설정이에요. 낮으면 빠르고 싸고, 높으면 복잡한 문제를 더 깊게 따져요. 쓸 수 있는 단계는 모델마다 다르고 <code>/effort</code>로 바꿔요. 발표자가 3D 작업에는 Max, 테스트 조율에는 Medium을 쓴 것도 이 기준이에요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/model-config" target="_blank" rel="noopener">Claude Code 공식 문서 — Model configuration</a></p>
+</aside>
+<h3>첫 결과</h3>
+<p><code>npm install</code>과 <code>npm run dev</code>로 개발 서버를 띄우자 로딩 화면 뒤에 히어로 섹션이 나왔어요. 배경 음악이 흐르고, 스크롤하면 카메라가 캐릭터 둘레를 부드럽게 돌아요. 아래 화면 오른쪽 브라우저(localhost:5173)에 캐릭터가 서 있고, 왼쪽에는 Claude가 고친 파일 27개 목록이 보여요.</p>
+<figure>
+  <img src="assets/frame-0913.webp" alt="왼쪽에 Edited 27 files 목록과 npm run dev 터미널, 오른쪽 브라우저 localhost:5173에 붉은 옷의 3D 캐릭터가 걷고 있는 화면">
+  <figcaption>
+    장면과 카메라는 좋았지만 다리 움직임이 뻣뻣하고 어색했어요. 다음 섹션에서 이걸 고쳐요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=553s" target="_blank" rel="noopener">영상 09:13에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=565s" target="_blank" rel="noopener">09:25</a>
+  <h2>걸음걸이와 첫 장면 다듬기</h2>
+<p>후속 프롬프트는 짧아요. 아래 화면 첫 문단이 핵심이에요. 다른 건 다 좋은데 3D 캐릭터의 걸음, 특히 다리가 어색하니 자연스럽게 고치고 캐릭터에 오라를 더해 달라고 했어요. 그 아래 번호 두 줄은 덤으로 붙인 요청이에요.</p>
+<figure>
+  <img src="assets/frame-0933.webp" alt="Claude 입력창의 후속 프롬프트. 걷기 애니메이션을 고치고 오라를 더해 달라는 문단과, 1. 제목을 캐릭터 뒤로, 2. 첫 장면을 더 가깝게라는 두 요청">
+  <figcaption>
+    좋았던 점을 먼저 말하고 고칠 곳만 콕 집어서 나머지가 흔들리지 않게 했어요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=573s" target="_blank" rel="noopener">영상 09:33에서 보기</a>
+  </figcaption>
+</figure>
+<ul>
+  <li><b>제목 위치</b> — 큰 제목이 캐릭터를 덮지 않게 캐릭터 뒤 배경으로 보내요.</li>
+  <li><b>첫 장면</b> — 참고 영상만큼은 아니어도 지금보다 캐릭터에 가깝게 시작해요.</li>
+</ul>
+<h3>걸음을 프레임별로 펼쳐 놓고 진단해요</h3>
+<p>Claude는 바로 고치지 않고 계획부터 세웠어요. 아래 화면 'Plan' 세 줄이 그 순서예요. ① 걸음을 프레임별 이미지(옆·앞, 코트 있고 없고)로 펼쳐 다리에 무슨 문제가 있는지 보고, ② 실제 사람의 엉덩이·무릎·발목 움직임 곡선으로 걸음을 다시 만들고, ③ 오라·제목·첫 장면을 손봐요. 오른쪽 'Model viewer (dev)' 창에 펼쳐 놓은 열두 컷이 그 프레임별 이미지예요.</p>
+<p>그 아래 문단이 진단 결과예요. 엉덩이가 약 5cm 너무 낮게 앉아 있어서 무릎이 펴지지 못했고, 그래서 다친 사람처럼 무릎을 굽힌 채 끌듯이 걷고 있었다고 해요.</p>
+<figure>
+  <img src="assets/frame-1021.webp" alt="왼쪽에 Claude의 3단계 계획과 '엉덩이가 약 5cm 낮아 무릎이 펴지지 않는다'는 진단, 오른쪽 Model viewer 창에 걷기 동작을 12컷으로 펼친 이미지">
+  <figcaption>
+    '어색하다'는 막연한 피드백을 Claude가 '엉덩이 높이 5cm'라는 구체적 원인으로 바꿨어요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=621s" target="_blank" rel="noopener">영상 10:21에서 보기</a>
+  </figcaption>
+</figure>
+<h3>다듬은 결과</h3>
+<p>다시 띄운 화면이에요. 'ONI RONIN' 제목이 이제 캐릭터 뒤에 깔려서 캐릭터 머리가 제목 위로 올라와 있어요. 캐릭터 어깨와 머리 둘레에는 주황빛 오라가 생겼고, 첫 장면도 상반신이 화면을 채울 만큼 가까워졌어요.</p>
+<figure>
+  <img src="assets/frame-1037.webp" alt="큰 글자 ONI RONIN 앞에 사무라이 캐릭터의 상반신이 겹쳐 서 있고 머리 둘레로 주황빛 오라가 번지는 히어로 화면">
+  <figcaption>
+    다리 움직임도 훨씬 자연스러워졌어요. 발표자는 그래도 다듬을 여지가 조금 남았다고 봐요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=637s" target="_blank" rel="noopener">영상 10:37에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=659s" target="_blank" rel="noopener">10:59</a>
+  <h2>모델 없이 만든 3D 나선 카드 갤러리</h2>
+<p>이번엔 섹션 세 개와 푸터를 한 번에 더해요. 그중 하나는 일부러 어렵게 냈어요. 3D 모델을 주지 않고 참고 영상만으로 3D 요소와 효과를 처음부터 만들게 한 거예요. 발표자는 화면에 보이는 프롬프트 그대로의 결과이고, Anthropic과 제휴 관계도 없다고 따로 밝혀요.</p>
+<h3>참고: 유리 카드가 도는 서비스 섹션</h3>
+<p>참고한 사이트의 서비스 섹션이에요. 가운데 축 둘레로 유리 질감 카드('RACER' 같은 제목이 붙은)가 떠 있고, 뒤로 보라·분홍 입자가 흩날려요. 스크롤하면 이 카드들이 원을 그리며 돌아요.</p>
+<figure>
+  <img src="assets/frame-1144.webp" alt="어두운 배경에 반투명 유리 카드 여러 장이 가운데 축 둘레에 떠 있고 앞 카드에 Google RACER라는 제목, 뒤로 보라색 입자가 흩어진 참고 사이트">
+  <figcaption>
+    이번에도 이 화면을 짧게 녹화해서 프롬프트에 붙였어요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=704s" target="_blank" rel="noopener">영상 11:44에서 보기</a>
+  </figcaption>
+</figure>
+<h3>카드 요구 사항 일곱 줄</h3>
+<p>프롬프트 앞부분에서는 '스크롤 기반 3D 나선 갤러리'를 설명해요. 프로젝트 카드가 중심 수직축 둘레를 돌고, 가운데에 3D 요소가 있고, 원근감 있게 나선형으로 내려가요. 가운데 요소는 쓰는 도중에 검으로 정했어요. 캐릭터와 사이트 분위기에 맞추려고요. 아래 화면은 그 뒤에 붙인 카드 요구 사항 일곱 줄이에요.</p>
+<figure>
+  <img src="assets/frame-1259.webp" alt="Claude 입력창에 MP4가 첨부되고 'Specific requirements for the cards' 아래 1번부터 7번까지 카드 요구 사항이 적힌 프롬프트">
+  <figcaption>
+    개수, 생성 도구, 효과, 영상 길이까지 숫자로 적었어요. 나머지 섹션의 배치와 내용은 Claude에게 맡겼어요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=779s" target="_blank" rel="noopener">영상 12:59에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>번호</th><th>요구 사항</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>카드는 모두 14장</td></tr>
+      <tr><td>2</td><td>무작위 3장에는 Higgsfield MCP로 만든 영상을 넣어요</td></tr>
+      <tr><td>3</td><td>카드 배경 이미지도 Higgsfield MCP로 만들 수 있어요</td></tr>
+      <tr><td>4</td><td>모든 카드에 영상 속 유리 효과를 주고, 호버 효과도 똑같이 맞춰요</td></tr>
+      <tr><td>5</td><td>이미지와 영상은 Seedance 2.5와 GPT Image 2.5로 만들어요</td></tr>
+      <tr><td>6</td><td>게임 사이트에 맞게, 영상과 이미지 전반에 같은 캐릭터와 비슷한 인물·배경을 써요</td></tr>
+      <tr><td>7</td><td>영상은 3~5초짜리로 자연스럽게 반복되게 해요</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>결과: 검 둘레를 도는 카드</h3>
+<p>히어로 아래에는 글자가 하나씩 드러나는 소개 섹션이 먼저 생겼어요. 그다음이 'Special Services'예요. 아래 화면 가운데 세로로 선 것이 Claude가 직접 만든 검이에요. 붉은 손잡이 끈과 코등이까지 있고, 칼날 아래로 붉은 입자가 흩어져요. 뒤의 큰 글자 'SPECIAL SERVICES'가 검에 가려져 있어요.</p>
+<figure>
+  <img src="assets/frame-1344.webp" alt="어두운 배경 가운데에 붉은 끈을 감은 손잡이와 코등이가 있는 검이 세로로 서 있고 뒤에 SPECIAL SERVICES라는 큰 글자가 깔린 화면">
+  <figcaption>
+    별도 3D 모델 없이 프롬프트와 참고 영상만으로 만든 검이에요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=824s" target="_blank" rel="noopener">영상 13:44에서 보기</a>
+  </figcaption>
+</figure>
+<p>스크롤을 내리면 카드가 검 둘레를 나선형으로 돌며 다가와요. 아래 화면 앞쪽 카드 'SNOWFIELD SIEGE'는 눈밭의 사무라이 그림 위에 유리 질감 테두리가 있고, 뒤쪽에 'CASTLE OF RAIN' 카드가 보여요. 오른쪽 위에는 지금 카드의 번호와 이름이 바뀌어 떠요. 카드 이미지와 영상은 모두 Higgsfield MCP로 만든 것이에요.</p>
+<figure>
+  <img src="assets/frame-1414.webp" alt="검 축 둘레에 유리 테두리 카드가 떠 있고 앞 카드에 눈밭의 사무라이 그림과 SNOWFIELD SIEGE 제목, 뒤 카드에 CASTLE OF RAIN 제목이 보이는 화면">
+  <figcaption>
+    14장 중 3장은 영상 카드예요. 글자 애니메이션과 유리 질감도 요청대로 들어갔어요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=854s" target="_blank" rel="noopener">영상 14:14에서 보기</a>
+  </figcaption>
+</figure>
+<p>나머지 섹션과 푸터도 사이트 톤에 잘 맞았어요. 발표자는 이 프로젝트를 두고, 기존 캐릭터 모델로 3D 장면과 애니메이션을 만들고 모델 없이도 상호작용 섹션을 하나 더 만들 만큼 AI 보조 개발이 멀리 왔다고 평가해요.</p>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=877s" target="_blank" rel="noopener">14:37</a>
+  <h2>TestSprite 연결하기</h2>
+<p>미리보기에서 멋져 보여도 버튼이 안 눌리거나, 메뉴 이동이 꼬이거나, 작은 화면에서 배치가 깨질 수 있어요. 그래서 마지막 단계는 테스트예요. 발표자가 쓴 도구는 TestSprite예요. 실행 중인 사이트를 실제 사용자처럼 돌아다니며 <span class="term" data-term="엔드투엔드 테스트" data-en="End-to-end test" data-desc="실제 사용자처럼 브라우저에서 사이트를 열고 눌러 보며 기능 전체가 처음부터 끝까지 동작하는지 확인하는 테스트예요." data-g="10">엔드투엔드 테스트</span>를 만들고, 코드가 오류 없이 도는지가 아니라 기능이 정말 동작하는지를 확인해요. 새로 나온 오픈소스 CLI로 터미널과 코딩 에이전트에 붙일 수 있어요.</p>
+<h3>시작하는 세 가지 길</h3>
+<p>새 프로젝트 화면이에요. 왼쪽 'Start by creating a project'는 이미 배포된 사이트용이에요. Test Type에서 Frontend UI(User Interface)와 Backend API(Application Programming Interface) 중 하나를 고르고, URL(Uniform Resource Locator)과 프로젝트 이름을 넣어요. 오른쪽 'Other ways to start'에 나머지 두 길이 있어요. 위가 CLI, 아래가 AI 채팅이에요.</p>
+<figure>
+  <img src="assets/frame-1622.webp" alt="TestSprite New Project 화면. 왼쪽에 Test Type(Frontend UI, Backend API), URL, Project Name 입력칸, 오른쪽에 Start from the CLI와 Start from AI chat 카드">
+  <figcaption>
+    CLI 카드 안에 설치 명령 예시가 보여요. 오른쪽 아래에는 MCP 클라이언트로도 쓸 수 있다고 적혀 있어요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=982s" target="_blank" rel="noopener">영상 16:22에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>시작 방법</th><th>어떤 프로젝트에</th><th>하는 일</th></tr></thead>
+    <tbody>
+      <tr><td>URL 입력</td><td>이미 배포된 사이트</td><td>URL과 이름을 넣고 프런트엔드·백엔드 API 중 하나를 골라요</td></tr>
+      <tr><td>CLI</td><td>Claude Code, Codex, Cursor 같은 도구로 만든 프로젝트</td><td>터미널에서 설치하고 코딩 에이전트가 테스트를 돌려요</td></tr>
+      <tr><td>AI 채팅</td><td>MCP 클라이언트를 쓰는 경우</td><td>채팅에서 AI 비서에게 테스트를 부탁해요</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>CLI 설정 세 단계</h3>
+<p>발표자는 가장 간단한 CLI를 골랐어요. 고르면 아래 'Install TestSprite CLI' 창이 떠요. 단계가 숫자 1·2·3으로 나뉘어 있어요.</p>
+<figure>
+  <img src="assets/frame-1640.webp" alt="Install TestSprite CLI 창. 1 Install the CLI에 npm i -g @testsprite/testsprite-cli &amp;&amp; testsprite setup 명령, 2 Create an API key 버튼, 3 Start testing in your coding agent에 프롬프트 'Use TestSprite CLI to test this project and fix what fails.'">
+  <figcaption>
+    3번의 한 줄 프롬프트가 핵심이에요. '테스트하고, 실패한 건 고쳐라'까지 한 문장에 들어 있어요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=1000s" target="_blank" rel="noopener">영상 16:40에서 보기</a>
+  </figcaption>
+</figure>
+<ol class="steps">
+  <li><b>CLI를 설치해요</b> — 창에는 설치와 설정이 한 줄로 붙어 있지만, 발표자는 무슨 일이 일어나는지 보이게 나눠서 돌렸어요.
+    <pre><code class="language-bash">npm i -g @testsprite/testsprite-cli
+testsprite setup</code></pre>
+    <span class="done">setup이 Claude Code를 쓰는 걸 알아채고 API 키를 물어요</span></li>
+  <li><b>API 키를 만들어 붙여 넣어요</b> — 대시보드에서 Create API Key를 누르고 이름을 붙여 만든 뒤, 복사해 터미널에 넣어요.
+    <span class="done">CLI 설치와 프로젝트 설정이 끝나요</span></li>
+  <li><b>프롬프트를 코딩 에이전트에 보내요</b> — 주어진 프롬프트에 '프런트엔드 테스트 10개를 돌려 달라'를 덧붙였어요.</li>
+</ol>
+<p>아래 화면이 3번을 보낸 직후예요. 가운데 말풍선이 보낸 프롬프트이고, 그 아래 Claude가 <code>/testsprite-onboard</code> 스킬을 실행하고 있어요. 오른쪽 터미널에는 setup이 알려 준 다음 단계(<code>testsprite project create</code>, <code>testsprite test run --all</code>)가 남아 있어요. 오른쪽 아래 입력창의 effort는 Medium이에요.</p>
+<figure>
+  <img src="assets/frame-1752.webp" alt="Claude Code 화면. 'Use TestSprite CLI to test this project and fix what fails. I want to run 10 different front-end tests' 프롬프트 아래 Ran skill /testsprite-onboard, 오른쪽 터미널에 testsprite 명령 안내, 하단에 Opus 5.5 Medium">
+  <figcaption>
+    실행은 TestSprite가 하고 Claude는 조율만 하니 effort를 Max에서 Medium으로 낮췄어요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=1072s" target="_blank" rel="noopener">영상 17:52에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상에서 설치한 CLI는 GitHub의 <code>TestSprite/testsprite-cli</code> 저장소에 공개돼 있고, npm 패키지 <code>@testsprite/testsprite-cli</code>의 라이선스는 Apache-2.0이에요. 2026년 10월 27일 기준 npm 최신 버전은 0.15.0이에요. 명령이나 옵션이 바뀌었을 수 있으니 따라 하기 전에 저장소 README를 확인하는 게 좋아요.</p>
+  <p class="cite">출처: <a href="https://github.com/TestSprite/testsprite-cli" target="_blank" rel="noopener">TestSprite/testsprite-cli (GitHub)</a> · <a href="https://docs.testsprite.com" target="_blank" rel="noopener">TestSprite 공식 문서</a></p>
+</aside>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=1106s" target="_blank" rel="noopener">18:26</a>
+  <h2>테스트 돌리고 고치기</h2>
+<p>Claude가 테스트 10개를 짜서 CLI로 돌렸어요. TestSprite 대시보드의 Projects에 'gaming-website (Oni Ronin)' 프로젝트가 생겼고, 아래 화면 위쪽 숫자를 보면 All 10, Passed 10, Failed 0이에요. 목록에는 Arsenal, Editions, Footer, Hero, Loader, Menu처럼 사이트 구역별로 이름 붙은 테스트가 보여요.</p>
+<figure>
+  <img src="assets/frame-1822.webp" alt="TestSprite Test Cases 화면. All 10, Passed 10, Failed 0이 표시되고 TC-008 Arsenal, TC-009 Editions, TC-010 Footer, TC-002 Hero 등 테스트가 모두 Pass">
+  <figcaption>
+    모두 통과로 보이지만, 처음부터 다 통과한 건 아니에요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=1102s" target="_blank" rel="noopener">영상 18:22에서 보기</a>
+  </figcaption>
+</figure>
+<h3>처음엔 실패했던 두 테스트</h3>
+<p>테스트 하나를 열어 보면 이력이 남아 있어요. 아래 화면은 에디션 섹션 테스트(TC-009)예요. 플랫폼 전환 시 버튼 이름이 바뀌는지, 사전 주문 버튼이 뉴스레터 섹션으로 이어지는지를 확인해요. 맨 아래 실행 기록을 보면 1시간 전 'Failed', 44분 전 'Pass'예요. 동작 하나가 안 됐는데 실패 내용이 Claude에게 돌아갔고, Claude가 사람 손 없이 고친 뒤 다시 돌린 거예요.</p>
+<figure>
+  <img src="assets/frame-1846.webp" alt="TestSprite TC-009 'Editions — platform switch relabels buttons and pre-order leads to the newsletter' 상세 화면. 하단 실행 기록에 Pass(44m ago)와 Failed(1h ago) 두 줄">
+  <figcaption>
+    실패 → 수정 → 재실행이 사람 개입 없이 한 바퀴 돈 흔적이에요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=1126s" target="_blank" rel="noopener">영상 18:46에서 보기</a>
+  </figcaption>
+</figure>
+<p>다른 하나는 Special Services 섹션의 검색 기능이에요. 검색창이 그럴듯해 보였지만 실제로는 아무 일도 안 하는 모양뿐이었어요. TestSprite가 이걸 잡아냈고 Claude가 실제로 검색되게 고쳤어요. 겉모습만 만들어 둔 기능은 눈으로 봐서는 놓치기 쉬운데, 실제로 눌러 보는 테스트라서 드러난 거예요.</p>
+<h3>테스트가 무엇을 눌렀는지 보여요</h3>
+<p>테스트마다 화면 녹화와 실행 단계가 남아요. 아래 화면 왼쪽 'Execution Steps (7)'을 보면 1단계 localhost:4173 열기, 2단계 'Enter muted' 버튼 누르기, 3단계 메뉴 열기, 4단계 '07 Editions' 링크 누르기처럼 사람이 하는 순서 그대로 적혀 있어요. 오른쪽에는 그 과정을 녹화한 12초짜리 영상이 있어요. 단계는 직접 보고 고칠 수도 있어요.</p>
+<figure>
+  <img src="assets/frame-2006.webp" alt="TestSprite 'Editions — countdown and edition contents' 테스트 상세. 왼쪽 Execution Steps 목록(Navigate to localhost:4173, Click Enter muted button, Click Open menu button), 오른쪽 녹화 영상과 Test successful 표시">
+  <figcaption>
+    어떤 요소를 누르고 어디로 스크롤했는지 보이니, 테스트가 무엇을 확인했는지 믿고 볼 수 있어요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=1206s" target="_blank" rel="noopener">영상 20:06에서 보기</a>
+  </figcaption>
+</figure>
+<p>그 사이 5개를 더 돌렸을 때는 모두 통과했어요. 발표자는 실패가 실제로 일어나는 장면을 보여 주려고 8개를 더 돌렸어요. 세 번의 실행을 한 그림으로 모으면 이래요. 칸 하나가 테스트 하나예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 200" role="img" aria-label="세 번의 테스트 실행 결과. 10개 중 2개가 처음에 실패 후 수정, 5개 모두 통과, 8개 중 1개 실패 후 수정">
+    <g id="fig-runs"></g>
+  </svg>
+  <figcaption>실패한 세 칸은 모두 Claude가 고친 뒤 다시 돌려 통과했어요. 대시보드의 전체 테스트 수 23(10+5+8)과도 맞아요. 줄 안에서 실패 칸의 위치는 의미가 없어요.</figcaption>
+</figure>
+<h3>사운드 토글 실패를 따라가 봐요</h3>
+<p>세 번째 묶음에서 사운드 토글 버튼 테스트가 실패했어요. TestSprite는 사용자가 소리를 켜고 끌 때 버튼이 지금 상태를 분명히 보여 주는지 확인했는데, 버튼 모양이 그대로라 어느 상태인지 알 수 없었어요. 실패 화면에는 녹화, 테스트 코드(Code 탭), 오류, 원인, 수정 탭이 있어요. 아래 화면의 Error 탭을 보면 'Toggle soundtrack' 버튼이 처음에 <span class="term" data-term="aria-pressed" data-en="aria-pressed" data-desc="토글 버튼이 지금 눌린 상태인지 화면 읽기 프로그램 같은 보조 기술에 알려 주는 HTML 속성이에요. 눈에 보이는 모양은 바꾸지 않아요." data-g="11">aria-pressed</span>="false"여야 하는데 "true"였다고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-2046.webp" alt="TestSprite TC-016 'Hero — the equaliser button toggles the soundtrack' Failed 화면. Error 탭에 'Toggle soundtrack' 버튼의 초기 상태가 aria-pressed=false와 맞지 않았다는 Test Failure 설명">
+  <figcaption>
+    기대값(false)과 실제값(true)을 나란히 적어 줘서 무엇이 어긋났는지 바로 보여요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=1246s" target="_blank" rel="noopener">영상 20:46에서 보기</a>
+  </figcaption>
+</figure>
+<p>Cause 탭은 원인을 추정해요. 처음부터 켜진 상태로 그려지는 이유를 세 가지 후보로 들어요. 초기값이 true로 잡혔거나, 저장된 설정이 true로 복원됐거나, 자동 재생 코드가 테스트 전에 켰을 수 있다는 거예요. 왼쪽 단계 목록에는 같은 버튼을 5·6·7단계에서 거듭 누른 기록이 보여요. 오른쪽 위 'Copy Fix Prompt'는 에이전트가 알아서 못 고칠 때 복사해서 직접 보내라고 있는 버튼이에요.</p>
+<figure>
+  <img src="assets/frame-2106.webp" alt="같은 실패 테스트의 Cause 탭. 앱이 사운드 토글을 기본으로 켜진 상태로 그린다는 원인 추정 문단과, 왼쪽에 Click 'Toggle soundtrack button'을 반복한 Step 5~7">
+  <figcaption>
+    같은 버튼을 세 번 거듭 누른 기록이 '상태를 확인할 수 없었다'는 뜻이에요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=1266s" target="_blank" rel="noopener">영상 21:06에서 보기</a>
+  </figcaption>
+</figure>
+<p>Claude 쪽에서는 이렇게 받아요. 아래 화면 위쪽 로그 끝에 'Batch run complete: 7/8 passed, 1 failed'가 찍혀 있어요. 그 아래 문단이 Claude의 판단이에요. 켜짐·꺼짐이 보이지 않는 aria-pressed 속성에만 있고 눈에 보이는 표시가 없어서, 테스트 에이전트가 상태를 모른 채 버튼을 거듭 눌렀다는 거예요. Claude는 이를 진짜 UX(User Experience) 문제로 보고 고치기로 해요.</p>
+<figure>
+  <img src="assets/frame-2146.webp" alt="Claude Code 화면. 8개 테스트 결과 로그(failed 1, passed 7)와 'Batch run complete: 7/8 passed', 그 아래 사운드 토글이 보이는 on/off 표시 없이 aria-pressed에만 상태가 있다는 설명">
+  <figcaption>
+    테스트를 맞추려고 고치는 게 아니라, 실제 사용자가 겪을 문제로 해석했어요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=1306s" target="_blank" rel="noopener">영상 21:46에서 보기</a>
+  </figcaption>
+</figure>
+<p>고친 내용은 네 가지예요. 재생 중일 때 보이는 호박색 막대, 'ON/OFF' 글자, '지금 재생 중' 표시, 더 분명한 접근성 이름이에요. 다시 돌린 테스트는 통과했어요. 아래 화면은 새로 생긴 TC-024 'the sound button toggles the soundtrack on and off'가 Pass로 끝난 모습이에요. 사이트에서도 버튼 모양이 바뀌어 상태가 한눈에 보여요.</p>
+<figure>
+  <img src="assets/frame-2206.webp" alt="TestSprite TC-024 'Hero — the sound button toggles the soundtrack on and off' 상세 화면, Pass 표시와 'Test successful. No errors detected.' 문구">
+  <figcaption>
+    실패 보고 → Claude 수정 → 재실행 통과까지가 한 바퀴예요.
+    <a href="https://www.youtube.com/watch?v=TnduiS4kyg8&amp;t=1326s" target="_blank" rel="noopener">영상 22:06에서 보기</a>
+  </figcaption>
+</figure>
+<p>이 흐름을 정리하면 아래처럼 돌아요. 사람이 끼어드는 자리는 에이전트가 못 고칠 때 수정용 프롬프트를 대신 보내는 것 하나뿐이에요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["Claude: 테스트 계획"] --> B["TestSprite CLI: 실제 사이트에서 실행"]
+  B --> C{"통과?"}
+  C -->|예| D["끝"]
+  C -->|아니오| E["실패 상세: 녹화·오류·원인"]
+  E --> F["Claude: 원인 분석·수정"]
+  F --> B
+  E -.->|에이전트가 못 고치면| G["사람: Fix Prompt 복사해 전달"]
+  G --> F
+</pre>
+  <figcaption>실패 상세가 그대로 Claude에게 돌아가는 게 이 워크플로의 핵심이에요.</figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>aria-pressed는 토글 버튼이 지금 눌린 상태인지 화면 읽기 프로그램 같은 보조 기술에 알려 주는 속성이에요. 그래서 이 값만 바꾸면 보조 기술은 상태를 알지만, 눈으로 보는 사용자에게는 아무것도 달라지지 않아요. Claude가 눈에 보이는 표시를 따로 더한 이유예요.</p>
+  <p class="cite">출처: <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-pressed" target="_blank" rel="noopener">MDN — aria-pressed</a></p>
+</aside>
+<p>TestSprite로는 프런트엔드, 백엔드, 또는 둘 다 테스트할 수 있어요. 설정이나 테스트 중에 막히면 TestSprite 에이전트에게 물어보면 돼요. 왼쪽 메뉴에는 이 밖에도 두 가지가 있어요. Sources는 사이트를 탐색하게 하거나 문서를 올려 제품 맥락을 주는 곳이라 더 알맞은 테스트를 만들게 해요. GitHub Action은 저장소를 연결해서 CI(Continuous Integration)가 돌 때 테스트도 함께 돌고, 결과를 코드 변경 옆에서 보게 해요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 영어 자막이라 도구 이름이 잘못 받아적힌 곳이 많아요. 화면에 보이는 표기를 기준으로 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>clawed code, Clawed</td><td>Claude Code, Claude</td><td></td></tr>
+      <tr><td>Higsfield</td><td>Higgsfield</td><td>이미지·영상 생성 플랫폼</td></tr>
+      <tr><td>Trippo, Trio</td><td>Tripo</td><td>이미지를 3D 모델로 바꾸는 도구</td></tr>
+      <tr><td>GB (file, format)</td><td>GLB</td><td>Tripo 내보내기 화면의 Format</td></tr>
+      <tr><td>AWords, awards</td><td>Awwwards</td><td>웹 디자인 사례 사이트</td></tr>
+      <tr><td>ape website</td><td>HAPE</td><td>Claude 응답에 &#x27;HAPE London&#x27;으로 나와요</td></tr>
+      <tr><td>Cance 2.5</td><td>Seedance 2.5</td><td>프롬프트 화면 표기</td></tr>
+      <tr><td>npm rundev</td><td>npm run dev</td><td></td></tr>
+      <tr><td>Test Sprite, Testrite, testite, Testbrite</td><td>TestSprite</td><td></td></tr>
+      <tr><td>Codeex</td><td>Codex</td><td></td></tr>
+      <tr><td>Arsenal, the addition section</td><td>Arsenal, Editions 섹션</td><td>테스트 목록 화면 표기</td></tr>
+      <tr><td>area pressed</td><td>aria-pressed</td><td></td></tr>
+      <tr><td>cited users</td><td>sighted users</td><td>눈으로 화면을 보는 사용자</td></tr>
+      <tr><td>SketchFab</td><td>Sketchfab</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-5"><dt>리깅<span class="en">Rigging</span></dt><dd>3D 모델 안에 뼈대를 심고 겉면이 뼈를 따라 움직이게 묶는 작업이에요. 뼈대가 없으면 걷기 같은 동작을 줄 수 없어요.</dd></div>
+    <div class="g" id="g-2"><dt>메시<span class="en">Mesh</span></dt><dd>3D 모델의 겉면을 이루는 작은 다각형들의 묶음이에요. Claude는 이 캐릭터가 메시 조각 34개로 나뉘어 있다고 읽었어요.</dd></div>
+    <div class="g" id="g-3"><dt>버텍스<span class="en">Vertex</span></dt><dd>메시를 이루는 다각형의 꼭짓점이에요. 개수가 많을수록 세밀하지만 무거워요. 이 모델은 약 110만 개예요.</dd></div>
+    <div class="g" id="g-10"><dt>엔드투엔드 테스트<span class="en">End-to-end test</span></dt><dd>실제 사용자처럼 브라우저에서 사이트를 열고 눌러 보며 기능 전체가 처음부터 끝까지 동작하는지 확인하는 테스트예요.</dd></div>
+    <div class="g" id="g-8"><dt>커스텀 커넥터<span class="en">Custom connector</span></dt><dd>Claude 앱에 원격 MCP 서버를 직접 추가하는 기능이에요. 이름과 서버 주소를 넣고 인증하면 그 서비스의 도구를 쓸 수 있어요.</dd></div>
+    <div class="g" id="g-4"><dt>토폴로지<span class="en">Topology</span></dt><dd>메시의 다각형이 어떤 모양과 흐름으로 이어져 있는지를 말해요. 깔끔할수록 움직이게 만들기 쉽고, Tripo의 Clean Topology가 이쪽을 우선하는 옵션이에요.</dd></div>
+    <div class="g" id="g-6"><dt>히어로 섹션<span class="en">Hero section</span></dt><dd>웹사이트에 들어가자마자 첫 화면을 채우는 큰 영역이에요. 이 영상에서는 걷는 3D 캐릭터와 큰 제목이 있는 곳이에요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g" id="g-11"><dt>aria-pressed<span class="en">aria-pressed</span></dt><dd>토글 버튼이 지금 눌린 상태인지 화면 읽기 프로그램 같은 보조 기술에 알려 주는 HTML 속성이에요. 눈에 보이는 모양은 바꾸지 않아요.</dd></div>
+    <div class="g"><dt>CI</dt><dd>Continuous Integration</dd></div>
+    <div class="g"><dt>CLI</dt><dd>Command-Line Interface</dd></div>
+    <div class="g" id="g-9"><dt>effort<span class="en">Effort level</span></dt><dd>Claude Code에서 모델이 단계마다 얼마나 깊이 생각할지 정하는 설정이에요. 높을수록 느리고 비싸지만 복잡한 작업을 더 잘 따져요.</dd></div>
+    <div class="g" id="g-1"><dt>GLB<span class="en">GLB (binary glTF)</span></dt><dd>3D 모델의 형태·텍스처·장면 구조를 파일 하나에 담는 형식이에요. 이 영상에서는 Claude가 이 파일 하나를 열어 보고 웹 장면에 넣어요.</dd></div>
+    <div class="g"><dt>GPT</dt><dd>Generative Pre-trained Transformer</dd></div>
+    <div class="g"><dt>IDE</dt><dd>Integrated Development Environment</dd></div>
+    <div class="g"><dt>JSON</dt><dd>JavaScript Object Notation</dd></div>
+    <div class="g"><dt>MCP</dt><dd>Model Context Protocol</dd></div>
+    <div class="g" id="g-7"><dt>MCP 서버<span class="en">MCP server</span></dt><dd>AI 도구에 외부 서비스의 기능을 연결해 주는 서버예요. Higgsfield MCP 서버를 붙이면 Claude가 대화 중에 이미지·영상·음악을 만들 수 있어요.</dd></div>
+    <div class="g"><dt>MP4</dt><dd>MPEG-4 Part 14</dd></div>
+    <div class="g"><dt>UI</dt><dd>User Interface</dd></div>
+    <div class="g"><dt>URL</dt><dd>Uniform Resource Locator</dd></div>
+    <div class="g"><dt>UX</dt><dd>User Experience</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=TnduiS4kyg8" target="_blank" rel="noopener">원본 영상 — MiladiCode</a></li>
+    <li id="src-2"><a href="https://www.khronos.org/gltf/" target="_blank" rel="noopener">Khronos Group — glTF Overview</a></li>
+    <li id="src-3"><a href="https://higgsfield.ai/mcp" target="_blank" rel="noopener">Higgsfield MCP</a></li>
+    <li id="src-4"><a href="https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp" target="_blank" rel="noopener">Claude 도움말 — Getting started with custom connectors using remote MCP</a></li>
+    <li id="src-5"><a href="https://code.claude.com/docs/en/model-config" target="_blank" rel="noopener">Claude Code 공식 문서 — Model configuration</a></li>
+    <li id="src-6"><a href="https://github.com/TestSprite/testsprite-cli" target="_blank" rel="noopener">TestSprite/testsprite-cli (GitHub)</a></li>
+    <li id="src-7"><a href="https://docs.testsprite.com" target="_blank" rel="noopener">TestSprite 공식 문서</a></li>
+    <li id="src-8"><a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-pressed" target="_blank" rel="noopener">MDN — aria-pressed</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 27일에 이 영상을 보고 정리했어요. 원본은 MiladiCode 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+
+// 전체 흐름: 위 줄 재료 준비, 아래 줄 Claude Code 작업
+(() => {
+  const g = document.getElementById('fig-flow');
+  if (!g) return;
+  const rows = [
+    { y: 20, label: '재료 준비', cls: 'c1', items: [['캐릭터 그림', 'Pinterest'], ['전신·투명 배경', 'Higgsfield'], ['GLB 모델', 'Tripo']] },
+    { y: 120, label: 'Claude Code', cls: 'c2', items: [['히어로 섹션', '녹화 영상 + 프롬프트'], ['섹션 추가', '나선 카드 갤러리'], ['테스트·수정', 'TestSprite CLI']] },
+  ];
+  rows.forEach((r) => {
+    g.append(el('text', { x: 10, y: r.y + 40, class: 'sub' }, r.label));
+    r.items.forEach(([name, sub], i) => {
+      const x = 110 + i * 180;
+      g.append(el('rect', { x, y: r.y, width: 150, height: 66, rx: 10, class: `${r.cls} cell` }));
+      g.append(el('text', { x: x + 75, y: r.y + 29, 'text-anchor': 'middle' }, name));
+      g.append(el('text', { x: x + 75, y: r.y + 50, 'text-anchor': 'middle', class: 'sub' }, sub));
+      if (i < r.items.length - 1)
+        g.append(el('path', { d: `M${x + 152} ${r.y + 33} h26`, class: 'line', 'marker-end': 'url(#arrow-flow)' }));
+    });
+  });
+  // 위 줄 끝(GLB) → 아래 줄 처음(히어로)
+  g.append(el('path', { d: 'M545 86 V100 H185 V118', class: 'line', fill: 'none', 'marker-end': 'url(#arrow-flow)' }));
+})();
+
+// 테스트 실행 세 번: 칸 하나 = 테스트 하나
+(() => {
+  const g = document.getElementById('fig-runs');
+  if (!g) return;
+  const runs = [
+    { label: '1차 · 10개', fixed: [3, 6] },
+    { label: '2차 · 5개', n: 5, fixed: [] },
+    { label: '3차 · 8개', n: 8, fixed: [0] },
+  ];
+  runs[0].n = 10;
+  runs.forEach((r, ri) => {
+    const y = 20 + ri * 52;
+    g.append(el('text', { x: 10, y: y + 24, class: 'sub' }, r.label));
+    for (let i = 0; i < r.n; i++) {
+      const x = 110 + i * 46;
+      const bad = r.fixed.includes(i);
+      g.append(el('rect', { x, y, width: 38, height: 34, rx: 6, class: bad ? 'bad' : 'ok' }));
+      if (bad) g.append(el('text', { x: x + 19, y: y + 22, 'text-anchor': 'middle', 'font-size': 11 }, '고침'));
+    }
+  });
+  const ly = 182;
+  g.append(el('rect', { x: 110, y: ly - 12, width: 14, height: 14, rx: 3, class: 'ok' }));
+  g.append(el('text', { x: 130, y: ly, class: 'sub' }, '처음부터 통과'));
+  g.append(el('rect', { x: 250, y: ly - 12, width: 14, height: 14, rx: 3, class: 'bad' }));
+  g.append(el('text', { x: 270, y: ly, class: 'sub' }, '처음엔 실패 → Claude가 고쳐 재실행 통과'));
+})();
+</script>
+</body>
+</html>

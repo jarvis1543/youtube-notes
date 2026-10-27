@@ -1,0 +1,925 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>세션, JWT, OAuth — 무엇을 언제 쓸까요</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>세션, JWT, OAuth — 무엇을 언제 쓸까요</h1>
+  <p class="lede">JWT부터 고르지 말고, 풀려는 문제부터 나눠 봐요</p>
+  <div class="meta">
+    <span>Time To Program</span><span class="dot">·</span>
+    <span>영상 23:00</span><span class="dot">·</span>
+    <span>읽는 데 약 20분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=KKlLRN58Dhw" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>세션과 JWT(JSON Web Token)는 '로그인한 상태'를 들고 있는 방법이고, OAuth는 다른 서비스 자원에 제한된 권한을 얻는 <span class="term" data-term="위임 인가" data-en="Delegated authorization" data-desc="사용자가 비밀번호를 넘기지 않고, 자기 자원 일부에 대한 권한만 다른 앱에 맡기는 방식이에요. OAuth가 푸는 문제가 이거예요." data-g="6">위임 인가</span> 틀이에요. 셋은 같은 문제의 답이 아니에요.</li>
+    <li>세션은 상태를 서버에 두고 브라우저는 ID(Identifier)만 쥐어요. 단순하고 강제 로그아웃이 쉬워서, 서버 렌더링 웹앱에는 지금도 좋은 기본값이에요.</li>
+    <li>서명된 JWT는 누구나 읽을 수 있고, 발급 뒤 즉시 폐기하기 어려워요. JWT는 토큰 형식이지 인증 시스템 전체가 아니에요.</li>
+    <li>구글 로그인처럼 '누구인지' 확인하려면 OAuth 액세스 토큰이 아니라 OpenID Connect의 <span class="term" data-term="ID 토큰" data-en="ID token" data-desc="OpenID Connect 로그인 결과로 받는, 사용자가 누구인지 담은 JWT예요. 요청한 클라이언트만을 위해 발급되므로 aud가 내 클라이언트 ID인지 확인해야 해요." data-g="9">ID 토큰</span>을 써요.</li>
+    <li>이 기술들은 섞어 쓸 수 있어요. OpenID Connect로 로그인하고, 내 앱에는 서버 세션을 두고, 외부 API(Application Programming Interface)에는 OAuth 토큰을 쓰는 식이에요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">세 기술은 서로 다른 문제를 풀어요</a></li>
+    <li><a href="#s2">세션은 어떻게 동작하나요</a></li>
+    <li><a href="#s3">JWT는 어떻게 동작하고, 무엇이 어렵나요</a></li>
+    <li><a href="#s4">OAuth 2.0과 OpenID Connect</a></li>
+    <li><a href="#s5">네 가지 질문으로 나란히 비교해요</a></li>
+    <li><a href="#s6">상황별로 고르는 네 가지 시나리오</a></li>
+    <li><a href="#s7">흔한 실수 다섯 가지와 최종 정리</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>세 기술은 서로 다른 문제를 풀어요</h2>
+<p>웹앱을 만들면 사용자를 어떻게 인증할지 정해야 해요. 검색하면 세션이 안전하다, JWT가 요즘 방식이다, 구글 로그인엔 OAuth다 하는 글이 쏟아지죠. 영상은 출발점부터 바로잡아요. 이 셋은 같은 문제를 두고 겨루는 답이 아니라, 인증과 인가라는 퍼즐의 서로 다른 조각을 푼다는 거예요.</p>
+<h3>인증과 인가부터 나눠요</h3>
+<p><b>인증</b>은 "당신은 누구인가?"에 답해요. 이메일과 비밀번호로 로그인할 때 앱이 신원을 확인하는 일이에요. <b>인가</b>는 "무엇을 해도 되는가?"에 답해요. 일반 사용자는 자기 프로필만 보고, 관리자는 모든 사용자를 관리하는 식이죠. 두 개념은 붙어 다니지만 서로 바꿔 쓸 수 없어요.</p>
+<p>이 구분 위에 세 기술을 올려 놓은 슬라이드예요. 왼쪽 'Authentication state' 칸에는 세션과 JWT가 함께 있고, 아래에 '인증된 상태를 유지하거나 표현한다'고 적혀 있어요. 오른쪽 'Authorization' 칸에는 OAuth 2.0이 앱에서 사용자 데이터로 가는 '제한된 접근'으로 그려져 있고, 맨 아래 '비밀번호 공유 없음'이 체크돼 있어요.</p>
+<figure>
+  <img src="assets/frame-0224.webp" alt="왼쪽에 인증 상태로 세션과 JWT, 오른쪽에 인가 프레임워크로 OAuth 2.0을 나눠 놓은 슬라이드">
+  <figcaption>세션과 JWT는 한 칸, OAuth는 다른 칸이에요. 처음부터 같은 줄에 놓고 비교하면 안 되는 이유예요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=144s" target="_blank" rel="noopener">영상 02:24에서 보기</a></figcaption>
+</figure>
+<p>구글 로그인에서 사용자의 신원을 전하는 건 OAuth 자체가 아니라 그 위에 얹은 OpenID Connect예요. 다음 슬라이드는 이 관계를 한 줄씩 정리해요. 세션·JWT는 인증 상태, OAuth 2.0은 위임 인가, OpenID Connect는 OAuth 위의 신원 계층이에요. 오른쪽 그림에서 파란 OpenID Connect 판이 보라색 OAuth 2.0 판 위에 쌓여 있는 게 그 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0238.webp" alt="Sessions·JWT는 authentication state, OAuth 2.0은 delegated authorization, OpenID Connect는 identity on top of OAuth라고 적은 목록과, OAuth 2.0 위에 OpenID Connect를 쌓은 그림">
+  <figcaption>영상 전체가 이 세 줄을 풀어 가는 구조예요. 헷갈릴 때 돌아올 기준점으로 삼으면 돼요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=158s" target="_blank" rel="noopener">영상 02:38에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=163s" target="_blank" rel="noopener">02:43</a>
+  <h2>세션은 어떻게 동작하나요</h2>
+<p>온라인 쇼핑몰에 로그인하는 장면으로 시작해요. 서버는 자격 증명을 확인하고 세션을 하나 만들어요. 세션 데이터는 데이터베이스나 Redis 같은 <span class="term" data-term="세션 스토어" data-en="Session store" data-desc="서버가 세션 데이터를 넣어 두는 저장소예요. 데이터베이스나 Redis를 많이 써요. 서버가 여러 대면 이걸 함께 바라봐야 어느 서버로 요청이 가도 로그인이 유지돼요." data-g="1">세션 스토어</span>에 저장하고, 브라우저에는 세션 ID만 쿠키로 내려보내요. 다음 페이지를 열면 브라우저가 이 쿠키를 자동으로 보내고, 서버는 ID로 세션을 찾아 누가 로그인했는지 알아내요.</p>
+<p>영상은 이를 네 단계로 정리해요. 왼쪽 목록의 1~4번이 순서이고, 오른쪽 그림에서 브라우저와 서버 사이를 오가는 건 <code>abc123xyz</code>라는 ID 하나뿐이에요. 실제 데이터(사용자 alex, 장바구니 3개)는 세션 스토어 쪽 카드에만 있어요.</p>
+<figure>
+  <img src="assets/frame-0350.webp" alt="세션 동작 네 단계 목록(자격 증명 제출, 세션 생성, 쿠키로 세션 ID 전송, 요청마다 쿠키 전송)과 브라우저·서버·세션 스토어 그림">
+  <figcaption>4번째 단계가 핵심이에요. 이후 모든 요청에 쿠키가 따라가고, 서버가 그때마다 세션을 찾아요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=230s" target="_blank" rel="noopener">영상 03:50에서 보기</a></figcaption>
+</figure>
+<p>다음 슬라이드는 이 구조를 한 문장으로 요약해요. 왼쪽 브라우저 카드에는 <code>session_id=abc123xyz</code> 한 줄과 'just the ID'라는 손글씨 메모만 있고, 오른쪽 서버 카드에 사용자 이름·이메일·장바구니가 모두 들어 있어요.</p>
+<figure>
+  <img src="assets/frame-0400.webp" alt="브라우저는 세션 ID만, 서버는 사용자·이메일·장바구니 등 세션 데이터를 갖고 있다는 비교 슬라이드">
+  <figcaption>데이터가 서버에 있으니 서버가 마음대로 지울 수 있어요. 세션의 장점이 대부분 여기서 나와요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=240s" target="_blank" rel="noopener">영상 04:00에서 보기</a></figcaption>
+</figure>
+<h3>무엇이 좋고, 무엇을 조심하나요</h3>
+<p>좋은 점은 세 가지예요. 첫째, 단순해요. 서버가 세션과 사용자를 묶어 두고 요청마다 확인하면 돼요. 둘째, 폐기가 쉬워요. 노트북을 잃어버린 사용자가 원격 로그아웃을 원하면 서버에서 그 세션을 무효화하면 되고, 그 ID로 오는 요청은 곧바로 거절돼요. 셋째, 서버가 화면을 그려 내려주는 전통적인 웹앱과 잘 맞아서 복잡한 토큰 관리 체계가 필요 없어요.</p>
+<p>약점은 서버가 세션 스토어에 접근해야 한다는 점이에요. 서버가 여러 대라면 세션을 공유할 방법이 필요하고, 그만큼 인프라와 운영 부담이 생겨요. 다만 영상은 이게 큰 약점은 아니라고 덧붙여요. 공유 세션 스토어는 이미 잘 알려지고 널리 쓰이는 해법이니까요.</p>
+<p>보안 쪽 위험은 쿠키 탈취예요. 그림 왼쪽 위 Alex의 브라우저가 가진 세션 쿠키가 화살표를 따라 아래 공격자에게 넘어가고(stolen), 공격자가 그 쿠키를 서버로 보내자 서버 위에 'Signed in as alex'가 떠요. 서버는 쿠키만 보고 사람을 구분하니까요.</p>
+<figure>
+  <img src="assets/frame-0513.webp" alt="Alex의 브라우저에서 세션 쿠키를 훔친 공격자가 서버에 접속해 alex로 로그인된 상태가 되는 그림">
+  <figcaption>세션 ID가 곧 신분증이에요. 그래서 쿠키를 어떻게 지키느냐가 세션 보안의 대부분이에요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=313s" target="_blank" rel="noopener">영상 05:13에서 보기</a></figcaption>
+</figure>
+<p>그래서 HTTPS(Hypertext Transfer Protocol Secure), 세션 교체, CSRF(Cross-Site Request Forgery) 방어가 중요하다고 해요. 운영 환경의 세션 쿠키 예시로 영상은 아래 응답 헤더를 보여 줘요. 노란색으로 강조한 <code>HttpOnly</code>, 그리고 <code>Secure</code>, <code>SameSite=Lax</code>가 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-0528.webp" alt="Set-Cookie: session_id=abc123xyz; HttpOnly; Secure; SameSite=Lax 라고 적힌 HTTP 응답 헤더 슬라이드">
+  <figcaption>세 속성이 함께 붙은 게 영상이 말하는 '운영용 세션 쿠키'의 기본형이에요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=328s" target="_blank" rel="noopener">영상 05:28에서 보기</a></figcaption>
+</figure>
+<p>영상은 이 구간을 "세션은 낡은 방식이 아니다"라는 말로 닫아요. 여전히 많은 앱에 훌륭한 선택이라는 거예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>세 쿠키 속성이 각각 무엇을 막는지는 모질라의 웹 개발 문서에 정리돼 있어요. <code>HttpOnly</code>는 자바스크립트가 <code>document.cookie</code>로 쿠키를 읽지 못하게 해서 XSS(Cross-Site Scripting)로 세션 ID가 새는 길을 막아요. <code>Secure</code>는 HTTPS 요청에만 쿠키를 실어요. <code>SameSite</code>는 다른 사이트에서 시작된 요청에 쿠키를 붙일지 정해서 CSRF 위험을 줄여요.</p>
+  <p>영상이 말한 '세션 교체'는 OWASP(Open Worldwide Application Security Project) 세션 관리 가이드가 권하는 것처럼, 로그인이나 권한 변경 같은 시점에 세션 ID를 새로 발급하는 걸 뜻해요. 로그인 전에 심어 둔 ID를 그대로 쓰게 하는 세션 고정 공격을 막아 줘요.</p>
+  <p class="cite">출처: <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie" target="_blank" rel="noopener">MDN — Set-Cookie</a> · <a href="https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html" target="_blank" rel="noopener">OWASP Session Management Cheat Sheet</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=342s" target="_blank" rel="noopener">05:42</a>
+  <h2>JWT는 어떻게 동작하고, 무엇이 어렵나요</h2>
+<p>JWT는 세션 ID와 달리 사용자나 토큰 자체에 대한 <b><span class="term" data-term="클레임" data-en="Claim" data-desc="토큰 안에 담긴 &#x27;이 사용자는 누구, 언제 만료, 어떤 권한&#x27; 같은 주장 하나하나예요. sub, iss, aud, exp처럼 이름이 정해진 표준 클레임이 있어요." data-g="2">클레임</span></b>을 안에 담을 수 있어요. 헤더, 페이로드, 서명 세 부분을 각각 인코딩해서 점(.)으로 이어 붙인 모양이에요.</p>
+<p>슬라이드의 세 칸이 각 부분이에요. 왼쪽 헤더에는 <code>"alg": "HS256"</code>, <code>"typ": "JWT"</code>가 있어서 서명 알고리즘과 토큰 종류를 알려 줘요. 가운데 페이로드에는 사용자 ID(<code>sub</code>), 발급자(<code>iss</code>), 만료 시각(<code>exp</code>), 권한(<code>role</code>) 같은 클레임이 들어 있어요. 오른쪽 서명은 헤더와 페이로드를 비밀 키로 계산한 값이고, 받는 쪽이 이걸로 내용이 바뀌지 않았는지, 믿을 만한 곳이 서명했는지 확인해요.</p>
+<figure>
+  <img src="assets/frame-0628.webp" alt="JWT의 헤더(alg HS256, typ JWT), 페이로드(sub, iss, exp, role 클레임), 서명(HMACSHA256 계산식) 세 부분을 나란히 보여 주는 슬라이드">
+  <figcaption>서명은 '바뀌지 않았다'를 보증할 뿐 '숨겼다'를 보증하지 않아요. 바로 아래 문단의 요점이에요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=388s" target="_blank" rel="noopener">영상 06:28에서 보기</a></figcaption>
+</figure>
+<p>여기서 영상이 짚는 중요한 사실이 있어요. 보통의 서명된 JWT는 <b>암호화되지 않아요</b>. 토큰을 손에 넣은 사람은 누구나 헤더와 페이로드를 디코딩해서 읽을 수 있어요. 그러니 비밀번호, 비밀 API 키, 민감한 개인정보를 페이로드에 넣으면 안 돼요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>JWT 표준(RFC(Request for Comments) 7519)은 클레임을 서명하는 JWS(JSON Web Signature) 구조와 암호화하는 JWE(JSON Web Encryption) 구조를 모두 정의해요. 영상이 말한 '보통의 서명된 JWT'는 JWS 쪽이고, 내용을 숨겨야 한다면 JWE(RFC 7516)를 써야 해요. 실수 2번에서 영상이 말한 '적절한 암호화 장치'가 이걸 가리켜요.</p>
+  <p class="cite">출처: <a href="https://www.rfc-editor.org/rfc/rfc7519" target="_blank" rel="noopener">RFC 7519 — JSON Web Token</a> · <a href="https://www.rfc-editor.org/rfc/rfc7516" target="_blank" rel="noopener">RFC 7516 — JSON Web Encryption</a></p>
+</aside>
+<h3>모바일 앱에서 JWT가 오가는 흐름</h3>
+<p>예시는 백엔드 API와 통신하는 모바일 앱이에요. 사용자가 로그인하면 서버가 자격 증명을 확인하고 액세스 토큰(예컨대 JWT)을 발급해요. 앱은 플랫폼의 보안 기능에 맞춰 토큰을 저장해요. API를 부를 때는 노란 줄처럼 <code>Authorization: Bearer &lt;access_token&gt;</code> 헤더에 실어 보내요. 화면 아래 다섯 단계(Log in → Token issued → Stored securely → Sent as Bearer → Validated) 중 네 번째에 와 있는 장면이에요.</p>
+<figure>
+  <img src="assets/frame-0722.webp" alt="모바일 앱이 GET /api/profile 요청에 Authorization: Bearer access_token 헤더를 붙여 백엔드 API로 보내는 그림과 다섯 단계 진행 표시">
+  <figcaption>마지막 Validated 단계에서 API는 서명, 발급자, 대상, 만료 시각을 확인하고 사용자의 권한 안에서 요청을 받아들여요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=442s" target="_blank" rel="noopener">영상 07:22에서 보기</a></figcaption>
+</figure>
+<h3>JWT가 공짜로 빨라지는 건 아니에요</h3>
+<p>개발자들이 JWT를 고르는 이유는 요청마다 세션 기록을 조회하지 않고도 토큰을 검증할 수 있어서예요. 여러 서비스가 토큰을 확인해야 하는 분산 시스템에서 쓸모가 있고, 표준 클레임을 담은 '들고 다닐 수 있는 서명된 신원 정보'로도 쓸 만해요.</p>
+<p>하지만 영상은 JWT가 앱을 자동으로 빠르게, 확장성 있게 만든다는 결론으로 뛰지 말라고 해요. 토큰 검증, 키 관리, 폐기 요구, 권한 확인에는 여전히 비용이 들어요. 특히 즉시 폐기가 필요하면 슬라이드 가운데처럼 서버 쪽에 거부 목록(Denylist), 토큰 버전, 혹은 다른 서버 측 장치를 두게 돼요. 그러면 오른쪽 막대처럼 무상태(Stateless)의 장점 일부가 사라져요.</p>
+<figure>
+  <img src="assets/frame-0825.webp" alt="즉시 폐기를 위해 서버 쪽에 Denylist, Token version 같은 장치를 두면 무상태의 장점이 일부 사라진다는 슬라이드">
+  <figcaption>'세션 조회를 없앤다'는 장점이 즉시 폐기 요구 앞에서는 도로 서버 조회로 돌아와요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=505s" target="_blank" rel="noopener">영상 08:25에서 보기</a></figcaption>
+</figure>
+<h3>가장 큰 약점: 폐기와 저장</h3>
+<p>1시간짜리 JWT를 예로 든 타임라인이에요. 맨 위 Token 막대는 0분부터 1시간까지 이어져요. 15분쯤 사용자가 로그아웃하자 가운데 User's device 줄에서 토큰이 지워져요(Deleted from the app). 그런데 맨 아래 Stolen copy 줄은 그 뒤로도 끊기지 않아요. 별도의 폐기 장치가 없으면 훔친 사본은 만료될 때까지 쓸 수 있다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0900.webp" alt="1시간 유효한 JWT 타임라인. 15분에 사용자가 로그아웃해 기기에서 토큰을 지웠지만 훔친 사본 줄은 계속 이어지는 그림">
+  <figcaption>로그아웃은 내 기기의 사본만 지워요. 그래서 액세스 토큰은 짧게 두고 리프레시 토큰을 함께 쓰는 거예요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=540s" target="_blank" rel="noopener">영상 09:00에서 보기</a></figcaption>
+</figure>
+<p>그래서 액세스 토큰은 수명을 짧게 하고, 필요한 곳에 <span class="term" data-term="리프레시 토큰" data-en="Refresh token" data-desc="짧게 사는 액세스 토큰이 만료되면 새 액세스 토큰을 받아 오는 데 쓰는 오래가는 토큰이에요. 오래가는 만큼 안전한 저장과 교체가 중요해요." data-g="3">리프레시 토큰</span>을 써요. 리프레시 토큰은 그것대로 안전한 저장, 교체(rotation), 지원되는 곳에서는 재사용 감지 같은 보안 장치가 필요해요.</p>
+<p>두 번째 과제는 저장 위치예요. 왼쪽 카드는 <code>localStorage.setItem("token", jwt)</code>로 브라우저 로컬 스토리지에 둔 경우예요. 페이지의 자바스크립트가 읽을 수 있으니 아래 경고처럼 XSS 하나로 토큰이 새어 나갈 수 있어요. 오른쪽 카드는 서버가 <code>HttpOnly; Secure; SameSite=Lax</code> 쿠키로 내려준 경우예요. 손글씨처럼 '위협 모델이 달라질 뿐 위험이 없는 건 아니에요'. 쿠키는 요청에 자동으로 실리니 설정과 설계에 따라 CSRF 방어가 필요할 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0950.webp" alt="로컬 스토리지(자바스크립트가 읽을 수 있어 XSS에 노출)와 쿠키(자동 전송되어 CSRF 방어 필요)를 비교한 슬라이드">
+  <figcaption>어디에 두든 막아야 할 공격이 하나씩 남아요. 왼쪽은 XSS, 오른쪽은 CSRF예요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=590s" target="_blank" rel="noopener">영상 09:50에서 보기</a></figcaption>
+</figure>
+<p>영상은 이 구간을 이렇게 정리해요.</p>
+<blockquote>
+  <p>JWT is a token format, not a complete authentication system.</p>
+  <p>JWT는 토큰 형식이지, 완전한 인증 시스템이 아니에요.</p>
+  <cite>— 영상 09:42</cite>
+</blockquote>
+<p>로그인, 로그아웃, 갱신, 계정 복구, 인가는 JWT를 쓴다고 저절로 해결되지 않아요.</p>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=607s" target="_blank" rel="noopener">10:07</a>
+  <h2>OAuth 2.0과 OpenID Connect</h2>
+<p>OAuth 2.0은 '구글로 계속하기' 버튼 때문에 로그인 기술로 오해받곤 해요. 영상은 OAuth가 본래 <b>인가 프레임워크</b>라고 다시 짚어요. 관련된 사용자나 자원 소유자의 승인을 받아, 앱이 보호된 자원에 <b>제한된</b> 접근권을 얻게 해 주는 틀이에요.</p>
+<h3>캘린더 앱 예시</h3>
+<p>사용자의 구글 캘린더를 읽어야 하는 캘린더 앱을 만든다고 해 봐요. 사용자에게 구글 비밀번호를 달라고 할 수는 없고, 그걸 내 데이터베이스에 저장해서는 더더욱 안 되죠. 그래서 그림 왼쪽 목록의 네 단계를 밟아요.</p>
+<ol class="steps">
+  <li><b>앱이 사용자를 구글 <span class="term" data-term="인가 서버" data-en="Authorization server" data-desc="사용자 승인을 받아 액세스 토큰을 발급하는 서버예요. 구글 로그인에서는 구글의 계정 서버가 이 역할을 해요." data-g="7">인가 서버</span>로 보내요</b> — 그림의 ① 화살표예요.</li>
+  <li><b>사용자가 구글에 로그인하고 요청한 권한을 확인해요</b></li>
+  <li><b>사용자가 승인하면 구글이 액세스 토큰을 발급해요</b> — ③ 화살표 옆의 <code>scope: calendar.readonly</code>가 승인된 범위예요.</li>
+  <li><b>앱이 그 토큰으로 캘린더 API를 불러요</b> — ④ 화살표가 Calendar API로 가서 calendar events를 받아 와요.</li>
+</ol>
+<figure>
+  <img src="assets/frame-1105.webp" alt="OAuth 네 단계 목록과, 사용자·구글 인가 서버·내 앱·Calendar API 사이를 1~4번 화살표로 잇고 scope calendar.readonly가 표시된 흐름 그림">
+  <figcaption>앱이 받은 건 비밀번호가 아니라 '캘린더 읽기만' 허락된 토큰이에요. OAuth가 풀려는 문제가 바로 이거예요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=665s" target="_blank" rel="noopener">영상 11:05에서 보기</a></figcaption>
+</figure>
+<h3>구글 로그인은 OpenID Connect의 몫이에요</h3>
+<p>그럼 '구글로 로그인'은 어디에 들어갈까요. 여기서 OpenID Connect, 줄여서 OIDC(OpenID Connect)가 나와요. OIDC는 OAuth 2.0 위에 신원 계층을 더해서, 클라이언트가 인증을 요청하고 로그인한 사용자 정보를 받는 방법을 정해요. 흔한 흐름에서는 그 정보가 ID 토큰에 담겨 와요. 그래서 구글 로그인을 구현할 때는 OAuth만으로 로그인을 완성하려 하지 말고 OIDC를 쓰라고 해요.</p>
+<p>슬라이드는 두 토큰을 나란히 놓아요. 왼쪽 OAuth 액세스 토큰은 <code>Authorization: Bearer</code>로 API에 보내는 용도이고, 아래 검은 표시처럼 '신원 증명이 아니에요'. 오른쪽 OIDC ID 토큰은 인증 클레임을 담고 있고, 노란 줄의 <code>"aud": "your-client-id"</code> 옆에 'issued for this client'라는 메모가 붙어 있어요. 특정 클라이언트를 위해 발급된 토큰이라는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-1202.webp" alt="OAuth 액세스 토큰(보호된 자원 접근용, 신원 증명 아님)과 OpenID Connect ID 토큰(iss, aud, sub, email 클레임)을 비교한 슬라이드">
+  <figcaption>두 토큰은 생김새가 비슷해도 용도가 달라요. 액세스 토큰은 API에, ID 토큰은 그걸 요청한 클라이언트에게 가요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=722s" target="_blank" rel="noopener">영상 12:02에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>OpenID Connect Core 명세는 ID 토큰의 <code>aud</code>(대상) 클레임에 그 토큰을 요청한 OAuth 2.0 <code>client_id</code>가 반드시 들어가야 한다고 정해요. 그래서 받은 쪽은 <code>aud</code>가 자기 클라이언트 ID인지 확인해야 하고, 다른 앱을 위해 발급된 ID 토큰은 거절해야 해요. 영상이 시나리오 4에서 '대상(audience)을 검증하라'고 한 게 이 부분이에요.</p>
+  <p class="cite">출처: <a href="https://openid.net/specs/openid-connect-core-1_0.html" target="_blank" rel="noopener">OpenID Connect Core 1.0</a></p>
+</aside>
+<h3>인가 코드 흐름과 PKCE</h3>
+<p>현대 웹·모바일·네이티브 앱에서는 <span class="term" data-term="인가 코드 흐름" data-en="Authorization code flow" data-desc="인가 서버가 먼저 짧게 쓰는 코드를 주고, 앱이 그 코드를 토큰으로 바꾸는 OAuth 흐름이에요. 토큰이 주소창에 드러나지 않아 지금의 표준 방식이에요." data-g="10">인가 코드 흐름</span>이 OAuth의 중심이에요. 슬라이드 왼쪽에 적힌 브라우저 기반 앱과 네이티브 모바일 앱 같은 <span class="term" data-term="공개 클라이언트" data-en="Public client" data-desc="브라우저 앱이나 모바일 앱처럼 비밀 값을 숨길 수 없는 클라이언트예요. 코드가 사용자 기기에 있어서 안에 넣은 시크릿은 꺼내 볼 수 있어요." data-g="11">공개 클라이언트</span>는 화살표 끝의 PKCE(Proof Key for Code Exchange)를 써야 해요. PKCE는 누군가 인가 코드를 가로채더라도 그 코드를 토큰으로 바꾸지 못하게 막아 줘요.</p>
+<figure>
+  <img src="assets/frame-1225.webp" alt="공개 클라이언트(브라우저 기반 앱, 네이티브 모바일 앱)는 PKCE(Proof Key for Code Exchange)를 써야 한다는 슬라이드">
+  <figcaption>공개 클라이언트는 비밀 값을 숨길 곳이 없어서, 요청마다 새로 만든 증명 값으로 코드를 지켜요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=745s" target="_blank" rel="noopener">영상 12:25에서 보기</a></figcaption>
+</figure>
+<p>반대로 서버처럼 클라이언트 시크릿을 안전하게 보관할 수 있는 앱은 <span class="term" data-term="기밀 클라이언트" data-en="Confidential client" data-desc="서버처럼 클라이언트 시크릿을 안전하게 보관할 수 있는 클라이언트예요. 토큰을 받을 때 시크릿으로 자신을 증명해요." data-g="12">기밀 클라이언트</span>로 설정하고 서버 쪽에서 안전하게 처리해야 해요. 어느 쪽이든 HTTPS, 제대로 등록한 리디렉트 URI(Uniform Resource Identifier), 프로토콜 파라미터 검증은 기본이에요. 영상은 OAuth와 OIDC가 강력하지만, 보안은 결국 프로토콜을 올바르게 구현하느냐에 달려 있다고 정리해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>2025년 1월에 나온 OAuth 2.0 보안 모범 사례(RFC 9700)는 공개 클라이언트가 PKCE를 반드시(<code>MUST</code>) 쓰도록 하고, 기밀 클라이언트에도 PKCE를 권장(RECOMMENDED)해요. 같은 문서는 토큰을 주소창으로 바로 돌려주던 암묵적 흐름(implicit grant)을 쓰지 않도록(<code>SHOULD NOT</code>) 해요. 영상이 인가 코드 흐름을 '중심'이라고 부른 배경이에요.</p>
+  <p class="cite">출처: <a href="https://www.rfc-editor.org/rfc/rfc9700" target="_blank" rel="noopener">RFC 9700 — Best Current Practice for OAuth 2.0 Security</a> · <a href="https://www.rfc-editor.org/rfc/rfc7636" target="_blank" rel="noopener">RFC 7636 — PKCE</a></p>
+</aside>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=779s" target="_blank" rel="noopener">12:59</a>
+  <h2>네 가지 질문으로 나란히 비교해요</h2>
+<p>이제 세 방식을 개발자들이 흔히 묻는 네 가지 질문으로 나란히 놓아요. 슬라이드마다 세션·JWT·OAuth 세 칸이 차례로 채워져요.</p>
+<h3>1. 인증 상태는 어디에 있나요</h3>
+<p>왼쪽 세션 칸은 상태가 서버에 있고 브라우저는 세션 ID만 들고 있어요. 가운데 JWT 칸은 클라이언트가 토큰을 들고, <span class="term" data-term="자원 서버" data-en="Resource server" data-desc="보호된 데이터를 가진 API 서버예요. 액세스 토큰을 받아 검증한 뒤에만 데이터를 내줘요. 캘린더 예시에서는 구글 Calendar API예요." data-g="8">자원 서버</span>가 서명된 클레임을 검증해요. 노란 강조처럼 요청마다 세션을 조회하지 않아요. 오른쪽 OAuth 칸은 인가 서버가 토큰을 발급하고, 클라이언트가 흐름과 토큰 종류에 맞게 써요.</p>
+<figure>
+  <img src="assets/frame-1331.webp" alt="질문 1 '인증 상태는 어디에 저장되나'에 대해 세션, JWT, OAuth 세 칸을 채운 비교 슬라이드">
+  <figcaption>OAuth가 발급하는 토큰은 JWT일 수도, 속을 알 수 없는 불투명 문자열일 수도 있어요. OAuth가 곧 JWT는 아니에요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=811s" target="_blank" rel="noopener">영상 13:31에서 보기</a></figcaption>
+</figure>
+<h3>2. 로그아웃과 폐기는 쉬운가요</h3>
+<p>세션은 서버 측 무효화로 간단히 끝나요(초록 Straightforward). 자체 완결형 JWT 액세스 토큰은 즉시 폐기에 별도 장치가 필요해요. 짧은 만료는 '쓸 수 있는 구간'을 줄일 뿐, 손글씨처럼 즉시 폐기되는 건 아니에요. OAuth는 토큰 종류, 제공자, 시스템 설계에 따라 달라요. 리프레시 토큰은 대개 폐기할 수 있지만, 이미 발급된 액세스 토큰은 자원 서버가 추가 확인을 하지 않는 한 만료까지 살아 있을 수 있어요.</p>
+<figure>
+  <img src="assets/frame-1416.webp" alt="질문 2 '로그아웃과 폐기는 얼마나 쉬운가'에 대해 세션은 서버 측 무효화, JWT는 즉시 폐기에 추가 장치 필요, OAuth는 토큰 종류·제공자·설계에 따라 다르다는 비교 슬라이드">
+  <figcaption>폐기 문제는 JWT만의 것이 아니에요. OAuth 액세스 토큰도 같은 성질을 가질 수 있어요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=856s" target="_blank" rel="noopener">영상 14:16에서 보기</a></figcaption>
+</figure>
+<h3>3. 어떻게 확장하나요</h3>
+<p>세션은 App 1~3이 공유 세션 스토어 하나를 바라보는 식으로 여러 인스턴스에 퍼질 수 있어요. JWT는 가운데 그림처럼 신뢰하는 발급자(Trusted issuer) 하나의 키로 여러 API가 각자 검증하기 편해요. OAuth는 클라이언트, 인가 서버, 자원 서버 사이의 위임 인가를 위한 것이고, 맨 아래 빨간 표시처럼 세션이나 JWT를 대체하는 게 아니에요.</p>
+<figure>
+  <img src="assets/frame-1450.webp" alt="질문 3 '어떻게 확장하나'에 대해 세션은 공유 세션 스토어, JWT는 신뢰 발급자 기반 분산 검증, OAuth는 위임 인가용이며 세션·JWT의 대체품이 아니라는 비교 슬라이드">
+  <figcaption>세 번째 칸만 성격이 달라요. 확장 방식이 아니라 참여자 셋의 역할을 나누는 틀이에요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=890s" target="_blank" rel="noopener">영상 14:50에서 보기</a></figcaption>
+</figure>
+<h3>4. 언제 무엇을 쓰나요</h3>
+<p>마지막 질문에서 OpenID Connect가 네 번째 칸으로 추가돼요. 영상이 각 칸에 적은 기준을 표로 옮기면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>방식</th><th>이럴 때 써요</th><th>감당해야 할 것</th></tr></thead>
+    <tbody>
+      <tr><td>세션</td><td>전통적인 웹앱, 단순하고 중앙에서 관리하는 로그인 상태</td><td>세션 스토어, 쿠키 보안</td></tr>
+      <tr><td>JWT 액세스 토큰</td><td>여러 서비스가 검증하는 휴대용 토큰이 이득인 구조</td><td>만료, 키, 폐기 관리</td></tr>
+      <tr><td>OAuth</td><td>한 앱이 다른 서비스의 보호된 자원에 접근해야 할 때</td><td>흐름 구현, 토큰 범위</td></tr>
+      <tr><td>OpenID Connect</td><td>구글·마이크로소프트 같은 신원 공급자로 표준 로그인을 할 때</td><td>ID 토큰 검증</td></tr>
+    </tbody>
+  </table>
+</div>
+<figure>
+  <img src="assets/frame-1520.webp" alt="질문 4 '언제 무엇을 쓰나'에 대해 Sessions, JWT access tokens, OAuth, OpenID Connect 네 칸을 나란히 놓은 슬라이드">
+  <figcaption>JWT 칸 아래에 expiry, keys, revocation 세 꼬리표가 붙어 있어요. JWT를 고르면 이 셋을 직접 관리하겠다는 뜻이에요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=920s" target="_blank" rel="noopener">영상 15:20에서 보기</a></figcaption>
+</figure>
+<p>영상이 이 비교에서 가장 중요하다고 꼽은 건 이거예요. 세션과 JWT는 인증 상태를 관리하는 서로 다른 방법이고, OAuth는 위임 인가라는 다른 문제를 풀고, OIDC는 그 위에 표준 인증을 더해요. 그리고 이들은 함께 쓸 수 있어요. 아래 그림처럼 ① 신원 공급자에서 OpenID Connect로 로그인시키고, ② 내 서버가 그 사용자를 위한 자체 세션을 만드는 식이에요.</p>
+<figure>
+  <img src="assets/frame-1558.webp" alt="신원 공급자가 ID 토큰을 내 서버로 넘기고, 1단계 OpenID Connect 로그인, 2단계 자체 세션 생성으로 이어지는 그림">
+  <figcaption>신원 확인은 외부에 맡기고, 로그인 상태는 내 서버가 들고 있어요. 이 조합이 뒤의 시나리오 4로 이어져요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=958s" target="_blank" rel="noopener">영상 15:58에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=964s" target="_blank" rel="noopener">16:04</a>
+  <h2>상황별로 고르는 네 가지 시나리오</h2>
+<p>비교를 실제 결정으로 옮기려고 영상은 흔한 상황 네 가지를 차례로 짚어요.</p>
+<h3>시나리오 1. 전통적인 웹앱</h3>
+<p>대시보드, 쇼핑몰, 백엔드가 화면을 그려 주는 SaaS처럼 사용자가 내 웹사이트로 로그인해 내 서버와만 주고받는 경우예요. 왼쪽 추천 카드대로 서버 세션과 보안 쿠키로 시작해요. 오른쪽 'Why?'의 세 이유는 이해하기 쉽고, 폐기가 간단하고, 브라우저 앱에 잘 맞는다는 거예요. 아래 JWT 칸에는 'because it's popular'에 줄을 긋고 'not a reason'이라고 적었어요. 유행한다는 건 JWT를 고를 이유가 아니라는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-1643.webp" alt="전통적인 웹앱에는 서버 세션과 보안 쿠키를 추천하고, 이해하기 쉬움·폐기 간단·브라우저 앱에 적합이라는 세 이유를 적은 슬라이드">
+  <figcaption>영상은 많은 일반 웹앱에서 이것이 '훌륭한 기본값'이라고 말해요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=1003s" target="_blank" rel="noopener">영상 16:43에서 보기</a></figcaption>
+</figure>
+<p>대신 챙길 것이 있어요. HTTPS를 쓰고, 쿠키 보안 속성을 설정하고, 로그인이나 권한 변경 뒤에는 세션 ID를 새로 발급하고, CSRF 방어를 갖추고, 로그아웃할 때 세션을 제대로 무효화해요.</p>
+<h3>시나리오 2. API를 부르는 모바일 앱</h3>
+<p>안드로이드나 iOS 앱이 백엔드 API와 통신하는 경우예요. 짧은 액세스 토큰과 리프레시 토큰을 쓸 수 있어요. JWT는 액세스 토큰 형식 중 하나일 뿐 필수가 아니에요. API가 토큰을 중앙에서 확인하고 통제해야 한다면 <span class="term" data-term="불투명 토큰" data-en="Opaque token" data-desc="안에 읽을 수 있는 정보가 없는 무작위 문자열 토큰이에요. 받은 쪽은 발급한 서버에 물어봐야 유효한지 알 수 있지만, 그만큼 중앙에서 바로 막기 쉬워요." data-g="5">불투명 토큰</span>도 잘 맞아요.</p>
+<p>어떤 인증 흐름을 쓸지는 그림처럼 갈래가 둘이에요. 위쪽은 앱이 <b>내 백엔드</b>로 직접 인증하는 경우로, 내 서비스에 맞는 자체 인증 흐름을 설계하면 돼요. 아래쪽은 앱이 구글, 마이크로소프트 같은 <b>외부 제공자</b>의 자원이 필요한 경우로, 그 제공자가 지원하는 OAuth나 OpenID Connect 흐름을 써요.</p>
+<figure>
+  <img src="assets/frame-1746.webp" alt="모바일 앱이 내 백엔드로 인증하면 자체 인증 흐름, 구글·마이크로소프트 같은 외부 제공자에 접근하면 그쪽 흐름으로 갈라지는 그림">
+  <figcaption>어느 갈래든 오래가는 자격 증명은 OS(Operating System)의 보안 저장소에 두고, 기밀 클라이언트 시크릿은 앱에 넣지 않아요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=1066s" target="_blank" rel="noopener">영상 17:46에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상이 말한 '중앙에서 토큰을 확인하는' 방식은 OAuth 토큰 검사(RFC 7662)로 표준화돼 있어요. 자원 서버가 인가 서버에 토큰을 보내 지금 유효한지(active), 만료나 폐기되지는 않았는지 물어보는 방식이에요. 불투명 토큰은 안을 들여다볼 수 없으니 보통 이렇게 확인해요.</p>
+  <p>모바일 앱에 시크릿을 넣지 말라는 조언은 네이티브 앱용 OAuth 모범 사례(RFC 8252)와 같아요. 이 문서는 동적 등록 같은 장치로 설치마다 시크릿을 따로 받는 경우가 아니면 네이티브 앱을 공개 클라이언트로 분류해요. 앱 안의 값은 꺼내 볼 수 있으니 비밀로 볼 수 없다는 거예요.</p>
+  <p class="cite">출처: <a href="https://www.rfc-editor.org/rfc/rfc7662" target="_blank" rel="noopener">RFC 7662 — OAuth 2.0 Token Introspection</a> · <a href="https://www.rfc-editor.org/rfc/rfc8252" target="_blank" rel="noopener">RFC 8252 — OAuth 2.0 for Native Apps</a></p>
+</aside>
+<h3>시나리오 3. 여러 백엔드 서비스</h3>
+<p>API 게이트웨이 뒤에 주문, 결제, 리포팅 서비스가 있고, 각 서비스가 요청이 허락된 사용자나 클라이언트에게서 왔는지 확인해야 하는 구조예요. 여기서는 믿을 만한 인가 서버가 발급한 JWT 액세스 토큰이 쓸모 있어요. 각 자원 서버가 서명, 발급자, 대상, 만료, 범위나 권한을 직접 검증할 수 있으니까요.</p>
+<p>단, 같은 토큰을 모든 서비스에 그대로 넘기면 안 돼요. 그림에서 게이트웨이가 세 서비스로 보내는 화살표마다 <code>aud: orders</code>, <code>aud: payments</code>, <code>aud: reporting</code>처럼 대상이 다르게 적혀 있어요. 토큰은 그걸 받는 자원을 위해 발급돼야 하고, 오른쪽 꼬리표처럼 각 서비스는 자기 인가 규칙을 따로 지켜요.</p>
+<figure>
+  <img src="assets/frame-1844.webp" alt="API 게이트웨이가 주문·결제·리포팅 서비스에 aud 값이 각기 다른 토큰을 보내고, 각 서비스가 자체 인가 규칙을 갖는 그림">
+  <figcaption>토큰의 aud가 받는 서비스와 맞지 않으면 거절해야 해요. 그래야 한 서비스에서 샌 토큰이 다른 서비스로 번지지 않아요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=1124s" target="_blank" rel="noopener">영상 18:44에서 보기</a></figcaption>
+</figure>
+<p>사용자 없이 서비스끼리 주고받는 통신에는 인가 서버를 둘 만한 구조라면 OAuth의 클라이언트 자격 증명 흐름이 맞을 수 있어요. 경우에 따라 워크로드 아이덴티티 같은 다른 서비스 인증 방식이 더 나을 수도 있어요. 영상은 판단 기준이 서비스 개수가 아니라 신뢰 경계와 인프라라고 강조해요.</p>
+<h3>시나리오 4. 구글로 로그인</h3>
+<p>구글이 지원하는 OpenID Connect 로그인 흐름을 써요. 그리고 받은 신원 정보를 제대로 검증해요. 왼쪽은 구글이 보낸 ID 토큰 예시이고, 노란 줄의 <code>iss</code>, <code>aud</code>, <code>iat</code>, <code>exp</code>가 오른쪽 체크 목록과 짝을 이뤄요. 구글 키로 만든 서명, 발급자가 accounts.google.com인지, 대상이 내 클라이언트 ID인지, 발급·만료 시각이 아직 유효한지 확인해요.</p>
+<figure>
+  <img src="assets/frame-1926.webp" alt="구글 ID 토큰(iss, aud, sub, iat, exp)과 서명·발급자·대상·시간 클레임 네 가지를 검증하는 체크 목록 슬라이드">
+  <figcaption>네 가지 중 하나라도 건너뛰면 다른 앱용 토큰이나 만료된 토큰을 받아 줄 수 있어요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=1166s" target="_blank" rel="noopener">영상 19:26에서 보기</a></figcaption>
+</figure>
+<p>그다음 내 앱의 로그인 상태를 어떻게 유지할지 따로 정해요. 웹사이트라면 OIDC 로그인이 성공한 뒤 서버 세션을 만들고, 모바일 앱이라면 토큰 기반 세션을 둘 수 있어요. 아래 슬라이드 왼쪽 파란 상자가 OAuth 2.0과 OpenID Connect가 맡은 외부 신원 확인이고, 오른쪽 점선 상자가 세션이나 토큰이 맡은 내 앱 접근이에요.</p>
+<figure>
+  <img src="assets/frame-1955.webp" alt="왼쪽 외부 신원 흐름(OAuth 2.0, OpenID Connect: 구글에서 내 앱으로)과 오른쪽 내 앱 접근(브라우저는 세션, 모바일 앱은 토큰)을 나눈 그림">
+  <figcaption>두 기술 묶음이 서로 다른 구간을 맡아요. 영상의 표현대로 경쟁이 아니라 보완 관계예요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=1195s" target="_blank" rel="noopener">영상 19:55에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=1195s" target="_blank" rel="noopener">19:55</a>
+  <h2>흔한 실수 다섯 가지와 최종 정리</h2>
+<p>마무리 전에 영상은 피해야 할 실수 다섯 가지를 꼽아요.</p>
+<ol class="steps">
+  <li><b>JWT가 세션보다 늘 안전하다고 믿기</b> — 보안은 구현, 토큰 저장, 만료, 키 관리, 폐기에 달려 있어요. JWT라서 저절로 안전해지지 않아요.</li>
+  <li><b>JWT 페이로드가 비밀이라고 믿기</b> — 서명된 JWT는 가진 사람 누구나 읽을 수 있어요. 암호화를 따로 설계하지 않았다면 민감한 데이터를 넣지 말아요.</li>
+  <li><b>OAuth 2.0 액세스 토큰을 로그인 증명으로 쓰기</b> — 신원 공급자를 통한 표준 사용자 인증이 필요하면 OpenID Connect를 써요.</li>
+  <li><b>토큰 탈취와 로그아웃을 잊기</b> — 클라이언트에서 토큰을 지워도 공격자가 이미 훔친 사본은 무효가 되지 않아요. 만료, 폐기, 리프레시 토큰 교체, 세션 무효화를 일부러 설계해요.</li>
+  <li><b>자격 증명을 허술하게 보관하기</b> — 세션 쿠키를 보호하고, <span class="term" data-term="베어러 토큰" data-en="Bearer token" data-desc="&#x27;가진 사람이 주인&#x27;인 토큰이에요. Authorization: Bearer 헤더에 실어 보내고, 누가 보냈는지는 따지지 않아서 훔치면 그대로 쓸 수 있어요." data-g="4">베어러 토큰</span>을 불필요한 자바스크립트에 노출하지 말고, 필요한 곳엔 보안 저장소를 써요. XSS와 CSRF는 서로 다른 위협이라 방어도 따로 해요.</li>
+</ol>
+<p>두 번째 실수 슬라이드가 이를 눈으로 보여 줘요. 위에 <code>eyJhbGciOi… . eyJzdWIiOi… . SflKxwRJ…</code> 세 조각짜리 토큰이 있고, 그 아래 'Decoded payload' 카드에 <code>sub</code>, <code>email</code>, <code>role: admin</code>이 그대로 드러나 있어요. 손글씨 메모는 '가진 사람이면 누구나 읽을 수 있다'예요.</p>
+<figure>
+  <img src="assets/frame-2029.webp" alt="실수 2 'JWT 페이로드가 비밀이라고 믿기'에 줄을 긋고, 토큰을 디코딩하면 sub·email·role이 그대로 보이며 '민감한 데이터를 페이로드에 넣지 말라'는 규칙을 적은 슬라이드">
+  <figcaption>이메일과 권한 등급처럼 평범해 보이는 값도 남이 읽을 수 있다는 전제로 넣어야 해요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=1229s" target="_blank" rel="noopener">영상 20:29에서 보기</a></figcaption>
+</figure>
+<p>마지막으로 암호 프로토콜을 직접 만들지 말라고 해요. 성숙한 프레임워크, 믿을 만한 신원 공급자, 검증된 보안 라이브러리를 쓰라는 거예요.</p>
+<h3>그래서 무엇을 써야 하나요</h3>
+<p>영상의 최종 정리는 상황 네 가지에 답 하나씩이에요. 슬라이드는 네 번째 답을 말로만 이어 가서, 네 갈래를 한 그림으로 옮겼어요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  Q["무엇을 만드나요?"] --> A["서버 렌더링 웹사이트"] --> A2["서버 세션 + 보안 쿠키"]
+  Q --> B["API · 분산 시스템"] --> B2["JWT 검토 (불투명 토큰도 가능)"]
+  Q --> C["다른 서비스 자원 접근"] --> C2["OAuth 2.0"]
+  Q --> D["구글 · 마이크로소프트 로그인"] --> D2["OpenID Connect"]
+</pre>
+  <figcaption>JWT만 '검토'예요. 영상은 트레이드오프가 구조에 맞을 때만 쓰라고 단서를 달아요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=1294s" target="_blank" rel="noopener">영상 21:34에서 보기</a></figcaption>
+</figure>
+<p>그리고 이 선택들은 서로 배타적이지 않아요. 아래 슬라이드처럼 ① 구글(신원 공급자)에서 OpenID Connect로 로그인하고, ② 내 앱이 브라우저에 서버 세션(<code>session_id</code>)을 내려줄 수 있어요. 여기에 다른 서비스를 부를 때는 OAuth 액세스 토큰을 더해 쓰면 돼요.</p>
+<figure>
+  <img src="assets/frame-2222.webp" alt="구글에서 OpenID Connect로 로그인한 뒤 내 앱이 브라우저에 session_id 쿠키로 서버 세션을 내려 주는 그림. 제목은 These choices aren't mutually exclusive">
+  <figcaption>한 서비스 안에서도 구간마다 맞는 기술이 달라요. 하나만 골라야 한다는 전제를 버리면 선택이 쉬워져요. <a href="https://www.youtube.com/watch?v=KKlLRN58Dhw&amp;t=1342s" target="_blank" rel="noopener">영상 22:22에서 보기</a></figcaption>
+</figure>
+<blockquote>
+  <p>The best authentication architecture isn't the one with the most fashionable technology. It's the one that solves your actual problem with the least unnecessary complexity.</p>
+  <p>가장 좋은 인증 구조는 가장 유행하는 기술을 쓴 구조가 아니에요. 불필요한 복잡함을 가장 적게 들이고 실제 문제를 푸는 구조예요.</p>
+  <cite>— 영상 22:09</cite>
+</blockquote>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 용어가 잘못 받아적힌 곳이 있어요. 화면 슬라이드를 기준으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>OOTH, OATH, OAF, OOAth</td><td>OAuth</td><td>영상 전체에 걸쳐 여러 형태로 적혀 있어요</td></tr>
+      <tr><td>Reddus</td><td>Redis</td><td>세션 스토어 예시</td></tr>
+      <tr><td>daylist</td><td>denylist</td><td>08:22 슬라이드의 Denylist</td></tr>
+      <tr><td>cross-sight</td><td>cross-site</td><td>XSS·CSRF의 site</td></tr>
+      <tr><td>Assigned JWT</td><td>A signed JWT</td><td>실수 2번 설명</td></tr>
+      <tr><td>SAS application</td><td>SaaS application</td><td>시나리오 1</td></tr>
+      <tr><td>long-ived</td><td>long-lived</td><td>시나리오 2</td></tr>
+      <tr><td>machineto-achine</td><td>machine-to-machine</td><td>시나리오 3</td></tr>
+      <tr><td>JWTbased</td><td>JWT-based</td><td>비교 질문 1</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-11"><dt>공개 클라이언트<span class="en">Public client</span></dt><dd>브라우저 앱이나 모바일 앱처럼 비밀 값을 숨길 수 없는 클라이언트예요. 코드가 사용자 기기에 있어서 안에 넣은 시크릿은 꺼내 볼 수 있어요.</dd></div>
+    <div class="g" id="g-12"><dt>기밀 클라이언트<span class="en">Confidential client</span></dt><dd>서버처럼 클라이언트 시크릿을 안전하게 보관할 수 있는 클라이언트예요. 토큰을 받을 때 시크릿으로 자신을 증명해요.</dd></div>
+    <div class="g" id="g-3"><dt>리프레시 토큰<span class="en">Refresh token</span></dt><dd>짧게 사는 액세스 토큰이 만료되면 새 액세스 토큰을 받아 오는 데 쓰는 오래가는 토큰이에요. 오래가는 만큼 안전한 저장과 교체가 중요해요.</dd></div>
+    <div class="g" id="g-4"><dt>베어러 토큰<span class="en">Bearer token</span></dt><dd>&#x27;가진 사람이 주인&#x27;인 토큰이에요. Authorization: Bearer 헤더에 실어 보내고, 누가 보냈는지는 따지지 않아서 훔치면 그대로 쓸 수 있어요.</dd></div>
+    <div class="g" id="g-5"><dt>불투명 토큰<span class="en">Opaque token</span></dt><dd>안에 읽을 수 있는 정보가 없는 무작위 문자열 토큰이에요. 받은 쪽은 발급한 서버에 물어봐야 유효한지 알 수 있지만, 그만큼 중앙에서 바로 막기 쉬워요.</dd></div>
+    <div class="g" id="g-1"><dt>세션 스토어<span class="en">Session store</span></dt><dd>서버가 세션 데이터를 넣어 두는 저장소예요. 데이터베이스나 Redis를 많이 써요. 서버가 여러 대면 이걸 함께 바라봐야 어느 서버로 요청이 가도 로그인이 유지돼요.</dd></div>
+    <div class="g" id="g-6"><dt>위임 인가<span class="en">Delegated authorization</span></dt><dd>사용자가 비밀번호를 넘기지 않고, 자기 자원 일부에 대한 권한만 다른 앱에 맡기는 방식이에요. OAuth가 푸는 문제가 이거예요.</dd></div>
+    <div class="g" id="g-7"><dt>인가 서버<span class="en">Authorization server</span></dt><dd>사용자 승인을 받아 액세스 토큰을 발급하는 서버예요. 구글 로그인에서는 구글의 계정 서버가 이 역할을 해요.</dd></div>
+    <div class="g" id="g-10"><dt>인가 코드 흐름<span class="en">Authorization code flow</span></dt><dd>인가 서버가 먼저 짧게 쓰는 코드를 주고, 앱이 그 코드를 토큰으로 바꾸는 OAuth 흐름이에요. 토큰이 주소창에 드러나지 않아 지금의 표준 방식이에요.</dd></div>
+    <div class="g" id="g-8"><dt>자원 서버<span class="en">Resource server</span></dt><dd>보호된 데이터를 가진 API 서버예요. 액세스 토큰을 받아 검증한 뒤에만 데이터를 내줘요. 캘린더 예시에서는 구글 Calendar API예요.</dd></div>
+    <div class="g" id="g-2"><dt>클레임<span class="en">Claim</span></dt><dd>토큰 안에 담긴 &#x27;이 사용자는 누구, 언제 만료, 어떤 권한&#x27; 같은 주장 하나하나예요. sub, iss, aud, exp처럼 이름이 정해진 표준 클레임이 있어요.</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>CSRF</dt><dd>Cross-Site Request Forgery</dd></div>
+    <div class="g"><dt>HTTPS</dt><dd>Hypertext Transfer Protocol Secure</dd></div>
+    <div class="g"><dt>ID</dt><dd>Identifier</dd></div>
+    <div class="g" id="g-9"><dt>ID 토큰<span class="en">ID token</span></dt><dd>OpenID Connect 로그인 결과로 받는, 사용자가 누구인지 담은 JWT예요. 요청한 클라이언트만을 위해 발급되므로 aud가 내 클라이언트 ID인지 확인해야 해요.</dd></div>
+    <div class="g"><dt>JWE</dt><dd>JSON Web Encryption</dd></div>
+    <div class="g"><dt>JWS</dt><dd>JSON Web Signature</dd></div>
+    <div class="g"><dt>JWT</dt><dd>JSON Web Token</dd></div>
+    <div class="g"><dt>OIDC</dt><dd>OpenID Connect</dd></div>
+    <div class="g"><dt>OS</dt><dd>Operating System</dd></div>
+    <div class="g"><dt>OWASP</dt><dd>Open Worldwide Application Security Project</dd></div>
+    <div class="g"><dt>PKCE</dt><dd>Proof Key for Code Exchange</dd></div>
+    <div class="g"><dt>RFC</dt><dd>Request for Comments</dd></div>
+    <div class="g"><dt>URI</dt><dd>Uniform Resource Identifier</dd></div>
+    <div class="g"><dt>XSS</dt><dd>Cross-Site Scripting</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=KKlLRN58Dhw" target="_blank" rel="noopener">원본 영상 — Time To Program</a></li>
+    <li id="src-2"><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie" target="_blank" rel="noopener">MDN — Set-Cookie</a></li>
+    <li id="src-3"><a href="https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html" target="_blank" rel="noopener">OWASP Session Management Cheat Sheet</a></li>
+    <li id="src-4"><a href="https://www.rfc-editor.org/rfc/rfc7519" target="_blank" rel="noopener">RFC 7519 — JSON Web Token</a></li>
+    <li id="src-5"><a href="https://www.rfc-editor.org/rfc/rfc7516" target="_blank" rel="noopener">RFC 7516 — JSON Web Encryption</a></li>
+    <li id="src-6"><a href="https://openid.net/specs/openid-connect-core-1_0.html" target="_blank" rel="noopener">OpenID Connect Core 1.0</a></li>
+    <li id="src-7"><a href="https://www.rfc-editor.org/rfc/rfc9700" target="_blank" rel="noopener">RFC 9700 — Best Current Practice for OAuth 2.0 Security</a></li>
+    <li id="src-8"><a href="https://www.rfc-editor.org/rfc/rfc7636" target="_blank" rel="noopener">RFC 7636 — Proof Key for Code Exchange</a></li>
+    <li id="src-9"><a href="https://www.rfc-editor.org/rfc/rfc7662" target="_blank" rel="noopener">RFC 7662 — OAuth 2.0 Token Introspection</a></li>
+    <li id="src-10"><a href="https://www.rfc-editor.org/rfc/rfc8252" target="_blank" rel="noopener">RFC 8252 — OAuth 2.0 for Native Apps</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 27일에 이 영상을 보고 정리했어요. 원본은 Time To Program 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

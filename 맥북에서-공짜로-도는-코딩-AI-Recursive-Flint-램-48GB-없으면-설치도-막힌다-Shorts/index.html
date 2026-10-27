@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>맥북에서 공짜로 도는 코딩 AI, Recursive Flint</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>맥북에서 공짜로 도는 코딩 AI, Recursive Flint</h1>
+  <p class="lede">램 48GB가 왜 첫 번째 조건인지 짚어요</p>
+  <div class="meta">
+    <span>1분코딩</span><span class="dot">·</span>
+    <span>영상 00:45</span><span class="dot">·</span>
+    <span>읽는 데 약 4분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=wTIX9fqW_8s" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>Recursive가 코딩용 <span class="term" data-term="로컬 모델" data-en="Local model" data-desc="클라우드 서버가 아니라 내 컴퓨터에서 직접 돌리는 AI 모델이에요. 인터넷 없이 쓸 수 있고 데이터가 밖으로 나가지 않지만, 내 컴퓨터 사양이 받쳐 줘야 해요." data-g="1">로컬 모델</span> Flint를 Apache 2.0 라이선스로 공개했어요.</li>
+    <li><span class="term" data-term="전문가 혼합" data-en="Mixture of Experts (MoE)" data-desc="모델 안에 여러 개의 작은 전문가 네트워크를 두고, 입력마다 몇 개만 골라 계산하는 구조예요. 전체 크기는 커도 한 번에 하는 계산이 적어 빨라요." data-g="2">전문가 혼합</span> 구조라 전체 약 400억 파라미터 중 토큰마다 약 25억 개만 써서 가볍게 돌아요.</li>
+    <li>모델이 내 맥북 안에서 돌아서 코드가 외부로 나가지 않아요.</li>
+    <li>전용 도구 rec는 <span class="term" data-term="통합 메모리" data-en="Unified memory" data-desc="애플 실리콘 맥에서 CPU와 GPU가 함께 쓰는 하나의 메모리예요. 로컬 모델은 가중치를 여기에 통째로 올려야 해서 용량이 곧 돌릴 수 있는 모델 크기를 정해요." data-g="4">통합 메모리</span> 48GB 미만인 맥에서는 모델을 내려받지 않아요.</li>
+    <li><span class="term" data-term="SWE-bench Pro" data-en="SWE-bench Pro" data-desc="실제 소프트웨어 저장소의 이슈를 AI가 코드를 고쳐 해결하는지 재는 코딩 시험이에요. 테스트를 통과한 비율로 점수를 매겨요." data-g="5">SWE-bench Pro</span> v2 89.7%는 회사 자체 측정이고, 큰 작업은 잘게 쪼개 맡기라고 해요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">Flint는 어떤 모델인가요</a></li>
+    <li><a href="#s2">성적과 만든 방식</a></li>
+    <li><a href="#s3">설치 전에 확인할 것과 쓰는 법</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=wTIX9fqW_8s&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>Flint는 어떤 모델인가요</h2>
+<p>Flint는 Recursive라는 회사가 10월 21일에 공개한 코딩 전용 로컬 모델이에요. 가중치를 Apache 2.0 라이선스로 풀어서 누구나 받아 쓸 수 있어요. 영상이 '공짜'라고 부르는 이유가 여기 있어요.</p>
+<p>영상은 Recursive 블로그의 발표 글을 띄우고, 부제 한 줄에 노란 테두리를 쳐요. 같은 급에서 가장 빠르고 코딩을 가장 잘하는 로컬 모델이고, 자동 연구로 만들었다는 문장이에요. 아래 노란 딱지 '로컬 코딩 모델'이 영상의 요약이에요.</p>
+<figure>
+  <img src="assets/frame-0008.webp" alt="Recursive 블로그의 Introducing Flint 글. 부제 문장에 노란 테두리가 있고 그 아래 '로컬 코딩 모델' 딱지가 붙어 있다">
+  <figcaption>
+    핵심은 '로컬'이에요. 클라우드가 아니라 내 컴퓨터에서 돌아요.
+    <a href="https://www.youtube.com/watch?v=wTIX9fqW_8s&amp;t=8s" target="_blank" rel="noopener">영상 00:08에서 보기</a>
+  </figcaption>
+</figure>
+<h3>왜 맥북에서도 가볍게 돌까요</h3>
+<p>비결은 전문가 혼합 구조예요. 모델 안에 작은 '전문가' 네트워크가 여러 개 있고, 토큰마다 그중 몇 개만 골라 계산해요. 화면은 Hugging Face 모델 카드에서 전체 파라미터 39.8B, 토큰마다 쓰는 파라미터 약 2.5B라는 문장을 짚어요. 영상은 이를 400억 개 중 25억 개라고 읽어요.</p>
+<figure>
+  <img src="assets/frame-0012.webp" alt="Hugging Face의 RecursiveSI/flint 모델 카드. 39.8 billion total parameters, 2.5 billion active per token 문장에 노란 테두리와 '39.8B·2.5B' 딱지가 있다">
+  <figcaption>
+    큰 모델을 통째로 돌리지 않고, 매번 일부만 깨워서 써요.
+    <a href="https://www.youtube.com/watch?v=wTIX9fqW_8s&amp;t=12s" target="_blank" rel="noopener">영상 00:12에서 보기</a>
+  </figcaption>
+</figure>
+<p>두 숫자를 같은 눈금에 놓으면 차이가 확 보여요. 토큰 하나를 만들 때 움직이는 몫은 전체의 6% 남짓이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 150" role="img" aria-label="전체 파라미터 400억 개와 토큰마다 쓰는 25억 개를 같은 눈금으로 비교한 막대">
+    <text x="10" y="42" class="sub">전체</text>
+    <rect class="c2 cell" x="90" y="22" width="480" height="30" rx="4"/>
+    <text x="580" y="42">약 400억</text>
+    <text x="10" y="102" class="sub">토큰마다</text>
+    <rect class="accent" x="90" y="82" width="30" height="30" rx="4"/>
+    <text x="130" y="102">약 25억</text>
+    <text x="90" y="138" class="sub">같은 눈금으로 그렸어요 (영상 00:10 부근)</text>
+  </svg>
+  <figcaption>토큰 하나를 만들 때 계산하는 몫은 이만큼이에요. 영상이 가볍게 돈다고 말하는 이유예요.</figcaption>
+</figure>
+<p>영상은 토큰 하나가 지나가는 길도 그림으로 보여 줘요. 토큰이 들어오면 <span class="term" data-term="라우터" data-en="Router" data-desc="전문가 혼합 모델에서 토큰마다 어떤 전문가에게 일을 맡길지 고르는 작은 네트워크예요. Flint는 256개 중 6개를 골라요." data-g="3">라우터</span>가 전문가를 골라요. 고른 전문가 6개(공유 전문가 1개는 따로)만 일하고, 나머지 250개는 이번엔 쉬어요. 맨 아래 '내 맥북' 칸 위에 붙은 '밖으로 안 감' 딱지가 이 구간의 결론이에요.</p>
+<figure>
+  <img src="assets/frame-0016.webp" alt="토큰, 라우터, 전문가 6개와 나머지 250개, 내 맥북으로 이어지는 흐름도. 마지막 칸 위에 '밖으로 안 감' 딱지가 있다">
+  <figcaption>
+    계산이 전부 내 맥북 안에서 끝나니 코드가 외부 서버로 나가지 않아요.
+    <a href="https://www.youtube.com/watch?v=wTIX9fqW_8s&amp;t=16s" target="_blank" rel="noopener">영상 00:16에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=wTIX9fqW_8s&amp;t=17s" target="_blank" rel="noopener">00:17</a>
+  <h2>성적과 만든 방식</h2>
+<p>영상은 성적을 하나만 들어요. 회사가 직접 잰 코딩 시험 SWE-bench Pro v2에서 89.7%예요. 영상은 마지막 체크리스트에서 '점수는 회사 자체 측정'이라고 한 번 더 짚어요. 다른 곳이 같은 조건으로 다시 잰 점수가 아니라는 뜻이에요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>모델 카드에는 다른 시험 점수도 있어요. Terminal-Bench 2.1은 54.9%, SWE-bench Verified는 74.2%예요. SWE-bench 계열은 mini-swe-agent라는 에이전트로 쟀고, 최소 다섯 번 시도한 평균이라고 적혀 있어요. 측정 방식이 출처마다 달라서 다른 모델 점수와 그대로 비교하기는 어렵다는 말도 붙어 있어요.</p>
+  <p class="cite">출처: <a href="https://huggingface.co/RecursiveSI/flint" target="_blank" rel="noopener">Hugging Face — RecursiveSI/flint 모델 카드</a></p>
+</aside>
+<h3>사람과 자동 연구 AI가 함께 만들었어요</h3>
+<p>만든 방식도 영상이 짚는 포인트예요. 화면은 블로그에서 Eureka Machine 문단을 짚고 '자동 연구 AI' 딱지를 붙여요. Eureka Machine은 Recursive의 자동 AI(Artificial Intelligence) 연구 시스템이에요. 데이터와 학습 방법부터 인프라, 추론 최적화까지 Flint 제작 과정의 거의 모든 단계에 손을 댔다고 해요. 영상은 사람과 이 시스템이 넉 달 만에 만들었다고 말해요.</p>
+<figure>
+  <img src="assets/frame-0024.webp" alt="Recursive 블로그에서 Eureka Machine이 Flint 제작 스택 거의 전부를 도왔다는 문단에 노란 테두리와 '자동 연구 AI' 딱지가 있다">
+  <figcaption>
+    사람이 아닌 연구 시스템이 실험을 제안하고 돌렸다는 점이 이 회사가 내세우는 차별점이에요.
+    <a href="https://www.youtube.com/watch?v=wTIX9fqW_8s&amp;t=24s" target="_blank" rel="noopener">영상 00:24에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=wTIX9fqW_8s&amp;t=25s" target="_blank" rel="noopener">00:25</a>
+  <h2>설치 전에 확인할 것과 쓰는 법</h2>
+<p>가장 중요한 조건은 메모리예요. 화면은 공식 문서의 맥 요구 사항을 띄우고 'At least 48 GB unified memory' 줄에 '48GB 이상' 딱지를 붙여요. 화면 글씨가 작아서 아래 표로 옮겨 적었어요.</p>
+<figure>
+  <img src="assets/frame-0026.webp" alt="docs.recursive.com의 rec 문서 Mac requirements. M4 Pro·M5 Pro·M5 Max 칩, 통합 메모리 48GB 이상, 디스크 약 30GB 줄이 보이고 '48GB 이상' 딱지가 있다">
+  <figcaption>
+    전용 도구 rec는 다운로드 전에 칩과 메모리를 확인해요. 48GB가 안 되면 모델을 아예 받지 않아요.
+    <a href="https://www.youtube.com/watch?v=wTIX9fqW_8s&amp;t=26s" target="_blank" rel="noopener">영상 00:26에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>항목</th><th>조건</th></tr></thead>
+    <tbody>
+      <tr><td>칩</td><td>M4 Pro, M5 Pro, M5 Max (Metal 지원)</td></tr>
+      <tr><td>통합 메모리</td><td>48GB 이상</td></tr>
+      <tr><td>여유 디스크</td><td>약 30GB (모델과 실행 환경)</td></tr>
+      <tr><td>기타</td><td>Pi나 OpenCode로 띄우려면 Node.js 22와 npm</td></tr>
+    </tbody>
+  </table>
+</div>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>48GB 조건은 Recursive의 전용 실행 도구 rec에 걸린 조건이에요. 공식 문서는 rec 말고도 Ollama, Unsloth, LM(Language Model) Studio, llama.cpp로 Flint를 로컬에서 돌리는 방법을 따로 안내해요. 각 방법의 메모리 조건은 해당 문서에서 확인하는 게 좋아요.</p>
+  <p>rec는 설치 스크립트로 깔고, 프로젝트 폴더에서 <code>rec launch pi</code>를 실행하면 모델 다운로드와 서버 실행, 코딩 도구 연결까지 한 번에 해 줘요. <code>rec doctor</code>로 설치 상태를 점검할 수 있어요.</p>
+  <p class="cite">출처: <a href="https://docs.recursive.com/edge/rec" target="_blank" rel="noopener">Recursive 문서 — rec</a> · <a href="https://docs.recursive.com/" target="_blank" rel="noopener">Recursive 문서 — Flint documentation</a></p>
+</aside>
+<h3>큰 일은 잘게 쪼개서 맡겨요</h3>
+<p>쓰는 법에 대한 조언은 블로그에 그대로 있어요. 화면이 짚은 문단은 복잡한 작업을 작은 하위 작업으로 나누고 지시를 분명하게 주라는 내용이에요. 큰 폐쇄형 코딩 모델보다 안내가 더 필요할 수 있다는 말도 함께 있어요. 영상은 여기에 '잘게 나눠 지시' 딱지를 붙여요.</p>
+<figure>
+  <img src="assets/frame-0032.webp" alt="Recursive 블로그 사용 팁 문단. 로컬에서 쓰고, 복잡한 작업은 하위 작업으로 나눠 분명하게 지시하라는 문장에 '잘게 나눠 지시' 딱지가 있다">
+  <figcaption>
+    작은 모델이라 한 번에 큰 일을 맡기기보다 단계별로 시키는 편이 결과가 좋아요.
+    <a href="https://www.youtube.com/watch?v=wTIX9fqW_8s&amp;t=32s" target="_blank" rel="noopener">영상 00:32에서 보기</a>
+  </figcaption>
+</figure>
+<h3>속도와 마지막 체크리스트</h3>
+<p>속도는 M4 Pro 맥북 한 대에서 초당 125토큰, 같은 급 모델보다 최대 두 배 빠르대요. 화면 아래 작은 줄에는 Apache 2.0, 활성 2.5B, 통합 메모리 48GB+가 한 번 더 정리돼 있어요.</p>
+<figure>
+  <img src="assets/frame-0034.webp" alt="'125 토큰/초 · M4 Pro 맥북, 같은 급 모델보다 최대 2배'라는 큰 글씨와 Apache 2.0·활성 2.5B·통합 메모리 48GB+ 요약 줄">
+  <figcaption>
+    활성 파라미터가 적은 구조가 이 속도로 이어져요.
+    <a href="https://www.youtube.com/watch?v=wTIX9fqW_8s&amp;t=34s" target="_blank" rel="noopener">영상 00:34에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>블로그 원문은 125토큰을 '초당 125토큰 이상, 짧은 컨텍스트 기준'이라고 적어요. 대화가 길어지면 속도가 달라질 수 있다는 뜻이에요.</p>
+  <p class="cite">출처: <a href="https://www.recursive.com/updates/introducing-recursive-flint" target="_blank" rel="noopener">Recursive 블로그 — Introducing Flint</a></p>
+</aside>
+<p>영상은 저장해 둘 체크리스트 세 줄로 끝나요. M4 Pro급 맥과 통합 메모리 48GB 이상, 큰 작업은 잘게 쪼개 지시, 점수는 회사 자체 측정이에요.</p>
+<figure>
+  <img src="assets/frame-0040.webp" alt="SAVE 이것만 체크 목록. M4 Pro급 맥·통합 메모리 48GB 이상, 큰 작업은 잘게 쪼개 지시, 점수는 회사 자체 측정 세 줄에 체크 표시">
+  <figcaption>
+    첫 줄이 안 되면 나머지는 의미가 없어요. 램부터 확인해요.
+    <a href="https://www.youtube.com/watch?v=wTIX9fqW_8s&amp;t=40s" target="_blank" rel="noopener">영상 00:40에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 이름과 숫자가 잘못 받아적힌 곳이 있어요. 화면 글자를 기준으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>리커시브</td><td>Recursive</td><td>회사 이름</td></tr>
+      <tr><td>아파이 2.0으로 품플린트</td><td>Apache 2.0으로 푼 Flint</td><td>라이선스와 모델 이름 (추정)</td></tr>
+      <tr><td>스위벤치 프로위벤치 프로 V2</td><td>SWE-bench Pro v2</td><td></td></tr>
+      <tr><td>89.7% 7%</td><td>89.7%</td><td></td></tr>
+      <tr><td>젠</td><td>잰</td><td>회사가 직접 잰 점수</td></tr>
+      <tr><td>48기가 미만 매기면</td><td>48GB 미만 맥이면</td><td></td></tr>
+      <tr><td>전용 도구레기</td><td>전용 도구 rec가</td><td>Recursive의 로컬 실행 도구 (추정)</td></tr>
+      <tr><td>같은 금 모델</td><td>같은 급 모델</td><td></td></tr>
+      <tr><td>램 48기부터</td><td>램 48GB부터</td><td></td></tr>
+      <tr><td>잘게 쪽에</td><td>잘게 쪼개</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-3"><dt>라우터<span class="en">Router</span></dt><dd>전문가 혼합 모델에서 토큰마다 어떤 전문가에게 일을 맡길지 고르는 작은 네트워크예요. Flint는 256개 중 6개를 골라요.</dd></div>
+    <div class="g" id="g-1"><dt>로컬 모델<span class="en">Local model</span></dt><dd>클라우드 서버가 아니라 내 컴퓨터에서 직접 돌리는 AI 모델이에요. 인터넷 없이 쓸 수 있고 데이터가 밖으로 나가지 않지만, 내 컴퓨터 사양이 받쳐 줘야 해요.</dd></div>
+    <div class="g" id="g-2"><dt>전문가 혼합<span class="en">Mixture of Experts (MoE)</span></dt><dd>모델 안에 여러 개의 작은 전문가 네트워크를 두고, 입력마다 몇 개만 골라 계산하는 구조예요. 전체 크기는 커도 한 번에 하는 계산이 적어 빨라요.</dd></div>
+    <div class="g" id="g-4"><dt>통합 메모리<span class="en">Unified memory</span></dt><dd>애플 실리콘 맥에서 CPU와 GPU가 함께 쓰는 하나의 메모리예요. 로컬 모델은 가중치를 여기에 통째로 올려야 해서 용량이 곧 돌릴 수 있는 모델 크기를 정해요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>LM</dt><dd>Language Model</dd></div>
+    <div class="g" id="g-5"><dt>SWE-bench Pro<span class="en">SWE-bench Pro</span></dt><dd>실제 소프트웨어 저장소의 이슈를 AI가 코드를 고쳐 해결하는지 재는 코딩 시험이에요. 테스트를 통과한 비율로 점수를 매겨요.</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=wTIX9fqW_8s" target="_blank" rel="noopener">원본 영상 — 1분코딩</a></li>
+    <li id="src-2"><a href="https://www.recursive.com/updates/introducing-recursive-flint" target="_blank" rel="noopener">Recursive 블로그 — Introducing Flint</a></li>
+    <li id="src-3"><a href="https://huggingface.co/RecursiveSI/flint" target="_blank" rel="noopener">Hugging Face — RecursiveSI/flint 모델 카드</a></li>
+    <li id="src-4"><a href="https://docs.recursive.com/edge/rec" target="_blank" rel="noopener">Recursive 문서 — rec</a></li>
+    <li id="src-5"><a href="https://docs.recursive.com/" target="_blank" rel="noopener">Recursive 문서 — Flint documentation</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 27일에 이 영상을 보고 정리했어요. 원본은 1분코딩 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

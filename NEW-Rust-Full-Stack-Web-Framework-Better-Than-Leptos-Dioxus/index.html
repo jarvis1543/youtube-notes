@@ -1,0 +1,786 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>새 Rust 풀스택 웹 프레임워크 Topcoat — Leptos·Dioxus보다 나을까?</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>새 Rust 풀스택 웹 프레임워크 Topcoat — Leptos·Dioxus보다 나을까?</h1>
+  <p class="lede">서버가 그리고 필요한 만큼만 JavaScript로 돌리는 방식을 짚어요</p>
+  <div class="meta">
+    <span>Code to the Moon</span><span class="dot">·</span>
+    <span>영상 09:50</span><span class="dot">·</span>
+    <span>읽는 데 약 11분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=LVRM3skRBBE" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>Topcoat은 Tokio 조직의 새 Rust 풀스택 프레임워크예요. 브라우저 코드를 <span class="term" data-term="WebAssembly" data-en="WebAssembly (Wasm)" data-desc="브라우저에서 돌아가는 저수준 바이너리 형식이에요. Rust 코드를 이걸로 컴파일하면 브라우저에서도 Rust 전체 문법을 쓸 수 있지만, 번들이 커지기 쉬워요." data-g="1">WebAssembly</span>가 아닌 JavaScript로 컴파일해요.</li>
+    <li><code>view!</code> 안에 HTML(HyperText Markup Language)과 Rust 제어문을 함께 쓰고, <code>#[page]</code>가 URL(Uniform Resource Locator) 하나를 함수 하나에 묶는 <span class="term" data-term="멀티 페이지 앱" data-en="Multi-Page Application" data-desc="경로를 옮길 때마다 브라우저가 서버에서 새 페이지를 통째로 받는 방식이에요. SPA 이전의 전통적인 웹 구조예요." data-g="3">멀티 페이지 앱</span>이에요.</li>
+    <li>기본은 서버 렌더링이고, <code>$( … )</code>로 감싼 <span class="term" data-term="런타임 표현식" data-en="Runtime expression" data-desc="Topcoat에서 $( … )로 감싼 Rust 식이에요. 첫 렌더링 땐 서버가, 이후엔 JavaScript로 바뀌어 브라우저가 계산해요." data-g="5">런타임 표현식</span>만 <span class="term" data-term="시그널" data-en="Signal" data-desc="값이 바뀌면 그 값을 읽는 화면이 자동으로 다시 그려지는 반응형 데이터예요. Leptos·SolidJS에서도 쓰는 개념이에요." data-g="4">시그널</span>이 바뀔 때 브라우저에서 다시 계산돼요.</li>
+    <li>서버 데이터는 HTML 조각을 받는 <span class="term" data-term="shard" data-en="Shard" data-desc="인자가 바뀌면 서버에서 다시 렌더링해 HTML로 돌려주는 Topcoat 컴포넌트예요. htmx처럼 페이지 일부만 갈아 끼워요." data-g="6">shard</span>나, 값만 받는 <span class="term" data-term="procedure" data-en="Procedure" data-desc="브라우저의 런타임 표현식이 부르는 Topcoat의 비동기 서버 함수예요. HTML 대신 원시 값을 돌려줘요." data-g="7">procedure</span>로 붙여요.</li>
+    <li>발표자 결론: 입문용으로는 훌륭하지만, 브라우저 로직에 Rust 전체 문법이 필요하면 Leptos를 계속 써요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">왜 Topcoat이 눈에 띄나요</a></li>
+    <li><a href="#s2">view 매크로와 페이지 라우팅</a></li>
+    <li><a href="#s3">시그널과 런타임 표현식</a></li>
+    <li><a href="#s4">서버 데이터 붙이기: shard와 procedure</a></li>
+    <li><a href="#s5">발표자의 평가: Leptos를 버릴까요?</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=LVRM3skRBBE&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>왜 Topcoat이 눈에 띄나요</h2>
+<p>발표자는 Rust 풀스택 웹 프레임워크가 이미 실전에 쓸 만하다는 말로 시작해요. Next.js로 만들 수 있는 건 Leptos로도 만들 수 있고, Rails 같은 게 필요하면 Loco.rs가 있다는 거예요. 그런데 지금까지 나온 Rust 프레임워크는 대부분 다른 생태계의 인기 프레임워크를 본떠 만들었어요.</p>
+<p>아래 그림이 그 계보예요. 왼쪽 Rust 쪽의 Leptos·Dioxus·Yew는 JavaScript 쪽 SolidJS나 React로, Loco.rs는 Ruby의 Rails로 선이 이어져요. 맨 아래 점선 상자의 Topcoat만 물음표로 끝나요. 한 가지 원형을 짚기 어려운 새 프레임워크라는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0024.webp" alt="Rust 프레임워크 Leptos, Dioxus, Yew, Loco.rs가 SolidJS, React, Rails로 선이 이어지고 Topcoat만 물음표로 끝나는 계보 그림">
+  <figcaption>Topcoat은 '무엇의 Rust 버전'이라고 부르기 어려워요. <a href="https://www.youtube.com/watch?v=LVRM3skRBBE&amp;t=24s" target="_blank" rel="noopener">영상 00:24에서 보기</a></figcaption>
+</figure>
+<p>눈여겨볼 점이 둘 있어요. 하나는 Topcoat이 GitHub의 Tokio 조직 안에 있다는 거예요. Axum, Tracing, Tokio 자체와 같은 곳이죠. 다른 하나는 브라우저에서 도는 코드를 WebAssembly가 아니라 JavaScript로 컴파일한다는 점이에요. 다른 Rust 풀스택 프레임워크는 거의 다 WebAssembly를 써요.</p>
+<p>README의 첫 예제를 보면 Leptos와 닮았어요. 파란색으로 칠한 부분처럼 <code>view!</code> 안에 HTML을 쓰고, 아래쪽 <code>#[component]</code> 함수 <code>hello</code>를 <code>hello(name: "World")</code>처럼 불러요. 맨 위 문구는 'Early-stage and experimental. Expect breaking changes.'예요. 아직 초기 단계이고 호환성이 깨질 수 있다는 경고죠.</p>
+<figure>
+  <img src="assets/frame-0104.webp" alt="Topcoat GitHub README의 첫 예제 코드. main 함수, page 매크로가 붙은 home 함수, component 매크로가 붙은 hello 함수가 보여요">
+  <figcaption>겉모습은 Leptos 같지만 <code>#[shard]</code>, <code>#[procedure]</code> 같은 매크로가 따로 있어요. <a href="https://www.youtube.com/watch?v=LVRM3skRBBE&amp;t=64s" target="_blank" rel="noopener">영상 01:04에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=LVRM3skRBBE&amp;t=88s" target="_blank" rel="noopener">01:28</a>
+  <h2>view 매크로와 페이지 라우팅</h2>
+<p><code>view!</code> <span class="term" data-term="매크로" data-en="Macro" data-desc="Rust에서 컴파일 전에 코드를 만들어 내는 장치예요. Topcoat은 view!, #[component], #[shard] 같은 매크로로 HTML과 서버·브라우저 코드를 나눠요." data-g="2">매크로</span>는 HTML의 상위 집합 같은 문법이에요. 거의 HTML 그대로 쓰되, 텍스트만 큰따옴표로 감싸요. 여기에 Rust 문장을 바로 섞을 수 있어요. 아래 코드는 <code>let pioneers = ["Ada", "Grace", "Barbara"];</code>로 배열을 만들고, <code>if pioneers.len() &gt; 2</code>로 문장을 고른 뒤, <code>for</code>로 목록을 그려요. 오른쪽 결과 화면에 'A great trio.'와 이름 세 개가 찍혀요.</p>
+<figure>
+  <img src="assets/frame-0203.webp" alt="view 매크로 안에 let, if-else, for 문을 넣은 코드와 그 결과로 A great trio. 문장과 Ada, Grace, Barbara 목록이 나온 화면">
+  <figcaption>템플릿 언어를 따로 배우지 않고 Rust 제어문을 그대로 써요. <a href="https://www.youtube.com/watch?v=LVRM3skRBBE&amp;t=123s" target="_blank" rel="noopener">영상 02:03에서 보기</a></figcaption>
+</figure>
+<p><code>#[component]</code>가 붙은 함수는 다른 <code>view!</code> 안에서 함수처럼 불러요. 아래 코드에서 <code>root_page</code>가 <code>greeting(name: "Topcoat")</code>을 부르고, <code>greeting</code>은 일반 Rust 함수처럼 <code>name: &amp;str</code> 인자를 받아요. 위쪽 화살표가 가리키는 <code>#[page("/")]</code>는 URL 경로 <code>/</code>를 이 함수에 묶어요.</p>
+<figure>
+  <img src="assets/frame-0217.webp" alt="page 매크로가 붙은 root_page 함수가 component 매크로가 붙은 greeting 함수를 name 인자와 함께 부르는 코드와 Hello, Topcoat! 결과">
+  <figcaption>페이지마다 함수 하나가 URL 하나를 맡아요. <a href="https://www.youtube.com/watch?v=LVRM3skRBBE&amp;t=137s" target="_blank" rel="noopener">영상 02:17에서 보기</a></figcaption>
+</figure>
+<h3>왜 라우터 컴포넌트가 없나요</h3>
+<p>Leptos는 앱 진입점이 하나이고, 라우터 컴포넌트 안에 모든 경로를 몰아넣어요. Topcoat은 전통적인 멀티 페이지 앱이라 그럴 필요가 없어요. 발표자는 2010년대 JavaScript 프레임워크 붐 이전에 다들 만들던 방식이라고 설명해요.</p>
+<p>아래 그림의 왼쪽이 Topcoat 방식이에요. 경로를 옮기면 서버가 페이지 전체를 새로 보내고, 오른쪽 위 'Page loads: 2'처럼 로딩이 두 번 일어나요. 오른쪽 싱글 페이지 앱은 'JS in browser'가 내용만 바꿔 끼우고, 노란 'Stays put' 막대는 그대로 남아요. 로딩은 한 번이에요.</p>
+<figure>
+  <img src="assets/frame-0246.webp" alt="왼쪽 Multipage (Topcoat)은 Server가 페이지 전체를 다시 불러오고 Page loads 2, 오른쪽 Single page app은 JS in browser가 내용만 바꾸고 Page loads 1인 비교 그림">
+  <figcaption>Topcoat에서는 페이지를 옮길 때 진짜 페이지 로딩이 일어나요. 발표자는 장단점은 따지지 않고 넘어가요. <a href="https://www.youtube.com/watch?v=LVRM3skRBBE&amp;t=166s" target="_blank" rel="noopener">영상 02:46에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>지금 README의 예제는 영상과 조금 달라요. 라우터를 <code>module_router!()</code>로 만들고, <code>#[page]</code>에 경로를 적지 않아요. 모듈 구조(<code>src/app/about.rs</code> → <code>/about</code>)에서 경로를 추론하는 '모듈 기반 라우팅'을 고를 수 있어요. 문서 목차에는 '페이지 전체를 다시 불러오지 않는 클라이언트 측 이동(Client-side navigation)'도 있어요. 초기 단계라 API(Application Programming Interface)가 계속 바뀌고 있으니, 따라 해 볼 땐 최신 README를 기준으로 삼는 게 좋아요.</p>
+  <p class="cite">출처: <a href="https://github.com/tokio-rs/topcoat" target="_blank" rel="noopener">tokio-rs/topcoat GitHub README</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=LVRM3skRBBE&amp;t=171s" target="_blank" rel="noopener">02:51</a>
+  <h2>시그널과 런타임 표현식</h2>
+<p>Leptos에서는 컴포넌트가 상황에 따라 서버에서도, 브라우저에서도 렌더링돼요. Topcoat은 반대로 시작해요. 지금까지 쓴 코드는 <b>언제나 서버에서만</b> 렌더링돼요. 브라우저에서 돌 로직은 특별한 문법으로 표시해야 해요.</p>
+<p>먼저 <code>view!</code> 안에서 시그널을 만들어요. 시그널을 읽는 브라우저 코드는 값이 바뀌면 자동으로 다시 그려져요. 반응형 프런트엔드 프레임워크를 써 봤다면 익숙한 개념이에요.</p>
+<p>그다음 브라우저에서도 돌릴 식을 <code>$( … )</code>로 감싸요. 이를 런타임 표현식이라고 해요. 처음 페이지를 열 때는 서버가 계산하고, 그 뒤엔 참조한 시그널이 바뀔 때마다 브라우저가 다시 계산해요. 아래 그림이 이 흐름이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 200" role="img" aria-label="첫 로딩 때는 서버가 view 전체를 렌더링하고, 이후 시그널이 바뀌면 브라우저가 런타임 표현식만 다시 계산하는 흐름">
+    <defs><marker id="arrow-rt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="c1 cell" x="20" y="40" width="180" height="110" rx="10"/>
+    <text x="110" y="78" text-anchor="middle">서버</text>
+    <text x="110" y="102" text-anchor="middle" class="sub">view 전체 렌더링</text>
+    <text x="110" y="122" text-anchor="middle" class="sub">$( … )도 한 번 계산</text>
+    <path class="line" d="M202 95 h96" marker-end="url(#arrow-rt)"/>
+    <text x="250" y="85" text-anchor="middle" class="sub">첫 페이지</text>
+    <rect class="c2 cell" x="300" y="40" width="320" height="110" rx="10"/>
+    <text x="460" y="70" text-anchor="middle">브라우저 (JavaScript)</text>
+    <rect class="box accent" x="320" y="88" width="130" height="44" rx="8"/>
+    <text x="385" y="115" text-anchor="middle" class="mono">signal 바뀜</text>
+    <path class="line" d="M452 110 h28" marker-end="url(#arrow-rt)"/>
+    <rect class="box" x="482" y="88" width="126" height="44" rx="8"/>
+    <text x="545" y="115" text-anchor="middle" class="mono">$( … ) 재계산</text>
+    <text x="460" y="178" text-anchor="middle" class="sub">서버를 다녀오지 않아요</text>
+  </svg>
+  <figcaption><code>$( … )</code>로 감싼 부분만 브라우저로 넘어가요. 나머지는 서버에만 남아요.</figcaption>
+</figure>
+<p>데모는 입력칸 하나를 붙여요. <code>@input=$(|e: Event| name.set(e.target.value))</code>가 입력할 때마다 시그널 <code>name</code>을 바꾸고, 제목의 <code>$(name.get())</code>이 그 값을 읽어요. 오른쪽 화면에 'Bobby'를 치자 제목이 'Hello, Bobby!'로 바로 바뀌어요.</p>
+<figure>
+  <img src="assets/frame-0354.webp" alt="signal name과 input 이벤트 핸들러가 있는 greeting 컴포넌트 코드, 입력칸에 Bobby를 치자 Hello, Bobby! 가 표시된 화면">
+  <figcaption>모두 브라우저에서 일어나요. 서버 왕복이 없어요. <a href="https://www.youtube.com/watch?v=LVRM3skRBBE&amp;t=234s" target="_blank" rel="noopener">영상 03:54에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=LVRM3skRBBE&amp;t=248s" target="_blank" rel="noopener">04:08</a>
+  <h2>서버 데이터 붙이기: shard와 procedure</h2>
+<p>이제 입력한 이름으로 데이터베이스를 찾아 결과를 보여 주고 싶어요. 데모는 <code>greeting</code>을 <code>lookup</code> 컴포넌트로 바꿔요. Topcoat에는 이걸 푸는 길이 두 가지 있어요. 아래 그림은 두 길을 나란히 놓은 거예요. 영상이 두 장면에 걸쳐 설명한 것을 한 장에 모았어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 250" role="img" aria-label="shard는 인자를 보내면 서버가 HTML을 돌려주고, procedure는 인자를 보내면 서버가 String 같은 원시 값을 돌려주는 비교">
+    <defs><marker id="arrow-sp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="160" y="24" text-anchor="middle">#[shard]</text>
+    <text x="480" y="24" text-anchor="middle">#[procedure]</text>
+    <rect class="c2 cell" x="20" y="40" width="110" height="60" rx="8"/><text x="75" y="76" text-anchor="middle">브라우저</text>
+    <rect class="c1 cell" x="190" y="40" width="110" height="60" rx="8"/><text x="245" y="76" text-anchor="middle">서버</text>
+    <path class="line" d="M132 58 h56" marker-end="url(#arrow-sp)"/><text x="160" y="52" text-anchor="middle" class="sub">새 인자</text>
+    <path class="line" d="M188 86 h-56" marker-end="url(#arrow-sp)"/><text x="160" y="116" text-anchor="middle" class="mono">HTML</text>
+    <text x="160" y="150" text-anchor="middle" class="sub">서버가 컴포넌트를 다시 그려</text>
+    <text x="160" y="170" text-anchor="middle" class="sub">그 자리를 통째로 갈아 끼워요</text>
+    <text x="160" y="205" text-anchor="middle" class="sub">htmx와 비슷</text>
+    <rect class="c2 cell" x="340" y="40" width="110" height="60" rx="8"/><text x="395" y="76" text-anchor="middle">브라우저</text>
+    <rect class="c1 cell" x="510" y="40" width="110" height="60" rx="8"/><text x="565" y="76" text-anchor="middle">서버</text>
+    <path class="line" d="M452 58 h56" marker-end="url(#arrow-sp)"/><text x="480" y="52" text-anchor="middle" class="sub">새 인자</text>
+    <path class="line" d="M508 86 h-56" marker-end="url(#arrow-sp)"/><text x="480" y="116" text-anchor="middle" class="mono">String</text>
+    <text x="480" y="150" text-anchor="middle" class="sub">원시 값을 시그널에 넣고</text>
+    <text x="480" y="170" text-anchor="middle" class="sub">HTML은 브라우저가 그려요</text>
+    <text x="480" y="205" text-anchor="middle" class="sub">Leptos 서버 함수와 비슷</text>
+    <line class="line dim" x1="320" y1="20" x2="320" y2="225"/>
+  </svg>
+  <figcaption>무엇이 오가는지가 다를 뿐, 둘 다 '인자가 바뀌면 서버에 묻는다'는 점은 같아요.</figcaption>
+</figure>
+<h3>첫 번째 길, shard</h3>
+<p><code>lookup_results</code> 컴포넌트에 시그널 값을 인자로 넘겨요. 하지만 <code>#[component]</code>는 페이지를 처음 열 때 한 번만 렌더링되니 입력이 바뀌어도 그대로예요. 이걸 <code>#[shard]</code>로 바꾸면 달라져요. 인자가 바뀔 때마다 브라우저가 서버에 새 값을 보내 다시 그려 달라고 요청해요. 서버는 JSON(JavaScript Object Notation)이 아니라 HTML로 답해요.</p>
+<p>아래 코드에서 <code>#[shard]</code>가 붙은 <code>lookup_results</code>는 <code>for person in db_lookup(&amp;name)</code>으로 서버에서 바로 조회해요. 오른쪽 입력칸에 'palmer'를 넣자 목록에 'Ada Palmer' 한 줄이 남아요. 컴포넌트가 늘 서버에서 그려지니 데이터베이스 조회 같은 서버 일을 그대로 할 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0458.webp" alt="lookup 컴포넌트가 shard 매크로가 붙은 lookup_results에 name 시그널을 넘기고, lookup_results가 db_lookup 결과를 li로 그리는 코드. 입력칸에 palmer를 치자 Ada Palmer가 표시돼요">
+  <figcaption>브라우저는 DOM(Document Object Model) 한 부분을 표시해 두고, 서버가 보낸 HTML로 그 부분만 바꿔요. <a href="https://www.youtube.com/watch?v=LVRM3skRBBE&amp;t=298s" target="_blank" rel="noopener">영상 04:58에서 보기</a></figcaption>
+</figure>
+<p>단점도 짚어요. 매번 HTML 전체를 보내야 해요. 대부분은 아주 작은 부담이지만 최적은 아니라고 느낄 수 있어요. 새로 받은 데이터보다 그걸 감싼 HTML이 훨씬 큰 경우도 쉽게 떠올릴 수 있죠.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 문서는 shard와 procedure 모두 각자 HTTP(HyperText Transfer Protocol) 엔드포인트를 갖는다고 적어요. 브라우저가 아닌 곳에서도 요청을 보낼 수 있으니, 함수 안에서 인자를 검증하고 접근 권한을 확인하라고 권해요.</p>
+  <p class="cite">출처: <a href="https://docs.rs/topcoat/latest/topcoat/runtime/attr.shard.html" target="_blank" rel="noopener">docs.rs — topcoat::runtime::shard</a></p>
+</aside>
+<h3>두 번째 길, procedure</h3>
+<p>두 번째 길은 Leptos에 가까워요. 서버가 다시 그리는 특별한 컴포넌트 대신, <code>#[procedure]</code>를 붙인 함수가 데이터베이스를 조회하고 HTML이 아닌 원시 값을 돌려줘요. 그러면 브라우저의 런타임 표현식이 부를 수 있는 서버 API가 하나 생겨요. Leptos <span class="term" data-term="서버 함수" data-en="Server function" data-desc="브라우저 코드에서 일반 함수처럼 부르지만 실제로는 서버에서만 실행되는 함수예요. 별도 API 엔드포인트를 손으로 만들지 않아도 돼요." data-g="8">서버 함수</span>나 React 서버 함수와 같은 역할이에요.</p>
+<p>아래 코드의 아래쪽 <code>lookup_procedure</code>는 <code>Result&lt;String&gt;</code>을 돌려줘요. 위쪽 <code>lookup</code> 컴포넌트는 입력이 바뀔 때마다 <code>lookup_procedure(e.target.value).await</code>를 부르고, 받은 값을 시그널 <code>results</code>에 넣어요. 그 값은 <code>$(results.get())</code>로 브라우저에서 다시 그려져요. 입력칸에 'love'를 치자 'Ada Lovelace' 하나만 보여요.</p>
+<figure>
+  <img src="assets/frame-0622.webp" alt="lookup 컴포넌트가 input 이벤트에서 lookup_procedure를 await로 부르고 results 시그널에 넣는 코드, 그 아래 procedure 매크로가 붙은 lookup_procedure 함수. 입력칸에 love를 치자 Ada Lovelace가 표시돼요">
+  <figcaption>이번엔 HTML을 브라우저 쪽 런타임 표현식이 만들어요. <a href="https://www.youtube.com/watch?v=LVRM3skRBBE&amp;t=382s" target="_blank" rel="noopener">영상 06:22에서 보기</a></figcaption>
+</figure>
+<h4>왜 결과를 하나만 돌려주나요</h4>
+<p>돌려준 값은 Rust로 쓰였지만 JavaScript로 컴파일된 런타임 표현식이 읽어야 해요. 영상 시점에는 여기서 쓸 수 있는 Rust 타입이 몇 개뿐이었고 <code>Vec</code>은 빠져 있었어요. 그래서 데모는 첫 결과 하나만 돌려주는 걸로 물러서요. 발표자는 당분간 새 데이터를 화면에 띄울 땐 shard가 더 나은 선택으로 보인다고 해요. 다만 메인테이너들이 지원 타입을 넓히려 한다는 점은 좋게 봐요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>지금 공식 문서(topcoat 0.11.0)의 런타임 표현식 '공유 어휘'에는 <code>Vec&lt;T&gt;</code>, 배열, 슬라이스, 튜플, <code>#[record]</code>를 붙인 구조체가 들어 있어요. procedure의 인자와 반환 타입은 이 어휘 안에 있어야 해요. 그러니 영상의 '<code>Vec</code>은 아직 안 된다'는 제약은 지금 버전에선 풀렸을 수 있어요. 직접 쓰기 전에 문서를 확인해 보세요.</p>
+  <p class="cite">출처: <a href="https://docs.rs/topcoat/latest/topcoat/runtime/macro.expr.html" target="_blank" rel="noopener">docs.rs — topcoat::runtime::expr</a> · <a href="https://docs.rs/topcoat/latest/topcoat/runtime/attr.procedure.html" target="_blank" rel="noopener">docs.rs — topcoat::runtime::procedure</a></p>
+</aside>
+<p>발표자는 여기까지가 Topcoat의 핵심이라고 말해요. 좋아할지 싫어할지 정하기엔 충분하다는 거죠. 짧게 하려고 넘어간 기능도 많아요. 레이아웃 매크로, shadcn처럼 미리 만든 UI(User Interface) 컴포넌트 모음인 Topcoat UI, 앱 컨텍스트, Tailwind CSS(Cascading Style Sheets) 지원, 요청 컨텍스트, 쿠키 처리 같은 것들이에요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=LVRM3skRBBE&amp;t=440s" target="_blank" rel="noopener">07:20</a>
+  <h2>발표자의 평가: Leptos를 버릴까요?</h2>
+<p>발표자는 Topcoat을 Rust 풀스택 생태계에 꼭 필요했던 프레임워크로 봐요. 가장 큰 장점은 단순함이에요. Rust를 잘 모르는 사람도 금방 시작할 수 있겠다고 해요. 근거로 세 가지를 들어요.</p>
+<ul>
+  <li>보일러플레이트가 사실상 한 줄뿐이에요.</li>
+  <li><code>view!</code> 문법이 단순하지만 강력해요.</li>
+  <li>서버 렌더링 모델이 <span class="term" data-term="htmx" data-en="htmx" data-desc="HTML 속성만으로 서버에 요청하고, 돌아온 HTML 조각으로 페이지 일부를 바꾸는 JavaScript 라이브러리예요." data-g="9">htmx</span>와 아주 비슷해요.</li>
+</ul>
+<p>Rust 입문자든 웹 개발 입문자든 다가가기 쉽다는 점에서 Leptos나 Dioxus보다 빛난다고 해요.</p>
+<h3>아쉬운 점: Rust의 부분집합</h3>
+<p>브라우저 쪽 로직은 JavaScript로 컴파일되는 Rust의 '부분집합'으로만 써요. 발표자는 이걸 대담하고 훌륭한 선택이라고 하면서도 미지근하게 봐요. Leptos는 브라우저 코드도 WebAssembly로 컴파일하니 Rust 문법 전체를 쓸 수 있어요. 두 프레임워크를 영상이 말한 기준으로 나란히 놓으면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>기준</th><th>Topcoat</th><th>Leptos</th></tr></thead>
+    <tbody>
+      <tr><td>브라우저 코드 컴파일 대상</td><td>JavaScript</td><td>WebAssembly</td></tr>
+      <tr><td>브라우저에서 쓰는 Rust</td><td>부분집합</td><td>전체 문법</td></tr>
+      <tr><td>렌더링의 중심</td><td>서버 (htmx와 비슷)</td><td>서버와 브라우저 어디서나</td></tr>
+      <tr><td>페이지 구조</td><td>멀티 페이지 앱</td><td>진입점 하나 + 라우터 컴포넌트</td></tr>
+      <tr><td>서버 데이터 받기</td><td>shard(HTML) 또는 procedure(값)</td><td>서버 함수</td></tr>
+      <tr><td>첫 로딩</td><td>번들이 작아 유리</td><td>WebAssembly 번들이 커서 느려질 수 있음</td></tr>
+      <tr><td>잘 맞는 사람</td><td>Rust 풀스택 입문자</td><td>브라우저 로직이 많은 앱</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>그렇다고 WebAssembly가 브라우저 코드를 더 빠르게 하느냐 하면, 발표자의 답은 '대개는 아니다'예요. Google Earth나 Figma처럼 캔버스에 도형과 픽셀을 쏟아붓는 앱이라면 도움이 되고, 그럴 땐 Leptos가 당연한 선택이에요. 게다가 WebAssembly 번들은 크기로 악명이 높아서 첫 로딩이 느려질 수 있어요. JavaScript를 쓰면 이걸 줄일 수 있죠. 그래도 성능 이득이 없을 때조차 Rust 전체 문법을 마음껏 쓸 수 있다는 건 의미가 있다고 봐요.</p>
+<blockquote>
+  <p>Is Topcoat going to replace Leptos for me? Generally speaking, no.</p>
+  <p>Topcoat이 제게 Leptos를 대신할까요? 대체로는 아니에요.</p>
+  <cite>— 영상 08:54</cite>
+</blockquote>
+<p>정리하면 Topcoat은 서버 렌더링이 중심이고, 브라우저 로직은 필요할 때 쓸 수 있지만 '일등 시민'은 아니에요. 적어도 아직은요. 발표자는 대부분의 경우 브라우저 로직에 Rust 전체가 필요해서 Leptos를 계속 쓰겠다고 해요. 다만 Rust로 풀스택 웹을 처음 시작한다면, 특히 프레임워크가 조금 더 무르익으면 Topcoat이 좋은 출발점이라고 권해요. 이걸 보고 Topcoat으로 옮기는 Leptos 사용자도 있을 거라고 덧붙여요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Leptos의 서버 함수는 클라이언트와 서버에서 '같은 모양'으로 부르지만 실제로는 서버에서만 돌아요. 데이터베이스 요청이나 인증 같은 서버 로직을 컴포넌트 옆에 두고, 별도 REST(Representational State Transfer) API를 만들지 않아도 돼요. Topcoat의 procedure가 이 자리에 해당해요.</p>
+  <p class="cite">출처: <a href="https://book.leptos.dev/server/25_server_functions.html" target="_blank" rel="noopener">Leptos 공식 가이드 — Server Functions</a> · <a href="https://github.com/leptos-rs/leptos" target="_blank" rel="noopener">leptos-rs/leptos GitHub</a></p>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-5"><dt>런타임 표현식<span class="en">Runtime expression</span></dt><dd>Topcoat에서 $( … )로 감싼 Rust 식이에요. 첫 렌더링 땐 서버가, 이후엔 JavaScript로 바뀌어 브라우저가 계산해요.</dd></div>
+    <div class="g" id="g-2"><dt>매크로<span class="en">Macro</span></dt><dd>Rust에서 컴파일 전에 코드를 만들어 내는 장치예요. Topcoat은 view!, #[component], #[shard] 같은 매크로로 HTML과 서버·브라우저 코드를 나눠요.</dd></div>
+    <div class="g" id="g-3"><dt>멀티 페이지 앱<span class="en">Multi-Page Application</span></dt><dd>경로를 옮길 때마다 브라우저가 서버에서 새 페이지를 통째로 받는 방식이에요. SPA 이전의 전통적인 웹 구조예요.</dd></div>
+    <div class="g" id="g-8"><dt>서버 함수<span class="en">Server function</span></dt><dd>브라우저 코드에서 일반 함수처럼 부르지만 실제로는 서버에서만 실행되는 함수예요. 별도 API 엔드포인트를 손으로 만들지 않아도 돼요.</dd></div>
+    <div class="g" id="g-4"><dt>시그널<span class="en">Signal</span></dt><dd>값이 바뀌면 그 값을 읽는 화면이 자동으로 다시 그려지는 반응형 데이터예요. Leptos·SolidJS에서도 쓰는 개념이에요.</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>CSS</dt><dd>Cascading Style Sheets</dd></div>
+    <div class="g"><dt>DOM</dt><dd>Document Object Model</dd></div>
+    <div class="g"><dt>HTML</dt><dd>HyperText Markup Language</dd></div>
+    <div class="g" id="g-9"><dt>htmx<span class="en">htmx</span></dt><dd>HTML 속성만으로 서버에 요청하고, 돌아온 HTML 조각으로 페이지 일부를 바꾸는 JavaScript 라이브러리예요.</dd></div>
+    <div class="g"><dt>HTTP</dt><dd>HyperText Transfer Protocol</dd></div>
+    <div class="g"><dt>JSON</dt><dd>JavaScript Object Notation</dd></div>
+    <div class="g" id="g-7"><dt>procedure<span class="en">Procedure</span></dt><dd>브라우저의 런타임 표현식이 부르는 Topcoat의 비동기 서버 함수예요. HTML 대신 원시 값을 돌려줘요.</dd></div>
+    <div class="g"><dt>REST</dt><dd>Representational State Transfer</dd></div>
+    <div class="g" id="g-6"><dt>shard<span class="en">Shard</span></dt><dd>인자가 바뀌면 서버에서 다시 렌더링해 HTML로 돌려주는 Topcoat 컴포넌트예요. htmx처럼 페이지 일부만 갈아 끼워요.</dd></div>
+    <div class="g"><dt>UI</dt><dd>User Interface</dd></div>
+    <div class="g"><dt>URL</dt><dd>Uniform Resource Locator</dd></div>
+    <div class="g" id="g-1"><dt>WebAssembly<span class="en">WebAssembly (Wasm)</span></dt><dd>브라우저에서 돌아가는 저수준 바이너리 형식이에요. Rust 코드를 이걸로 컴파일하면 브라우저에서도 Rust 전체 문법을 쓸 수 있지만, 번들이 커지기 쉬워요.</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=LVRM3skRBBE" target="_blank" rel="noopener">원본 영상 — Code to the Moon</a></li>
+    <li id="src-2"><a href="https://github.com/tokio-rs/topcoat" target="_blank" rel="noopener">tokio-rs/topcoat GitHub README</a></li>
+    <li id="src-3"><a href="https://docs.rs/topcoat/latest/topcoat/runtime/attr.shard.html" target="_blank" rel="noopener">docs.rs — topcoat::runtime::shard</a></li>
+    <li id="src-4"><a href="https://docs.rs/topcoat/latest/topcoat/runtime/attr.procedure.html" target="_blank" rel="noopener">docs.rs — topcoat::runtime::procedure</a></li>
+    <li id="src-5"><a href="https://docs.rs/topcoat/latest/topcoat/runtime/macro.expr.html" target="_blank" rel="noopener">docs.rs — topcoat::runtime::expr</a></li>
+    <li id="src-6"><a href="https://book.leptos.dev/server/25_server_functions.html" target="_blank" rel="noopener">Leptos 공식 가이드 — Server Functions</a></li>
+    <li id="src-7"><a href="https://github.com/leptos-rs/leptos" target="_blank" rel="noopener">leptos-rs/leptos GitHub</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 27일에 이 영상을 보고 정리했어요. 원본은 Code to the Moon 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

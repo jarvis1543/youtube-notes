@@ -1,0 +1,1055 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>클로드 코워크를 1주 반 만에 만든 앤트로픽 리드가 클로드에게 일을 맡기는 법</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>클로드 코워크를 1주 반 만에 만든 앤트로픽 리드가 클로드에게 일을 맡기는 법</h1>
+  <p class="lede">&#x27;전문가처럼 해 줘&#x27; 대신 쓰는 네 가지 방향을 정리해요</p>
+  <div class="meta">
+    <span>AgentOS</span><span class="dot">·</span>
+    <span>영상 43:37</span><span class="dot">·</span>
+    <span>읽는 데 약 32분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=gV0CtvIX5zk" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>역할을 씌우지 말고, 그 분야 최고의 사람이 거치는 단계와 쓰는 도구를 쓰게 해요. 역할극은 말투만 바꿔요.</li>
+    <li>일을 하나씩 집어 주지 말고 원본 데이터와 컴퓨터를 도구로 열어 줘요. 역할별 에이전트와 옛 <span class="term" data-term="스킬" data-en="Agent Skills" data-desc="특정 작업에 쓸 지시문과 스크립트를 묶어 모델이 필요할 때 불러 쓰게 한 꾸러미예요. 만든 시점의 모델에 맞춰져 있어 모델이 바뀌면 낡을 수 있어요." data-g="7">스킬</span>은 오히려 방해가 될 수 있어요.</li>
+    <li>방금 일한 세션이 자기 결과를 채점하게 두지 말아요. 깨는 게 임무인 클로드 여럿과 <span class="term" data-term="판사 클로드" data-en="LLM-as-a-judge" data-desc="다른 모델들이 낸 결과나 비판을 받아 무엇이 타당한지 판정하는 역할의 모델이에요. 비판이 쏟아질 때 사람이 직접 고르는 수고를 덜어 줘요." data-g="4">판사 클로드</span>, 아니면 바깥 증거로 채점해요.</li>
+    <li>내가 병목이라면 내 피드백과 클로드 피드백을 나란히 돌려 보며 넘길 수 있는 것부터 넘겨요.</li>
+    <li>만드는 게 쉬워져도 좋은 제품의 열쇠는 공감이에요. 작업이 아니라 그 다음의 목표를 맡겨야 새 모델의 덕을 크게 봐요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">클로드 앞의 컨베이어 벨트, 그리고 하루에 하나</a></li>
+    <li><a href="#s2">좋은 결과 대신, 최고의 사람이 거치는 과정</a></li>
+    <li><a href="#s3">그럴듯한 오답 막기: 적대적 리뷰와 판사 클로드</a></li>
+    <li><a href="#s4">역할 에이전트보다 범용 모델과 도구</a></li>
+    <li><a href="#s5">오늘 시작한다면: 데스크톱 앱, 그리고 역할극 대신 도구</a></li>
+    <li><a href="#s6">세션 하나를 믿지 않기: 바깥 채점, 피드백 규칙, 나란히 돌려 보기</a></li>
+    <li><a href="#s7">만드는 게 쉬워지면 남는 것: 공감과 야심</a></li>
+    <li><a href="#s8">주니어, 시스템을 엮는 능력, 그리고 아이폰 이전 시대</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>클로드 앞의 컨베이어 벨트, 그리고 하루에 하나</h2>
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>이 영상은 Silicon Valley Girl 채널의 영어 인터뷰(진행자 마리나 모길코, 손님 펠릭스 리세버그)를 잘라 한국어 내레이션과 그림을 덧붙인 재구성 영상이에요. 원래 인터뷰는 2026년 10월 20일에 올라온 약 49분짜리예요(내레이션은 52분이라고 해요). 펠릭스의 말은 원래 인터뷰 자막과 대조해서 썼어요.</p>
+</aside>
+<p>영상은 그림 한 장으로 시작해요. 상자가 줄지어 오는 컨베이어 벨트 끝에서 사람이 상자 하나를 집어 클로드 앞에 내려놓아요. 오른쪽 위 '1년 반 전쯤' 표시와 아래 '크래시 하나를 집어 와서' 꼬리표가 붙어 있어요. 펠릭스가 1년 반 전에 일하던 방식이고, 영상 내내 이 그림이 기준점이 돼요.</p>
+<figure>
+  <img src="assets/frame-0009.webp" alt="컨베이어 벨트 위 상자들 끝에서 사람이 상자 하나를 집어 클로드 캐릭터 앞에 놓는 선 그림, '클로드 앞의 컨베이어 벨트' 제목과 '크래시 하나를 집어 와서' 꼬리표">
+  <figcaption>사람이 할 일을 하나씩 골라 건네는 구조예요. 이 영상은 이 그림을 어떻게 바꾸는지에 관한 이야기예요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=9s" target="_blank" rel="noopener">영상 00:09에서 보기</a></figcaption>
+</figure>
+<p>소개 카드는 펠릭스가 앤트로픽에서 클로드 앱·코워크·코드 데스크톱 엔지니어링을 맡고, 전에는 슬랙 데스크톱 앱을 만들었으며, 일렉트론 핵심 메인테이너라고 정리해요. 카드 아래 주황 글씨가 '클로드 코워크 제작 기간 약 1주 반'이에요. 원래 인터뷰 도입부도 그의 팀이 코워크를 약 1주 반 만에 만들었고 그는 이제 코드를 쓰지 않는다고 소개해요.</p>
+<figure>
+  <img src="assets/frame-0024.webp" alt="펠릭스 리세버그 사진과 소개 카드: 클로드 앱·코워크·코드 데스크톱 엔지니어링, 전 슬랙 데스크톱 앱, 일렉트론 핵심 메인테이너, 클로드 코워크 제작 기간 약 1주 반">
+  <figcaption>클로드를 만드는 쪽 사람이 클로드를 어떻게 쓰는지가 이 인터뷰의 관심사예요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=24s" target="_blank" rel="noopener">영상 00:24에서 보기</a></figcaption>
+</figure>
+<h3>네 가지 질문으로 틀을 잡아요</h3>
+<p>내레이터는 인터뷰에서 네 가지 전환을 뽑아 표로 세워 둬요. 왼쪽 '2024년식' 칸에는 역할을 씌운다, 작업을 하나씩 집어 준다, 만든 세션이 채점한다, 내가 다 본다가 있고, 오른쪽 '지금' 칸은 물음표로 비어 있어요. 무엇을 주나, 누가 채점하나, 병목이 누구인가를 묻는 표예요. 빈칸은 섹션마다 하나씩 채워지고, 마지막 섹션에서 완성된 표를 다시 볼 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0051.webp" alt="'클로드를 만드는 쪽 사람이 일을 맡기는 법' 표: 2024년식 네 줄(역할을 씌운다, 작업을 하나씩 집어 준다, 만든 세션이 채점한다, 내가 다 본다)과 지금 칸의 물음표">
+  <figcaption>왼쪽 네 줄이 지금 많이들 쓰는 방식이에요. 오른쪽을 채우는 게 이 문서의 뼈대예요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=51s" target="_blank" rel="noopener">영상 00:51에서 보기</a></figcaption>
+</figure>
+<p>출발점이 되는 일화도 하나 나와요. 원래 인터뷰에서 펠릭스는 프로덕트 매니저 파벨이 NASA(National Aeronautics and Space Administration)의 대량 데이터를 클로드에게 열어 주고 새 행성을 찾아 달라고 했더니 후보가 나왔다고 말해요. 아직 NASA가 확인 중이라 자기도 조심스럽다고 덧붙여요. 그림은 상자를 통째로 여는 사람과 별빛을 가리키는 클로드를 그리고, '천문학자가 아니어도 · 데이터를 통째로 열어 주고 · 우리가 못 본 걸 찾아 줘'라고 적어요. 맨 아래 '인터뷰 내내 반복'은 이 방식이 계속 돌아온다는 예고예요.</p>
+<figure>
+  <img src="assets/frame-0115.webp" alt="사람이 큰 상자를 열자 별 무리가 쏟아지고 클로드가 그중 하나를 가리키는 선 그림, 꼬리표 '천문학자가 아니어도', '데이터를 통째로 열어 주고', '우리가 못 본 걸 찾아 줘', '인터뷰 내내 반복'">
+  <figcaption>작업 하나가 아니라 데이터 전체와 목표를 맡긴 예예요. 행성은 확인되지 않은 후보 단계라는 점을 내레이션도 밝혀요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=75s" target="_blank" rel="noopener">영상 01:15에서 보기</a></figcaption>
+</figure>
+<h3>천 개를 만들어도 하루에 하나만 보여 줘요</h3>
+<p>펠릭스는 요즘 자기가 제품 매니저, 엔지니어링 매니저, 인사 관리자, 데이터 과학자를 섞은 사람이 됐다고 해요. 다른 직군에 도움을 청하는 일이 크게 줄었기 때문이에요. 하루의 대부분은 프로토타이핑이에요. 그 흐름을 그림으로 옮기면 이래요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["아이디어를 며칠 묵힌다"] --> B["클로드가 변형을 전부 만든다"] --> C["어느 게 좋은지 비평"] --> D["사람에게 보여 줄 하나"]
+</pre>
+  <figcaption>앞의 세 칸은 클로드 덕에 거의 공짜가 됐어요. 남는 병목은 마지막 칸, 사람의 주의력이에요.</figcaption>
+</figure>
+<p>예전 엔지니어링 매니저는 만들 수 있는지, 유지보수 비용과 기회비용이 얼마인지부터 따졌어요. 지금은 끝 상태로 바로 건너가 "일단 만들어 봐, 써 보자"가 돼요. 대신 사람의 주의력은 그대로예요. 펠릭스는 진행자에게 천 개는 쉽게 만들어도 보여 줄 수 있는 건 하루에 하나쯤이라고 말해요.</p>
+<blockquote>
+  <p>I can easily build a thousand. I can't show you a thousand.</p>
+  <p>천 개는 쉽게 만들 수 있어요. 천 개를 보여 드릴 수는 없죠.</p>
+  <cite>— 원래 인터뷰 (이 영상 02:57 부근)</cite>
+</blockquote>
+<p>그래서 좋은 제품의 기준도 '더 뺄 게 없을 때 완벽하다'는 옛말 쪽이에요. 버튼은 얼마든지 만들 수 있지만 좋은 제품은 버튼이 적어요. 몇 사람 앞에 놓았을 때 금방 이해되고, 전에 못 하던 일을 하게 되는지가 그가 보는 신호예요.</p>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=239s" target="_blank" rel="noopener">03:59</a>
+  <h2>좋은 결과 대신, 최고의 사람이 거치는 과정</h2>
+<p>진행자는 코딩은 버그가 없으면 되지만, 글처럼 사람의 창의성이 들어간 결과물은 에이전트에게 '좋다'를 어떻게 정의하냐고 물어요. 펠릭스는 이 질문을 결과에서 과정으로 옮겨요. 내레이터의 표에서 첫 줄이 여기서 채워져요. '역할을 씌운다'에 줄이 그어지고 '최고의 사람이 거치는 단계를 밟게 한다'가 들어와요. 계단을 오르는 클로드 그림 옆에 '좋은 결과를 달라'가 지워져 있어요.</p>
+<figure>
+  <img src="assets/frame-0806.webp" alt="계단을 오르는 클로드 선 그림, 위쪽에 '역할을 씌운다'가 지워지고 '최고의 사람이 거치는 단계를 밟게 한다'가 적힌 표 한 줄, 오른쪽에 지워진 '좋은 결과를 달라'와 '최고의 사람이 거치는 단계'">
+  <figcaption>네 가지 전환 중 첫째예요. 결과를 주문하지 말고 과정을 주문해요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=486s" target="_blank" rel="noopener">영상 08:06에서 보기</a></figcaption>
+</figure>
+<h3>날씨 예시: 찍어서 맞힌 답은 실패예요</h3>
+<p>펠릭스가 자주 드는 예는 날씨예요. 에이전트에게 바깥 기온을 알아 오라고 했다고 해 봐요. 그림 왼쪽은 주사위와 온도계, 아래 빨간 칸에 '찍어서 맞힌 답 ✗'이에요. 오른쪽은 지도·자료 더미와 온도계, 초록 칸에 '출처 거쳐 0.5도 차이 ✓'예요. 모델이 기온을 찍어서 맞혔다면 통과가 아니라 실패로 봐야 해요. 위치를 제대로 찾고 믿을 만한 출처를 거쳤다면 0.5도쯤 틀려도 그쪽이 더 나은 결과예요.</p>
+<figure>
+  <img src="assets/frame-0812.webp" alt="'날씨 예시' 그림: 왼쪽 주사위와 온도계 아래 '찍어서 맞힌 답 ✗', 오른쪽 지도와 책 더미와 온도계 아래 '출처 거쳐 0.5도 차이 ✓'">
+  <figcaption>정답 여부가 아니라 거기까지 간 과정이 믿을 만한지를 채점해요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=492s" target="_blank" rel="noopener">영상 08:12에서 보기</a></figcaption>
+</figure>
+<h3>작가들은 손맛이 아니라 과정이라고 말해요</h3>
+<p>취향이 들어가는 글은 더 어려워요. 펠릭스는 AI(Artificial Intelligence)에 우호적인 뛰어난 작가들과 이야기하는 걸 좋아한다고 해요. 여러 매체에서 전속 기자로 일한 친구 애덤 데이비슨은 이런 프롬프트를 써요.</p>
+<blockquote>
+  <p>take my argument and ... magnify it by 100 ... What is the strongest counter argument?</p>
+  <p>내 주장을 100배로 키워 봐. 가장 강한 반론이 뭐야?</p>
+  <cite>— 원래 인터뷰 (이 영상 05:35 부근)</cite>
+</blockquote>
+<p>작가가 아닌 사람의 순진한 접근은 "이 글 좋게 만들어 줘"예요. 펠릭스가 깨달은 건 지식 노동의 비결이 좋은 결과를 달라는 데 있지 않다는 거예요. 그 사이에 한 단계를 끼워요. 이 분야 최고의 사람들은 어떻게 일하는지 묻고, 그 단계를 자동화하는 거예요. 진행자가 그래도 취향은 없지 않냐고 하자, 펠릭스는 좋은 작가 대부분이 자기 글이 타고난 손맛 덕분이라는 데 동의하지 않는다고 답해요. 작가 작업실에 가 보면 화이트보드와 자료가 잔뜩 있고, 결과는 오래 다듬은 과정에서 나온다는 거예요.</p>
+<h3>블렌더를 쓰라고 하자 애니메이션이 좋아졌어요</h3>
+<p>펠릭스는 요즘 모션·영상·3D에서 이 변화가 잘 보인다고 해요. 모델 자체도 크게 좋아졌지만, 사람들이 한 더 큰 도약은 클로드에게 전문 애니메이터가 쓰는 블렌더를 쓰라고 한 거예요. 그림에서 '좋은 애니메이션을 가르친다'가 지워지고 '전문 애니메이터의 도구(블렌더) → 결과가 좋아졌다'가 남아요.</p>
+<figure>
+  <img src="assets/frame-0821.webp" alt="3D 편집 프로그램 화면을 조작하는 클로드 선 그림, 꼬리표 '애니메이션도 마찬가지', 지워진 '좋은 애니메이션을 가르친다', '전문 애니메이터의 도구(블렌더)', '결과가 좋아졌다'">
+  <figcaption>돌파구는 '좋은 애니메이션이 뭔지'를 이해시키는 데가 아니라 매체·기법·도구에 있었어요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=501s" target="_blank" rel="noopener">영상 08:21에서 보기</a></figcaption>
+</figure>
+<p>내레이션 슬라이드 하나는 AI를 쓰는 방식을 둘로 나눠요. 왼쪽 '자동화'는 하기 싫거나 바쁜 일을 대신하는 쪽이고 '지금 AI 매출 대부분'이라는 꼬리표가 있어요. 오른쪽 '증강'은 기술이나 지식이 없어도 못 하던 일을 AI 덕분에 하는 쪽이에요. 블렌더를 써 본 적 없는 사람이 3D를 만드는 건 오른쪽에 들어가요.</p>
+<figure>
+  <img src="assets/frame-0419.webp" alt="'AI를 쓰는 두 방식' 슬라이드: 왼쪽 서류가 기계를 지나 사람에게 가는 그림과 '자동화 — 하기 싫거나 바쁜 일을 대신, 지금 AI 매출 대부분', 오른쪽 책장 앞 사람과 '증강 — 기술·지식이 없어도 못 하던 일을 AI 덕분에'">
+  <figcaption>이 영상이 관심을 두는 건 오른쪽, 못 하던 일을 하게 되는 쪽이에요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=259s" target="_blank" rel="noopener">영상 04:19에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=481s" target="_blank" rel="noopener">08:01</a>
+  <h2>그럴듯한 오답 막기: 적대적 리뷰와 판사 클로드</h2>
+<p>진행자가 짚는 문제는 이거예요. 내가 전혀 모르는 분야, 예를 들어 별을 찾는 일에서 "천문 연구자처럼 해 줘"라고 시키면, AI가 자신 있게 틀린 걸 내놓아도 나는 알 수 없어요. 내레이션 그림이 이 상황을 그대로 보여 줘요. 차트를 가리키는 클로드 옆에서 사람이 머리를 긁고, 꼬리표는 '내가 모르는 분야라면 · 전문가처럼 하라고 시킨 AI · 그럴듯하게 틀려도 · 알아챌 수 없다'로 이어져요.</p>
+<figure>
+  <img src="assets/frame-0827.webp" alt="차트를 가리키며 설명하는 클로드와 머리를 긁는 사람 선 그림, 꼬리표 '내가 모르는 분야라면', '전문가처럼 하라고 시킨 AI', '그럴듯하게 틀려도', '알아챌 수 없다'">
+  <figcaption>모르는 분야일수록 결과를 직접 검증할 수 없다는 게 출발점이에요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=507s" target="_blank" rel="noopener">영상 08:27에서 보기</a></figcaption>
+</figure>
+<h3>적대적 리뷰: 깨는 게 임무인 클로드들</h3>
+<p>펠릭스의 실용적인 답은 <span class="term" data-term="적대적 리뷰" data-en="Adversarial review" data-desc="결과물을 만든 모델과 따로, 그걸 깨는 게 임무인 모델을 띄워 약점만 찾게 하는 검증 방식이에요. 흠을 찾는 게 만드는 것보다 쉬워서 한 단계 낮은 모델로도 잘 돼요." data-g="1">적대적 리뷰</span>예요. 코딩과 수학 등에서는 효과를 숫자로 보여 줄 수 있을 만큼 검증된 방법이라고 해요. 슬라이드 가운데 문서 한 장을 클로드 여섯이 둘러싸고 있어요. 오른쪽 꼬리표가 핵심을 정리해요. 만든 클로드와 따로, 깨는 게 유일한 임무인 클로드를 여러 개 띄우고, <span class="term" data-term="공매도" data-en="Short selling" data-desc="주가가 떨어질 것에 돈을 거는 투자예요. 공매도 투자자는 회사의 약점을 집요하게 파고들기 때문에 &#x27;약점만 찾는 사람&#x27;의 비유로 쓰여요." data-g="3">공매도</span>처럼 약점만 찾게 해요. 마지막 꼬리표 '흠 찾기 &lt; 새로 만들기'는 흠을 찾는 게 만드는 것보다 쉽다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-1038.webp" alt="'적대적 리뷰' 슬라이드: 문서 하나를 도구를 든 클로드 여섯이 둘러싼 그림, 꼬리표 '만든 클로드와 따로', '깨는 게 유일한 임무·여러 개', '공매도처럼 약점만', '흠 찾기 < 새로 만들기'">
+  <figcaption>새 휴대폰을 처음부터 설계하는 것보다 좋은지 아닌지 말하는 게 쉬운 것과 같아요. 그래서 리뷰어는 한 단계 낮은 모델이어도 괜찮다고 해요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=638s" target="_blank" rel="noopener">영상 10:38에서 보기</a></figcaption>
+</figure>
+<p>펠릭스는 이걸 본질적으로 <span class="term" data-term="레드팀" data-en="Red teaming" data-desc="일부러 공격자 입장에 서서 시스템이나 계획의 허점을 찾는 활동이에요. 보안과 AI 안전 평가에서 널리 써요." data-g="2">레드팀</span> 활동, 혹은 공매도와 같은 개념이라고 설명해요. 같은 모델을 쓰냐는 질문에는 작업에 따라 다르다고 답해요. 대신 지능을 한 단계 낮춰도 결과가 꽤 좋다고 덧붙여요. 실제로 어떻게 시키는지도 보여 줘요. 그는 그날 아침 쓴 블로그 글을 클로드 프로젝트에 넣고 스레드 다섯 개를 띄워, 각각에게 이 글이 틀렸다는 걸 증명하라고 시켜요. 생각 방향이 틀렸다, 사실관계가 틀렸다, 뭔가를 오해했다는 걸 찾는 거예요.</p>
+<p>그림 왼쪽은 '펠릭스의 블로그 글 1편' 아래 스레드 1~5가 모두 "내가 틀렸다는 걸 증명하라"를 받은 모습이에요. 오른쪽에는 사람 하나를 둘러싼 말풍선 다섯 개와 '문제는 그다음 — 의견이 다 다르다', '뭘 따를지는 결국 내가 고른다'가 붙어 있어요. 진행자도 인터뷰를 준비할 때 모델 여러 개에게 피드백을 받는데, 다 달라서 결국 직접 골라야 한다는 고민이에요.</p>
+<figure>
+  <img src="assets/frame-1053.webp" alt="블로그 글 1편에 스레드 1부터 5까지 각각 '내가 틀렸다는 걸 증명하라'가 붙은 목록과, 말풍선 다섯 개에 둘러싸인 사람, 꼬리표 '문제는 그다음 — 의견이 다 다르다', '진행자도 모델 여러 개에게 피드백', '뭘 따를지는 결국 내가 고른다'">
+  <figcaption>비판을 늘리면 비판을 고르는 일이 새로 생겨요. 다음 그림이 이걸 풀어요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=653s" target="_blank" rel="noopener">영상 10:53에서 보기</a></figcaption>
+</figure>
+<h3>판사 클로드가 비판을 걸러요</h3>
+<p>펠릭스의 답은 "이번에도 클로드"예요. 코딩에서는 이걸 판사라고 불러요. 공격한 에이전트들의 주요 비판을 또 다른 클로드에게 넘기고, 그 클로드는 각 비판이 타당한지 검증해요. 슬라이드는 이 구조를 세 겹으로 그려요. 왼쪽 '공격 클로드 ×5'가 비판을 내고, 가운데 '판사 클로드'가 타당한 것만 거르고, 오른쪽 '만든 클로드'가 받아들일지 정해요. 화살표 아래 초록 글씨는 '타당한 비판만 도착 · 가려서 받는다'예요.</p>
+<figure>
+  <img src="assets/frame-1337.webp" alt="'구조는 세 겹' 슬라이드: 공격 클로드 ×5(비판을 낸다)에서 빨간 화살표 다섯 개가 판사 클로드(타당한 것만 거른다)로, 초록 화살표가 만든 클로드(받아들일지 정한다)로 이어짐, 상단 '만든 세션이 채점한다 → 바깥에서 채점한다'">
+  <figcaption>만든 클로드도 무조건 고치지 않고 가려서 받아요. 위쪽 표에서 '만든 세션이 채점한다'가 '바깥에서 채점한다'로 바뀌어요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=817s" target="_blank" rel="noopener">영상 13:37에서 보기</a></figcaption>
+</figure>
+<p>마지막 단계가 중요한 이유도 말해요. 코딩에서도, 펠릭스의 지식 노동 결과물에서도 비판이 그럴듯해 보이지만 요점을 놓쳤거나 실행할 게 없을 때가 있어요. 그는 비판이 그 정도밖에 안 나오면 결과물이 꽤 좋다는 신호로 읽어요.</p>
+<h3>좋은 게 뭔지 아는지에 따라 두 갈래로 나눠요</h3>
+<p>이건 결과물이 좋은지 스스로 확신이 없고 쉽게 확인할 수 없을 때의 방법이에요. 반대로 펠릭스는 자기 웹사이트를 3D 에셋으로 새로 만들었는데, 블렌더는 써 본 적도 없어요. 그래도 보기 좋은지, 느낌이 좋은지는 판단할 수 있고, 그걸로 충분하다고 해요. 아래 캡처가 그 웹사이트예요. 책상 위 책 더미와 카세트, 플로피디스크가 3D로 놓여 있어요.</p>
+<figure>
+  <img src="assets/frame-1236.webp" alt="펠릭스 리세버그 웹사이트 화면: 나무 책장 위에 ELECTRON, SLACK, STRIPE 등 이름이 붙은 책과 카세트, 플로피디스크가 3D로 놓인 장면">
+  <figcaption>과정을 전혀 모르는 도구로 만든 결과지만, 의뢰인 자리에서 좋은지 나쁜지는 판단할 수 있어요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=756s" target="_blank" rel="noopener">영상 12:36에서 보기</a></figcaption>
+</figure>
+<p>우리는 계약업자, 변호사, 의사에게도 이렇게 해요. 과정을 검증할 방법은 없고 결과에 피드백만 줘요. 그래서 펠릭스는 일을 두 갈래로 나눠요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>상황</th><th>펠릭스의 답</th><th>영상 속 예</th></tr></thead>
+    <tbody>
+      <tr><td>좋은 게 뭔지 전혀 모른다</td><td>AI를 더 써요. 토큰을 더 들여 검증을 늘려요</td><td>적대적 리뷰 + 판사</td></tr>
+      <tr><td>좋은 게 뭔지 안다</td><td>과정은 몰라도 돼요. 결과만 판단해요</td><td>블렌더 0번 써 보고 만든 3D 웹사이트</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>내레이션 슬라이드는 갈림길 그림으로 같은 내용을 정리해요. 왼쪽 길에 '좋은 게 뭔지 모른다 → 토큰을 더, 검증을 늘린다', 오른쪽 길에 '좋은 게 뭔지 안다 → 과정은 몰라도 된다'가 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-1348.webp" alt="'판단 기준은 두 갈래' 슬라이드: 갈림길 그림, 왼쪽 '좋은 게 뭔지 모른다 → 토큰을 더, 검증을 늘린다', 오른쪽 '좋은 게 뭔지 안다 → 과정은 몰라도 된다', 아래 '블렌더 0번 써 보고 → 3D 웹사이트'">
+  <figcaption>진행자는 모든 단계를 이해하고 싶은 일은 정말 중요한 몇 개로만 줄이자고 받아요. 펠릭스는 마이크로매니징을 내려놓는 오래된 문제라고 해요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=828s" target="_blank" rel="noopener">영상 13:48에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=837s" target="_blank" rel="noopener">13:57</a>
+  <h2>역할 에이전트보다 범용 모델과 도구</h2>
+<p>진행자가 묻는 건 에이전트를 완전히 믿고 맡기는 지식 노동이 있냐는 거예요. 펠릭스는 바로 팩트 체크를 꼽아요. 슬라이드 덱이나 발표의 모든 숫자에 1차 출처를 찾고, 그게 좋은 1차 출처인지 검증하라고 하면 결과를 100% 믿는다고 해요. 에이전트 50개가 필요한 것도 아니고 하나면 돼요. 특별히 훈련한 팩트 체크 에이전트가 있냐고 묻자, 그냥 클로드 스레드 하나라고 답해요.</p>
+<h3>우리는 에이전트에 너무 기울어 있어요</h3>
+<p>여기서 펠릭스가 스스로 '매운 의견'이라 부르는 말이 나와요. 우리가 에이전트라는 개념에 너무 기울어 있다는 거예요. 내레이션은 이걸 시소로 그려요. 한쪽 끝에 상자가 잔뜩 쌓여 아래로 내려앉았고, 아래 글씨가 '에이전트에 너무 기울어 있다'예요.</p>
+<figure>
+  <img src="assets/frame-1700.webp" alt="한쪽 끝에 상자가 높이 쌓여 기울어진 시소 선 그림, 위에 '펠릭스 본인이 말한 매운 의견', 아래 '에이전트에 너무 기울어 있다'">
+  <figcaption>역할을 나눈 에이전트를 잔뜩 쌓는 쪽으로 무게가 쏠렸다는 비유예요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1020s" target="_blank" rel="noopener">영상 17:00에서 보기</a></figcaption>
+</figure>
+<p>근거는 수학이에요. 펠릭스에 따르면 수학을 처음 진지하게 파고든 회사는 구글 딥마인드였어요. 수학 전용 모델과 <span class="term" data-term="하네스" data-en="Harness" data-desc="모델을 둘러싸고 도구 호출, 반복 실행, 검증 같은 작업 흐름을 돌려 주는 실행 틀이에요. 같은 모델도 하네스에 따라 성능이 크게 달라져요." data-g="5">하네스</span>를 만들어 국제수학올림피아드에서 당시 최고 성적인 은메달을 땄어요. 그런데 얼마 뒤 주요 <span class="term" data-term="범용 모델" data-en="Generalist model" data-desc="특정 과제 전용으로 만들지 않고 여러 분야를 두루 다루도록 학습한 모델이에요. 펠릭스는 이런 모델이 전용 시스템을 금방 따라잡는다고 봐요." data-g="6">범용 모델</span>들이 금메달 수준에 올랐어요. 슬라이드는 '2024 구글 딥마인드 · 수학 전용 시스템 · 은메달 수준'에서 '2025 범용 모델 · 금메달 수준'으로 화살표를 그어요. 아래 꼬리표가 펠릭스의 기억을 바로잡아요. 그는 "4~5개월 뒤"라고 말했지만 실제로는 1년 뒤 대회였어요.</p>
+<figure>
+  <img src="assets/frame-1715.webp" alt="'근거는 수학' 슬라이드: 은메달에서 금메달로 가는 아이콘, '2024 구글 딥마인드·수학 전용 시스템 국제수학올림피아드 은메달 수준'에서 '2025 범용 모델 금메달 수준'으로 화살표, 아래 '펠릭스의 기억: 몇 달 뒤'가 지워지고 '실제로는 1년 뒤 대회'">
+  <figcaption>전용 시스템이 범용 모델에게 금방 추월당했다는 게 요지예요. 간격은 펠릭스 말보다 길었어요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1035s" target="_blank" rel="noopener">영상 17:15에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>구글 딥마인드 발표를 보면, 2024년 7월 AlphaProof와 AlphaGeometry 2를 합친 시스템이 국제수학올림피아드 6문제 중 4문제를 풀어 28점, 은메달 수준을 냈어요. 이때는 전문가가 문제를 먼저 Lean 같은 형식 언어로 옮겨 줘야 했어요. 2025년 7월에는 Gemini Deep Think 고급 버전이 자연어로 6문제 중 5문제를 풀어 42점 만점에 35점, 공식 채점으로 금메달 수준을 받았어요. 두 결과 사이는 약 1년이에요.</p>
+  <p class="cite">출처: <a href="https://deepmind.google/discover/blog/ai-solves-imo-problems-at-silver-medal-level/" target="_blank" rel="noopener">Google DeepMind — AI achieves silver-medal standard (2024-07-25)</a>, <a href="https://deepmind.google/blog/advanced-version-of-gemini-with-deep-think-officially-achieves-gold-medal-standard-at-the-international-mathematical-olympiad/" target="_blank" rel="noopener">Google DeepMind — Gemini Deep Think gold-medal standard (2025-07-21)</a></p>
+</aside>
+<p>펠릭스는 사람들이 에이전트를 쓰는 이유도 이해한다고 해요. "너는 데이터 과학자야"처럼 모자를 씌우면 AI가 뭘 하는지 사람이 납득하기 쉬워요. 하지만 그 데이터 과학자도 최고 생물학자나 수학자만큼의 지능을 갖고 있어요. 등장인물부터 짜는 순간 오히려 AI 사용을 좁힐 수 있다는 거예요. 슬라이드는 '역할 = 사람이 이해하기 쉬워서', '모델은 원래 만능에 가깝다'를 적고, '데이터를 조각내 나눠 주기'를 지운 뒤 '전체를 도구로 열어 준다'를 남겨요.</p>
+<figure>
+  <img src="assets/frame-1724.webp" alt="열쇠로 상자를 여는 손과 잘린 종이 조각 옆 가위 선 그림, 꼬리표 '데이터 과학자·회계사…', '역할 = 사람이 이해하기 쉬워서', '모델은 원래 만능에 가깝다', 지워진 '데이터를 조각내 나눠 주기', '전체를 도구로 열어 준다'">
+  <figcaption>가위로 자른 조각이 아니라 열쇠로 연 상자 전체를 주라는 그림이에요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1044s" target="_blank" rel="noopener">영상 17:24에서 보기</a></figcaption>
+</figure>
+<h3>데이터는 조각내지 말고 도구로 열어 줘요</h3>
+<p>진행자는 그러면 모델이 매 질문마다 고려할 데이터가 너무 많지 않냐고 물어요. 펠릭스는 클로드가 어떤 데이터를 쓸지 꽤 잘 가린다고 답해요. 사람도 일을 잘하려면 사업 전체를 봐야 해요. 엔지니어링 매니저에게 코드 접근만 주면 쓸모가 크게 줄어요. 고객 데이터, 고객 통화, 깊은 사용 데이터, 무엇이 통하는지 보여 주는 사업 데이터까지 있어야 해요. 데이터가 많다는 문제는 도구로 풀어요. 도구 뒤에 어떤 데이터가 있는지 잘 문서화해 두면 모델이 전부 삼키지 않고 필요할 때 그 도구를 불러요.</p>
+<p>내레이터는 진행자 팀의 사례를 꺼내요. 게스트 평가용 전용 프로젝트에 과정 설명과 지난 대본을 다 넣어 뒀는데, 노션과 폴더를 열어 주는 게 맞냐는 거예요. 꼬리표는 '잘 되면 그대로', '도구 쓰는 판단력 ↑', '좁 데이터 미리 고르기 → 덜 중요', '그럼 스킬은?'으로 이어져요. 잘 돌아가면 굳이 바꿀 필요는 없지만, 도구를 쓰는 모델의 판단력이 좋아져서 데이터를 미리 골라 주는 일의 중요도는 줄었다는 정리예요.</p>
+<figure>
+  <img src="assets/frame-1745.webp" alt="'진행자의 게스트 평가 프로젝트' 슬라이드: 서류를 꽉 묶은 가방(전용 프로젝트 — 과정 설명·지난 대본을 다 넣어 둠)에서 화살표로 흩어진 폴더와 클로드(노션 + 폴더를 열어 주기?), 꼬리표 '잘 되면 그대로', '도구 쓰는 판단력 ↑', '데이터 미리 고르기 → 덜 중요', '그럼 스킬은?'">
+  <figcaption>묶어서 건네던 자료를 원본째 열어 주는 쪽으로 옮겨 가는 그림이에요. 마지막 꼬리표가 다음 질문인 스킬로 넘어가요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1065s" target="_blank" rel="noopener">영상 17:45에서 보기</a></figcaption>
+</figure>
+<h3>좋은 스킬의 반감기는 짧아요</h3>
+<p>스킬을 아직 쓰냐는 질문에 펠릭스는 꽤 쓴다고 하면서도, 앤트로픽 공식 가이드와 자기 생각 모두 "스킬은 정말 조심하라"라고 답해요. 우리는 지난 세대 모델에게나 맞던 걸 모델에게 자주 알려 줘요. AI에선 시간이 워낙 압축돼 있어서 좋은 스킬의 반감기가 짧아요. 스킬을 완전히 빼면 결과가 더 좋아지는 경우도 있어요.</p>
+<p>슬라이드의 그래프가 이걸 보여 줘요. 가로축은 '지난 세대 모델, 새 모델, 그다음 모델'이고, 주황 곡선이 세대마다 꺾여 내려가며 '옛 지시 = 오히려 방해'라고 적혀 있어요. 위의 초록 점선이 '스킬을 빼 보니 더 좋아짐'이에요. 오른쪽 카드는 진행자가 "그냥 프롬프트하라"는 말의 주인으로 언급한 사람을 클로드 코드를 만든 보리스 체르니로 소개해요.</p>
+<figure>
+  <img src="assets/frame-1947.webp" alt="'좋은 스킬의 반감기는 짧다' 그래프: 지난 세대 모델·새 모델·그다음 모델마다 내려가는 주황 곡선과 '옛 지시 = 오히려 방해', 위쪽 초록 점선 '스킬을 빼 보니 더 좋아짐', 오른쪽 '보리스 체르니 · 클로드 코드를 만든 사람' 카드">
+  <figcaption>스킬은 만든 순간의 모델에 맞춰져 있어서 모델이 바뀌면 효과가 빠르게 줄어요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1187s" target="_blank" rel="noopener">영상 19:47에서 보기</a></figcaption>
+</figure>
+<p>펠릭스는 이 판단이 가장 쓸모 있는 사람은 <span class="term" data-term="eval" data-en="Evaluation" data-desc="모델이나 프롬프트의 결과가 좋은지 나쁜지 일정한 기준으로 재는 평가 세트예요. 이게 있어야 스킬을 뺐을 때 나아졌는지도 판단할 수 있어요." data-g="10">eval</span>을 갖고 있어서 좋고 나쁨을 가를 수 있는 사람이라고 덧붙여요. 그렇지 않으면 스킬을 뺐을 때 나아졌는지도 알 수 없으니까요.</p>
+<h3>모델 경험: 내가 클로드라면 뭘 원할까요</h3>
+<p>펠릭스가 권하는 사고법은 사용자 경험 대신 <span class="term" data-term="모델 경험" data-en="Model experience" data-desc="사용자 경험처럼, 모델 입장에서 일하기 좋은 환경인지 따져 보는 관점이에요. 요약보다 원본 데이터, 지시보다 스스로 판단할 여지를 주는 쪽이에요." data-g="9">모델 경험</span>을 생각하는 거예요. 잠깐 내가 클로드라고 상상해 봐요. 주어진 일을 해내려면 뭘 원할까요. 그는 금방 답이 나온다고 해요. 원본 데이터, 컴퓨터, 아마 소프트웨어 설치 권한이에요. 진행자도 누가 이미 생각한 걸 듣지 않고 원본 데이터를 보고 스스로 결정하고 싶을 거라고 맞받아요. 아래 그림은 이 대화를 양쪽으로 나눠 옮긴 거예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="모델 경험: 사람이 골라 준 것(크래시 하나, 요약본, 정해 둔 판단)과 모델이 원하는 것(원본 데이터, 컴퓨터, 소프트웨어 설치, 스스로 결정)을 비교한 그림">
+    <defs><marker id="arrow-mx" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="150" y="26" text-anchor="middle">사람이 골라 준 것</text>
+    <text x="490" y="26" text-anchor="middle">내가 클로드라면 원하는 것</text>
+    <g class="dim">
+      <rect class="box" x="60" y="44" width="180" height="40" rx="8"/><text x="150" y="69" text-anchor="middle">크래시 하나</text>
+      <rect class="box" x="60" y="94" width="180" height="40" rx="8"/><text x="150" y="119" text-anchor="middle">누가 골라 준 요약</text>
+      <rect class="box" x="60" y="144" width="180" height="40" rx="8"/><text x="150" y="169" text-anchor="middle">이미 내린 판단</text>
+    </g>
+    <path class="line" d="M262 114 h108" marker-end="url(#arrow-mx)"/>
+    <rect class="accent" x="400" y="40" width="180" height="36" rx="8"/><text x="490" y="63" text-anchor="middle">원본 데이터</text>
+    <rect class="accent" x="400" y="84" width="180" height="36" rx="8"/><text x="490" y="107" text-anchor="middle">컴퓨터</text>
+    <rect class="accent" x="400" y="128" width="180" height="36" rx="8"/><text x="490" y="151" text-anchor="middle">소프트웨어 설치</text>
+    <rect class="accent" x="400" y="172" width="180" height="36" rx="8"/><text x="490" y="195" text-anchor="middle">스스로 결정</text>
+  </svg>
+  <figcaption>왼쪽은 사람 입장에서 친절한 것, 오른쪽은 모델 입장에서 필요한 것이에요. 오른쪽을 주려면 처음 설정 비용이 더 들어요.</figcaption>
+</figure>
+<p>내레이션 화면도 같은 장면을 그려요. 서류 더미를 밀어내고 컴퓨터 쪽으로 손을 뻗는 클로드 옆에 '사용자 경험처럼'이 있고, '누가 골라 준 요약'은 지워져 있어요.</p>
+<figure>
+  <img src="assets/frame-1956.webp" alt="'모델 경험 — 내가 모델이라면?' 슬라이드: 흩어진 서류 사이에서 컴퓨터 쪽으로 손을 뻗는 클로드 선 그림, 꼬리표 '사용자 경험처럼', 지워진 '누가 골라 준 요약'">
+  <figcaption>사람이 정리해 준 요약을 지우고 원본으로 가는 그림이에요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1196s" target="_blank" rel="noopener">영상 19:56에서 보기</a></figcaption>
+</figure>
+<h3>컨베이어 벨트를 그만두다</h3>
+<p>여기서 첫 그림이 돌아와요. 1년 반 전 펠릭스는 크래시를 발견하면 하나 집어 클로드 앞에 놓고 "이거 고쳐 줘"라고 했어요. 그러다 자기가 클로드를 위한 컨베이어 벨트일 뿐이라는 걸 깨달았어요. 그래서 클로드가 크래시 데이터 전체에 접근하고, 뭘 고치고 뭘 안 고칠지 스스로 정하게 했어요. 그림에서 사람은 벨트에서 떨어져 서 있고, 클로드가 열린 상자들 사이에 앉아 있어요. 표의 둘째 줄이 '작업을 하나씩 집어 준다 → 원본 데이터와 컴퓨터를 열어 준다'로 채워져요.</p>
+<figure>
+  <img src="assets/frame-2005.webp" alt="상단 '작업을 하나씩 집어 준다'가 지워지고 '원본 데이터와 컴퓨터를 열어 준다', 아래 빈 컨베이어 벨트 옆에 선 사람과 열린 상자들 사이의 클로드, 꼬리표 지워진 '하나씩 집어다 주기', '크래시 데이터 전체를 연다', '뭘 고칠지는 클로드가'">
+  <figcaption>네 가지 전환 중 둘째예요. 처음 설정 비용은 크지만, 한번 해 두면 많은 문이 열린다고 해요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1205s" target="_blank" rel="noopener">영상 20:05에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>펠릭스는 블로그에서 이 전환에 든 준비를 구체적으로 적었어요. 클로드에게 '앱을 크래시 없이 유지하라'고 맡기려면 먼저 클로드가 크래시 리포트를 쉽게 가져올 수 있어야 했어요. 어느 앱 버전이 어느 git 커밋에 해당하는지 알아야 했고, 수정을 직접 재현하고 검증하도록 Windows·macOS·Linux 컴퓨터 접근도 줘야 했다고 해요. 영상에서 말한 '초기 비용'이 이런 일이에요.</p>
+  <p class="cite">출처: <a href="https://felixrieseberg.com/how-to-be-more-ambitious-a-tutorial-for-humans-with-models/" target="_blank" rel="noopener">Felix Rieseberg — How to be more ambitious: A tutorial for humans with models (2026-10-13)</a></p>
+</aside>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1214s" target="_blank" rel="noopener">20:14</a>
+  <h2>오늘 시작한다면: 데스크톱 앱, 그리고 역할극 대신 도구</h2>
+<p>그러면 아무 설정 없이 오늘 처음 시작하는 사람은 뭘 하면 될까요. 펠릭스의 첫 단계는 의외로 단순해요. 데스크톱 앱을 내려받는 거예요. 앱에는 내장 브라우저가 있어서, 클로드가 내가 쓰는 시스템에 로그인해 컴퓨터를 조금 쓰게 둘 수 있어요. <span class="term" data-term="커넥터" data-en="Connector" data-desc="클로드가 외부 서비스의 데이터나 기능에 직접 접근하도록 이어 주는 연결이에요. 펠릭스는 브라우저로 먼저 써 보고 잘 되는 일에만 붙이라고 해요." data-g="8">커넥터</span>도, 데이터를 내려받는 일도 일단 잊으라고 해요. 키보드를 넘겨주는 거예요.</p>
+<p>슬라이드는 이걸 두 칸으로 정리해요. ① '데스크톱 앱 · 내장 브라우저가 있다'에서 ② '키보드를 넘긴다 · 클로드가 브라우저를 직접'으로 화살표가 가요. 아래 꼬리표는 '커넥터·데이터 정리 일단 잊기'와 '잘 되는 작업이 보이면'이에요.</p>
+<figure>
+  <img src="assets/frame-2238.webp" alt="'시작은 이렇게' 슬라이드: ① 데스크톱 앱(내장 브라우저가 있다)에서 ② 키보드를 넘긴다(클로드가 브라우저를 직접)로 화살표, 아래 꼬리표 '커넥터·데이터 정리 일단 잊기', '잘 되는 작업이 보이면'">
+  <figcaption>준비보다 먼저 써 보는 게 무엇이 되고 안 되는지 가장 빨리 보여 줘요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1358s" target="_blank" rel="noopener">영상 22:38에서 보기</a></figcaption>
+</figure>
+<p>그러다 어떤 도구에서 클로드가 정말 도움이 되는 흐름이 보이면, 그때 묻는 거예요. 클로드가 이 대시보드를 일일이 클릭하는 것보다 나은 걸 줄 수 없을까, 커넥터 같은 것 말이에요. 순서가 거꾸로가 아니라는 게 핵심이에요. 먼저 브라우저로 해 보고, 통하는 일에만 커넥터를 붙여요.</p>
+<h3>역할이 아니라 일로 나눠요</h3>
+<p>진행자가 확인해요. 그러면 에이전트라는 건 그냥 대화창이고, 리서치 전담이나 세금 신고 전담 에이전트는 없는 거냐고요. 펠릭스는 프로젝트는 있다고 해요. 일 항목별로는 나누지만 역할별로는 나누지 않아요. 클로드에게 "너는 뛰어난 뭐뭐야"라고 말하지 않아요. 그건 2024년쯤 유행한 방식이에요. "너는 뛰어난 엔지니어야, 여기 문제 좀 고쳐 줘" 같은 거죠.</p>
+<p>내레이터는 이게 바로 인터뷰 제목이 말하는 '2024년식'이라고 짚어요. 왼쪽은 2024년의 안경 쓴 클로드가 "너는 뛰어난 엔지니어야"를 듣고 있고, 아래 '역할극 → 말투만 전문가'라고 적혀 있어요. 오른쪽 '지금'은 망치를 든 클로드와 공구 상자, 그리고 "최고의 사람은 어떤 도구를 쓰나?"예요.</p>
+<figure>
+  <img src="assets/frame-2229.webp" alt="'인터뷰 제목의 2024년식' 슬라이드: 왼쪽 2024 넥타이 맨 클로드와 '너는 뛰어난 엔지니어야', '역할극 → 말투만 전문가', 화살표, 오른쪽 '지금' 망치를 든 클로드와 공구 상자, '최고의 사람은 어떤 도구를 쓰나?'">
+  <figcaption>역할을 씌우면 옷만 바뀌고, 도구를 물으면 일하는 방법이 바뀌어요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1349s" target="_blank" rel="noopener">영상 22:29에서 보기</a></figcaption>
+</figure>
+<p>진행자는 그래도 프롬프트에 여전히 "~처럼 행동해"를 쓰지 않냐고 되물어요. 펠릭스는 그 분야 최고의 사람이 어떤 도구를 쓰는지 클로드에게 말해 달라고 하고, 똑같은 걸 쓰라고 한다고 답해요. 지금 모델 대부분에도 남은 문제가 있어서예요. 데이터 과학이나 회계를 예로 들면, "아주 훌륭한 회계사처럼 해"라고 할 때 모델이 약간 역할극을 해요.</p>
+<blockquote>
+  <p>I don't need to put on a costume. I actually wanted to talk to me like I'm five, but I wanted to use all the top tools in the field.</p>
+  <p>의상을 입힐 필요는 없어요. 오히려 다섯 살에게 말하듯 설명하되, 도구는 그 분야 최고의 걸 다 썼으면 해요.</p>
+  <cite>— 원래 인터뷰 (이 영상 22:00 부근)</cite>
+</blockquote>
+<p>원하는 건 전문가가 쓰는 기법, 도구, 지식이지 어휘가 아니에요. 말투는 쉽게, 방법은 최고로 가는 거예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>펠릭스의 블로그는 같은 주장을 더 짧게 적어요. 전문가처럼 하라고 하면 모델은 흔히 방법은 그대로 둔 채 어휘만 바꾼다고 해요. 클로드가 마크다운 표에 손을 뻗으면 데이터베이스와 통계 모델을 쓰라고 고집하라고 권하고, 전문가가 뭘 쓰는지는 몰라도 된다고 해요. 클로드가 대개 알고 있으니까요. 다른 분야를 끌어올 때도 "공매도 투자자처럼 써 줘"가 아니라 "공매도 투자자가 포지션을 조사할 때 하는 일을 해 줘"라고 하라고 해요.</p>
+  <p class="cite">출처: <a href="https://felixrieseberg.com/how-to-be-more-ambitious-a-tutorial-for-humans-with-models/" target="_blank" rel="noopener">Felix Rieseberg — How to be more ambitious (2026-10-13)</a></p>
+</aside>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1364s" target="_blank" rel="noopener">22:44</a>
+  <h2>세션 하나를 믿지 않기: 바깥 채점, 피드백 규칙, 나란히 돌려 보기</h2>
+<p>진행자가 묻는 건 아직도 에이전트에게 맡기지 않는 일이 있냐는 거예요. 펠릭스는 질문을 살짝 바꿔 답해요. 검증은 얼마든지 겹겹이 더할 수 있으니, 클로드에게 못 맡기는 일보다 세션 하나에 못 맡기는 일이 훨씬 많다는 거예요. 특히 지금 세션이 자기 결과를 판정하게 두는 건 여전히 미덥지 않다고 해요. 클로드 코드든, 코워크든, 채팅이든, 프로젝트든 마찬가지예요.</p>
+<p>그림은 이걸 두 장면으로 나눠요. 왼쪽은 클로드가 거울 속 자기에게 채점표를 내미는 '방금 일한 세션이 자기 채점 ✗'이고, 오른쪽은 다른 사람이 차트를 보며 판단하는 '바깥 신호 ✓'예요. 그 아래 작은 글씨가 '급하면 다른 세션'이에요. 위쪽 꼬리표 '클로드 ✓ · 세션 하나는 ✗'가 요점이에요.</p>
+<figure>
+  <img src="assets/frame-2625.webp" alt="상단 '만든 세션이 채점한다 → 바깥에서 채점한다', '클로드 ✓', '세션 하나는 ✗' 꼬리표, 왼쪽 거울 앞에서 자기 채점하는 클로드와 '방금 일한 세션이 자기 채점 ✗', 오른쪽 차트를 보는 두 인물과 '바깥 신호 ✓ · 급하면 다른 세션'">
+  <figcaption>네 가지 전환 중 셋째예요. 믿지 못하는 건 클로드가 아니라 자기 채점이에요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1585s" target="_blank" rel="noopener">영상 26:25에서 보기</a></figcaption>
+</figure>
+<p>펠릭스가 가장 선호하는 건 무엇이 통하고 무엇이 안 통하는지 보여 주는 단단한 외부 증거예요. 다른 클로드 세션은 급할 때 쓰는 차선책이에요. 때로는 과정을 믿고 시간을 좀 줘야 한다고도 해요. 진행자의 분야라면 조회수와 구독자 수가 그런 외부 지표일 거라고 예를 들어요.</p>
+<h3>피드백을 규칙으로 바꾸는 3단계</h3>
+<p>진행자 팀의 고민은 피드백 루프예요. 클로드가 대본을 쓰면 진행자가 고치고, 팀은 클로드 초안이 아닌 고친 버전을 올려요. 70% 정도는 같지만 나머지 30%가 진행자의 취향이에요. 그 피드백은 텔레그램에 있고, 대화를 긁어 오는 봇은 있지만 매번 손으로 클로드를 불러야 해요.</p>
+<p>펠릭스는 코딩 쪽 경험을 들려줘요. 어떤 엔지니어가 무엇을 보는지 알듯, 클로드도 깃허브와 슬랙에 흩어진 피드백에서 그걸 꽤 잘 읽어 내요. 도구로 접근만 열어 주면 사람이 피드백 목록을 모을 필요도 없어요. 그 위에서 쓰는 방법이 세 단계예요. 슬라이드 오른쪽 위에 '그대로 따라 할 수 있는 3단계'라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-2640.webp" alt="'피드백을 규칙으로' 슬라이드: 피드백 전부(지금까지 준 것 다 모으기) → 원칙 목록(클로드가 줄인다) → 숨은 원칙(모르고 믿던 것까지) → 점선 칸 '다음 리뷰 입력'">
+  <figcaption>세 번째 칸이 눈에 띄어요. 내가 믿는 줄도 몰랐던 원칙까지 뽑아 달라고 해요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1600s" target="_blank" rel="noopener">영상 26:40에서 보기</a></figcaption>
+</figure>
+<ol class="steps">
+  <li><b>지금까지 준 피드백을 전부 모아요</b> — 도구 접근이 있으면 클로드가 직접 찾아요.</li>
+  <li><b>클로드에게 원칙 목록으로 줄여 달라고 해요</b> — 내가 신경 쓰는 규칙과 원칙이에요.</li>
+  <li><b>한 번 더, 나도 모르게 믿고 있던 원칙을 뽑아요</b>
+    <span class="done">이 목록이 이후 리뷰의 입력이 돼요</span></li>
+</ol>
+<p>펠릭스는 이 방법이 개별 세션의 피드백을 특화하는 데 꽤 성공적이었다고 해요. 코딩이 아니거나 글이 아닌 일에서는 아직 문제가 더 크지만, 고객 통화 녹취록을 읽고 "그 통화 어땠어?"라고 피드백을 받는 식으로 비슷하게 해 볼 수 있다고 해요. 그 자신도 앤트로픽 채용 면접을 많이 보는데, 전형적인 지식 노동 문제라고 말해요.</p>
+<h3>블로그의 깊이 프롬프트: 맡기기 전에 네 가지를 물어요</h3>
+<p>내레이터는 여기서 펠릭스가 인터뷰 영상 공개 일주일쯤 전에 쓴 블로그 글을 꺼내요. 이 글이 '최고의 사람이 쓰는 도구'와 '바깥 채점'을 프롬프트 하나로 묶어 놨다는 거예요. 화면에는 질문 네 개가 차례로 쌓여요. 셋째 줄(방법과 도구)은 주황, 넷째 줄(결과를 보여 줄 것)은 초록 테두리라 앞의 두 조언과 짝이 맞아요.</p>
+<figure>
+  <img src="assets/frame-2704.webp" alt="'맡기기 전에, 먼저 네 가지를 묻는다' 슬라이드: ① 최고의 전문가라면 내가 요청하지 않은 무엇을 할까 ② 누가 정리해 둔 것 말고 어떤 날것의 재료에서 시작할까 ③ 어떤 방법과 도구를 쓸까 ④ 너와 나 말고 무엇이 결과가 맞다는 걸 보여 줄까, 아래 '내 프롬프트를 정확히 그걸 요구하도록 다시 쓰기'">
+  <figcaption>네 질문에 답한 뒤, 클로드가 내 원래 프롬프트를 고쳐 쓰게 하는 게 마지막 단계예요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1624s" target="_blank" rel="noopener">영상 27:04에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>블로그 원문의 프롬프트는 이래요. "I want a deeper version of this task, not a bigger one." 더 큰 게 아니라 더 깊은 버전을 원한다는 말로 시작하고, 네 질문 뒤에 "Then rewrite my prompt to ask for exactly that"으로 끝나요. 같은 글의 '바깥 판사를 쓰라' 항목은 모델에게 자기 채점을 시키지 말고, 가능하면 모델이 직접 돌려 바로 피드백을 받을 수 있는 도구를 외부 검증으로 주라고 해요. 펠릭스는 이 문제가 언젠가 모델 지능으로 풀리겠지만 2026년 10월 현재로서는 외부 검증을 고집하라고 적어요.</p>
+  <p class="cite">출처: <a href="https://felixrieseberg.com/how-to-be-more-ambitious-a-tutorial-for-humans-with-models/" target="_blank" rel="noopener">Felix Rieseberg — How to be more ambitious (2026-10-13)</a></p>
+</aside>
+<h3>내가 병목이라면, 나란히 돌려 보기</h3>
+<p>진행자는 100% 믿는 에이전트가 없어서 모든 결과물이 팀을 거쳐 결국 자기를 거친다고 해요. 그래서 회사의 가장 큰 병목이 자기라고요. 펠릭스는 제품이 이미 꽤 잘 해 줄 거라고 자신하면서, 거의 모두에게 권하는 실험을 소개해요. 하루아침에 고삐를 넘기기 싫다면 나란히 돌려 보라는 거예요. 내가 읽고 피드백을 적고, 클로드라면 어떤 피드백을 줬을지 몇 차례 비교해요.</p>
+<p>그림이 이 비교를 보여 줘요. 표의 넷째 줄 '내가 다 본다'가 '클로드와 나란히 돌려 본다'로 바뀌고, 아래 '내 피드백'과 '클로드 피드백' 두 칸에 초록(같은 곳)과 주황(다른 곳) 줄이 섞여 있어요. 맨 아래 꼬리표가 '같은 사람도 월요일 ≠ 금요일'이에요.</p>
+<figure>
+  <img src="assets/frame-2908.webp" alt="상단 '내가 다 본다'가 지워지고 '클로드와 나란히 돌려 본다', 아래 '내 피드백'과 '클로드 피드백' 두 칸에 초록·주황 줄, 꼬리표 '같은 곳', '다른 곳', '같은 사람도 월요일 ≠ 금요일'">
+  <figcaption>네 가지 전환 중 넷째예요. 사람도 같은 문서에 요일마다 다른 피드백을 주니, 클로드가 완벽할 필요는 없어요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1748s" target="_blank" rel="noopener">영상 29:08에서 보기</a></figcaption>
+</figure>
+<p>어디가 같고 어디가 다른지가 보이면 워크플로를 다듬을 거리도 생겨요. 진행자가 그럼 팀과 대화하는 이 에이전트는 어떻게 만드냐고 묻자, 펠릭스는 슬랙 안의 클로드인 클로드 태그를 추천해요. 지금 앤트로픽의 핵심 멀티플레이어 경험이라고, 여러 사람이 동시에 클로드와 대화할 수 있다고 해요. 내레이션 화면은 'Introducing Claude Tag' 글과 함께 '올해 6월 베타', '슬랙 채널에서 클로드를 부른다', '여럿이 같은 스레드에서 같이'를 적어요.</p>
+<figure>
+  <img src="assets/frame-2917.webp" alt="앤트로픽 'Introducing Claude Tag' 글 화면(@Claude 이미지, Anthropic · 2026.06)과 꼬리표 '펠릭스가 추천한 클로드 태그', '올해 6월 베타', '슬랙 채널에서 클로드를 부른다', '여럿이 같은 스레드에서 같이'">
+  <figcaption>나란히 돌려 보기를 팀 단위로 하려면 여러 사람이 같은 클로드를 보는 자리가 필요해요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1757s" target="_blank" rel="noopener">영상 29:17에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>앤트로픽 발표 글에 따르면 클로드 태그는 슬랙에서 시작했고, 관리자가 고른 채널에 클로드를 팀원처럼 넣고 필요한 도구·데이터·코드베이스를 연결해요. 채널의 누구든 @Claude로 일을 맡길 수 있어요. 발표 시점에는 Claude Enterprise와 Team 고객 대상 베타였고, 공식 문서도 아직 Public Beta로 표시해요.</p>
+  <p class="cite">출처: <a href="https://www.anthropic.com/news/introducing-claude-tag" target="_blank" rel="noopener">Anthropic — Introducing Claude Tag</a>, <a href="https://claude.com/docs/claude-tag/overview" target="_blank" rel="noopener">Claude 문서 — Claude Tag overview</a></p>
+</aside>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1766s" target="_blank" rel="noopener">29:26</a>
+  <h2>만드는 게 쉬워지면 남는 것: 공감과 야심</h2>
+<p>대화는 여기서 방향을 틀어요. 슬라이드 제목이 '일을 맡기는 법 → 무엇을 만들 것인가'로 바뀌고, 성벽 같은 원 안의 가게 그림 옆에 '창업자 입장에서 · 뭐가 가치로 남나?'가 붙어요. 진행자가 창업자 입장에서 묻는 거예요. 만드는 게 이렇게 쉬워지면 무엇이 해자로 남느냐고요.</p>
+<figure>
+  <img src="assets/frame-2926.webp" alt="'일을 맡기는 법 → 무엇을 만들 것인가' 슬라이드: 작은 집들로 둘러싸인 원 한가운데 가게가 있는 선 그림, 꼬리표 '창업자 입장에서', '뭐가 가치로 남나?'">
+  <figcaption>앞 절반이 클로드 쓰는 법이었다면, 이제는 그걸로 무엇을 만들지예요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1766s" target="_blank" rel="noopener">영상 29:26에서 보기</a></figcaption>
+</figure>
+<p>진행자는 2015년 유학 체험 예약 플랫폼을 만들 때 엔지니어를 여럿 고용해 수십만 달러를 썼는데, 지금은 혼자 이틀이면 만든다고 해요. 펠릭스의 '매운 의견'은 생각보다 바뀐 게 없다는 거예요. 초기 자본 비용이 훨씬 컸던 건 맞고, 1~2인 팀이 10억 달러 회사를 만드는 시대에 들어서는 것도 맞아요. 하지만 좋은 제품의 비결은 그대로 공감이에요. 사용자에 대한 공감, 쓰임새에 대한 공감, 결국 돈을 낼 사람에게 정말 가치가 있는지 알아내려는 공감이에요.</p>
+<p>그는 이게 늘 창업 팀의 핵심이었다고 봐요. 투자자들 사이에서도 처음 가져온 아이디어는 어차피 바뀌고 창업자가 핵심이라는 게 상식이라고 해요. 한 단계 더 들어가 그게 재능이냐 기술이냐고 묻자, 공감과 실제로 가치 있는 걸 만드는 능력이라고 답해요. 달라진 건 그 공감을 꺼내 실행하기가 훨씬 쉬워졌다는 것뿐이에요.</p>
+<h3>사라질 건 억지로 쓰던 나쁜 소프트웨어예요</h3>
+<p>진행자는 <span class="term" data-term="바이브 코딩" data-en="Vibe coding" data-desc="코드를 한 줄씩 직접 쓰기보다 AI에게 말로 원하는 걸 설명해 프로그램을 만드는 방식이에요. 작은 도구를 금방 만들 수 있게 해 줘요." data-g="12">바이브 코딩</span>으로 작은 도구를 직접 만드는 사람이 많은데, 한 시간이면 비슷한 걸 만들 수 있다면 왜 돈을 내겠냐고 물어요. 펠릭스는 사라지길 바라는 건 나쁜 소프트웨어라고 해요. 내 쓰임새에 안 맞는데 더 나은 게 없어 마지못해 쓰던 도구들이요. 동시에 좋은 제품을 만드는 건 여전히 어렵다고 해요. 그가 좋아하는 제품 대부분은 자기라면 떠올리지 못했을 것들이에요.</p>
+<p>그림은 키보드 달린 휴대폰과 터치 화면 휴대폰을 나란히 그려요. 위에 '키보드가 없으니 바보 같다 · 펠릭스의 블로그 글 · 아이폰이 나왔을 때'라고 적혀 있어요. 펠릭스가 한때 아이폰은 키보드가 없어서 바보 같다는 블로그 글을 썼다는 고백이에요. 아래 꼬리표는 '좋은 제품 = 생각 못 한 방식으로 해결'과, '소프트웨어 전체'가 지워진 '사라질 것: 억지로 쓰던 나쁜 소프트웨어'예요.</p>
+<figure>
+  <img src="assets/frame-3253.webp" alt="키보드 휴대폰과 터치 화면 휴대폰 선 그림, 위 '키보드가 없으니 바보 같다 — 펠릭스의 블로그 글·아이폰이 나왔을 때', 아래 '좋은 제품 = 생각 못 한 방식으로 해결', '사라질 것: 소프트웨어 전체(지움) → 억지로 쓰던 나쁜 소프트웨어'">
+  <figcaption>그가 제품을 쓰는 이유는 만들기 비싸서가 아니라, 생각보다 더 나은 방식으로 필요를 풀어 줘서예요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1973s" target="_blank" rel="noopener">영상 32:53에서 보기</a></figcaption>
+</figure>
+<p>내레이터는 원래 인터뷰에서 펠릭스가 이어서 한 이야기를 요약해요. 공항이나 호텔 체크인 카운터에서 직원에게 화면 좀 보여 달라고 하면, 아직도 검은 화면 단말기를 쓰는 곳이 있고 대부분 아주 불편하다는 거예요. 그림은 카운터 뒤 구식 모니터를 쓰는 직원과 짐을 든 손님이에요.</p>
+<figure>
+  <img src="assets/frame-3302.webp" alt="체크인 카운터에서 구식 모니터를 쓰는 직원과 여행 가방을 든 손님 선 그림, 꼬리표 '공항·호텔 체크인 카운터', '화면 좀 보여 주세요', '아직도 검은 화면 단말기'">
+  <figcaption>경제의 많은 부분이 이런 소프트웨어 위에서 돌아가고, 펠릭스는 거기에 아직 손대지 않은 기회가 있다고 봐요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1982s" target="_blank" rel="noopener">영상 33:02에서 보기</a></figcaption>
+</figure>
+<p>다음 그림은 결론이에요. 실행은 극도로 싸졌으니, 현장에 들어가 무엇이 필요한지 이해하는 능력과 공감·관계가 더 중요해져요. 원래 인터뷰에서 펠릭스는 이걸 'MBA들의 큰 복수'일지 모른다고 농담해요. MBA(Master of Business Administration) 출신들이 소프트웨어 스타트업을 꽤 성공적으로 만들 수 있다는 거예요.</p>
+<figure>
+  <img src="assets/frame-3311.webp" alt="가게 카운터에서 주인의 설명을 듣는 사람 선 그림, 꼬리표 '실행은 극도로 싸졌다', '현장에 들어가 이해하기', '공감·관계가 더 중요', 'MBA들의 소프트웨어 스타트업?'">
+  <figcaption>아이디어는 원래 쌌고, 이제 실행도 싸졌어요. 남는 건 현장을 이해하는 사람이에요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1991s" target="_blank" rel="noopener">영상 33:11에서 보기</a></figcaption>
+</figure>
+<h3>모델은 강한데 응용이 비어 있어요</h3>
+<p>진행자는 얼마 전 만난 노벨 경제학상 수상자가 모델은 이렇게 강한데 응용 계층이 정말 부족하다고 했다며 동의하냐고 물어요. 펠릭스는 당연히 그렇다며 <span class="term" data-term="능력 과잉" data-en="Capability overhang" data-desc="모델이 할 수 있는 것과 사람들이 실제로 시키는 것 사이의 간극이에요. 모델은 강한데 응용이 따라오지 못한 상태를 말해요." data-g="11">능력 과잉</span>이 있다고 해요. 놀라운 모델을 앞에 두고 "프랑스 수도가 어디였지?"를 묻는다면 가능한 걸 제대로 못 쓰는 거예요. 앤트로픽 창업자이자 CEO(Chief Executive Officer)인 다리오는 '천재들의 데이터센터'라는 개념을 말하는데, 펠릭스의 일은 그런 데이터센터가 있다고 할 때 사용자가 그걸 실제로 쓰게 만드는 거예요.</p>
+<p>그는 이게 새로운 문제가 아니라고 해요. 사람들은 늘 실제로 가능한 것보다 가능하다고 믿는 것에 묶여 왔어요. 그림은 꼭대기에 닿지 못한 채 사다리 중간에 매달린 사람이에요. '이메일 요약만 → 새 지능의 덕 ×' 아래로, '실제로 가능한 만큼'이 지워지고 '가능하다고 믿는 만큼'이 크게 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-3544.webp" alt="사다리 중간에 매달린 사람과 위쪽 점선 선 그림, 꼬리표 '이메일 요약만 → 새 지능의 덕 ×', '사람은 늘…', 지워진 '실제로 가능한 만큼', '가능하다고 믿는 만큼'">
+  <figcaption>천장은 모델이 아니라 내 믿음에 있을 때가 많다는 그림이에요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=2144s" target="_blank" rel="noopener">영상 35:44에서 보기</a></figcaption>
+</figure>
+<p>내레이터는 이걸 보여 주는 오래된 이야기를 펠릭스 블로그에서 가져와요. 1939년 버클리의 대학원생 조지 단치히가 통계학 수업에 늦게 들어와 칠판의 문제 두 개를 숙제인 줄 알고 받아 적어 가서 풀어 냈어요. 그건 당시 아직 증명되지 않은 통계 문제 두 개였어요. 펠릭스는 이걸 '가능하다고 믿으면 해낸다'의 예로 들어요.</p>
+<figure>
+  <img src="assets/frame-3559.webp" alt="칠판에 주황 글씨가 가득한 강의실 선 그림과 카드 '1939 · UC 버클리', '조지 단치히 · 통계학 대학원생 · 통계학 수업에 지각 · 칠판에 문제 2개', 지워진 '숙제?' → '받아 적어 가서 풀어 냄', '증명 안 된 통계 문제 2개', '펠릭스: 믿으면 → 해낸다'">
+  <figcaption>못 푸는 문제라는 걸 몰라서 풀었다는 이야기예요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=2159s" target="_blank" rel="noopener">영상 35:59에서 보기</a></figcaption>
+</figure>
+<h3>야심의 네 갈래와 분기 실적 보고</h3>
+<p>그럼 개인은 이 간극을 어떻게 메울까요. 펠릭스는 주말 내내 이걸 생각했다고 해요. X에서 자주 보는 구호는 "더 야심 차게"인데, 그게 뭘 뜻하는지는 상황에 따라 달라요. 그가 바라는 건 가능하다고 믿는 족쇄를 벗고, 왜 이 일을 하는지 다시 생각하는 거예요. 이 일을 하면 다음에 무슨 일이 일어나길 바라는지 묻고, 그 결과를 모델에게 맡기는 거예요. 내레이터는 펠릭스가 바로 이 주제로 쓴 블로그 글을 보여 줘요. 깊이 프롬프트가 나온 그 글이에요.</p>
+<figure>
+  <img src="assets/frame-3614.webp" alt="블로그 글 화면 'How to be more ambitious: A tutorial for humans with models'(13 October 2026, 8 min, claude), 아래 '야심을 더 크게 갖는 법 — 모델과 함께하는 사람을 위한 튜토리얼', 꼬리표 '인터뷰: 주말 내내 생각한 주제', '이 주제로 쓴 블로그 글', '= 네 가지 질문이 나온 그 글', '단치히 이야기도 여기에'">
+  <figcaption>인터뷰에서 말한 '주말 내내 생각한 주제'가 이 글이에요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=2174s" target="_blank" rel="noopener">영상 36:14에서 보기</a></figcaption>
+</figure>
+<p>글은 야심을 속도·고도·깊이·범위 네 갈래로 나눠요. 화면에서 '깊이' 아래엔 '네 가지 질문'이, 주황으로 강조한 '고도' 아래엔 '이번 클립'이 적혀 있어요. 앞의 깊이 프롬프트가 깊이였다면, 지금 인터뷰가 말하는 건 고도예요. '왜 하는지 거슬러 올라가기', '기대하는 결과 자체를 맡긴다'예요.</p>
+<figure>
+  <img src="assets/frame-3626.webp" alt="'야심의 네 갈래' 슬라이드: 속도(Speed), 고도(Altitude, 주황 강조 · 이번 클립), 깊이(Depth · 네 가지 질문), 범위(Range) 네 칸, 아래 '왜 하는지 거슬러 올라가기', '기대하는 결과 자체를 맡긴다'">
+  <figcaption>고도는 작업 하나가 아니라 그 다음 목표를 맡기는 쪽이에요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=2186s" target="_blank" rel="noopener">영상 36:26에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>블로그는 네 갈래를 이렇게 정의해요. 속도는 같은 일을 더 빨리 하는 것으로, AI의 경제적 가치의 기본이라 글에서는 건너뛰어요. 고도는 개별 작업보다 결과를 생각하며 추상화 수준을 올리는 것, 깊이는 그 분야 최고 전문가처럼 밑바탕의 데이터·도구·문제까지 내려가는 것, 범위는 겉보기에 필요한 분야 하나가 아니라 여러 분야의 지식과 도구를 끌어오는 것이에요. 글 후반부는 사람이 가능하다고 믿는 만큼 해낸다는 걸 심리학의 '<span class="term" data-term="자기효능감" data-en="Self-efficacy" data-desc="내가 해낼 수 있다고 믿는 정도를 가리키는 심리학 개념이에요. 이게 높을수록 실제로 더 많이 해낸다는 연구가 있어요." data-g="14">자기효능감</span>'으로 설명하고, 단치히 이야기를 그 예로 들어요.</p>
+  <p class="cite">출처: <a href="https://felixrieseberg.com/how-to-be-more-ambitious-a-tutorial-for-humans-with-models/" target="_blank" rel="noopener">Felix Rieseberg — How to be more ambitious (2026-10-13)</a></p>
+</aside>
+<p>글의 예시는 분기 실적 보고예요. 계단 그림의 층마다 야심이 커져요. 1층은 템플릿 숫자만 바꾸지 말고 데이터를 최대한 넘긴 다음 무엇이 왜 바뀌었는지 묻는 것이에요. 2층은 지금 가장 급한 결정 세 개를 찬반 근거까지 붙여 고르는 것이에요. 3층이 제일 멀리 가요. 보고의 목적은 문제를 일찍 잡고 돈과 사람을 제자리로 옮기는 것이니, 보고 방식 자체를 더 나은 것으로 다시 설계하고, 과거 기록으로 그게 더 빨리 잡아냈을 걸 증명한 다음, 한 분기 동안 지금 방식과 나란히 돌려 보는 거예요.</p>
+<figure>
+  <img src="assets/frame-3702.webp" alt="'글의 예시 · 분기 실적 보고' 슬라이드: 서류 더미에서 카드 세 장, 지도와 철로로 올라가는 계단 그림, 오른쪽 1층 '템플릿 숫자만 × → 데이터 최대한 · 뭐가 왜 바뀌었나', 2층 '급한 결정 3개 + 찬반 근거까지', 3층 '제일 멀리 · 목적: 문제를 일찍·돈과 사람을 제자리로 · 보고 방식 자체를 다시 설계 · 과거 기록으로 더 빨리 잡았을 걸 증명 → 한 분기 나란히', 위 꼬리표 '돈 벌어 와 → 아직은 못 함', '천장 = 최전선', '다음 모델의 덕을 크게'">
+  <figcaption>3층의 마지막 단계가 앞에서 본 '나란히 돌려 보기'와 같아요. 위쪽 꼬리표는 이 방식의 천장을 말해요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=2222s" target="_blank" rel="noopener">영상 37:02에서 보기</a></figcaption>
+</figure>
+<p>펠릭스도 한계를 인정해요. 대부분의 사업 목적은 돈을 버는 것인데, 클로드에게 "가서 돈 벌어 와"라고 하면 멀리 못 가요. 가장 높은 고도에는 아직 못 갔고 중간쯤이에요. 하지만 그 천장에 부딪힌다면 지금 지능의 최전선에 있다는 뜻이고, 그만큼 덕을 크게 본다고 해요. 반대로 "이 이메일 요약해 줘" 수준에 머물면 새 지능의 혜택을 제대로 못 누려요.</p>
+</section>
+
+<section id="s8">
+  <a class="stamp" href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=2227s" target="_blank" rel="noopener">37:07</a>
+  <h2>주니어, 시스템을 엮는 능력, 그리고 아이폰 이전 시대</h2>
+<p>진행자가 일자리 이야기로 넘어가요. 앤트로픽은 아직 주니어 엔지니어를 뽑냐고요. 펠릭스는 지금은 뽑지 않지만, 그건 AI나 능력 때문이 아니라 앤트로픽이라는 회사의 사정 때문이라고 해요. 그는 주니어를 많이 뽑아 온 사람이고, 주니어의 의미가 조금 바뀌고 있다고 봐요. 지금 주니어는 노련한 베테랑보다 훨씬 AI 네이티브예요.</p>
+<p>그가 본 주니어 다수는 영향력에 굶주려 있어요. 뭔가를 작동시키는 데 신나 하고, 그걸 위해 모든 길을 파고들어요. 이건 AI 이전부터 그랬지만, 이제 AI 덕분에 훨씬 많은 걸 동시에 시도할 수 있어요. 그래서 아주 작은 팀, 아주 젊은 사람들이 좋은 아이디어를 내고 한꺼번에 실행하는 스타트업이 많이 나올 거라고 기대해요.</p>
+<h3>임팩트로 평가하고, 진짜를 만들어 증명해요</h3>
+<p>막 시작하는 소프트웨어 엔지니어에게 줄 조언을 묻자, 펠릭스는 엔지니어가 지금 정체성의 위기에 있다고 해요. 리액트 API(Application Programming Interface)를 통째로 외운 게 내 가치인가 하는 질문이요. 그는 그렇지 않다는 쪽이고, 이 변화를 반겨요. 그는 엔지니어를 늘 임팩트로 평가해 왔어요. 사용자가 이 소프트웨어를 살 만큼 좋아하느냐예요. 사용자가 아무 혜택도 못 느끼는 우아한 엔지니어링에는 늘 별 가치를 두지 않았다고 해요.</p>
+<p>3년 뒤에도 쓸모 있으려면 무엇에 집중하냐는 질문에는, 자기 커리어를 시작한 방법과 같다고 답해요. 탄탄한 포트폴리오예요. 이제는 목업이 아닌 진짜를 만드는 게 훨씬 쉬워졌으니, 진짜를 만들어 할 수 있다는 걸, 공감이 있다는 걸, 고객과 대화하고 필요한 것과 아닌 것을 가리는 능력이 있다는 걸 증명하라고 해요. 티켓만 처리하며 "왜"를 많이 묻지 않아도 됐던 고참보다 젊은 사람들이 이 새 방식에 훨씬 빨리 적응하는 걸 본다고도 해요.</p>
+<p>그림은 퍼즐 조각 다섯 개를 십자로 맞춰요. 빨간 꼬리표 'API 암기 ↓'와 초록 꼬리표 '여러 시스템 엮기 ↑'가 붙어 있어요. 이제 AI를 시스템 셋에 가리키고 "이 다섯 가지 재료를 한데 섞어 줘"라고 할 수 있으니, 엮는 능력의 가치가 더 커졌다는 거예요.</p>
+<figure>
+  <img src="assets/frame-4036.webp" alt="퍼즐 조각 다섯 개가 십자로 맞물린 선 그림, 가운데 조각이 주황, 꼬리표 'API 암기 ↓'(빨강), '여러 시스템 엮기 ↑'(초록)">
+  <figcaption>하나를 깊이 외우는 것보다 여러 개를 흥미롭게 잇는 쪽으로 가치가 옮겨 가요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=2436s" target="_blank" rel="noopener">영상 40:36에서 보기</a></figcaption>
+</figure>
+<p>내레이터는 이 영상에 넣지 않은 원래 인터뷰 뒷부분도 짧게 전해요. 펠릭스는 딸에게 회사가 어떻게 돌아가고 사람들이 어떻게 협업하는지 일찍 배우라고 하겠다고 했어요. 인턴십을 여러 번 거친 워털루 대학 출신 인턴과 주니어들이 첫 직장부터 바로 성과를 내는 걸 봤기 때문이에요. 회사가 어떻게 돌아가는지, 아이디어를 어떻게 밀고 자원을 어떻게 얻는지 이미 겪어 봤다는 거예요.</p>
+<figure>
+  <img src="assets/frame-4048.webp" alt="문 여러 개를 지나 건물로 걸어가는 작은 사람 선 그림, 꼬리표 '딸에게 해 줄 말', '회사가 어떻게 돌아가는지', '사람들이 어떻게 협업하는지', '인턴십 여러 번 · 워털루 출신', '첫 직장부터 바로 성과'">
+  <figcaption>코드보다 회사와 사람을 아는 게 첫 직장의 성과를 가른다는 이야기예요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=2448s" target="_blank" rel="noopener">영상 40:48에서 보기</a></figcaption>
+</figure>
+<h3>예측 대신 얼마나 틀렸었는지부터</h3>
+<p>마지막 질문은 5년 뒤 우리 삶이 어떻게 달라지냐예요. 펠릭스는 예측 대신 자기가 얼마나 틀렸었는지부터 말해요. 그림은 점선 직선 위로 휘어 올라가는 주황 곡선과 그걸 올려다보는 사람이에요. 은메달 때 이미 <span class="term" data-term="스케일링 법칙" data-en="Scaling laws" data-desc="모델 크기, 데이터, 계산량을 늘리면 성능이 예측 가능한 곡선을 따라 좋아진다는 경험적 법칙이에요. 펠릭스는 이걸 알면서도 발전 속도를 과소평가했다고 해요." data-g="13">스케일링 법칙</span>을 잘 알았고 지능이 얼마나 빨리 느는지도 알았지만, AI가 풀 수 없다고 여기던 수학 문제를 언제 풀 거냐고 물었다면 2026년 중반이라고는 답하지 못했을 거라고 해요. 누가 1년 반 뒤라고 했다면 무슨 소리냐고 되물었을 거라고요.</p>
+<figure>
+  <img src="assets/frame-4054.webp" alt="점선 직선 위로 가파르게 휘어 오르는 주황 곡선을 올려다보는 사람 선 그림, 꼬리표 '마지막 질문: 5년 뒤?', '예측 대신', '얼마나 틀렸었는지부터'">
+  <figcaption>지수 곡선을 감으로 따라가기는 전문가에게도 어렵다는 고백이에요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=2454s" target="_blank" rel="noopener">영상 40:54에서 보기</a></figcaption>
+</figure>
+<p>그래도 꽤 확신하는 게 하나 있어요. 지금 쓰는 제품은 모두 완전히 달라질 거예요. AI가 대중화되면서 지금 모습이 최종 형태라고 상상하기 쉽지만, 그는 지금의 AI 제품이 스마트폰이 나오기 직전의 재미있는 휴대폰들과 같은 단계라고 봐요. 그림은 플립폰과 슬라이드폰을 줄 세우고, 맨 끝을 점선 빈칸으로 남겨요.</p>
+<figure>
+  <img src="assets/frame-4325.webp" alt="여러 모양의 피처폰 다섯 대와 맨 끝 점선 빈칸 선 그림, 꼬리표 '지금의 AI 제품 = 스마트폰 직전의 휴대폰', '지금 방식이 마지막 모습은 아니다'">
+  <figcaption>빈칸이 아직 오지 않은 '아이폰'이에요. 펠릭스는 그래서 지금 이 일이 신난다고 해요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=2605s" target="_blank" rel="noopener">영상 43:25에서 보기</a></figcaption>
+</figure>
+<h3>가져갈 건 요령이 아니라 방향이에요</h3>
+<p>펠릭스는 오늘 한 조언 전부를 10주쯤 지나면 새로 고쳐 써야 할 거라고 말해요. 내레이터는 1주부터 10주까지 칸을 채우고 나침반을 그린 뒤, 그러니 가져갈 건 구체적인 요령보다 방향이라고 정리해요.</p>
+<figure>
+  <img src="assets/frame-4304.webp" alt="'오늘 들은 조언도' 슬라이드: 1주부터 10주까지 주황 칸 열 개, '10주쯤 뒤 → 새 버전 — 펠릭스 스스로', 오른쪽 나침반 선 그림">
+  <figcaption>요령은 모델과 함께 낡지만 방향은 남아요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=2584s" target="_blank" rel="noopener">영상 43:04에서 보기</a></figcaption>
+</figure>
+<p>그 방향이 처음 표의 완성본이에요. 영상 첫머리에서 물음표였던 오른쪽 칸이 모두 채워졌어요.</p>
+<figure>
+  <img src="assets/frame-4319.webp" alt="'가져갈 방향 네 가지' 표: 2024년식 역할을 씌운다 → 최고의 사람이 거치는 단계를 밟게 한다, 작업을 하나씩 집어 준다 → 원본 데이터와 컴퓨터를 열어 준다, 만든 세션이 채점한다 → 바깥에서 채점한다, 내가 다 본다 → 클로드와 나란히 돌려 본다">
+  <figcaption>앞 섹션들에서 하나씩 채운 네 줄이 한자리에 모였어요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=2599s" target="_blank" rel="noopener">영상 43:19에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>2024년식</th><th>지금</th><th>이 문서에서</th></tr></thead>
+    <tbody>
+      <tr><td>역할을 씌운다</td><td>최고의 사람이 거치는 단계를 밟게 한다</td><td>날씨 예시, 블렌더, 역할극 대신 도구</td></tr>
+      <tr><td>작업을 하나씩 집어 준다</td><td>원본 데이터와 컴퓨터를 열어 준다</td><td>모델 경험, 컨베이어 벨트, 데스크톱 앱</td></tr>
+      <tr><td>만든 세션이 채점한다</td><td>바깥에서 채점한다</td><td>적대적 리뷰와 판사, 깊이 프롬프트</td></tr>
+      <tr><td>내가 다 본다</td><td>클로드와 나란히 돌려 본다</td><td>피드백 3단계, 나란히 돌려 보기</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>마지막 그림은 첫 그림인 컨베이어 벨트로 돌아가요. 이번에는 상자 위에 깃발이 꽂혀 있고, '이번 주에 맡길 일 하나 · 작업 → 목표'라고 적혀 있어요. 오늘 해 볼 수 있는 것 하나는, 이번 주 클로드에게 맡길 일 하나를 작업이 아니라 목표로 바꿔 맡겨 보는 거예요.</p>
+<figure>
+  <img src="assets/frame-4331.webp" alt="'오늘 해 볼 수 있는 것 하나' 슬라이드: 컨베이어 벨트 끝에서 깃발 꽂힌 상자를 클로드에게 건네는 사람 선 그림, 꼬리표 '이번 주에 맡길 일 하나', '작업 → 목표'">
+  <figcaption>"크래시 고쳐 줘"가 아니라 "앱을 크래시 없이 유지해 줘"처럼요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=2611s" target="_blank" rel="noopener">영상 43:31에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>영어 자동생성 자막이라 이름과 용어가 잘못 받아적힌 곳이 있어요. 화면 글씨와 원래 인터뷰, 블로그를 보고 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>claw, cla, cloud, clot</td><td>Claude</td><td>클로드를 여러 가지로 받아적었어요</td></tr>
+      <tr><td>claw tag</td><td>Claude Tag</td><td>슬랙 안의 클로드</td></tr>
+      <tr><td>Claude projects</td><td>클로드 프로젝트</td><td>화면 하단 자막 &#x27;CLAUDE PROJECTS&#x27;</td></tr>
+      <tr><td>Opus 55</td><td>Opus 5.5</td><td>(추정)</td></tr>
+      <tr><td>journey (원래 인터뷰: first attorney)</td><td>Boris Cherny</td><td>내레이션 화면 카드 기준 (추정)</td></tr>
+      <tr><td>asset researcher</td><td>astro researcher</td><td>별을 찾는 맥락 (추정)</td></tr>
+      <tr><td>some kind of evil</td><td>some kind of eval</td><td>평가 기준</td></tr>
+      <tr><td>in Mars</td><td>en masse</td><td>화면 영어 자막 기준</td></tr>
+      <tr><td>Nobel Prize lord</td><td>Nobel Prize laureate</td><td>원래 인터뷰 자막 기준</td></tr>
+      <tr><td>Felix Riesberg (원래 인터뷰)</td><td>Felix Rieseberg</td><td>본인 블로그 표기</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-3"><dt>공매도<span class="en">Short selling</span></dt><dd>주가가 떨어질 것에 돈을 거는 투자예요. 공매도 투자자는 회사의 약점을 집요하게 파고들기 때문에 &#x27;약점만 찾는 사람&#x27;의 비유로 쓰여요.</dd></div>
+    <div class="g" id="g-11"><dt>능력 과잉<span class="en">Capability overhang</span></dt><dd>모델이 할 수 있는 것과 사람들이 실제로 시키는 것 사이의 간극이에요. 모델은 강한데 응용이 따라오지 못한 상태를 말해요.</dd></div>
+    <div class="g" id="g-2"><dt>레드팀<span class="en">Red teaming</span></dt><dd>일부러 공격자 입장에 서서 시스템이나 계획의 허점을 찾는 활동이에요. 보안과 AI 안전 평가에서 널리 써요.</dd></div>
+    <div class="g" id="g-9"><dt>모델 경험<span class="en">Model experience</span></dt><dd>사용자 경험처럼, 모델 입장에서 일하기 좋은 환경인지 따져 보는 관점이에요. 요약보다 원본 데이터, 지시보다 스스로 판단할 여지를 주는 쪽이에요.</dd></div>
+    <div class="g" id="g-12"><dt>바이브 코딩<span class="en">Vibe coding</span></dt><dd>코드를 한 줄씩 직접 쓰기보다 AI에게 말로 원하는 걸 설명해 프로그램을 만드는 방식이에요. 작은 도구를 금방 만들 수 있게 해 줘요.</dd></div>
+    <div class="g" id="g-6"><dt>범용 모델<span class="en">Generalist model</span></dt><dd>특정 과제 전용으로 만들지 않고 여러 분야를 두루 다루도록 학습한 모델이에요. 펠릭스는 이런 모델이 전용 시스템을 금방 따라잡는다고 봐요.</dd></div>
+    <div class="g" id="g-13"><dt>스케일링 법칙<span class="en">Scaling laws</span></dt><dd>모델 크기, 데이터, 계산량을 늘리면 성능이 예측 가능한 곡선을 따라 좋아진다는 경험적 법칙이에요. 펠릭스는 이걸 알면서도 발전 속도를 과소평가했다고 해요.</dd></div>
+    <div class="g" id="g-7"><dt>스킬<span class="en">Agent Skills</span></dt><dd>특정 작업에 쓸 지시문과 스크립트를 묶어 모델이 필요할 때 불러 쓰게 한 꾸러미예요. 만든 시점의 모델에 맞춰져 있어 모델이 바뀌면 낡을 수 있어요.</dd></div>
+    <div class="g" id="g-14"><dt>자기효능감<span class="en">Self-efficacy</span></dt><dd>내가 해낼 수 있다고 믿는 정도를 가리키는 심리학 개념이에요. 이게 높을수록 실제로 더 많이 해낸다는 연구가 있어요.</dd></div>
+    <div class="g" id="g-1"><dt>적대적 리뷰<span class="en">Adversarial review</span></dt><dd>결과물을 만든 모델과 따로, 그걸 깨는 게 임무인 모델을 띄워 약점만 찾게 하는 검증 방식이에요. 흠을 찾는 게 만드는 것보다 쉬워서 한 단계 낮은 모델로도 잘 돼요.</dd></div>
+    <div class="g" id="g-8"><dt>커넥터<span class="en">Connector</span></dt><dd>클로드가 외부 서비스의 데이터나 기능에 직접 접근하도록 이어 주는 연결이에요. 펠릭스는 브라우저로 먼저 써 보고 잘 되는 일에만 붙이라고 해요.</dd></div>
+    <div class="g" id="g-4"><dt>판사 클로드<span class="en">LLM-as-a-judge</span></dt><dd>다른 모델들이 낸 결과나 비판을 받아 무엇이 타당한지 판정하는 역할의 모델이에요. 비판이 쏟아질 때 사람이 직접 고르는 수고를 덜어 줘요.</dd></div>
+    <div class="g" id="g-5"><dt>하네스<span class="en">Harness</span></dt><dd>모델을 둘러싸고 도구 호출, 반복 실행, 검증 같은 작업 흐름을 돌려 주는 실행 틀이에요. 같은 모델도 하네스에 따라 성능이 크게 달라져요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>CEO</dt><dd>Chief Executive Officer</dd></div>
+    <div class="g" id="g-10"><dt>eval<span class="en">Evaluation</span></dt><dd>모델이나 프롬프트의 결과가 좋은지 나쁜지 일정한 기준으로 재는 평가 세트예요. 이게 있어야 스킬을 뺐을 때 나아졌는지도 판단할 수 있어요.</dd></div>
+    <div class="g"><dt>MBA</dt><dd>Master of Business Administration</dd></div>
+    <div class="g"><dt>NASA</dt><dd>National Aeronautics and Space Administration</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=gV0CtvIX5zk" target="_blank" rel="noopener">원본 영상 — AgentOS</a></li>
+    <li id="src-2"><a href="https://www.youtube.com/watch?v=D-SVFneJ_Nk" target="_blank" rel="noopener">원래 인터뷰 — Silicon Valley Girl, Claude Engineering Lead: &#x27;Stop Using Claude Like It’s 2024&#x27; (2026-10-20)</a></li>
+    <li id="src-3"><a href="https://felixrieseberg.com/how-to-be-more-ambitious-a-tutorial-for-humans-with-models/" target="_blank" rel="noopener">Felix Rieseberg — How to be more ambitious: A tutorial for humans with models (2026-10-13)</a></li>
+    <li id="src-4"><a href="https://www.anthropic.com/news/introducing-claude-tag" target="_blank" rel="noopener">Anthropic — Introducing Claude Tag</a></li>
+    <li id="src-5"><a href="https://claude.com/docs/claude-tag/overview" target="_blank" rel="noopener">Claude 문서 — Claude Tag overview</a></li>
+    <li id="src-6"><a href="https://deepmind.google/discover/blog/ai-solves-imo-problems-at-silver-medal-level/" target="_blank" rel="noopener">Google DeepMind — AI achieves silver-medal standard solving IMO problems (2024-07-25)</a></li>
+    <li id="src-7"><a href="https://deepmind.google/blog/advanced-version-of-gemini-with-deep-think-officially-achieves-gold-medal-standard-at-the-international-mathematical-olympiad/" target="_blank" rel="noopener">Google DeepMind — Gemini Deep Think officially achieves gold-medal standard at the IMO (2025-07-21)</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 27일에 이 영상과 원래 인터뷰를 보고 정리했어요. 원본은 AgentOS 채널, 원래 인터뷰는 Silicon Valley Girl 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

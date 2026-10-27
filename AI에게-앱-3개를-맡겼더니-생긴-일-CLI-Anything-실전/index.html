@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI에게 앱 3개를 맡겼더니 생긴 일 — CLI-Anything 실전</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>AI에게 앱 3개를 맡겼더니 생긴 일 — CLI-Anything 실전</h1>
+  <p class="lede">AI가 Inkscape·LibreOffice·Blender를 명령으로 다뤄 실제 파일을 만들고 고치는 과정을 짚어요</p>
+  <div class="meta">
+    <span>단테</span><span class="dot">·</span>
+    <span>영상 07:59</span><span class="dot">·</span>
+    <span>읽는 데 약 12분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=rshalnA8neA" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>CLI-Anything은 앱 기능을 명령으로 꺼내 줘요. AI(Artificial Intelligence)는 명령을 고르고, 계산·편집·<span class="term" data-term="렌더" data-en="Render" data-desc="3D 장면의 물체, 조명, 카메라를 계산해서 한 장의 이미지로 뽑아내는 과정이에요. 반사나 그림자도 이때 계산돼요." data-g="5">렌더</span>는 앱이 직접 해요.</li>
+    <li>모든 앱이 저절로 되진 않아요. 앱마다 명령이 다르고, 앱 본체도 따로 설치해야 해요.</li>
+    <li>견적서는 수식 형식 선언이 빠져 처음엔 계산이 안 됐어요. 패치를 넣은 뒤에야 맞았어요.</li>
+    <li>요청 한 번에 포스터는 'EVENING' 버전이 되고, 견적서 합계는 수식 덕분에 520,000원에서 700,000원으로 다시 계산됐어요.</li>
+    <li>AI의 '완료' 보고를 믿지 말고, 결과 파일을 원래 앱에서 직접 열어 확인해요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">CLI-Anything이 하는 일</a></li>
+    <li><a href="#s2">Inkscape로 포스터 만들기</a></li>
+    <li><a href="#s3">LibreOffice로 견적서 계산하기</a></li>
+    <li><a href="#s4">요청 한 번으로 두 파일 고치기</a></li>
+    <li><a href="#s5">Blender로 제품 장면 렌더하기</a></li>
+    <li><a href="#s6">어디에 쓰면 좋을까요?</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>CLI-Anything이 하는 일</h2>
+<p>AI에게 글이나 코드를 맡기는 건 이제 익숙해요. 그런데 디자인 앱이나 문서 앱 안으로 들어가 작업까지 시키려면 이야기가 달라져요. 사람은 메뉴와 버튼을 보며 일하는데, 자동화가 그 화면에만 기대면 창 위치가 바뀌거나 대화상자 하나만 떠도 흐름이 끊길 수 있어요.</p>
+<p>그래서 영상은 다른 길을 보여 줘요. CLI(Command-Line Interface)는 버튼 대신 정해진 명령과 값을 넘겨서 프로그램에 일을 시키는 방식이에요. CLI-Anything은 앱 기능을 이런 명령으로 다룰 수 있게 만드는 공개 프로젝트예요. 화면 아래쪽에 저장소 주소 <code>github.com/HKUDS/CLI-Anything</code>가 보이고, 목록에는 <code>blender/agent-harness</code>처럼 앱 이름마다 폴더가 하나씩 있어요.</p>
+<figure>
+  <img src="assets/frame-0024.webp" alt="GitHub의 HKUDS/CLI-Anything 저장소 첫 화면. 3MF, QGIS, audacity, blender, browser 등 앱별 agent-harness 폴더 목록이 보인다">
+  <figcaption>앱마다 따로 만든 명령 도구 폴더가 모여 있는 구조예요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=24s" target="_blank" rel="noopener">영상 00:24에서 보기</a></figcaption>
+</figure>
+<p>흐름은 네 칸 슬라이드 한 장으로 정리돼요. 왼쪽부터 '수량을 늘려 줘' 같은 수정 요청, 그 요청을 명령으로 바꾸는 AI와 CLI-Anything, 실제로 계산·편집·렌더를 하는 앱 엔진, 그리고 다시 열고 고칠 수 있는 결과 파일이에요. AI는 명령을 고를 뿐이고, 일은 앱이 자기 방식대로 처리해요.</p>
+<figure>
+  <img src="assets/frame-0112.webp" alt="'요청이 실제 파일이 되기까지' 슬라이드. 수정 요청, AI·명령(CLI-Anything), 앱 엔진(계산·편집·렌더), 결과 파일(다시 열고 수정) 네 칸이 화살표로 이어져 있다">
+  <figcaption>슬라이드 아래 문구처럼, 앱의 버튼을 대신 누르는 것과는 다른 경로예요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=72s" target="_blank" rel="noopener">영상 01:12에서 보기</a></figcaption>
+</figure>
+<h3>모든 앱이 저절로 되진 않아요</h3>
+<p>영상이 먼저 선을 긋는 부분이 있어요. 앱마다 준비된 명령이 다르고, 없는 기능은 따로 연결해야 해요. 이번에는 공개 저장소에 들어 있는 Inkscape, LibreOffice, Blender용 도구를 실제로 설치했어요. 명령 도구만 깔았다고 디자인·문서·렌더링 엔진이 생기지는 않아서 앱 본체도 함께 설치했어요.</p>
+<p>설치한 뒤 처음 한 일은 도움말 보기예요. <code>cli-anything-inkscape --help</code>를 치면 <code>document</code>, <code>shape</code>, <code>text</code>, <code>export</code>처럼 명령이 묶음별로 나와요. 위쪽 옵션에는 결과를 JSON(JavaScript Object Notation)으로 받는 <code>--json</code>, 바꿀 때마다 저장하는 <code>--save</code>, 실제로 저장하지 않고 돌려 보는 <code>--dry-run</code>이 있어요.</p>
+<figure>
+  <img src="assets/frame-0054.webp" alt="터미널에서 cli-anything-inkscape --help를 실행한 화면. Options에 --json, --project, --save, --dry-run이, Commands에 document, export, gradient, layer, path, shape, text, transform 등이 나열돼 있다">
+  <figcaption>AI가 명령을 지어내지 않게 하려면 이 목록부터 보게 하면 돼요. 뒤에서 실제로 그렇게 지시해요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=54s" target="_blank" rel="noopener">영상 00:54에서 보기</a></figcaption>
+</figure>
+<p>예제는 작은 커피 브랜드 'MORNING ROUTINE'이에요. 앱 셋에 역할을 하나씩 나눴어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>앱</th><th>맡은 일</th><th>남는 파일</th><th>확인한 것</th></tr></thead>
+    <tbody>
+      <tr><td>Inkscape</td><td>세로 오픈 포스터</td><td>SVG(Scalable Vector Graphics), PDF(Portable Document Format)</td><td>Inkscape에서 열었을 때 페이지가 온전한지</td></tr>
+      <tr><td>LibreOffice</td><td>원두·종이컵·기프트 카드 견적서</td><td>xlsx, PDF</td><td>수식과 합계가 살아 있는지</td></tr>
+      <tr><td>Blender</td><td>커피 컵과 원두 봉투 3D 장면</td><td>PNG(Portable Network Graphics) 렌더, Blender 프로젝트</td><td>앱에서 다시 열어 다른 각도로 볼 수 있는지</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>세 작업을 하나의 일로 묶은 이유가 있어요. 앱이 켜지는지보다 중요한 것, 곧 수정 요청이 실제 결과물에 반영되는지를 볼 수 있어서예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 README를 보면 앱마다 연결 방식이 달라요. Inkscape 도구는 SVG/XML을 직접 고치고, LibreOffice 도구는 ODF(Open Document Format) 파일을 만든 뒤 <span class="term" data-term="헤드리스" data-en="Headless" data-desc="화면 창을 띄우지 않고 프로그램을 백그라운드에서 돌리는 방식이에요. 자동화에서 앱 기능만 빌려 쓸 때 많이 써요." data-g="3">헤드리스</span> LibreOffice로 변환하고, Blender 도구는 Blender의 파이썬 스크립팅(bpy)을 써요. 그래서 앱 본체가 꼭 있어야 하고, README도 Blender나 LibreOffice 같은 원래 프로그램을 따로 설치하라고 적어 둬요.</p>
+  <p>영상이 말한 '없는 기능은 별도로 연결'하는 방법도 저장소에 있어요. 이미 만들어진 도구는 <code>cli-hub install &lt;이름&gt;</code>으로 받고, 새 앱용 도구는 에이전트에서 <code>/cli-anything &lt;소스 경로나 저장소&gt;</code>로 생성하는 구조예요.</p>
+  <p class="cite">출처: <a href="https://github.com/HKUDS/CLI-Anything" target="_blank" rel="noopener">HKUDS/CLI-Anything 공식 저장소 README</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=136s" target="_blank" rel="noopener">02:16</a>
+  <h2>Inkscape로 포스터 만들기</h2>
+<p>Inkscape는 <span class="term" data-term="벡터 이미지" data-en="Vector graphics" data-desc="점과 선, 도형을 좌표와 수치로 저장한 그림이에요. 크기를 키워도 깨지지 않고, 글자와 도형을 나중에 하나씩 다시 고칠 수 있어요." data-g="1">벡터 이미지</span>를 편집하는 앱이에요. 여기서는 커피 브랜드의 세로 포스터를 만들어요. 화면에 빠르게 지나가는 건 실제로 실행한 명령이에요. 첫 명령은 <code>paper</code>라는 이름으로 1080×1350 크기의 크림색 사각형을 깔고, 다음 명령은 그 안쪽에 모서리가 둥근 짙은 초록 사각형 <code>dark</code>를 얹어요. 위치(<code>-x</code>, <code>-y</code>), 크기(<code>-w</code>, <code>-h</code>), 색(<code>fill</code>)이 전부 값으로 들어가요.</p>
+<figure>
+  <img src="assets/frame-0227.webp" alt="cli-anything-inkscape shape add-rect 명령 두 줄. paper 사각형은 x 0, y 0, 폭 1080, 높이 1350, fill #f3eedf이고, dark 사각형은 x 40, y 40, 폭 1000, 높이 1270, 모서리 22, fill #17392e다. 각 명령 뒤에 JSON 결과가 출력돼 있다">
+  <figcaption>명령마다 JSON으로 결과가 돌아와서 AI가 읽고 다음 단계로 넘어가기 쉬워요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=147s" target="_blank" rel="noopener">영상 02:27에서 보기</a></figcaption>
+</figure>
+<p>같은 방식으로 원과 글자를 겹쳐 커피 잔을 그리고, 마지막에 <code>export svg</code>와 <code>export pdf</code>로 내보내요. 화면 아래쪽에는 실제 <code>inkscape</code> 명령으로 PNG까지 뽑는 줄도 보여요. SVG는 글자와 도형을 나중에 다시 고칠 수 있는 형식이라, 결과가 한 장짜리 그림으로 굳지 않아요.</p>
+<figure>
+  <img src="assets/frame-0245.webp" alt="export svg poster.svg와 export pdf poster.pdf 명령의 JSON 출력, 그 아래 inkscape poster.svg --export-filename=poster.png --export-width=1080 명령">
+  <figcaption>PDF 결과에 'rendered_by: inkscape'가 찍혀 있어요. 변환은 진짜 Inkscape가 했다는 뜻이에요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=165s" target="_blank" rel="noopener">영상 02:45에서 보기</a></figcaption>
+</figure>
+<p>만든 파일을 원래 Inkscape 앱에서 열었어요. 위에 'MORNING ROUTINE.' 제목, 가운데 커피 잔, 아래에 'COFFEE, SLOWLY.'와 영업시간 'OPEN 08:00 — 18:00'이 들어가 있고, 전체 페이지가 잘리지 않았어요.</p>
+<figure>
+  <img src="assets/frame-0251.webp" alt="Inkscape에서 연 MORNING ROUTINE 포스터. 짙은 초록 배경에 흰 제목, 갈색 원 위의 커피 잔 그림, 아래쪽 COFFEE, SLOWLY. 문구가 있다">
+  <figcaption>명령으로 만든 파일이 앱에서 그대로 열려야 사람이 이어서 손볼 수 있어요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=171s" target="_blank" rel="noopener">영상 02:51에서 보기</a></figcaption>
+</figure>
+<p>이 방식이 편한 곳은 반복 작업이에요. 비슷한 포스터를 여러 장 만들 때 문구나 색 같은 값만 바꾸는 흐름을 정리해 둘 수 있어요. 다만 명령이 디자인 감각까지 대신하진 않아요. 여백, 글자 크기, 색 조합은 결과를 보면서 사람이 판단해야 해요.</p>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=231s" target="_blank" rel="noopener">03:51</a>
+  <h2>LibreOffice로 견적서 계산하기</h2>
+<p>두 번째는 LibreOffice예요. 이번엔 그림이 아니라 계산이 맞아야 해요. 원두, 종이컵, 기프트 카드 세 품목의 견적서에 품목·단위·수량·단가·금액을 넣었어요. 금액 칸에는 숫자를 적지 않고 수량과 단가를 곱하는 수식을 넣었어요. Calc에서 원두 금액 칸(E3)을 고르면 <span class="term" data-term="수식 입력줄" data-en="Formula bar" data-desc="스프레드시트에서 선택한 셀에 실제로 들어 있는 값이나 수식을 보여 주는 칸이에요. 셀에 보이는 숫자가 계산 결과인지 직접 적은 값인지 여기서 구분해요." data-g="7">수식 입력줄</span>에 <code>=C3*D3</code>가 보여요.</p>
+<figure>
+  <img src="assets/frame-0413.webp" alt="LibreOffice Calc의 MORNING ROUTINE 견적서. Coffee beans 20 bag 18000 360000, Paper cups 10 box 12000 120000, Gift cards 5 pack 8000 40000, TOTAL 520000. E3 셀이 선택되고 수식줄에 =C3*D3가 있다">
+  <figcaption>360,000이라는 값이 아니라 =C3*D3라는 식이 들어 있어요. 뒤에서 수량을 바꿨을 때 이게 차이를 만들어요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=253s" target="_blank" rel="noopener">영상 04:13에서 보기</a></figcaption>
+</figure>
+<p>숫자를 맞춰 보면 원두는 18,000원 × 20개 = 360,000원, 종이컵은 12,000원 × 10개 = 120,000원, 기프트 카드는 8,000원 × 5개 = 40,000원이에요. 세 금액을 더한 총액이 520,000원이에요.</p>
+<h3>처음엔 수식이 안 읽혔어요</h3>
+<p>처음 실행에서는 오류가 났어요. 파일에 '이 식은 어떤 수식 형식인지' 알려 주는 선언이 빠져서, LibreOffice가 계산식을 제대로 읽지 못했어요. 화면의 패치를 보면 <code>odf_utils.py</code>에 두 줄이 더해져요. 문서 종류가 <code>calc</code>일 때만 <code>xmlns:of</code>라는 <span class="term" data-term="네임스페이스" data-en="XML namespace" data-desc="XML에서 &#x27;of&#x27; 같은 접두사가 어떤 규격을 뜻하는지 주소로 묶어 주는 선언이에요. 선언이 빠지면 읽는 프로그램이 그 접두사를 해석하지 못해요." data-g="2">네임스페이스</span>를 붙이는 내용이에요.</p>
+<figure>
+  <img src="assets/frame-0423.webp" alt="libreoffice-formula.patch 내용. odf_utils.py의 create_content_xml 함수에 if doc_type == calc 일 때 root.set(xmlns:of, urn:oasis:names:tc:opendocument:xmlns:of:1.2)를 추가하는 두 줄이 + 표시로 보인다">
+  <figcaption>영상의 실행 예제에는 이 수정이 들어 있어요. 저장소를 그대로 설치하면 항상 된다는 뜻은 아니라고 영상이 짚어요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=263s" target="_blank" rel="noopener">영상 04:23에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>ODF 1.2 표준은 <code>of</code> 접두사를 '수식용 네임스페이스'로 정해 두고, 그 주소를 <code>urn:oasis:names:tc:opendocument:xmlns:of:1.2</code>로 적어요. 셀의 <code>table:formula</code> 값이 <code>of:=</code>처럼 이 접두사로 시작하면 OpenFormula 문법으로 읽어요. 접두사는 썼는데 그 주소를 선언하지 않으면 읽는 쪽이 식의 형식을 알 수 없어요. 영상의 오류가 바로 이 경우예요.</p>
+  <p class="cite">출처: <a href="https://docs.oasis-open.org/office/v1.2/os/OpenDocument-v1.2-os-part1.html" target="_blank" rel="noopener">OASIS OpenDocument v1.2 Part 1 (네임스페이스 표, 수식 속성 규정)</a></p>
+</aside>
+<p>패치 후 다시 내보내니 계산이 맞았어요. Calc에서 열 때도 셀 값만 보지 않고, 합계 칸(E6)에 <code>=SUM(E3:E5)</code>가 들어 있는지까지 확인했어요.</p>
+<figure>
+  <img src="assets/frame-0448.webp" alt="같은 견적서에서 TOTAL 행의 E6 셀이 선택돼 있고 값은 520000, 수식줄에는 =SUM(E3:E5)가 있다">
+  <figcaption>파일이 생긴 것과 내용이 맞는 건 달라요. 견적서는 보기 좋은 화면보다 계산부터 확인해요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=288s" target="_blank" rel="noopener">영상 04:48에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=289s" target="_blank" rel="noopener">04:49</a>
+  <h2>요청 한 번으로 두 파일 고치기</h2>
+<p>이제 두 작업을 한 번에 바꿔요. 포스터는 저녁 버전으로, 원두 수량은 20개에서 30개로 늘려 달라는 요청이에요. 이번엔 실행 예제가 아니라 Claude Code에 자연어로 요청을 넘겼어요. 화면의 <code>request.txt</code>를 보면 요청이 세 덩어리로 나뉘어 있어요.</p>
+<ol class="steps">
+  <li><b>포스터</b> — <code>poster.json</code>을 복사해서 <code>cli-anything-inkscape --save</code> 명령만으로 headline 텍스트를 'MORNING'에서 'EVENING'으로, dark 사각형 색을 <code>#40261d</code>로 바꾸고 SVG·PDF로 내보내요.</li>
+  <li><b>견적서</b> — <code>quote.json</code>을 복사해서 <code>cli-anything-libreoffice</code> 명령으로 C3 수량을 20에서 30으로 바꾸고, 나머지 수식은 그대로 둔 채 xlsx·PDF로 내보내요.</li>
+  <li><b>마무리</b> — 결과를 짧게 설명하고 끝났다는 표시 파일을 남겨요.</li>
+</ol>
+<p>그 아래 문장들이 범위를 정해요. 현재 폴더와 출력 파일만 건드리고, 파일 내용을 직접 다시 만들지 말고 설치된 명령을 쓰고, 명령이 낯설면 <code>--help</code>부터 보라고 해요. 텍스트와 도형의 실제 번호도 먼저 목록(<code>list</code>)으로 확인하게 했어요. AI가 모르는 명령을 상상해서 쓰지 않게 하려는 장치예요.</p>
+<figure>
+  <img src="assets/frame-0505.webp" alt="터미널에서 cat request.txt로 본 한국어 요청문과, 그 아래 claude -p --model sonnet --setting-sources project --strict-mcp-config --allowedTools Bash,Read --output-format text &lt; request.txt 명령">
+  <figcaption>요청문이 '무엇을'뿐 아니라 '어떤 도구로, 어디까지'를 정해 줘요. 도구도 Bash와 Read만 허용했어요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=305s" target="_blank" rel="noopener">영상 05:05에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>화면의 <code>claude -p</code>는 Claude Code를 대화창 없이 한 번 실행하고 끝내는 방식이에요. <code>--allowedTools</code>에 적은 도구는 묻지 않고 바로 쓰게 허락해 줘요. 영상처럼 <code>Bash,Read</code>만 적으면 명령 실행과 파일 읽기 말고는 쓸 수 있는 도구를 좁힐 수 있어요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">Claude Code 공식 문서 — Run Claude Code programmatically</a></p>
+</aside>
+<p>실행 결과가 돌아왔어요. 보고를 읽어 보면 AI가 요청 순서대로 움직였어요. <code>text list</code>와 <code>shape list</code>로 headline이 3번, dark 사각형이 1번이라는 걸 먼저 확인했고, 목록에 찍힌 순번과 실제 번호가 다르다는 것도 알아채서 실제 번호 쪽을 썼어요. 견적서는 <code>calc set-cell</code>로 C3만 30으로 바꿨고, <code>C3*D3</code>와 <code>SUM(E3:E5)</code> 같은 수식이 그대로 남아 있다고 적었어요.</p>
+<figure>
+  <img src="assets/frame-0517.webp" alt="Claude Code의 실행 보고. 1) 포스터: text list와 shape list로 인덱스 확인, headline을 EVENING으로, dark의 fill을 #40261d로 변경 후 SVG와 PDF로 내보냄. 2) 견적서: calc set-cell로 C3를 20에서 30으로 바꾸고 수식 C3*D3, C4*D4, C5*D5, SUM(E3:E5)가 남아 있음. 3) 마무리">
+  <figcaption>보고 맨 위에 '렌더링 결과는 열어 보지 않았다'고 스스로 적어 둔 점도 눈여겨볼 만해요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=317s" target="_blank" rel="noopener">영상 05:17에서 보기</a></figcaption>
+</figure>
+<p>그래도 AI가 '완료했다'고 말하는 것만으로는 부족해요. 그래서 두 파일을 직접 열었어요. 포스터 제목은 'MORNING'에서 'EVENING'으로, 배경은 짙은 초록에서 커피를 떠올리게 하는 갈색으로 바뀌었어요. 잔 그림과 아래 문구는 그대로예요.</p>
+<figure>
+  <img src="assets/frame-0521.webp" alt="Inkscape에서 연 수정된 포스터. 갈색 배경에 EVENING ROUTINE. 제목, 같은 커피 잔 그림과 COFFEE, SLOWLY. 문구">
+  <figcaption>요청한 두 값만 바뀌고 나머지는 손대지 않았어요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=321s" target="_blank" rel="noopener">영상 05:21에서 보기</a></figcaption>
+</figure>
+<p>견적서도 열어 봤어요. 원두 수량(C3)이 30이 되면서 원두 금액은 540,000원, 합계는 700,000원이 됐어요.</p>
+<figure>
+  <img src="assets/frame-0541.webp" alt="quote-updated.xlsx를 Calc에서 연 화면. Coffee beans 30 bag 18000 540000, Paper cups 10 box 12000 120000, Gift cards 5 pack 8000 40000, TOTAL 700000. C3 셀이 선택돼 있고 값은 30이다">
+  <figcaption>C3에 들어 있는 건 수식이 아니라 그냥 30이에요. 바뀐 건 이 칸 하나뿐이에요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=341s" target="_blank" rel="noopener">영상 05:41에서 보기</a></figcaption>
+</figure>
+<p>여기서 볼 점은 합계 숫자를 고친 게 아니라는 거예요. AI가 바꾼 건 수량 한 칸이고, 금액과 합계 칸에는 수식이 살아 있어서 계산이 따라 바뀌었어요. 아래 그림은 그 연쇄를 수정 전과 후로 나란히 놓은 거예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 250" role="img" aria-label="수정 전후 견적서. 수량 C3를 20에서 30으로 바꾸면 수식 C3*D3인 원두 금액이 360,000에서 540,000으로, SUM(E3:E5)인 합계가 520,000에서 700,000으로 따라 바뀐다">
+    <defs><marker id="arrow-quote" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-quote"></g>
+  </svg>
+  <figcaption>AI가 손댄 칸은 강조한 수량 한 칸뿐이에요. 나머지 두 칸은 수식이 다시 계산했어요. 금액과 합계를 숫자로 적어 뒀다면 수량만 바뀌고 합계는 520,000원에 멈췄을 거예요.</figcaption>
+</figure>
+<p>같은 요청 안에서 포스터와 문서가 서로 다른 도구로 고쳐졌어요. 영상은 이렇게 반복 수정을 한데 묶는 게 이번 실험에서 가장 실용적인 부분이었다고 봐요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=352s" target="_blank" rel="noopener">05:52</a>
+  <h2>Blender로 제품 장면 렌더하기</h2>
+<p>마지막은 Blender예요. 포스터와 어울리는 커피 컵과 원두 봉투를 3D 장면으로 만들어요. 컵 몸통, 테두리, 손잡이, 받침, 봉투를 따로 배치하고 <span class="term" data-term="재질" data-en="Material" data-desc="3D 물체 표면이 빛을 어떻게 반사하고 어떤 색과 질감으로 보일지 정한 설정이에요. 같은 색이라도 재질이 다르면 렌더 결과가 달라져요." data-g="4">재질</span>, 카메라, 조명을 붙였어요. 장면 속 물체는 모두 12개예요. <span class="term" data-term="뷰포트" data-en="Viewport" data-desc="3D 앱에서 장면을 미리 보며 물체를 배치하는 작업 화면이에요. 최종 렌더보다 단순하게 그려서 빠르게 움직여요." data-g="6">뷰포트</span>를 보면 초록 원판 위에 살구색 받침, 그 위에 컵이 있고 뒤에 봉투가 서 있어요. 색이 비슷해 보여도 컵, 커피, 받침은 서로 다른 재질로 다뤄요.</p>
+<figure>
+  <img src="assets/frame-0609.webp" alt="Blender 뷰포트. 초록 원판, 살구색 받침, 흰 커피 컵, 원두 몇 알, 뒤쪽의 흰 봉투가 놓인 장면">
+  <figcaption>아직 렌더 전, 물체를 배치하고 색만 입힌 상태예요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=369s" target="_blank" rel="noopener">영상 06:09에서 보기</a></figcaption>
+</figure>
+<h3>렌더는 두 단계예요</h3>
+<p>이 도구의 렌더 명령은 바로 그림을 만들지 않아요. 먼저 <code>render settings</code>로 엔진(<code>CYCLES</code>), 해상도(1600×1000), 샘플 수(32)를 정해요. 그다음 <code>render execute</code>를 부르면 Blender에서 돌릴 스크립트(<code>_render_script.py</code>)를 만들고, 실행할 명령까지 돌려줘요. 화면 맨 아래 줄이 그 명령으로 실제 Blender를 띄우는 장면이에요.</p>
+<figure>
+  <img src="assets/frame-0617.webp" alt="cli-anything-blender render settings --engine CYCLES -rx 1600 -ry 1000 --samples 32 --denoising 명령과 JSON 출력, render execute coffee.png 명령이 script_path와 command blender --background --python을 돌려주는 출력, 마지막 줄에 blender --background --python _render_script.py 실행">
+  <figcaption>JSON의 command 항목이 'blender --background --python …'이에요. 그림을 만드는 건 결국 Blender 자신이에요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=377s" target="_blank" rel="noopener">영상 06:17에서 보기</a></figcaption>
+</figure>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["render settings<br/>엔진·해상도·샘플"] --> B["render execute<br/>스크립트 생성"]
+  B --> C["blender --background<br/>실제 엔진 실행"]
+  C --> D["coffee.png<br/>렌더 이미지"]
+  C --> E["coffee.blend<br/>프로젝트 파일"]
+</pre>
+  <figcaption>영상이 말로 설명한 렌더 순서예요. 셋째 칸을 빼먹으면 스크립트만 있고 그림은 안 나와요.</figcaption>
+</figure>
+<p>엔진이 도는 화면 위쪽에 <code>Blender 5.2.1 LTS</code>, <code>Saved "coffee.blend"</code>, <code>Saved: …/coffee.png</code>가 찍혀요. 이미지 생성 모델이 커피 사진을 그리는 게 아니라, 장면 속 물체와 빛을 Blender가 계산하고 있다는 증거예요. 아래 줄줄이 나오는 건 앞으로 바뀔 기능에 대한 경고(DeprecationWarning)라 결과에는 영향이 없어요.</p>
+<figure>
+  <img src="assets/frame-0625.webp" alt="blender --background 실행 출력. Render complete, Saved coffee.png, Blender 5.2.1 LTS, Saved as coffee.blend 줄과, 그 아래 Material.use_nodes 관련 DeprecationWarning 여러 줄">
+  <figcaption>렌더가 끝나면서 PNG와 .blend 파일이 함께 저장됐어요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=385s" target="_blank" rel="noopener">영상 06:25에서 보기</a></figcaption>
+</figure>
+<p>렌더 결과예요. 컵 표면에 빛이 반사되고, 받침과 원두 아래에 그림자가 생겼어요. 영상은 손잡이의 각진 부분처럼 다듬을 곳도 보인다고 솔직하게 짚어요.</p>
+<figure>
+  <img src="assets/frame-0633.webp" alt="Blender 렌더 결과. 초록 원판 위 살구색 받침에 커피가 담긴 흰 컵, 컵 뒤의 흰 봉투, 앞쪽의 원두 몇 알. 컵 표면 반사와 바닥 그림자가 보인다">
+  <figcaption>오른쪽 손잡이를 보면 각진 면이 그대로 드러나요. 첫 장면으로는 쓸 만하지만 손볼 곳이 남아 있어요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=393s" target="_blank" rel="noopener">영상 06:33에서 보기</a></figcaption>
+</figure>
+<p>완성 이미지만 남은 게 아니에요. Blender 프로젝트도 저장했기 때문에, 앱에서 물체를 골라 위에서 내려다보는 식으로 다른 각도에서 장면을 볼 수 있어요. 위에서 보면 원판, 받침, 컵이 한가운데 겹쳐 있고 바깥쪽에 카메라와 조명 표시가 떨어져 있어요.</p>
+<figure>
+  <img src="assets/frame-0649.webp" alt="Blender에서 장면을 위에서 내려다본 화면. 가운데 초록 원판과 받침, 컵이 겹쳐 보이고 바깥에 카메라와 조명 아이콘이 선으로 연결돼 있다">
+  <figcaption>프로젝트 파일이 남아 있어야 배치와 재질을 바꿔 가며 다시 렌더할 수 있어요. <a href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=409s" target="_blank" rel="noopener">영상 06:49에서 보기</a></figcaption>
+</figure>
+<p>영상은 이걸 상용 제품 사진을 바로 대신할 수준이라고 하진 않아요. 그래도 첫 장면을 만들고 배치와 재질을 반복해서 바꿀 출발점은 마련됐다고 봐요.</p>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=rshalnA8neA&amp;t=415s" target="_blank" rel="noopener">06:55</a>
+  <h2>어디에 쓰면 좋을까요?</h2>
+<p>세 결과에는 공통점이 있어요. AI가 요청을 받아 앱이 알아듣는 명령으로 바꾸고, 실제 파일로 결과를 돌려줬어요. 영상이 정리한 '잘 맞는 곳'과 '조심할 곳'은 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>구분</th><th>영상이 든 예</th></tr></thead>
+    <tbody>
+      <tr><td>효과가 큰 일</td><td>포스터 문구 바꾸기, 견적 수량 갱신, 비슷한 제품 장면 여러 개 준비하기처럼 반복이 많은 작업</td></tr>
+      <tr><td>막힐 수 있는 일</td><td>처음부터 모든 기능을 자유롭게 쓰려는 기대. 이번에도 수식 문제를 고쳤고, 렌더 실행 방식을 따로 확인해야 했어요</td></tr>
+      <tr><td>확인하지 않은 것</td><td>다른 방식보다 몇 배 싸다거나 무조건 빠르다는 비교. 이번엔 측정하지 않았어요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>마지막 줄이 중요해요. 영상이 확인한 건 포스터, 견적서, 제품 장면이 실제로 만들어지고 고쳐졌다는 점까지예요. 비용이나 속도는 말하지 않았어요.</p>
+<h3>처음 써 본다면</h3>
+<ol class="steps">
+  <li><b>자주 하는 작업 하나를 골라요</b> — 포스터 문구 교체처럼 반복되는 일이 좋아요.</li>
+  <li><b>입력을 작게 정해요</b> — 바꿀 값과 쓸 명령의 범위를 요청에 적어 둬요.</li>
+  <li><b>결과 파일을 원래 앱에서 다시 열어요</b> — AI의 '완료' 보고 대신 파일 자체를 확인해요.
+    <span class="done">포스터는 글자와 색이, 견적서는 수식과 합계가 기대대로 들어 있어요</span></li>
+</ol>
+<blockquote>
+  <p>설명에서 끝나는 AI가 아니라, 내가 수정해서 이어 쓸 수 있는 결과물을 남기는 흐름이요.</p>
+  <cite>— 영상 07:21</cite>
+</blockquote>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-2"><dt>네임스페이스<span class="en">XML namespace</span></dt><dd>XML에서 &#x27;of&#x27; 같은 접두사가 어떤 규격을 뜻하는지 주소로 묶어 주는 선언이에요. 선언이 빠지면 읽는 프로그램이 그 접두사를 해석하지 못해요.</dd></div>
+    <div class="g" id="g-5"><dt>렌더<span class="en">Render</span></dt><dd>3D 장면의 물체, 조명, 카메라를 계산해서 한 장의 이미지로 뽑아내는 과정이에요. 반사나 그림자도 이때 계산돼요.</dd></div>
+    <div class="g" id="g-1"><dt>벡터 이미지<span class="en">Vector graphics</span></dt><dd>점과 선, 도형을 좌표와 수치로 저장한 그림이에요. 크기를 키워도 깨지지 않고, 글자와 도형을 나중에 하나씩 다시 고칠 수 있어요.</dd></div>
+    <div class="g" id="g-6"><dt>뷰포트<span class="en">Viewport</span></dt><dd>3D 앱에서 장면을 미리 보며 물체를 배치하는 작업 화면이에요. 최종 렌더보다 단순하게 그려서 빠르게 움직여요.</dd></div>
+    <div class="g" id="g-7"><dt>수식 입력줄<span class="en">Formula bar</span></dt><dd>스프레드시트에서 선택한 셀에 실제로 들어 있는 값이나 수식을 보여 주는 칸이에요. 셀에 보이는 숫자가 계산 결과인지 직접 적은 값인지 여기서 구분해요.</dd></div>
+    <div class="g" id="g-4"><dt>재질<span class="en">Material</span></dt><dd>3D 물체 표면이 빛을 어떻게 반사하고 어떤 색과 질감으로 보일지 정한 설정이에요. 같은 색이라도 재질이 다르면 렌더 결과가 달라져요.</dd></div>
+    <div class="g" id="g-3"><dt>헤드리스<span class="en">Headless</span></dt><dd>화면 창을 띄우지 않고 프로그램을 백그라운드에서 돌리는 방식이에요. 자동화에서 앱 기능만 빌려 쓸 때 많이 써요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>CLI</dt><dd>Command-Line Interface</dd></div>
+    <div class="g"><dt>JSON</dt><dd>JavaScript Object Notation</dd></div>
+    <div class="g"><dt>ODF</dt><dd>Open Document Format</dd></div>
+    <div class="g"><dt>PDF</dt><dd>Portable Document Format</dd></div>
+    <div class="g"><dt>PNG</dt><dd>Portable Network Graphics</dd></div>
+    <div class="g"><dt>SVG</dt><dd>Scalable Vector Graphics</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=rshalnA8neA" target="_blank" rel="noopener">원본 영상 — 단테</a></li>
+    <li id="src-2"><a href="https://github.com/HKUDS/CLI-Anything" target="_blank" rel="noopener">HKUDS/CLI-Anything 공식 저장소</a></li>
+    <li id="src-3"><a href="https://docs.oasis-open.org/office/v1.2/os/OpenDocument-v1.2-os-part1.html" target="_blank" rel="noopener">OASIS OpenDocument v1.2 Part 1</a></li>
+    <li id="src-4"><a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">Claude Code 공식 문서 — Run Claude Code programmatically</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 27일에 이 영상을 보고 정리했어요. 원본은 단테 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+(() => {
+  const g = document.getElementById('fig-quote');
+  if (!g) return;
+  const panels = [
+    { x: 20, title: '수정 전', vals: ['20', '360,000', '520,000'], changed: false },
+    { x: 340, title: '수정 후', vals: ['30', '540,000', '700,000'], changed: true }
+  ];
+  const rows = [
+    ['수량 C3', '직접 입력한 값'],
+    ['원두 금액 E3', '=C3*D3 (단가 18,000)'],
+    ['합계 E6', '=SUM(E3:E5)']
+  ];
+  panels.forEach((p) => {
+    g.append(el('text', { x: p.x + 140, y: 22, 'text-anchor': 'middle' }, p.title));
+    rows.forEach(([name, note], i) => {
+      const y = 36 + i * 72;
+      let cls = 'box';
+      if (p.changed) cls = i === 0 ? 'accent ring' : 'c2 cell';
+      g.append(el('rect', { x: p.x, y, width: 280, height: 48, rx: 8, class: cls }));
+      g.append(el('text', { x: p.x + 14, y: y + 20 }, name));
+      g.append(el('text', { x: p.x + 14, y: y + 38, class: 'sub mono' }, note));
+      g.append(el('text', { x: p.x + 266, y: y + 30, 'text-anchor': 'end', class: 'mono' }, p.vals[i]));
+      if (i < rows.length - 1)
+        g.append(el('path', { d: `M${p.x + 140} ${y + 50} v20`, class: 'line', 'marker-end': 'url(#arrow-quote)' }));
+    });
+  });
+})();
+</script>
+</body>
+</html>
