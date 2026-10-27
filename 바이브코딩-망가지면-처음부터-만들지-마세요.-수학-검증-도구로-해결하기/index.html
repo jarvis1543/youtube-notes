@@ -1,0 +1,859 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>바이브 코딩이 망가질 때, 수학 검증 도구로 막기</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>바이브 코딩이 망가질 때, 수학 검증 도구로 막기</h1>
+  <p class="lede">테스트가 못 잡는 회귀 버그를 형식 검증으로, 필요한 곳에만 써요</p>
+  <div class="meta">
+    <span>소스놀이터</span><span class="dot">·</span>
+    <span>영상 09:48</span><span class="dot">·</span>
+    <span>읽는 데 약 11분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=xAoB4EqzlyU" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>바이브 코딩으로 만든 프로그램은 커질수록 <span class="term" data-term="회귀 버그" data-en="Regression bug" data-desc="예전에 잘되던 기능이 다른 곳을 고친 뒤에 다시 망가지는 버그예요. 코드가 서로 얽힐수록 한 곳의 수정이 멀리까지 번져서 늘어나요." data-g="1">회귀 버그</span>가 늘어요. AI(Artificial Intelligence)가 고치는 곳만 좁게 보고 전체를 못 보기 때문이에요.</li>
+    <li>테스트 코드는 고른 상황만 확인해요. 사건 순서가 뒤섞이는 <span class="term" data-term="동시성" data-en="Concurrency" data-desc="여러 작업이 같은 시간대에 겹쳐 실행되는 성질이에요. 실행 순서가 매번 달라질 수 있어서, 특정 순서에서만 터지는 버그는 테스트로 재현하기 어려워요." data-g="4">동시성</span> 문제는 경우의 수가 너무 많아 다 덮지 못해요.</li>
+    <li><span class="term" data-term="형식 검증" data-en="Formal verification" data-desc="프로그램이 지켜야 할 성질을 수학적으로 적고, 가능한 모든 경우에 성립함을 증명하는 방법이에요. 테스트가 고른 몇 가지 상황만 확인하는 것과 달리 정한 범위 전체를 덮어요." data-g="2">형식 검증</span>은 '어떤 순서로 일이 일어나도 이 규칙은 깨지지 않는다'를 수학으로 증명해요. Anthropic은 Theorem과 함께 이 방식으로 오픈소스 123개를 분석했어요.</li>
+    <li>지금 무료로 쓸 수 있는 건 Claude Code용 <code>proof-skills</code>, Codex용 <code>agent-formal-verify</code>예요.</li>
+    <li>시간과 토큰이 두 배쯤 들어요. 그래서 복잡하거나 동시성이 얽힌 작업에만 쓰도록 <code>AGENTS.md</code>에 규칙을 넣는 게 영상의 방법이에요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">바이브 코딩이 커지면 왜 회귀가 생길까요?</a></li>
+    <li><a href="#s2">테스트 대신 수학으로 증명하기</a></li>
+    <li><a href="#s3">지금 쓸 수 있는 무료 스킬과 그 비용</a></li>
+    <li><a href="#s4">필요한 곳에만 켜기</a></li>
+    <li><a href="#s5">수학 검증 하나로 끝나지 않아요</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>바이브 코딩이 커지면 왜 회귀가 생길까요?</h2>
+<p>발표자는 24년 차 풀스택 개발자예요. 1년째 코드를 직접 치지 않고 바이브 코딩만 하는데, 하루 10시간 넘게 해도 프로그램은 금방 만들어진다고 해요. 문제는 한두 달 뒤예요. 덩치가 커지면 어김없이 회귀 버그가 생겨요.</p>
+<p>아래 슬라이드가 그 상황이에요. 기능 1부터 12까지 쌓인 앱에서, 두 달이 지나자 잘되던 기능 7이 빨갛게 망가졌어요. 발표자는 페이지끼리 관련이 적으면 덜하고, 서로 얽혀 있고 동시성 문제까지 있으면 "지옥의 회귀"가 된다고 말해요.</p>
+<figure>
+  <img src="assets/frame-0024.webp" alt="기능 1부터 12까지 칸이 있는 APP 상자에서 기능 7만 빨간색이고, 오른쪽에 시간 경과 2개월, 잘되던 기능에 회귀 문제라고 적힌 슬라이드">
+  <figcaption>
+    새 기능을 더하는 사이 이미 되던 기능이 깨지는 게 회귀예요.
+    <a href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=24s" target="_blank" rel="noopener">영상 00:24에서 보기</a>
+  </figcaption>
+</figure>
+<h3>AI는 망원경처럼 좁게 봐요</h3>
+<p>왜 다시 망가질까요? 발표자는 망원경에 빗대요. 망원경으로는 수십 km 밖 글자도 또렷하지만, 딱 그 글자만 보여요. 슬라이드에서 원 안에 또렷한 건 함수 하나이고, 뒤에 흐릿하게 깔린 산이 전체 코드베이스예요. AI는 지금 고치는 나무만 보고 산은 못 본 채 수정하다가, 잘되던 곳까지 건드려요.</p>
+<figure>
+  <img src="assets/frame-0148.webp" alt="망원경 시야의 원 안에 price 함수 코드가 선명하고, 배경에 전체 코드베이스를 뜻하는 산 모양 그래프가 흐릿하게 깔린 슬라이드">
+  <figcaption>
+    '선명하게 보이는 한 곳'은 나무, '전체 코드베이스'는 산이에요.
+    <a href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=108s" target="_blank" rel="noopener">영상 01:48에서 보기</a>
+  </figcaption>
+</figure>
+<h3>그래서 테스트 코드가 쌓여요</h3>
+<p>바이브 코딩을 오래 한 사람들은 그래서 테스트 코드에 힘을 줘요. AI도 시키지 않아도 스스로 테스트를 써요. 회귀를 막도록 기본 세팅이 그렇게 돼 있기 때문이에요. 몇 주, 몇 달이 지나면 테스트 코드가 소스 코드보다 많아지기도 해요. 슬라이드의 오른쪽 check 01~14 목록이 AI가 스스로 써 둔 안전망이에요.</p>
+<figure>
+  <img src="assets/frame-0124.webp" alt="왼쪽 소스 코드 상자와 오른쪽 check 01부터 14까지 적힌 테스트 코드 상자 사이에 AI가 있고, 회귀를 막기 위한 안전망, AI가 스스로 테스트 작성이라고 적힌 슬라이드">
+  <figcaption>
+    AI가 잘되던 곳을 실수로 고치면 테스트가 잡아 줘요. 여기까지는 많이 아는 이야기예요.
+    <a href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=84s" target="_blank" rel="noopener">영상 01:24에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=136s" target="_blank" rel="noopener">02:16</a>
+  <h2>테스트 대신 수학으로 증명하기</h2>
+<p>그런데 테스트를 늘려도 풀리지 않는 오류가 많아요. 테스트는 "이런 상황이면 이렇게 돼야 해"를 하나씩 정해 확인하는 거예요. 상황이 수천, 수만 개면 다 만들 수 없어요. 슬라이드에서 가지가 계속 갈라지는 끝마다 '테스트가 닿지 않은 경우'가 남고, 테스트 막대가 커질수록 위쪽 '개발 속도' 막대는 줄어들어요.</p>
+<figure>
+  <img src="assets/frame-0243.webp" alt="소스와 테스트 막대 그래프 옆으로 실행 경로가 수십 갈래로 갈라지고, 일부 끝에 테스트가 닿지 않은 경우라는 빨간 표시와 위쪽에 짧아진 개발 속도 막대가 있는 슬라이드">
+  <figcaption>
+    테스트가 늘어도 갈래 끝을 다 덮진 못하고, 개발만 느려져요.
+    <a href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=163s" target="_blank" rel="noopener">영상 02:43에서 보기</a>
+  </figcaption>
+</figure>
+<h3>하나씩 시험하지 않고 공식으로 증명해요</h3>
+<p>여기서 발표자가 꺼내는 게 수학적 증명 도구, 곧 형식 검증이에요. 슬라이드 왼쪽이 테스트예요. 개별 상황을 점 하나씩 찍어 시험하니, 점 사이에 '놓친 구석'이 생겨요. 오른쪽은 가정과 입력 범위, 실행 환경을 정한 뒤 "모든 사건 순서에서 <span class="term" data-term="불변식" data-en="Invariant" data-desc="프로그램이 어떤 순서로 실행되든 항상 참이어야 하는 조건이에요. 예매라면 &#x27;확정 + 보류는 10장 이하&#x27;처럼요. 형식 검증은 이걸 증명하는 게 목표예요." data-g="3">불변식</span>이 성립한다"를 한 번에 증명해요.</p>
+<figure>
+  <img src="assets/frame-0319.webp" alt="왼쪽에 점이 흩뿌려진 테스트 하나씩 시험 영역, 오른쪽에 가정·입력 범위와 가정·실행 환경으로 둘러싼 수학적 증명 영역 안에 모든 사건 순서에서 불변식 성립이라고 적힌 슬라이드">
+  <figcaption>
+    테스트는 점을 찍고, 증명은 범위 전체를 덮어요. 대신 그 범위의 가정이 맞아야 해요.
+    <a href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=199s" target="_blank" rel="noopener">영상 03:19에서 보기</a>
+  </figcaption>
+</figure>
+<h3>Anthropic과 Theorem의 실험</h3>
+<p>10월 22일 Anthropic이 이 주제를 다뤘어요. 보통 버그를 찾을 땐 랜덤 데이터를 수백만, 수십억 번 넣어 보는데, 그러지 않고도 "항상 문제없다"를 수학으로 증명한 거예요. 화면은 Anthropic의 연구 글이고, 가운데 굵은 문장에 123개 라이브러리와 239라는 숫자가 보여요.</p>
+<figure>
+  <img src="assets/frame-0328.webp" alt="anthropic.com/research/formal-verification 페이지를 캡처한 화면. 본문에 Claude가 찾은 버그를 고치고 123개 OSS-Fuzz 라이브러리의 239개 진입점에서 충돌이 없음을 증명했다는 문장과 Formal verification 그림 제목이 보여요">
+  <figcaption>
+    영상이 근거로 든 원문이에요. 증명 대상은 소스 코드가 아니라 컴파일된 RISC-V 실행 파일이에요.
+    <a href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=208s" target="_blank" rel="noopener">영상 03:28에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 숫자를 이렇게 정리해요. Anthropic과 Theorem이 123개 오픈소스 라이브러리를 분석해 239개 지점에서 버그를 찾아 고쳤고, 그중 일부는 수조 번 테스트로도 못 찾던 오래된 버그였어요. 고칠 필요가 없다고 증명된 25개 라이브러리 60개 지점은 공개했어요. 나머지는 누군가 해킹에 악용할 수 있어 비공개로 뒀어요.</p>
+<figure>
+  <img src="assets/frame-0355.webp" alt="작은 칸이 격자로 늘어선 그림 아래에 123 오픈소스 라이브러리 분석, 239 버그 지점 발견·해결, 25·60 증명 공개 라이브러리·지점, 그 외는 비공개 악용될 수 있기 때문이라고 적힌 슬라이드">
+  <figcaption>
+    123, 239, 25·60 세 숫자가 이 실험의 요약이에요. 239의 뜻은 아래 보충 설명을 함께 보세요.
+    <a href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=235s" target="_blank" rel="noopener">영상 03:55에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>원문에서 239는 "버그를 찾은 지점"이 아니라, 64MB 이하의 어떤 입력에도 충돌이 없다고 증명한 <span class="term" data-term="퍼즈 테스트" data-en="Fuzz testing" data-desc="무작위나 변형한 입력을 아주 많이 넣어 보며 충돌이 나는지 찾는 테스트예요. 영상이 말한 &#x27;랜덤 데이터를 수십억 번 넣는&#x27; 방식이에요." data-g="6">퍼즈 테스트</span> 진입점의 수예요. 찾은 버그는 "수백 개"라고만 적혀 있어요. 아직 고쳐지지 않은 버그가 드러날 수 있는 증명은 공개하지 않았다는 이유도 원문에 있어요.</p>
+  <p>Theorem의 공개 저장소에는 지금 26개 라이브러리, 61개 진입점의 증명이 올라와 있어요. 영상이 말한 25·60과 조금 달라요. 증명은 Rocq로 쓰였고, 누구나 Docker로 직접 다시 확인해 볼 수 있어요.</p>
+  <p>영상은 "신청한 대상자에게만 제공한다"고 해요. Theorem 페이지를 보면 OSI(Open Source Initiative) 승인 라이선스를 쓰는 오픈소스라면 핵심 메인테이너가 저장소에 PR(Pull Request)을 열어 무료로 신청할 수 있어요. 오픈소스가 아니면 따로 문의해야 해요.</p>
+  <p class="cite">출처: <a href="https://www.anthropic.com/research/formal-verification" target="_blank" rel="noopener">Anthropic — Formal verification</a> · <a href="https://github.com/theorem-labs/oss-verify-proofs" target="_blank" rel="noopener">theorem-labs/oss-verify-proofs</a> · <a href="https://theorem.dev/oss-verify" target="_blank" rel="noopener">Theorem — OSS Verify</a></p>
+</aside>
+<h3>기계어 수준에서 증명해요</h3>
+<p>이 방식이 독특한 점은 <span class="term" data-term="기계어" data-en="Machine code" data-desc="CPU가 바로 실행하는 명령어 묶음이에요. 어떤 언어로 짰든 컴파일하면 기계어가 되니까, 여기서 증명하면 언어에 덜 묶여요." data-g="5">기계어</span>를 기준으로 증명한다는 거예요. 슬라이드 왼쪽의 Rust, C, C++, Go, Swift가 모두 컴파일러를 거쳐 오른쪽의 16진수 기계어가 되고, 증명은 그 기계어 줄마다 체크 표시를 붙여요. 어떤 언어로 짰든 결국 기계어로 실행되니까, 언어에 덜 묶이고 컴파일된 프로그램까지 검증할 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0416.webp" alt="Rust, C, C++, Go, Swift에서 나온 선이 컴파일 삼각형으로 모이고, 오른쪽에 16진수 기계어 줄 다섯 개에 체크 표시가 붙은 기계어 수준에서 수학적 증명 슬라이드. 아래에 언어 의존성 감소, 컴파일된 프로그램까지 검증이라고 적혀 있어요">
+  <figcaption>
+    언어마다 따로 증명하지 않고, 컴파일된 결과물 하나를 증명해요.
+    <a href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=256s" target="_blank" rel="noopener">영상 04:16에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=265s" target="_blank" rel="noopener">04:25</a>
+  <h2>지금 쓸 수 있는 무료 스킬과 그 비용</h2>
+<p>Anthropic과 Theorem의 방식은 아직 바로 가져다 쓸 수 없어요. 영상은 무료로 공개하지 않고 신청한 대상에게만 제공한다고 해요. 대신 지금 무료로 쓸 수 있는 스킬이 두 개 있어요. 슬라이드처럼 Claude Code에는 <code>proof-skills</code>, Codex에는 <code>agent-formal-verify</code>예요.</p>
+<figure>
+  <img src="assets/frame-0443.webp" alt="무료 표시 아래에 Claude Code proof-skills, Codex agent-formal-verify 두 상자가 위아래로 놓인 슬라이드">
+  <figcaption>
+    도구마다 쓰는 스킬이 달라요. 둘 다 사고가 날 수 있는 상황을 모두 따져 보는 스킬이에요.
+    <a href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=283s" target="_blank" rel="noopener">영상 04:43에서 보기</a>
+  </figcaption>
+</figure>
+<p>proof-skills는 GitHub의 opum-ai 저장소에 있어요. 화면 아래 노란 칸에 강조된 문장이 'Formal verification for real codebases, driven by Claude', 실제 코드베이스를 Claude로 형식 검증한다는 뜻이에요. 오른쪽 소개 칸에는 TLA(Temporal Logic of Actions)+와 Lean 4로 동시성·상태 버그를 찾고 재현하고 고치고 증명한다고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0434.webp" alt="github.com/opum-ai/proof-skills 저장소 화면. README 첫 문장 Formal verification for real codebases, driven by Claude가 노랗게 강조돼 있고, 오른쪽 About에 TLA+ and Lean 4 skills that find, reproduce, fix and prove concurrency and state bugs, MIT라고 적혀 있어요">
+  <figcaption>
+    MIT(Massachusetts Institute of Technology) 라이선스의 Claude Code 스킬 묶음이에요. 설치법은 아래 보충 설명에 있어요.
+    <a href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=274s" target="_blank" rel="noopener">영상 04:34에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p><b>proof-skills</b>(Opum AI, MIT)는 진입점인 <code>formal-verify</code>와 TLA+ 모델링, Lean 4 모델링, 증명으로 안전한 코드 삭제를 돕는 스킬로 이뤄져 있어요. Claude Code에서 이렇게 설치해요.</p>
+<pre><code class="language-bash">/plugin marketplace add opum-ai/opum-marketplace
+/plugin install proof-skills@opum</code></pre>
+  <p><b>agent-formal-verify</b>는 Michael Denyer가 만든 GPL-3.0 플러그인이에요. Codex뿐 아니라 Claude Code, Pi에서도 쓸 수 있고, TLA+·Lean 4에 더해 Rust용 Kani도 다뤄요. Codex에서는 터미널에서 설치한 뒤 <code>setup</code> 스킬을 한 번 돌리고, <code>$formal-verify</code>로 불러요.</p>
+<pre><code class="language-bash">codex plugin marketplace add michael-denyer/agent-formal-verify
+codex plugin add agent-formal-verify@agent-formal-verify</code></pre>
+  <p class="cite">출처: <a href="https://github.com/opum-ai/proof-skills" target="_blank" rel="noopener">opum-ai/proof-skills</a> · <a href="https://github.com/michael-denyer/agent-formal-verify" target="_blank" rel="noopener">michael-denyer/agent-formal-verify</a></p>
+</aside>
+<h3>콘서트 예매로 보는 경우의 수</h3>
+<p>발표자는 인기 콘서트 예매로 예를 들어요. 티켓이 10장 남았는데 수십만 명이 동시에 예매 버튼을 눌러요. 슬라이드 가운데 목록이 그때 벌어지는 일이에요. 정확히 동시에 클릭, 카드번호 미입력 두 명, 인터넷 끊김, 연결은 됐지만 너무 느림, 취소됐다가 뒤늦게 성공. 오른쪽에 남은 티켓은 4장이고, 맨 아래 초록 띠가 지켜야 할 불변식이에요. '확정 + 보류는 10장 이하', '좌석당 1명'.</p>
+<figure>
+  <img src="assets/frame-0519.webp" alt="왼쪽 수십만 명의 점, 가운데 예매 서버 막대와 정확히 동시에 클릭, 카드번호 미입력 × 2, 인터넷 끊김, 연결은 됐지만 너무 느림, 취소 → 뒤늦게 성공 목록, 오른쪽 남은 티켓 4와 확정된 티켓 6장, 아래 불변식 확정 + 보류 ≤ 10 · 좌석당 1명이 적힌 슬라이드">
+  <figcaption>
+    어떤 사건이 어떤 순서로 와도 초록 띠의 두 규칙이 깨지지 않아야 해요. 형식 검증이 증명하는 게 바로 이거예요.
+    <a href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=319s" target="_blank" rel="noopener">영상 05:19에서 보기</a>
+  </figcaption>
+</figure>
+<p>이 모든 상황에서 문제가 없으려면 테스트가 얼마나 필요할까요? 순서가 바뀔 수 있는 일이 단 10개면, 가능한 순서는 10 × 9 × … × 1 = 3,628,800가지예요. 슬라이드 위쪽 칩(지연, 결제, 클릭, 취소, 확인, 환불, 응답…)이 그 10개 사건이고, 아래 빨간 표시처럼 여기에 수십만 명 동시 접속, 취소, 재시도가 곱해져요. 일일이 테스트하는 건 사실상 불가능하지만, 수학 검증 스킬은 이걸 다룰 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0537.webp" alt="위쪽에 지연, 결제, 클릭, 취소, 확인, 환불, 응답, 재시도, 잠김, 보류 사건 칩이 섞여 있고, 가운데 10 × 9 × 8 × … × 1 수식과 큰 숫자 3,628,800, 10! = 가능한 순서, 아래에 × 수십만 명 동시 접속, × 취소, × 재시도가 적힌 슬라이드">
+  <figcaption>
+    사건 10개만으로 약 363만 가지예요. 테스트로 하나씩 고를 수 있는 양이 아니에요.
+    <a href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=337s" target="_blank" rel="noopener">영상 05:37에서 보기</a>
+  </figcaption>
+</figure>
+<h3>왜 많이 안 쓸까요? 시간과 토큰</h3>
+<p>성능이 이렇게 좋은데도 널리 쓰이진 않아요. 이유는 두 가지예요. 개발자조차 이런 도구가 있는 줄 모르는 경우가 많고, 더 현실적으로는 시간과 토큰이 배로 들어요. 슬라이드는 proof-skills 개발사가 버그 사례 5가지로 실험한 결과예요. 빨간 막대처럼 검증 시간은 2.4배, 토큰 사용량은 2.2배로 늘어요. 대신 오른쪽 원 두 개처럼 '검증한 경우의 수'는 미사용 54%에서 사용 98%로 올라가요.</p>
+<figure>
+  <img src="assets/frame-0634.webp" alt="사례 실험 proof-skills 개발사 보고 버그 사례 5가지라는 제목 아래 검증 시간 미사용 1.0× 사용 2.4×, 토큰 사용량 미사용 1.0× 사용 2.2× 막대와, 검증한 경우의 수 미사용 54%, 사용 98% 원형 그래프가 있는 슬라이드">
+  <figcaption>
+    더 느리고 비싸지만 더 꼼꼼해요. 다만 숫자의 뜻은 아래 보충 설명처럼 원문과 조금 달라요.
+    <a href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=394s" target="_blank" rel="noopener">영상 06:34에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>proof-skills README의 평가 표는 Python·TypeScript·Go·Rust로 된 버그 예제 5개에서, 같은 요청을 스킬 있이·없이 돌려 채점 항목을 몇 개 통과했는지 비교해요. 98%와 54%는 그 통과율 평균이에요. "경우의 수를 몇 % 검증했다"는 뜻은 아니에요.</p>
+  <p>README는 두 경우 모두 심어 둔 버그는 찾아 고쳤다고 적어요. 스킬이 더하는 건 검증 범위 명시, 반례 재현, 모델과 코드의 대응표, 저장된 로그처럼 나중에 확인할 수 있는 근거예요. 비용은 "시간과 토큰 모두 약 2배"라고만 적혀 있어서, 영상의 2.4배·2.2배는 README에서는 확인되지 않아요.</p>
+  <p class="cite">출처: <a href="https://github.com/opum-ai/proof-skills#evaluation" target="_blank" rel="noopener">opum-ai/proof-skills — Evaluation</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=400s" target="_blank" rel="noopener">06:40</a>
+  <h2>필요한 곳에만 켜기</h2>
+<p>그럼 Claude Code와 Codex는 왜 수학 검증을 기본으로 켜 두지 않을까요? 발표자의 답은 "항상 쓰면 과소비"예요. 슬라이드 왼쪽처럼 버튼, 텍스트 박스, 글자 색을 바꾸는 단순한 UI(User Interface) 변경엔 수학적 증명이 필요 없고, 기존 테스트로 충분해요. 오른쪽처럼 대기·실행·추가 지시·취소·재시작·완료가 서로 얽혀 동시에 도는 기능이 형식 검증 대상이에요.</p>
+<figure>
+  <img src="assets/frame-0725.webp" alt="왼쪽 단순한 UI 변경 칸에 버튼, 텍스트 박스, 글자 색상이 흐리게 있고 기존 테스트로 충분 표시, 오른쪽 얽힌 기능·동시 실행 칸에 대기, 실행, 추가 지시, 취소, 재시작, 완료 점이 서로 이어져 점선 원으로 묶이고 형식 검증 대상이라고 적힌 슬라이드">
+  <figcaption>
+    같은 프로젝트 안에서도 어디에 쓸지를 골라야 해요. 기준은 '얽혀 있고 동시에 도는가'예요.
+    <a href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=445s" target="_blank" rel="noopener">영상 07:25에서 보기</a>
+  </figcaption>
+</figure>
+<h3>발표자의 소놀봇 사례</h3>
+<p>발표자도 이 문제를 겪고 있어요. 소놀봇은 Claude Code와 Codex를 이어 주는 프로그램이에요. 단순히 잇기만 하지 않고 파일을 전달하고, AI가 일하는 중에 추가 지시를 내리고, 작업을 취소했다가 다시 시작해요. 운영체제도 맥, 윈도우, WSL(Windows Subsystem for Linux)로 갈려요. 슬라이드에서 WSL 아래 빨간 '특정 순서에서 충돌'과, 파일 전달 위 '이전에 잘되던 기능 손상'이 바로 그 문제예요.</p>
+<figure>
+  <img src="assets/frame-0810.webp" alt="가운데 소놀봇 원을 Claude Code와 Codex가 양쪽에서 잇고, 위로 파일 전달, 추가 지시, 취소·재시작, 아래로 맥, 윈도우, WSL이 연결된 그림. WSL은 빨갛게 표시되고 특정 순서에서 충돌, 파일 전달 위에는 이전에 잘되던 기능 손상이라고 적혀 있어요">
+  <figcaption>
+    기능 하나하나는 잘 돌아요. 특정 순서로 겹칠 때만 터지고, 그걸 고치다 다른 기능이 망가져요.
+    <a href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=490s" target="_blank" rel="noopener">영상 08:10에서 보기</a>
+  </figcaption>
+</figure>
+<p>그래서 테스트 코드와 회귀 검사를 반복해 왔지만, 복잡해질수록 기존 테스트만으로는 부족했어요. 최근엔 수학 검증 도구를 쓰는데, 매번 쓰면 작업이 느려져요. 그래서 복잡할 때만 쓰도록 정했어요.</p>
+<h3>AGENTS.md에 넣은 규칙</h3>
+<p>발표자는 그 규칙을 <code>AGENTS.md</code> 지침 파일에 넣었어요. 이렇게 하면 에이전트가 매번 스킬을 쓰지 않고, 복잡하거나 동시성 문제가 있을 때만 써요. 화면의 지침은 Codex용이라 <code>$formal-verify</code>를 불러요. 발표자는 Claude Code용과 Codex용을 모두 댓글에 공개하겠다고 했어요.</p>
+<figure>
+  <img src="assets/frame-0838.webp" alt="AGENTS.md / 형식 검증 자동 적용 정책이라는 제목 아래 기본 원칙, 실행 조건, 실행 제외, 검증 방법, 안전, 효율·보고, 목표 항목이 이어진 긴 문단이 적힌 슬라이드. 아래에 기획.txt에 제공된 정책이라고 적혀 있어요">
+  <figcaption>
+    글씨가 작아서 아래 표로 옮겼어요. 화면에 보인 그대로의 항목이에요.
+    <a href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=518s" target="_blank" rel="noopener">영상 08:38에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>항목</th><th>지침 내용 (화면 요약)</th></tr></thead>
+    <tbody>
+      <tr><td>기본 원칙</td><td>일반 개발은 기존 테스트 도구를 먼저 써요. <code>$formal-verify</code>는 기본으로 돌리지 않고, 일반 검증만으로 핵심 안전성을 확인하기 어려울 때 골라서 써요.</td></tr>
+      <tr><td>실행 조건</td><td>실제 오류 위험이 높으면서 다음 중 하나일 때예요. 동시성·취소·재시작·지연 응답·중복 실행처럼 사건 순서가 복잡해 상태가 충돌할 수 있을 때, 반복되거나 재현이 어려운 핵심 오류일 때, 핵심 상태 관리·프로토콜·API(Application Programming Interface) 동작 계약을 크게 바꿀 때예요.</td></tr>
+      <tr><td>실행 제외</td><td>UI·문서·단순 수정, 기존 테스트로 충분한 변경, 검증할 성질이 불분명한 작업이에요. 관련 모듈을 고쳤다는 이유만으로 돌리지 않아요.</td></tr>
+      <tr><td>검증 방법</td><td>기존 모델·증명을 먼저 재사용하고 영향받는 범위만 검증해요. 필요하면 TLA+/TLC나 Lean 4를 실제로 돌려요. 규칙은 요구사항·계약·과거 오류를 기준으로 정하고, 찾은 반례는 실제 코드에서 재현한 뒤 고치고 다시 검증해요.</td></tr>
+      <tr><td>안전</td><td>검사 실패·미실행·시간 초과를 성공으로 처리하지 않아요. 통과하려고 조건을 약하게 바꾸거나 방어 코드를 지우지 않고, 모델 검사 통과를 프로그램 전체의 안전 보장으로 해석하지 않아요.</td></tr>
+      <tr><td>효율·보고</td><td>불필요한 모델 생성·반복 검사·토큰 소비를 피해요. 실행했으면 결과·범위·가정·남은 위험을 짧게 보고해요.</td></tr>
+      <tr><td>목표</td><td>평소 개발 속도와 토큰 효율을 지키면서, 일반 테스트가 놓치기 쉬운 핵심 오류에만 형식 검증을 써요.</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>규칙의 흐름만 그리면 이래요. 먼저 작업이 복잡한지 판단하고, 조건에 맞을 때만 검증을 돌려요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["작업 요청"] --> B{"작업의 복잡성 판단"}
+  B -- "UI·문서·단순 수정" --> C["기존 테스트로 확인"]
+  B -- "동시성·취소·재시작 등<br/>사건 순서가 복잡" --> D["formal-verify 실행"]
+  D --> E["반례를 실제 코드에서 재현"]
+  E --> F["수정 후 다시 검증"]
+</pre>
+  <figcaption>슬라이드의 '작업의 복잡성 판단 → 필요할 때 검증 실행'에 <code>AGENTS.md</code>의 조건을 얹었어요. 대부분의 작업은 '기존 테스트로 확인' 쪽으로 빠져요.</figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=530s" target="_blank" rel="noopener">08:50</a>
+  <h2>수학 검증 하나로 끝나지 않아요</h2>
+<p>발표자는 수학 검증 도구 하나로 모든 회귀 문제가 풀리진 않는다고 선을 그어요. 큰 바이브 코딩 프로젝트에서는 <span class="term" data-term="컨텍스트 엔지니어링" data-en="Context engineering" data-desc="AI가 일을 제대로 하도록 어떤 코드·규칙·문서를 언제 얼마나 건넬지 설계하는 일이에요. 너무 적으면 모르고, 너무 많으면 흐려져요." data-g="7">컨텍스트 엔지니어링</span>과 <span class="term" data-term="하네스" data-en="Harness" data-desc="AI 에이전트를 감싸서 도구 실행, 테스트, 검증, 재시도 같은 작업 흐름을 관리하는 틀이에요. 같은 하네스라도 모델에 따라 효과가 달라요." data-g="8">하네스</span> 설계도 중요해요. AI가 기존 코드와 규칙을 제대로 이해하도록 필요한 정보를 건네고, 수정·테스트·검증 과정을 체계적으로 관리해야 해요.</p>
+<p>슬라이드가 셋의 관계를 보여 줘요. 왼쪽 위 컨텍스트 엔지니어링(기존 코드·규칙 전달)과 왼쪽 아래 하네스 설계(수정·테스트·검증 관리)가 가운데 '잘되던 기능'으로 모이고, 오른쪽의 수학적 검증이 복잡한 회귀를 막아요. 하네스 아래 막대 두 개(모델 A는 길고 모델 B는 짧은)는 같은 하네스라도 모델마다 효과가 다르다는 뜻이에요. 어떤 모델에서 잘되던 방식이 다른 모델에선 오히려 성능을 떨어뜨리기도 해요.</p>
+<figure>
+  <img src="assets/frame-0934.webp" alt="왼쪽 위 컨텍스트 엔지니어링(기존 코드·규칙 전달)과 왼쪽 아래 하네스 설계(수정·테스트·검증 관리, 같은 하네스도 모델마다 효과가 다름, 모델 A·B 막대)에서 선이 가운데 잘되던 기능으로 모이고, 오른쪽 수학적 검증(복잡한 회귀 예방)으로 이어지는 그림">
+  <figcaption>
+    수학 검증은 세 축 중 하나예요. 맥락을 잘 건네고 과정을 잘 관리하는 게 먼저 깔려 있어야 해요.
+    <a href="https://www.youtube.com/watch?v=xAoB4EqzlyU&amp;t=574s" target="_blank" rel="noopener">영상 09:34에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상의 마지막 말이 이 영상의 결론이에요.</p>
+<blockquote>
+  <p>이제 프로그램을 빠르게 만드는 건 그렇게 어렵지 않습니다. 진짜 어려운 건 이미 잘되던 기능을 망가뜨리지 않으면서 계속 발전시키는 겁니다.</p>
+  <cite>— 영상 09:04</cite>
+</blockquote>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 이름과 용어가 잘못 받아적힌 곳이 있어요. 화면과 원문을 보고 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>회기 / 회</td><td>회귀</td><td>regression</td></tr>
+      <tr><td>엔트로픽</td><td>앤트로픽 (Anthropic)</td><td></td></tr>
+      <tr><td>시어럼</td><td>Theorem</td><td>Anthropic과 함께한 형식 검증 회사</td></tr>
+      <tr><td>프루프 스킬스</td><td>proof-skills</td><td>Claude Code용 스킬</td></tr>
+      <tr><td>에이전트 포멀리파이</td><td>agent-formal-verify</td><td>Codex용 스킬</td></tr>
+      <tr><td>3628,800</td><td>3,628,800</td><td>10!</td></tr>
+      <tr><td>소널봇</td><td>소놀봇</td><td>슬라이드 표기</td></tr>
+      <tr><td>에이전트 MD</td><td>&lt;code&gt;AGENTS.md&lt;/code&gt;</td><td></td></tr>
+      <tr><td>한네스</td><td>하네스</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-5"><dt>기계어<span class="en">Machine code</span></dt><dd>CPU가 바로 실행하는 명령어 묶음이에요. 어떤 언어로 짰든 컴파일하면 기계어가 되니까, 여기서 증명하면 언어에 덜 묶여요.</dd></div>
+    <div class="g" id="g-4"><dt>동시성<span class="en">Concurrency</span></dt><dd>여러 작업이 같은 시간대에 겹쳐 실행되는 성질이에요. 실행 순서가 매번 달라질 수 있어서, 특정 순서에서만 터지는 버그는 테스트로 재현하기 어려워요.</dd></div>
+    <div class="g" id="g-3"><dt>불변식<span class="en">Invariant</span></dt><dd>프로그램이 어떤 순서로 실행되든 항상 참이어야 하는 조건이에요. 예매라면 &#x27;확정 + 보류는 10장 이하&#x27;처럼요. 형식 검증은 이걸 증명하는 게 목표예요.</dd></div>
+    <div class="g" id="g-7"><dt>컨텍스트 엔지니어링<span class="en">Context engineering</span></dt><dd>AI가 일을 제대로 하도록 어떤 코드·규칙·문서를 언제 얼마나 건넬지 설계하는 일이에요. 너무 적으면 모르고, 너무 많으면 흐려져요.</dd></div>
+    <div class="g" id="g-6"><dt>퍼즈 테스트<span class="en">Fuzz testing</span></dt><dd>무작위나 변형한 입력을 아주 많이 넣어 보며 충돌이 나는지 찾는 테스트예요. 영상이 말한 &#x27;랜덤 데이터를 수십억 번 넣는&#x27; 방식이에요.</dd></div>
+    <div class="g" id="g-8"><dt>하네스<span class="en">Harness</span></dt><dd>AI 에이전트를 감싸서 도구 실행, 테스트, 검증, 재시도 같은 작업 흐름을 관리하는 틀이에요. 같은 하네스라도 모델에 따라 효과가 달라요.</dd></div>
+    <div class="g" id="g-2"><dt>형식 검증<span class="en">Formal verification</span></dt><dd>프로그램이 지켜야 할 성질을 수학적으로 적고, 가능한 모든 경우에 성립함을 증명하는 방법이에요. 테스트가 고른 몇 가지 상황만 확인하는 것과 달리 정한 범위 전체를 덮어요.</dd></div>
+    <div class="g" id="g-1"><dt>회귀 버그<span class="en">Regression bug</span></dt><dd>예전에 잘되던 기능이 다른 곳을 고친 뒤에 다시 망가지는 버그예요. 코드가 서로 얽힐수록 한 곳의 수정이 멀리까지 번져서 늘어나요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>MIT</dt><dd>Massachusetts Institute of Technology</dd></div>
+    <div class="g"><dt>OSI</dt><dd>Open Source Initiative</dd></div>
+    <div class="g"><dt>PR</dt><dd>Pull Request</dd></div>
+    <div class="g"><dt>TLA</dt><dd>Temporal Logic of Actions</dd></div>
+    <div class="g"><dt>UI</dt><dd>User Interface</dd></div>
+    <div class="g"><dt>WSL</dt><dd>Windows Subsystem for Linux</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=xAoB4EqzlyU" target="_blank" rel="noopener">원본 영상 — 소스놀이터</a></li>
+    <li id="src-2"><a href="https://www.anthropic.com/research/formal-verification" target="_blank" rel="noopener">Anthropic — Formal verification (2026-10-22)</a></li>
+    <li id="src-3"><a href="https://github.com/theorem-labs/oss-verify-proofs" target="_blank" rel="noopener">theorem-labs/oss-verify-proofs — 공개된 증명</a></li>
+    <li id="src-4"><a href="https://theorem.dev/oss-verify" target="_blank" rel="noopener">Theorem — OSS Verify 신청 안내</a></li>
+    <li id="src-5"><a href="https://github.com/opum-ai/proof-skills" target="_blank" rel="noopener">opum-ai/proof-skills — Claude Code용 형식 검증 스킬</a></li>
+    <li id="src-6"><a href="https://github.com/michael-denyer/agent-formal-verify" target="_blank" rel="noopener">michael-denyer/agent-formal-verify — Codex·Claude Code용 형식 검증 플러그인</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 28일에 이 영상을 보고 정리했어요. 원본은 소스놀이터 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
