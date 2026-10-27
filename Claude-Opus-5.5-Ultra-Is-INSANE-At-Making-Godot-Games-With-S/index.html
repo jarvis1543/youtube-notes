@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Opus 5.5 Ultracode로 Godot 게임 만들기</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Claude Opus 5.5 Ultracode로 Godot 게임 만들기</h1>
+  <p class="lede">빈 프로젝트에서 그림까지 갖춘 게임이 나오기까지, 과정과 비용을 따라가요</p>
+  <div class="meta">
+    <span>Letta Corporation</span><span class="dot">·</span>
+    <span>영상 20:09</span><span class="dot">·</span>
+    <span>읽는 데 약 14분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=ov4Ggndlvxc" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>Claude가 게임 그림을 그리고 Godot 에디터를 조작하려면 <span class="term" data-term="MCP" data-en="Model Context Protocol" data-desc="AI 앱이 외부 도구나 프로그램에 연결하는 공개 표준이에요. 여기서는 Claude가 SpriteCook과 Godot 에디터를 부르는 통로예요." data-g="1">MCP(Model Context Protocol)</span> 두 개가 필요해요. 그림은 SpriteCook, 에디터는 Godot AI(Artificial Intelligence)가 맡아요.</li>
+    <li>바로 만들게 하지 않고 아이디어 → 컨셉 이미지 → 51쪽 <span class="term" data-term="게임 디자인 문서" data-en="Game Design Document" data-desc="게임의 규칙, 레벨, 캐릭터, 그림 방향을 정리한 설계서예요. 이 영상에서는 Claude가 로직과 그림을 만들 때 따르는 지침이 됐어요." data-g="3">게임 디자인 문서</span>까지 가벼운 모델로 굳힌 뒤, 그 문서를 Opus 5.5 Ultracode에 넘겼어요.</li>
+    <li>1차 제작은 7시간 58분 동안 묻지 않고 돌아 방 30개짜리 게임을 만들었고, 스크린샷을 붙인 피드백으로 고친 2차는 1시간 47분 걸렸어요.</li>
+    <li>화면의 최종 표는 SpriteCook 5,121크레딧(약 51달러), 출력 토큰 약 1,029만 개, <span class="term" data-term="API 가격 환산" data-en="API pricing equivalent" data-desc="같은 토큰을 구독이 아니라 API 요금으로 냈다면 얼마였을지 계산한 값이에요. 실제로 낸 돈은 아니지만 작업 규모를 가늠하게 해 줘요." data-g="12">API(Application Programming Interface) 가격 환산</span> 865.22달러예요. 말로 한 '크레딧 500달러'는 표와 맞지 않아요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">무엇을 만들었나</a></li>
+    <li><a href="#s2">Claude에 SpriteCook과 Godot 연결하기</a></li>
+    <li><a href="#s3">기획: 아이디어에서 게임 디자인 문서까지</a></li>
+    <li><a href="#s4">1차 제작: Opus 5.5에 통째로 맡기기</a></li>
+    <li><a href="#s5">플레이테스트 피드백과 2차 수정</a></li>
+    <li><a href="#s6">2차 결과: 능력 여섯 가지와 보스</a></li>
+    <li><a href="#s7">시간과 비용, 얼마나 들었나요?</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>무엇을 만들었나</h2>
+<p>빈 Godot 프로젝트 하나에 게임 아이디어만 들고 시작해요. 그림 에셋도, 코드도 없어요. 발표자는 Claude Opus 5.5를 가장 높은 노력 단계로 돌려 게임을 끝까지 만들게 하고, 그림은 전부 SpriteCook MCP로 그리게 했어요.</p>
+<p>만든 게임은 2D <span class="term" data-term="메트로배니아" data-en="Metroidvania" data-desc="하나로 이어진 큰 맵을 돌아다니며 새 능력을 얻을 때마다 전에 못 가던 곳이 열리는 2D 액션 게임 장르예요. Overdue의 시간 능력이 그 열쇠 역할을 해요." data-g="2">메트로배니아</span> 'Overdue'예요. 문 닫은 비디오 대여점에 마지막 직원으로 남은 주인공이, 살아 움직이는 테이프와 기계를 피해 방을 하나씩 지나가요. 정지·되감기·빨리감기 같은 시간 능력을 얻을수록 새 구역이 열리고, 마지막 보스를 쓰러뜨려야 탈출해요. 아래는 완성본의 메인 화면이에요. 대여점 카운터 앞에 주인공이, 창가에 유령 적이 있고 오른쪽에 메뉴가 떠 있어요.</p>
+<figure>
+  <img src="assets/frame-0006.webp" alt="OVERDUE 제목과 BE KIND, REWIND 부제, 비디오 대여점 카운터 앞 주인공과 유령, 오른쪽에 CONTINUE·SHOWCASE START·SETTINGS·START OVER·QUIT 메뉴가 있는 게임 메인 화면">
+  <figcaption>제목 아래 'BE KIND, REWIND'는 비디오테이프를 돌려줄 때 되감아 달라던 대여점 문구에서 따왔어요. 되감기가 게임의 핵심 능력이기도 해요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=6s" target="_blank" rel="noopener">영상 00:06에서 보기</a></figcaption>
+</figure>
+<p>발표자는 결과만 보여 주지 않고 과정을 순서대로 짚어요. 전체 흐름을 한 장으로 그리면 이래요. 모델이 단계마다 달라지는 점을 눈여겨보세요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["도구 연결<br/>SpriteCook · Godot AI"] --> B["아이디어 웹사이트<br/>Sonnet 5.5"]
+  B --> C["컨셉 이미지<br/>Codex CLI"]
+  C --> D["게임 디자인 문서<br/>51쪽"]
+  D --> E["1차 제작<br/>Opus 5.5 Ultracode · 7시간 58분"]
+  E --> F["직접 플레이 · 피드백"]
+  F --> G["2차 수정<br/>1시간 47분"]
+</pre>
+  <figcaption>가벼운 모델로 기획을 굳히고, 무거운 모델은 문서를 받아 만드는 데만 썼어요.</figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=100s" target="_blank" rel="noopener">01:40</a>
+  <h2>Claude에 SpriteCook과 Godot 연결하기</h2>
+<p>먼저 Claude 데스크톱 앱에서 모델과 노력 단계를 골라요. 모델 메뉴에는 Opus 5.5, Fable 5.1, Sonnet 5.5, Haiku 5.5가 있고, 그 아래 Effort 항목이 'Ultracode'로 맞춰져 있어요. 발표자는 이 조합을 지금 가장 강한 조합이라고 불러요.</p>
+<figure>
+  <img src="assets/frame-0152.webp" alt="Claude 데스크톱 새 세션 화면의 모델 메뉴. Opus 5.5에 체크, Fable 5.1, Sonnet 5.5, Haiku 5.5, Effort Ultracode, Enable fast mode 항목이 보여요">
+  <figcaption>영상 제목의 'Ultra'는 화면에서는 Effort 'Ultracode'로 표시돼요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=112s" target="_blank" rel="noopener">영상 01:52에서 보기</a></figcaption>
+</figure>
+<p>Claude가 게임을 만들려면 두 가지가 더 필요해요. 그림을 그릴 수단과, Godot 에디터를 직접 조작할 수단이에요. 둘 다 MCP로 붙여요. 구조를 그리면 이래요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="Claude가 SpriteCook MCP로 그림을 만들고 Godot AI MCP로 Godot 에디터를 조작하는 구조">
+    <defs><marker id="arrow-conn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="accent" x="230" y="80" width="180" height="70" rx="12"/>
+    <text x="320" y="110" text-anchor="middle">Claude</text>
+    <text x="320" y="132" text-anchor="middle" class="sub">Opus 5.5 · Ultracode</text>
+    <rect class="c1 cell" x="20" y="20" width="170" height="70" rx="10"/>
+    <text x="105" y="50" text-anchor="middle">SpriteCook MCP</text>
+    <text x="105" y="72" text-anchor="middle" class="sub">캐릭터·애니메이션·소품</text>
+    <rect class="c2 cell" x="450" y="20" width="170" height="70" rx="10"/>
+    <text x="535" y="50" text-anchor="middle">Godot AI MCP</text>
+    <text x="535" y="72" text-anchor="middle" class="sub">씬·노드 만들기</text>
+    <rect class="c1 cell" x="20" y="140" width="170" height="70" rx="10"/>
+    <text x="105" y="170" text-anchor="middle">SpriteCook 계정</text>
+    <text x="105" y="192" text-anchor="middle" class="sub">크레딧 차감</text>
+    <rect class="c2 cell" x="450" y="140" width="170" height="70" rx="10"/>
+    <text x="535" y="170" text-anchor="middle">Godot 에디터</text>
+    <text x="535" y="192" text-anchor="middle" class="sub">게임 프로젝트</text>
+    <path class="line" d="M228 105 L192 70" marker-end="url(#arrow-conn)"/>
+    <path class="line" d="M412 105 L448 70" marker-end="url(#arrow-conn)"/>
+    <path class="line" d="M105 92 L105 138" marker-end="url(#arrow-conn)"/>
+    <path class="line" d="M535 92 L535 138" marker-end="url(#arrow-conn)"/>
+  </svg>
+  <figcaption>Claude 자체는 그림을 그리지도, 에디터를 만지지도 않아요. 두 MCP가 각각 그 일을 대신해요.</figcaption>
+</figure>
+<h3>SpriteCook 붙이기</h3>
+<p>Customize에서 Plugins 탭으로 가 Add marketplace를 누르고, SpriteCook 저장소 주소를 넣은 뒤 Sync해요. 창 위쪽에는 믿을 수 있는 마켓플레이스만 추가하라는 경고가 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-0228.webp" alt="Claude Customize 화면 위에 뜬 Add marketplace 대화상자. URL 입력칸과 Cancel, Sync 버튼, 신뢰하는 마켓플레이스만 추가하라는 안내 문구">
+  <figcaption>GitHub 'owner/repo' 형식이나 git 저장소 주소를 넣는 칸이에요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=148s" target="_blank" rel="noopener">영상 02:28에서 보기</a></figcaption>
+</figure>
+<p>동기화가 끝나면 Plugins 목록에 SpriteCook이 'Added' 상태로 올라와요. 설명은 '<span class="term" data-term="스프라이트" data-en="Sprite" data-desc="2D 게임에서 캐릭터나 소품을 그린 작은 이미지예요. 프레임 여러 장을 이어 붙이면 걷기 같은 애니메이션이 돼요." data-g="4">스프라이트</span>, UI(User Interface) 키트, 텍스처, 짧은 애니메이션을 Claude 안에서 만든다'예요.</p>
+<figure>
+  <img src="assets/frame-0240.webp" alt="Customize의 Plugins 목록에 SpriteCook by SpriteCook v0.1.15가 Added 상태로 표시된 화면">
+  <figcaption>설치 버튼 대신 Added가 보이면 연결된 거예요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=160s" target="_blank" rel="noopener">영상 02:40에서 보기</a></figcaption>
+</figure>
+<p>제대로 붙었는지 보려고, 가벼운 Sonnet 5.5에게 '64×64 플레이어 걷기 애니메이션'을 시켰어요. Claude는 SpriteCook 도구로 기본 캐릭터를 먼저 만들고, 그 캐릭터로 걷기 루프를 만들었어요. 아래는 SpriteCook 웹 화면에 남은 결과예요. 파란 티셔츠에 청바지를 입은 캐릭터가 걷는 자세로 서 있어요.</p>
+<figure>
+  <img src="assets/frame-0328.webp" alt="SpriteCook 웹의 Character Walk Pose Prep Walk 화면. 파란 티셔츠와 청바지 차림의 픽셀 아트 캐릭터, 아래에 Pixel art·Animation·8 frames 태그">
+  <figcaption>Claude는 그림을 직접 그리지 않고 사용자의 SpriteCook 계정에 일을 시켜요. 그래서 결과가 SpriteCook 쪽에도 남아요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=208s" target="_blank" rel="noopener">영상 03:28에서 보기</a></figcaption>
+</figure>
+<h3>Godot AI 붙이기</h3>
+<p>두 번째는 Godot AI예요. 무료 오픈소스 플러그인이라 Godot 에디터의 Asset Store에서 'godot ai'로 찾아 받으면 돼요. 그다음 Project Settings → Plugins에서 켜고, 오른쪽 Godot AI 패널의 Clients &amp; Tools에서 Claude 데스크톱을 설정해요.</p>
+<figure>
+  <img src="assets/frame-0404.webp" alt="Godot 4.7.2 에디터의 Asset Store에서 godot ai를 검색한 화면. 목록에 dlight가 만든 MIT 라이선스 Godot AI가 있고, 오른쪽 Godot AI 패널에 Server connected, Install v4.3.0, Clients 4/26 configured가 보여요">
+  <figcaption>오른쪽 패널의 초록 'Server connected'가 MCP 서버가 살아 있다는 표시예요. 이게 있어야 Claude가 씬과 <span class="term" data-term="노드" data-en="Node" data-desc="Godot에서 게임을 이루는 가장 작은 단위예요. 이미지, 충돌 판정, 카메라 같은 노드를 나무 모양으로 묶어 씬을 만들어요." data-g="9">노드</span>를 만들 수 있어요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=244s" target="_blank" rel="noopener">영상 04:04에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Claude Code 문서는 <span class="term" data-term="플러그인 마켓플레이스" data-en="Plugin marketplace" data-desc="Claude에 설치할 수 있는 플러그인 목록을 담은 저장소예요. 한 번 등록하면 그 안의 플러그인을 골라 설치할 수 있어요." data-g="6">플러그인 마켓플레이스</span>를 '.claude-plugin/marketplace.json 파일로 플러그인 목록과 받는 위치를 적어 둔 디렉터리나 저장소'로 설명해요. 영상의 Add marketplace 칸에 넣는 저장소 주소가 바로 이런 저장소예요. 마켓플레이스를 한 번 등록하면 그 안의 플러그인을 골라 설치할 수 있어요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/plugin-marketplaces" target="_blank" rel="noopener">Claude Code Docs — Plugin marketplaces</a></p>
+</aside>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Godot 공식 에셋 라이브러리의 Godot AI(제작자 dlight, MIT(Massachusetts Institute of Technology)) 설명을 보면, 이 플러그인을 쓰려면 파이썬 도구 uv를 먼저 깔아야 해요. 또 에셋 라이브러리에 올라온 3.2.5는 Godot 4.5·4.6용 마지막 버전이고, Godot 4.7 이상에서는 에디터의 Asset Store 탭에서 v4를 받으라고 안내해요. 영상의 에디터도 4.7.2에 Godot AI v4.3.0이에요.</p>
+  <p class="cite">출처: <a href="https://godotengine.org/asset-library/asset/5050" target="_blank" rel="noopener">Godot Asset Library — Godot AI</a> · <a href="https://github.com/hi-godot/godot-ai" target="_blank" rel="noopener">GitHub hi-godot/godot-ai</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=266s" target="_blank" rel="noopener">04:26</a>
+  <h2>기획: 아이디어에서 게임 디자인 문서까지</h2>
+<p>기획은 무거운 모델 없이 Sonnet 5.5로 했어요. 무언가를 '고치고 고르는' 일에는 최고 성능이 필요 없다는 판단이에요. 요청은 한 줄이었어요. 'SpriteCook 영상에 쓸 2D 게임 아이디어를 웹사이트로 만들어 줘.' 장르는 2D 메트로배니아로 정했어요. 전에 올린 메트로배니아 영상의 반응이 좋았기 때문이에요.</p>
+<h3>아이디어 카드와 컨셉 이미지</h3>
+<p>Claude는 아이디어 다섯 개를 카드로 정리한 <span class="term" data-term="아티팩트" data-en="Artifact" data-desc="Claude가 대화 안에서 만들어 따로 열어 볼 수 있게 해 주는 웹 페이지나 문서예요. 여기서는 게임 아이디어 카드 페이지였어요." data-g="7">아티팩트</span>를 만들었어요. 카드마다 컨셉 이미지와 몇 문장짜리 <span class="term" data-term="하이 콘셉트" data-en="High concept" data-desc="게임이나 영화를 한두 문장으로 요약한 핵심 설정이에요. 아이디어를 빨리 비교하고 고를 때 써요." data-g="8">하이 콘셉트</span>가 붙어요. 왼쪽 카드가 Overdue, 오른쪽이 Poltergeist Plaza예요. Overdue 카드에는 'MY PICK' 표시가 달려 있어요.</p>
+<figure>
+  <img src="assets/frame-0502.webp" alt="SpriteCook Metroidvanias 아티팩트 화면. All 5·Spooky·Bright·Shortlist 필터 아래 Overdue와 Poltergeist Plaza 두 카드가 컨셉 이미지와 설명 문단과 함께 나란히 있어요">
+  <figcaption>필터와 Shortlist 버튼까지 붙어 있어서, 아이디어를 고르는 도구로 바로 쓸 수 있어요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=302s" target="_blank" rel="noopener">영상 05:02에서 보기</a></figcaption>
+</figure>
+<p>컨셉 이미지는 Claude가 Codex CLI(Command Line Interface)를 불러서 만들었어요. Claude에게 'Codex CLI로 이미지를 만들고 싶다'고 하면 Codex 계정 로그인을 요청해요. Codex를 직접 쓰지 않은 이유를 묻자, 발표자는 요즘은 Claude 하나로 다 하는 게 편해서라고 답해요.</p>
+<p>첫 컨셉 이미지는 메트로배니아처럼 보이지 않았어요. 다시 그려 달라고 하자, 아래처럼 옆으로 스크롤되는 2D 화면이 나왔어요. 위쪽에 하트 체력과 정지·되감기·빨리감기 버튼이, 화면 가운데에 유령과 테이프 적이 있어요.</p>
+<figure>
+  <img src="assets/frame-0602.webp" alt="Overdue 컨셉 이미지. 하트 세 개와 정지·되감기·빨리감기 아이콘이 있는 HUD 아래, 비디오 대여점 내부를 옆에서 본 픽셀 아트 장면에 유령 적들이 있어요">
+  <figcaption>이 한 장이 이후 1차 제작에서 '이렇게 보여야 한다'는 기준이 돼요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=362s" target="_blank" rel="noopener">영상 06:02에서 보기</a></figcaption>
+</figure>
+<h3>51쪽짜리 게임 디자인 문서</h3>
+<p>Overdue를 고른 뒤 '모든 메커니즘을 담은 게임 디자인 문서를 만들어 달라'고 했더니 51쪽이 나왔어요. 발표자는 이걸 다 읽지 않아요. '어떻게 이기나? 어떻게 지나? 레벨은 어떻게 생겼나?'를 Claude에게 묻고, 상호작용 오브젝트를 더하거나 빼는 식으로 필요한 곳만 고쳐요.</p>
+<p>아래는 문서의 '6.2 The 30 rooms' 부분이에요. 방 번호(S01, S02 …), 이름, 화면 크기, 내용, 되감기 상자, 골드 테이프 개수를 표로 정리해 뒀어요.</p>
+<figure>
+  <img src="assets/frame-0650.webp" alt="게임 디자인 문서 PDF의 6.2 The 30 rooms 표. Room, Name, Screens, Contents, Return Box, Gold Tapes 열에 S01 Entrance Lobby, S02 New Release Wall 같은 방이 적혀 있어요">
+  <figcaption>방 30개 목록까지 정해 두었기 때문에, 이후 Claude가 레벨과 소품 그림을 무엇부터 만들지 스스로 판단할 수 있었어요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=410s" target="_blank" rel="noopener">영상 06:50에서 보기</a></figcaption>
+</figure>
+<p>발표자는 이 문서가 두 가지 지침이 된다고 말해요. Claude가 게임 로직을 짤 때의 지침, 그리고 SpriteCook으로 어떤 그림을 만들어야 하는지의 지침이에요.</p>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=433s" target="_blank" rel="noopener">07:13</a>
+  <h2>1차 제작: Opus 5.5에 통째로 맡기기</h2>
+<p>준비가 끝나면 Godot 프로젝트 안에서 새 세션을 열고, Opus 5.5 Ultracode에게 한 번에 지시해요. 화면의 프롬프트를 보면 요구가 꽤 구체적이에요.</p>
+<figure>
+  <img src="assets/frame-0733.webp" alt="Claude 세션의 1차 제작 프롬프트. Create the complete Overdue game, end to end로 시작해 AGENTS.md와 Build GDD.md를 읽고, Godot MCP와 SpriteCook MCP를 쓰고, 멈추거나 묻지 말고, BUILD_NOTES.md에 시간·크레딧·토큰·API 가격 환산·실패를 기록하라는 내용">
+  <figcaption>'멈추지 말고, 묻지 말고'와 '기록을 남겨라'가 함께 들어 있어요. 몇 시간 혼자 돌릴 작업이라서예요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=453s" target="_blank" rel="noopener">영상 07:33에서 보기</a></figcaption>
+</figure>
+<p>프롬프트를 정리하면 이래요.</p>
+<ul>
+  <li><code>AGENTS.md</code>와 GDD(Game Design Document)를 끝까지 읽고, 그중 V1 범위만 만들어요.</li>
+  <li>Godot 작업은 Godot MCP로, 모든 그림은 SpriteCook MCP로 해요.</li>
+  <li>멈추지 말고 묻지 말고, 사소한 결정은 스스로 내려요.</li>
+  <li><code>docs/BUILD_NOTES.md</code>에 걸린 시간, SpriteCook 크레딧, 토큰과 API 가격 환산, 쓴 모델과 플러그인 버전, 실패를 계속 적어요.</li>
+</ul>
+<p>Claude는 그림 방향을 '<span class="term" data-term="HD 픽셀 아트" data-en="HD pixel art" data-desc="픽셀이 보이는 도트 그림 스타일은 유지하되 캔버스를 크게 써서 세밀하게 그린 픽셀 아트예요. Claude가 이 게임의 그림 방향으로 골랐어요." data-g="5">HD(High Definition) 픽셀 아트</span>'로 잡았어요. 픽셀 아트지만 해상도가 큰 편이라 캐릭터가 세밀해 보이는 스타일이에요. 작업 중에는 게임 화면을 직접 캡처해서 결과를 검증했고, 레벨 레이아웃을 만드는 데만 몇 시간이 걸렸어요.</p>
+<h3>시점이 다른 에셋 잡아내기</h3>
+<p>발표자는 기다리는 동안 SpriteCook 계정을 들여다보다가 문제를 발견했어요. 대여점 계산대 소품이 옆에서 본 그림이 아니라, 위에서 비스듬히 내려다본 <span class="term" data-term="3/4 시점" data-en="Three-quarter view" data-desc="물체를 위에서 비스듬히 내려다본 각도예요. 윗면과 옆면이 함께 보여서, 옆에서만 보는 횡스크롤 게임에 섞이면 어색해요." data-g="10">3/4 시점</span>으로 나왔어요. 상판 윗면과 비스듬한 옆면이 함께 보여요.</p>
+<figure>
+  <img src="assets/frame-0813.webp" alt="SpriteCook이 만든 1990년대 비디오 대여점 계산대 소품. 금전등록기와 모니터가 올라간 분홍·파란 계산대를 위에서 비스듬히 본 그림 아래에 Be careful that some assets are isometric and not side/front view 메시지">
+  <figcaption>게임은 옆에서 보는 화면이라 이런 시점은 어울리지 않아요. 한 줄로 짚어 주자 Claude도 '3/4 시점이 맞다'며 바로잡았어요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=493s" target="_blank" rel="noopener">영상 08:13에서 보기</a></figcaption>
+</figure>
+<h3>1차 결과 플레이</h3>
+<p>1차 결과는 메인 메뉴부터 그럴듯했어요. 처음부터 시작하면 대여점 로비에서 첫 능력인 되감기를 얻어요. 아래 화면에서 위쪽 'VERSION 1' 상자가 이 버전에 든 시간(7시간 58분)과 Claude 사용량(약 51%)을 보여 줘요. 바닥에 흩어진 테이프 더미가 되감기로 되살릴 수 있는 계단이에요.</p>
+<figure>
+  <img src="assets/frame-0913.webp" alt="1차 버전 게임 화면. 대여점 로비에서 주인공이 TAKE 표시가 뜬 능력 아이템 앞에 서 있고, 위에 VERSION 1, 7 h 58, 약 51% 상자, 왼쪽 아래에 되감기 아이콘이 있어요">
+  <figcaption>영상은 버전마다 화면 위에 시간과 사용량을 띄워 둬요. 플레이 장면과 비용을 한눈에 같이 볼 수 있어요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=553s" target="_blank" rel="noopener">영상 09:13에서 보기</a></figcaption>
+</figure>
+<p>K를 누르면 되감기 효과가 나오고, 클릭으로 공격해요. 레버를 켜고 끄는 장치도 있고, 보라색으로 빛나는 곳에 되감기를 쓰면 무너진 계단이 다시 쌓여요. 발표자는 적의 디자인을 특히 칭찬해요. 반대로 왼쪽으로 갈 때 카메라가 뒤집히는 움직임과, 다시 쌓인 계단의 모양은 마음에 들지 않았어요.</p>
+<p>Godot 에디터를 열면 규모가 보여요. 왼쪽 파일 목록에 방 씬이 구역별로 10개씩, 모두 30개 있고, 열어 보는 방마다 배경과 소품이 꾸며져 있어요.</p>
+<figure>
+  <img src="assets/frame-1149.webp" alt="Godot 에디터에서 방 씬 b01을 연 화면. 왼쪽 씬 트리에 Parallax, Far, Mid, Near, BackProps 노드가 있고 파일 목록에 b03.tscn부터 b10.tscn까지 방 파일이 보여요">
+  <figcaption>씬 트리가 Far·Mid·Near처럼 배경 층으로 나뉘어 있어요. Claude가 Godot AI로 노드까지 직접 짰다는 흔적이에요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=709s" target="_blank" rel="noopener">영상 11:49에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=698s" target="_blank" rel="noopener">11:38</a>
+  <h2>플레이테스트 피드백과 2차 수정</h2>
+<p>직접 플레이한 뒤, 고칠 점을 스크린샷과 함께 한 메시지로 모아 보냈어요. 메시지 위에 붙은 이미지 네 장이 'Img 1', 'Img 2'처럼 번호로 불려요. 덕분에 '이 장면의 이 부분'을 말로 길게 설명하지 않아도 돼요.</p>
+<figure>
+  <img src="assets/frame-1222.webp" alt="2차 수정 요청 메시지. 위에 스크린샷 네 장이 붙어 있고, 아래에 v2로 시작해 Img 1 걷기 애니메이션이 깨졌다, 카메라 대신 캐릭터만 뒤집어라, Img 2 효과가 이상하다, 점프가 이상하다, 사격 애니메이션 손에 뭔가 생긴다는 항목이 적혀 있어요">
+  <figcaption>항목마다 '무엇이 왜 이상한지'를 한 줄로 적었어요. 이미지 번호가 그 한 줄을 받쳐 줘요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=742s" target="_blank" rel="noopener">영상 12:22에서 보기</a></figcaption>
+</figure>
+<p>보낸 피드백을 묶어 보면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>무엇이</th><th>문제</th></tr></thead>
+    <tbody>
+      <tr><td>이미지 1 — 적 캐릭터</td><td>걷기 애니메이션이 깨졌어요</td></tr>
+      <tr><td>이미지 2 — 사격 효과</td><td>무엇을 쏘는지 알 수 없어요. 스프라이트 탓인지 꼬리 효과 탓인지 모르지만 어색해요</td></tr>
+      <tr><td>이미지 3 — 계단</td><td>계단 모양이 별로이고, 벽과 계단 사이에 끼어 버렸어요</td></tr>
+      <tr><td>주인공 사격 애니메이션</td><td>한 프레임에 손에 이상한 게 생겨요</td></tr>
+      <tr><td>카메라</td><td>A·D를 누를 때 카메라가 뒤집혀요. 캐릭터만 뒤집어 달라고 했어요</td></tr>
+      <tr><td>진행 속도</td><td>영상에 30개 방을 다 보여 줄 수 없어서 '익스프레스 모드'를 요청했어요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>사격 애니메이션 문제는 Claude가 보여 준 프레임 시트에서 바로 보여요. 'remy/toss' 4프레임 중 세 번째(#2)에만 손 위로 흐릿한 물체가 솟아 있어요.</p>
+<figure>
+  <img src="assets/frame-1244.webp" alt="remy/toss 4 frames, 16 fps, one shot, cell 192x192 제목 아래 빨간 재킷 주인공의 던지기 동작 네 프레임 #0~#3. #2 프레임에만 손 위로 흐릿한 회색 물체가 있어요">
+  <figcaption>한 프레임만 튀어도 움직일 때는 번쩍이는 잡음처럼 보여요. 직접 프레임을 펼쳐 봐야 잡히는 문제예요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=764s" target="_blank" rel="noopener">영상 12:44에서 보기</a></figcaption>
+</figure>
+<p>익스프레스 모드는 가장 좋은 방 다섯 개쯤만 몇 분 안에 지나가는 모드예요. 그 밖에 UI도 여러 군데 손봤어요. 2차 작업은 1시간 47분 걸렸어요.</p>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=830s" target="_blank" rel="noopener">13:50</a>
+  <h2>2차 결과: 능력 여섯 가지와 보스</h2>
+<p>2차 결과는 익스프레스 모드로 보여 줘요. 먼저 바뀐 점부터 보면, 사격이 테이프를 던지는 모양으로 바뀌어 훨씬 알아보기 쉬워졌고 능력 설명도 분명해졌어요. 1차에서 어색하던 계단도 다시 그려졌어요. 아래는 되감기로 다시 쌓은 계단이에요. 나무 계단이 한 칸씩 고르게 올라가요.</p>
+<figure>
+  <img src="assets/frame-1415.webp" alt="2차 버전 화면. 위에 VERSION 2, 이 버전 1 h 47, 약 5%, 합계 9 h 45, 약 56% 상자가 있고, 오른쪽에 대각선으로 고르게 쌓인 나무 계단을 주인공이 오르고 있어요">
+  <figcaption>상자의 숫자도 바뀌었어요. 2차만으로는 1시간 47분, 사용량 약 5%예요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=855s" target="_blank" rel="noopener">영상 14:15에서 보기</a></figcaption>
+</figure>
+<h3>시간 능력 세 가지</h3>
+<p>능력은 숫자 키 1·2·3으로 고르고 K로 써요. 화면 오른쪽 아래 1·2·3 칸에 얻은 능력이 차례로 채워져요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>키</th><th>능력</th><th>하는 일</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>되감기(Rewind)</td><td>무너진 계단·발판을 되돌려요</td></tr>
+      <tr><td>2</td><td>정지(Pause)</td><td>가시 함정과 적을 얼려요</td></tr>
+      <tr><td>3</td><td>빨리감기(Fast forward)</td><td>타이머·파이프·바닥을 빠르게 돌려요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>정지를 쓰면 가시 함정이나 움직이는 장치가 그 자리에서 멈춰요. 아래 화면 가운데 천장에서 내려오는 금속 기둥과 빨간 받침이 위아래로 찍어 누르는 프레스 장치예요. 오른쪽 아래 2번 칸에는 막 얻은 정지 아이콘이 들어와 있어요.</p>
+<figure>
+  <img src="assets/frame-1440.webp" alt="파이프가 지나가는 창고 방. 노란 경고 표지 오른쪽에 천장에서 내려온 금속 기둥과 빨간 받침의 프레스 장치가 있고, 주인공이 그 옆에 서 있어요. 오른쪽 아래 1·2 칸에 되감기와 정지 아이콘">
+  <figcaption>움직이는 위험을 얼려 두고 그 사이를 지나가는 식으로 퍼즐을 풀어요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=880s" target="_blank" rel="noopener">영상 14:40에서 보기</a></figcaption>
+</figure>
+<p>빨리감기는 물을 채우는 타이머 같은 장치에 써요. 오른쪽 아래 물웅덩이가 그 장치이고, 3번 칸에 빨리감기 아이콘이 생겼어요. 쓰면 기다려야 할 시간이 확 줄어요.</p>
+<figure>
+  <img src="assets/frame-1505.webp" alt="푸른 방 오른쪽 아래에 물이 찬 수조와 그 위 발판이 있고, 주인공이 공중에서 초록 빛줄기를 내뿜고 있어요. 오른쪽 아래 1·2·3 칸에 되감기·정지·빨리감기 아이콘">
+  <figcaption>세 칸이 다 차면 시간 능력 세 가지를 모두 얻은 거예요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=905s" target="_blank" rel="noopener">영상 15:05에서 보기</a></figcaption>
+</figure>
+<h3>공격도 세 가지</h3>
+<p>공격은 따로 있어요. 마우스 왼쪽 클릭이 기본 사격이고, L을 누르면 나무를 태우는 파이어볼이 나가요. 세 번째는 '스크림'이에요. 획득하면 아래처럼 'SCREAM UNLOCKED' 안내가 떠요. 적을 밀어내고 유리를 깨며, I 키로 쏜다고 적혀 있어요. 오른쪽 아래 J·L·I 칸이 공격 세 가지예요.</p>
+<figure>
+  <img src="assets/frame-1530.webp" alt="SCREAM UNLOCKED, PUSHES ENEMIES AND SHATTERS GLASS, PRESS I TO FIRE 안내 창. 그 아래 빛나는 유리 기둥이 있고, 오른쪽 아래 능력 칸 1·2·3과 공격 칸 J·L·I">
+  <figcaption>얻을 때마다 짧은 설명 창을 띄워 줘서, 2차 피드백의 '능력을 더 잘 설명해 달라'는 요구가 반영됐어요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=930s" target="_blank" rel="noopener">영상 15:30에서 보기</a></figcaption>
+</figure>
+<h3>보스와 디버그 패널</h3>
+<p>마지막은 로봇 보스예요. 빛나는 코어를 맞혀야 해요. 화면 위에 보스 체력 막대가 있고, 오른쪽에 붉은 로봇이 서 있어요. 발표자는 버티기 어려워지자 F1로 <span class="term" data-term="디버그 패널" data-en="Debug panel" data-desc="개발자가 시험용으로 띄우는 숨은 메뉴예요. 원하는 방으로 바로 가거나 무적을 켜서 끝까지 빠르게 확인할 수 있어요." data-g="11">디버그 패널</span>을 열어 무적(갓 모드)을 켰어요. 왼쪽 위 'GOD MODE' 표시가 그 흔적이에요.</p>
+<figure>
+  <img src="assets/frame-1620.webp" alt="익스프레스 모드 보스전. 위에 보스 이름과 붉은 체력 막대, 오른쪽에 붉은 로봇 보스, 왼쪽 위에 GOD MODE 표시, 주인공은 공중에 떠서 공격 중">
+  <figcaption>발표자는 게임을 만들 때 이런 개발자용 디버그 패널을 꼭 넣어 두라고 권해요. 모든 장면을 빠르게 시험할 수 있어서예요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=980s" target="_blank" rel="noopener">영상 16:20에서 보기</a></figcaption>
+</figure>
+<p>보스를 쓰러뜨리면 'EXPRESS CLEAR' 화면이 떠요. 기록은 3분 4초 13이에요.</p>
+<figure>
+  <img src="assets/frame-1638.webp" alt="EXPRESS CLEAR, YOUR TIME 3:04.13, NEW BEST TIME 문구와 PLAY AGAIN, MAIN MENU 버튼이 있는 클리어 화면">
+  <figcaption>익스프레스 모드는 영상용으로 3분 남짓에 끝나요. 본편은 방 30개에 방마다 2분쯤이라 1시간 분량이라고 해요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=998s" target="_blank" rel="noopener">영상 16:38에서 보기</a></figcaption>
+</figure>
+<h3>본편 방들과 스프라이트 모음</h3>
+<p>본편은 훨씬 천천히 능력을 하나씩 열어 가요. 디버그 패널로 방을 옮겨 다녀 보면 구역마다 색과 분위기가 달라요. 마지막으로 Claude가 정리해 둔 스프라이트 모음 화면을 보여 줘요. 아래 왼쪽은 유령 적의 여러 상태, 오른쪽은 붉은 눈의 촉수 적이에요.</p>
+<figure>
+  <img src="assets/frame-1825.webp" alt="흰 배경 스프라이트 모음. Enemy 1 아래 푸른 유령 스프라이트 여러 자세와 흩어지는 효과, Enemy 2 아래 붉은 눈이 있는 검보라색 촉수 괴물 스프라이트">
+  <figcaption>발표자가 게임에서 가장 좋았다고 꼽은 부분이 이 적 디자인이에요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=1105s" target="_blank" rel="noopener">영상 18:25에서 보기</a></figcaption>
+</figure>
+<p>레벨 소품도 같은 모음에 묶여 있어요. 상자, 파이프, 경고 표지, 하트와 테이프 같은 아이템, 되감기·빨리감기 버튼 같은 UI 조각까지 한 장에 정리돼 있어요. 발표자에 따르면 보스는 부위별로 따로 그린 뒤 Godot 안에서 조립해 부위마다 따로 움직이게 했어요.</p>
+<figure>
+  <img src="assets/frame-1854.webp" alt="레벨 소품 스프라이트 모음. Staff only, Vault, Shared props 묶음 아래 나무 상자, 파이프, 경고 표지, 필름 릴, 하트, 비디오테이프, 되감기·빨리감기 버튼 같은 UI 조각">
+  <figcaption>구역별(Staff only, Vault)로 소품을 나눠 둔 것도 GDD의 구역 구성을 그대로 따른 거예요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=1134s" target="_blank" rel="noopener">영상 18:54에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=1134s" target="_blank" rel="noopener">18:54</a>
+  <h2>시간과 비용, 얼마나 들었나요?</h2>
+<p>프롬프트에서 기록을 남기라고 했기 때문에, 마지막에 Claude가 'Build time and cost' 표를 만들어 줬어요. V1·V2·합계 세 열로 SpriteCook 크레딧, 걸린 시간, Claude 주간 한도, 토큰, API 가격 환산을 나란히 적었어요.</p>
+<figure>
+  <img src="assets/frame-1936.webp" alt="Build time and cost 표. Metric 열에 SpriteCook credits, Sprite value at 10달러/1,000, Build elapsed, Claude weekly quota, Model responses, Input tokens, Output tokens, Cache write tokens, Cache read tokens, API equivalent가 있고 V1, V2, Total 값이 적혀 있어요">
+  <figcaption>맨 아래 줄 'API equivalent (not paid)'가 강조점이에요. 구독으로 돌렸으니 실제로 낸 돈이 아니라 환산값이에요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=1176s" target="_blank" rel="noopener">영상 19:36에서 보기</a></figcaption>
+</figure>
+<p>표의 주요 줄을 옮기면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>항목</th><th>V1</th><th>V2</th><th>합계</th></tr></thead>
+    <tbody>
+      <tr><td>SpriteCook 크레딧</td><td>4,757</td><td>364</td><td>5,121</td></tr>
+      <tr><td>크레딧 가치 (1,000 = 10달러)</td><td>47.57달러</td><td>3.64달러</td><td>51.21달러</td></tr>
+      <tr><td>걸린 시간</td><td>7시간 58분</td><td>1시간 47분</td><td>9시간 45분</td></tr>
+      <tr><td>Claude 주간 한도 (추정)</td><td>약 51%</td><td>약 5%</td><td>약 56%</td></tr>
+      <tr><td>출력 토큰</td><td>9,338,104</td><td>939,154</td><td>10,289,786</td></tr>
+      <tr><td><span class="term" data-term="캐시 읽기 토큰" data-en="Cache read tokens" data-desc="이전에 보낸 긴 맥락을 다시 계산하지 않고 캐시에서 읽어 온 토큰이에요. 긴 작업일수록 크게 쌓이지만 일반 입력보다 싸게 계산돼요." data-g="13">캐시 읽기 토큰</span></td><td>1,784,130,494</td><td>249,287,407</td><td>2,037,092,234</td></tr>
+      <tr><td>API 가격 환산 (낸 돈 아님)</td><td>780.63달러</td><td>83.45달러</td><td>865.22달러</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>V1과 V2를 같은 눈금에 놓으면 차이가 분명해요. 처음부터 만드는 1차가 시간과 비용 대부분을 먹었고, 피드백을 반영하는 2차는 그 열 분의 일쯤이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="V1과 V2의 걸린 시간과 API 가격 환산 비교 막대">
+    <text x="20" y="28" class="sub">걸린 시간 (분)</text>
+    <rect class="c1 cell" x="80" y="40" width="478" height="26" rx="4"/>
+    <text x="40" y="58" text-anchor="middle">V1</text>
+    <text x="566" y="58">478분</text>
+    <rect class="c2 cell" x="80" y="74" width="107" height="26" rx="4"/>
+    <text x="40" y="92" text-anchor="middle">V2</text>
+    <text x="195" y="92">107분</text>
+    <text x="20" y="138" class="sub">API 가격 환산 (달러)</text>
+    <rect class="c1 cell" x="80" y="150" width="468" height="26" rx="4"/>
+    <text x="40" y="168" text-anchor="middle">V1</text>
+    <text x="556" y="168">780.63</text>
+    <rect class="c2 cell" x="80" y="184" width="50" height="26" rx="4"/>
+    <text x="40" y="202" text-anchor="middle">V2</text>
+    <text x="138" y="202">83.45</text>
+  </svg>
+  <figcaption>두 막대 묶음 모두 화면 표의 값을 같은 비율로 그렸어요. 2차는 시간으로 약 22%, 비용으로 약 11%예요. <a href="https://www.youtube.com/watch?v=ov4Ggndlvxc&amp;t=1176s" target="_blank" rel="noopener">영상 19:36에서 보기</a></figcaption>
+</figure>
+<h3>말과 표가 다른 숫자</h3>
+<p>발표자가 말로 한 숫자 몇 개는 화면 표와 맞지 않아요. 표가 Claude의 기록이니 표를 기준으로 읽는 게 안전해요.</p>
+<ul>
+  <li>SpriteCook 비용을 '크레딧 5,000개, 약 500달러'라고 했지만, 같은 화면의 단가(1,000크레딧 = 10달러)대로면 5,121크레딧은 51.21달러예요.</li>
+  <li>API 가격 환산 합계를 '1,000달러 가까이'라고 했지만 표에는 865.22달러예요.</li>
+  <li>주간 한도는 한 번은 69%, 한 번은 56%라고 했어요. 13:17쯤 화면에는 'V2가 끝났을 때 주간 한도 69%'라는 문구가 보이는데, 이건 계정 전체 사용량이에요. 표의 약 56%는 이 게임 몫만 추정한 값이에요.</li>
+</ul>
+<p>발표자는 Claude는 월 200달러짜리 Max 20x 구독으로 돌렸다고 해요. 그래도 1차만 보면 약 8시간에 780달러, 시간당 100달러 꼴이에요. 발표자는 게임이 예상보다 컸던 탓으로 봐요. 방 30개에 플레이 시간이 1시간이 넘으니, 규모를 줄였다면 비용도 훨씬 적었을 거라는 얘기예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>SpriteCook 요금 페이지는 기본 모델 기준 이미지 1장에 8~12크레딧, 애니메이션 1개에 20~26크레딧이라고 안내해요. 가장 싼 Starter 요금제가 월 8달러에 800크레딧이라, 영상 표의 '1,000크레딧 = 10달러'와 단가가 같아요. 이 단가로 보면 V1의 4,757크레딧은 이미지 약 400~590장, 또는 애니메이션 약 180~240개 분량이에요. 무료로는 30일마다 40크레딧을 줘요.</p>
+  <p class="cite">출처: <a href="https://www.spritecook.ai/pricing" target="_blank" rel="noopener">SpriteCook — Pricing</a></p>
+</aside>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 모델·도구 이름이 잘못 받아적힌 곳이 있어요. 화면을 기준으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>Cloth</td><td>Claude</td><td></td></tr>
+      <tr><td>Opus 7.5</td><td>Opus 5.5</td><td>화면 모델 메뉴 기준</td></tr>
+      <tr><td>Fabled 5.5</td><td>Fable 5.1</td><td>화면 모델 메뉴에는 Fable 5.1로 보여요</td></tr>
+      <tr><td>ultra cold</td><td>Ultracode</td><td>Effort 단계 이름</td></tr>
+      <tr><td>Sonic</td><td>Sonnet 5.5</td><td></td></tr>
+      <tr><td>an end cause</td><td>Sonnet, cause (추정)</td><td>기획 세션 화면 아래 모델이 Sonnet 5.5예요</td></tr>
+      <tr><td>edit the game / edition process</td><td>ideate / ideation (추정)</td><td>아이디어를 고르는 단계 이야기예요</td></tr>
+      <tr><td>Sprite Cook</td><td>SpriteCook</td><td></td></tr>
+      <tr><td>a spike of credits</td><td>SpriteCook credits (추정)</td><td></td></tr>
+      <tr><td>max 20 X</td><td>Max 20x</td><td>Claude 구독 요금제 이름</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-3"><dt>게임 디자인 문서<span class="en">Game Design Document</span></dt><dd>게임의 규칙, 레벨, 캐릭터, 그림 방향을 정리한 설계서예요. 이 영상에서는 Claude가 로직과 그림을 만들 때 따르는 지침이 됐어요.</dd></div>
+    <div class="g" id="g-9"><dt>노드<span class="en">Node</span></dt><dd>Godot에서 게임을 이루는 가장 작은 단위예요. 이미지, 충돌 판정, 카메라 같은 노드를 나무 모양으로 묶어 씬을 만들어요.</dd></div>
+    <div class="g" id="g-11"><dt>디버그 패널<span class="en">Debug panel</span></dt><dd>개발자가 시험용으로 띄우는 숨은 메뉴예요. 원하는 방으로 바로 가거나 무적을 켜서 끝까지 빠르게 확인할 수 있어요.</dd></div>
+    <div class="g" id="g-2"><dt>메트로배니아<span class="en">Metroidvania</span></dt><dd>하나로 이어진 큰 맵을 돌아다니며 새 능력을 얻을 때마다 전에 못 가던 곳이 열리는 2D 액션 게임 장르예요. Overdue의 시간 능력이 그 열쇠 역할을 해요.</dd></div>
+    <div class="g" id="g-4"><dt>스프라이트<span class="en">Sprite</span></dt><dd>2D 게임에서 캐릭터나 소품을 그린 작은 이미지예요. 프레임 여러 장을 이어 붙이면 걷기 같은 애니메이션이 돼요.</dd></div>
+    <div class="g" id="g-7"><dt>아티팩트<span class="en">Artifact</span></dt><dd>Claude가 대화 안에서 만들어 따로 열어 볼 수 있게 해 주는 웹 페이지나 문서예요. 여기서는 게임 아이디어 카드 페이지였어요.</dd></div>
+    <div class="g" id="g-13"><dt>캐시 읽기 토큰<span class="en">Cache read tokens</span></dt><dd>이전에 보낸 긴 맥락을 다시 계산하지 않고 캐시에서 읽어 온 토큰이에요. 긴 작업일수록 크게 쌓이지만 일반 입력보다 싸게 계산돼요.</dd></div>
+    <div class="g" id="g-6"><dt>플러그인 마켓플레이스<span class="en">Plugin marketplace</span></dt><dd>Claude에 설치할 수 있는 플러그인 목록을 담은 저장소예요. 한 번 등록하면 그 안의 플러그인을 골라 설치할 수 있어요.</dd></div>
+    <div class="g" id="g-8"><dt>하이 콘셉트<span class="en">High concept</span></dt><dd>게임이나 영화를 한두 문장으로 요약한 핵심 설정이에요. 아이디어를 빨리 비교하고 고를 때 써요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g" id="g-12"><dt>API 가격 환산<span class="en">API pricing equivalent</span></dt><dd>같은 토큰을 구독이 아니라 API 요금으로 냈다면 얼마였을지 계산한 값이에요. 실제로 낸 돈은 아니지만 작업 규모를 가늠하게 해 줘요.</dd></div>
+    <div class="g"><dt>CLI</dt><dd>Command Line Interface</dd></div>
+    <div class="g"><dt>GDD</dt><dd>Game Design Document</dd></div>
+    <div class="g"><dt>HD</dt><dd>High Definition</dd></div>
+    <div class="g" id="g-5"><dt>HD 픽셀 아트<span class="en">HD pixel art</span></dt><dd>픽셀이 보이는 도트 그림 스타일은 유지하되 캔버스를 크게 써서 세밀하게 그린 픽셀 아트예요. Claude가 이 게임의 그림 방향으로 골랐어요.</dd></div>
+    <div class="g" id="g-1"><dt>MCP<span class="en">Model Context Protocol</span></dt><dd>AI 앱이 외부 도구나 프로그램에 연결하는 공개 표준이에요. 여기서는 Claude가 SpriteCook과 Godot 에디터를 부르는 통로예요.</dd></div>
+    <div class="g"><dt>MIT</dt><dd>Massachusetts Institute of Technology</dd></div>
+    <div class="g"><dt>UI</dt><dd>User Interface</dd></div>
+    <div class="g" id="g-10"><dt>3/4 시점<span class="en">Three-quarter view</span></dt><dd>물체를 위에서 비스듬히 내려다본 각도예요. 윗면과 옆면이 함께 보여서, 옆에서만 보는 횡스크롤 게임에 섞이면 어색해요.</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=ov4Ggndlvxc" target="_blank" rel="noopener">원본 영상 — Letta Corporation</a></li>
+    <li id="src-2"><a href="https://code.claude.com/docs/en/plugin-marketplaces" target="_blank" rel="noopener">Claude Code Docs — Plugin marketplaces</a></li>
+    <li id="src-3"><a href="https://godotengine.org/asset-library/asset/5050" target="_blank" rel="noopener">Godot Asset Library — Godot AI</a></li>
+    <li id="src-4"><a href="https://github.com/hi-godot/godot-ai" target="_blank" rel="noopener">GitHub — hi-godot/godot-ai</a></li>
+    <li id="src-5"><a href="https://www.spritecook.ai/pricing" target="_blank" rel="noopener">SpriteCook — Pricing</a></li>
+    <li id="src-6"><a href="https://modelcontextprotocol.io/docs/getting-started/intro" target="_blank" rel="noopener">Model Context Protocol — Introduction</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 27일에 이 영상을 보고 정리했어요. 원본은 Letta Corporation 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

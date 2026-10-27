@@ -1,0 +1,868 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>같은 일인데 비용 263배 차이 — 비용 줄이는 루프 설계법</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>같은 일인데 비용 263배 차이 — 비용 줄이는 루프 설계법</h1>
+  <p class="lede">Claude Code 비용이 어디서 새는지, 루프로 어떻게 막는지 실험으로 짚어요</p>
+  <div class="meta">
+    <span>코난쌤 conanssam</span><span class="dot">·</span>
+    <span>영상 12:27</span><span class="dot">·</span>
+    <span>읽는 데 약 15분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=ndpzi0ocrCA" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>비용은 <b>한 번에 싣는 양 × 다시 싣는 횟수 × 모델 단가</b>로 정해져요. 같은 일이 이 셋을 깎자 평균 1달러에서 0.38센트가 됐어요.</li>
+    <li>Claude Code는 요청마다 도구 설명서, <span class="term" data-term="시스템 프롬프트" data-en="System prompt" data-desc="대화 맨 앞에 붙는 모델용 지시문이에요. Claude Code의 기본 시스템 프롬프트는 에이전트로 일하는 법을 길게 적고 있어서 요청마다 무게가 실려요." data-g="4">시스템 프롬프트</span>, <span class="term" data-term="CLAUDE.md" data-desc="Claude Code가 세션마다 자동으로 읽는 프로젝트 규칙 파일이에요. 대화가 한 번 오갈 때마다 같이 실려서, 길어질수록 매 요청이 무거워져요." data-g="5">CLAUDE.md</span>, 지난 대화를 다시 보내요. 한 단어 질문에도 5만 3천 토큰이 실렸어요.</li>
+    <li>판정만 코드로 옮기거나 CLAUDE.md만 줄이면 10~20%만 줄어요. 통째로 맡기는 한 <span class="term" data-term="턴" data-en="Turn" data-desc="모델에게 요청을 한 번 보내고 답을 받는 한 바퀴예요. 에이전트는 도구를 쓸 때마다 턴이 늘고, 턴마다 앞 내용을 다시 보내요." data-g="6">턴</span> 수가 비용을 정해요.</li>
+    <li>크게 줄인 조합은 맨몸 일꾼, 실패만 새 호출로, 싼 모델이에요. 끝난 일은 대화가 아니라 파일과 코드가 기억해요.</li>
+    <li>형식 검사를 다 통과해도 AI(Artificial Intelligence)가 지어낸 숫자는 남아요. 사실 확인과 최종 선택은 사람이 해요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">왜 한 단어 답에 5만 토큰이 들까요</a></li>
+    <li><a href="#s2">일주일 기록이 보여 준 새는 곳</a></li>
+    <li><a href="#s3">실험 ① 통째로 맡기기부터 도구 끄기까지</a></li>
+    <li><a href="#s4">실험 ② 맨몸 일꾼, 싼 모델, CLAUDE.md 다이어트</a></li>
+    <li><a href="#s5">결과표로 본 비용 구조</a></li>
+    <li><a href="#s6">실제 작업과 바로 쓰는 루프 템플릿</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=48s" target="_blank" rel="noopener">00:48</a>
+  <h2>왜 한 단어 답에 5만 토큰이 들까요</h2>
+<p>발표자는 유튜브 제목 후보 열 개를 뽑는 같은 일을 방식만 바꿔 돌렸어요. 에이전트에게 통째로 맡기면 평균 약 1달러, 마지막 방식은 그 263분의 1이었어요. 차이가 어디서 나는지 보려면 먼저 Claude Code가 요청 한 번에 무엇을 보내는지 알아야 해요.</p>
+<p>AI 모델은 앞 대화를 기억하지 못해요. 그래서 Claude Code는 요청할 때마다 지금까지의 내용을 전부 다시 보내요. 아래 화면 왼쪽의 세 칸, 시스템 프롬프트와 도구 설명서와 CLAUDE.md가 기본으로 실리고, 아래 '이전 대화 모음'까지 매번 따라붙어요.</p>
+<figure>
+  <img src="assets/frame-0100.webp" alt="시스템 프롬프트, 도구 설명서, CLAUDE.md 세 칸이 화살표로 AI 모델에 들어가고 아래에 '이전 대화 모음'이라고 적힌 슬라이드">
+  <figcaption>모델은 기억이 없으니 이 묶음 전체가 요청마다 다시 가요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=60s" target="_blank" rel="noopener">영상 01:00에서 보기</a></figcaption>
+</figure>
+<p>똑같이 반복되는 앞부분은 <span class="term" data-term="프롬프트 캐싱" data-en="Prompt caching" data-desc="요청 앞부분이 지난번과 똑같으면 계산해 둔 결과를 재사용해 싸게 처리하는 기능이에요. 앞부분이 한 글자라도 달라지면 그 뒤는 다시 캐시에 써야 해요." data-g="1">프롬프트 캐싱</span> 덕분에 캐시에서 읽어 값이 싸져요. 다만 싸다고 공짜는 아니고, 처음 캐시에 쓸 때는 오히려 입력값의 두 배를 낸다고 발표자는 설명해요. 결국 한 번에 얼마나 싣고 몇 번 다시 싣느냐가 비용을 정해요.</p>
+<h3>하늘 색 하나 묻는 데 드는 값</h3>
+<p>가장 작은 질문으로 재 봤어요. 아래 터미널 위쪽 ①은 평소대로 보낸 것이에요. 답은 '파랑' 한 단어인데 보낸 토큰이 53,043개(<span class="term" data-term="캐시 쓰기" data-en="Cache write" data-desc="앞부분을 처음 캐시에 올리는 것이에요. 일반 입력보다 비싸서, 매번 새로 쓰게 되면 캐시를 안 쓰느니만 못할 수 있어요." data-g="3">캐시 쓰기</span> 42,163 · <span class="term" data-term="캐시 읽기" data-en="Cache read" data-desc="캐시에 이미 있는 앞부분을 다시 쓰는 것이에요. 단가는 싸지만 턴마다 긴 앞부분을 통째로 다시 읽으니 쌓이면 가장 큰 비용이 돼요." data-g="2">캐시 읽기</span> 10,873 · 출력 5), 비용은 $0.1710이에요. 아래쪽 ②는 같은 질문에 노란색으로 표시한 옵션을 붙였어요. 도구를 끄는 <code>--tools ""</code>, 시스템 프롬프트를 한 줄로 바꾸는 <code>--system-prompt</code>, 설정 파일을 읽지 않게 하는 <code>--setting-sources ""</code>예요. 토큰은 574개, 비용은 $0.0024로 떨어졌어요.</p>
+<figure>
+  <img src="assets/frame-0147.webp" alt="claude -p로 같은 질문을 평소대로 보낸 결과 53,043토큰 $0.1710, 옵션을 붙여 맨몸으로 보낸 결과 574토큰 $0.0024가 찍힌 터미널">
+  <figcaption>답은 둘 다 '파랑'이에요. 비용 차이는 약 70분의 1이에요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=107s" target="_blank" rel="noopener">영상 01:47에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 CLI(Command-Line Interface) 문서에서 확인한 옵션의 뜻이에요. <code>--tools</code>는 쓸 수 있는 기본 도구를 제한하고, <code>""</code>를 넣으면 전부 꺼요. <code>--system-prompt</code>는 기본 시스템 프롬프트 전체를 주어진 글로 바꿔요. <code>--setting-sources</code>는 불러올 설정 출처(user, project, local)를 쉼표로 고르는 옵션이에요. 화면 오른쪽 끝에 잘려 보이는 <code>--strict-m…</code>은 <code>--mcp-config</code>로 준 MCP(Model Context Protocol) 서버만 쓰게 하는 <code>--strict-mcp-config</code>로 보여요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/cli-reference" target="_blank" rel="noopener">Claude Code 공식 문서 — CLI reference</a></p>
+</aside>
+<h3>질문 옆에 따라가는 '기본 짐'</h3>
+<p>질문 자체는 열몇 토큰뿐이에요. 나머지는 Claude Code가 기본으로 싣는 짐이에요. 아래 슬라이드 왼쪽 목록처럼 파일을 읽고 쓰고 명령을 실행하는 도구 설명서, 에이전트로 일하는 법을 적은 긴 시스템 프롬프트, 깔아 둔 스킬·플러그인 목록이 매번 붙어요. 여기에 발표자의 CLAUDE.md가 얹히는데, 이 파일 하나만 재 보니 약 2만 1천 토큰이었어요.</p>
+<figure>
+  <img src="assets/frame-0210.webp" alt="'기본 짐' 제목 아래 '질문 · 열몇 토큰' 편지 아이콘과 도구 설명서, 시스템 프롬프트, 스킬·플러그인 목록 세 칸, 오른쪽에 커다란 배낭 그림">
+  <figcaption>에이전트로 일할 땐 다 필요한 짐이지만, 한 단어 답에는 전부 군살이에요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=130s" target="_blank" rel="noopener">영상 02:10에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=142s" target="_blank" rel="noopener">02:22</a>
+  <h2>일주일 기록이 보여 준 새는 곳</h2>
+<p>실제 작업에서는 어떨까요. 발표자는 영상 기획 폴더에서 지난 일주일 동안 쓴 대화 기록을 다 모았어요. 대화 103개, 모델 호출 7,923번이에요. 아래 화면 맨 위가 토큰 합계 3,280,898,834개이고, 바로 아래 '캐시 읽기(앞 내용 다시 읽기)' 줄이 98.70%를 차지해요. AI가 실제로 쓴 글인 출력은 0.18%예요. 아래 '모델별 호출'에서는 claude-opus-5-5가 7,853번, 99.1%예요.</p>
+<figure>
+  <img src="assets/frame-0240.webp" alt="토큰 합계 3,280,898,834, 캐시 읽기 98.70%, 캐시 쓰기 1.12%, 출력 0.18%, 모델별 호출 Opus 7,853번 99.1%가 찍힌 집계 화면">
+  <figcaption>AI는 일주일 내내 거의 읽기만 했어요. 쓴 양은 0.2%도 안 돼요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=160s" target="_blank" rel="noopener">영상 02:40에서 보기</a></figcaption>
+</figure>
+<p>이걸 API(Application Programming Interface) 정가로 바꾸면 일주일에 1,050달러예요. 발표자는 구독으로 쓰니 청구서 대신 사용량 한도에서 빠져요. 아래 막대에서 노란 부분이 캐시 읽기 61.7%예요. 나머지는 캐시 쓰기가 약 27%, 출력이 약 11%라고 해요. 캐시 읽기 단가는 입력값의 20분의 1밖에 안 되지만, 싸게 수천 번 읽으니 결국 가장 큰 덩어리가 됐어요.</p>
+<figure>
+  <img src="assets/frame-0258.webp" alt="'API 정가 환산 · 일주일 $1,050' 아래 '구독이면 사용량 한도에서 빠짐' 표시와 캐시 읽기 61.7%를 노랗게 칠한 막대">
+  <figcaption>토큰 수로는 98.7%, 비용으로는 61.7%가 캐시 읽기예요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=178s" target="_blank" rel="noopener">영상 02:58에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 가격표 기준으로 확인해 봤어요. 캐시 읽기는 보통 기본 입력값의 0.1배인데, Claude Opus 5.5와 Sonnet 5.5는 0.05배예요. 영상이 말한 '20분의 1'과 맞아요. 캐시 쓰기는 캐시 유지 시간(TTL(Time To Live))에 따라 달라요. 5분짜리는 1.25배, 1시간짜리는 2배예요. 영상의 '두 배'는 1시간 캐시 기준이에요(슬라이드에도 '1시간 캐시 기준'이라고 적혀 있어요).</p>
+  <p class="cite">출처: <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching" target="_blank" rel="noopener">Claude API 공식 문서 — Prompt caching</a></p>
+</aside>
+<h3>일곱 배로 불어난 CLAUDE.md</h3>
+<p>발표자는 지적받은 걸 그때그때 CLAUDE.md에 한 줄씩 적어 왔어요. 좋은 습관이지만 이 파일은 대화가 한 번 오갈 때마다 같이 실려요. 아래 막대그래프가 파일 크기(바이트)예요. 10월 21일 6,136에서 10/22 10,263, 10/24 20,653을 거쳐 지금 43,373이 됐어요.</p>
+<figure>
+  <img src="assets/frame-0328.webp" alt="'7배' 제목 아래 CLAUDE.md 크기 막대그래프: 10/21 6,136, 10/22 10,263, 10/24 20,653, 지금 43,373">
+  <figcaption>닷새 만에 일곱 배예요. 지금 크기면 일주일 7,900번 호출마다 2만 토큰씩 다시 실려요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=208s" target="_blank" rel="noopener">영상 03:28에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=217s" target="_blank" rel="noopener">03:37</a>
+  <h2>실험 ① 통째로 맡기기부터 도구 끄기까지</h2>
+<p>CLAUDE.md를 줄이면 비용도 확 줄까요? 발표자는 감 대신 실험으로 확인했어요. 과제는 자기가 매번 하는 일, 이 영상의 제목 후보 10개와 썸네일 문구 2줄을 뽑는 거예요. 아래 슬라이드 오른쪽 저울에 붙은 <code>title_check</code>가 판정을 맡아요. 위쪽 '제목 50자', '썸네일 30자' 같은 채널 규칙을 코드로 검사하고, 실패가 하나도 없어야 통과예요.</p>
+<figure>
+  <img src="assets/frame-0347.webp" alt="'실험 과제' 슬라이드: 체크리스트에 '제목 후보 10개 + 썸네일 2줄', 오른쪽 저울에 title_check, 위에 '제목 50자', '썸네일 30자' 태그">
+  <figcaption>합격 기준은 발표자 채널에서 실제로 쓰는 그대로예요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=227s" target="_blank" rel="noopener">영상 03:47에서 보기</a></figcaption>
+</figure>
+<p>조건도 맞췄어요. 판마다 작업 폴더를 새로 깔고 자동 메모리를 껐어요. 비용은 Claude Code가 계산한 정가 그대로이고, 우연을 줄이려고 방식마다 세 판씩 돌렸어요.</p>
+<h3>기준선: 에이전트에게 통째로 맡기기</h3>
+<p>첫 방식은 평소 쓰는 그대로예요. 클로드 앱에 폴더를 열고 "브리프를 읽고, 제목을 쓰고, 검사해서 저장해"라고 한 번에 맡겼어요. 클로드가 스스로 할 일을 나누고 파일을 열며 일했고, 열 개 모두 검사를 통과했어요. 이 한 판은 모델 호출 6번에 67만 토큰, 정가 83센트였어요. 터미널에서 세 판 돌린 평균은 약 1달러였고, 판마다 9~11턴을 돌며 턴마다 앞 내용을 통째로 다시 읽었어요. 이 1달러가 기준선이에요.</p>
+<h3>판정을 코드로 옮겼는데 19%만 줄었어요</h3>
+<p>첫 번째로 바꾼 건 판정이에요. 합격 여부를 AI에게 묻지 않고 코드가 정해요. 아래 슬라이드 왼쪽 요리사(AI)는 후보를 쓰기만 하고, 오른쪽 저울(파이썬)이 <code>title_check</code>로 검사한 뒤 떨어진 것만 다시 시켜요. 검사를 코드가 하면 그 부분 토큰은 0이니 비용이 확 줄 거라 예상했어요.</p>
+<figure>
+  <img src="assets/frame-0457.webp" alt="'AI: 쓰기' 요리사와 'title_check' 저울 사이를 화살표가 오가고 아래에 '파이썬: 검사·반복'이라고 적힌 슬라이드">
+  <figcaption>쓰기는 AI, 검사와 반복은 파이썬으로 역할을 나눈 구조예요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=297s" target="_blank" rel="noopener">영상 04:57에서 보기</a></figcaption>
+</figure>
+<p>그런데 일꾼 안을 들여다보니 후보만 쓰라고 했는데도 제목 공식 파일을 열어 읽고, 스스로 <code>title_check</code>까지 돌리고 있었어요. 원인은 아래 화면 가운데 카드에 뜬 CLAUDE.md 규칙이에요.</p>
+<figure>
+  <img src="assets/frame-0517.webp" alt="터미널 위에 'CLAUDE.md · 발췌' 카드로 '후보를 보여 주기 전에 반드시 title_check를 돌린다.'라는 규칙이 떠 있는 화면">
+  <figcaption>일꾼은 이 규칙을 충실히 지키느라 하지 않아도 될 검사를 했어요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=317s" target="_blank" rel="noopener">영상 05:17에서 보기</a></figcaption>
+</figure>
+<p>아래 터미널의 노란 테두리 안이 일꾼이 돈 턴이에요. '답 쓰기' 사이사이에 <code>head -c 2500 data/title_formulas.md</code>로 공식 파일을 읽고 <code>python3 tools/title_check.py</code>를 돌려요. 오른쪽 괄호의 토큰 수는 1턴 41,591에서 9턴 54,933으로 점점 커져요. 턴마다 앞 내용을 통째로 다시 읽은 거예요.</p>
+<figure>
+  <img src="assets/frame-0528.webp" alt="loop.py 실행 화면에서 일꾼 턴 1~9가 답 쓰기, Bash로 제목 공식 읽기, title_check 실행, Write, Edit를 오가며 턴마다 41,591에서 54,933토큰을 쓴 기록">
+  <figcaption>결과는 세 판 평균 82센트, 겨우 19% 줄었어요. 판정을 옮겨도 일꾼이 무거운 짐을 다 지고 오면 소용이 없어요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=328s" target="_blank" rel="noopener">영상 05:28에서 보기</a></figcaption>
+</figure>
+<h3>도구만 끄면 캐시 쓰기가 늘어요</h3>
+<p>다음엔 일꾼에게서 도구만 뺏었어요. 파일을 못 읽고 명령도 못 돌리게 하니 턴은 한두 번으로 줄었어요. 그런데 아래 슬라이드의 눈금처럼 비용은 $0.4318에서 $1.1088까지 들쭉날쭉했고 평균은 $0.7161이었어요. 요리사가 여전히 '기본 짐은 그대로' 들고 있다는 게 그림의 요점이에요.</p>
+<figure>
+  <img src="assets/frame-0555.webp" alt="'도구만 끄면?' 슬라이드: 턴 1~2번, 평균 $0.7161, 범위 $0.4318~$1.1088 눈금, 책을 든 요리사 아래 '기본 짐은 그대로', 배경에 '캐시 쓰기' 글자">
+  <figcaption>턴은 줄었는데 값은 오히려 들쭉날쭉했어요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=355s" target="_blank" rel="noopener">영상 05:55에서 보기</a></figcaption>
+</figure>
+<p>기록을 뜯어보니 이번엔 캐시 쓰기가 문제였어요. 아래 슬라이드 왼쪽 책(시스템 프롬프트 · CLAUDE.md)이 '캐시 · 판마다 새로 쓰기' 상자로 들어가요. 그 아래에 Opus 100만 토큰당 입력 $4, 캐시 쓰기 $8을 나란히 적고, 오른쪽에 크게 '×2'를 붙였어요.</p>
+<figure>
+  <img src="assets/frame-0607.webp" alt="'짐은 그대로' 슬라이드: 시스템 프롬프트·CLAUDE.md 책이 '캐시 · 판마다 새로 쓰기'로 들어가고, 100만 토큰당 Opus 입력 $4와 캐시 쓰기 $8, '1시간 캐시 기준', '×2' 표시">
+  <figcaption>도구만 뺏고 무거운 기본 짐은 그대로 들려 보낸 셈이에요. 그 짐을 판마다 비싼 값에 다시 캐시에 썼어요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=367s" target="_blank" rel="noopener">영상 06:07에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=368s" target="_blank" rel="noopener">06:08</a>
+  <h2>실험 ② 맨몸 일꾼, 싼 모델, CLAUDE.md 다이어트</h2>
+<p>그래서 일꾼을 완전히 맨몸으로 보냈어요. 아래 화면의 파란 태그 세 줄이 바꾼 조건이에요. 도구와 설정 파일을 끄고, 기본 시스템 프롬프트를 한 줄로 바꾸고, 모델은 똑같이 Opus에 꼭 필요한 규칙 다섯 줄만 질문에 넣었어요. 명령 줄 끝의 <code>--lean</code>이 이 <span class="term" data-term="맨몸 호출" data-desc="발표자가 붙인 이름으로, 도구와 설정 파일을 끄고 시스템 프롬프트를 한 줄로 바꿔 보내는 호출이에요. 질문과 꼭 필요한 규칙만 실려요." data-g="7">맨몸 호출</span>을 켜는 발표자 스크립트의 옵션이에요.</p>
+<figure>
+  <img src="assets/frame-0619.webp" alt="python3 loop.py --worker opus --lean 실행 화면 위에 '도구·설정 파일 끔', '기본 시스템 프롬프트 → 한 줄', 'Opus · 규칙 다섯 줄' 태그">
+  <figcaption>모델은 그대로 두고 일꾼이 지고 가는 짐만 걷어 냈어요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=379s" target="_blank" rel="noopener">영상 06:19에서 보기</a></figcaption>
+</figure>
+<h3>실패한 것만 새 호출로</h3>
+<p>첫 호출에서 열 개 중 아홉 개가 통과했어요. 썸네일에 같은 조사를 두 번 쓴 하나만 떨어졌어요. 두 번째 호출에는 그 하나와 떨어진 이유만 넣었어요. 아래 슬라이드의 초록 칸 아홉 개와 빨간 칸 하나가 첫 호출 결과이고, 오른쪽 호출 2의 봉투가 훨씬 작아요. 두 호출 사이 선이 이어지지 않은 데 주목하세요. 첫 대화를 이어 붙이지 않고 새로 부른 거예요.</p>
+<figure>
+  <img src="assets/frame-0643.webp" alt="'하나 더' 슬라이드: 왼쪽 '호출 1 · 후보 10개' 큰 봉투 아래 초록 칸 9개와 빨간 칸 1개, 오른쪽 '호출 2' 작은 봉투">
+  <figcaption>통과한 아홉 개는 파이썬이 따로 적어 두고, 새 호출은 작은 짐으로 시작해요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=403s" target="_blank" rel="noopener">영상 06:43에서 보기</a></figcaption>
+</figure>
+<p>대화를 계속 이어 가면 턴마다 앞 내용이 통째로 다시 실려요. 실패만 들고 새로 부르면 매번 작은 짐으로 시작해요. 무엇이 끝났고 무엇이 남았는지는 대화가 아니라 파일과 코드가 기억하게 하라는 게 발표자의 말이에요.</p>
+<p>아래 터미널이 실제 기록이에요. 호출 1은 2,632토큰 $0.0321에 '통과 9 · 탈락 1', 호출 2는 2,070토큰 $0.0225에 '통과 1 · 탈락 0'이에요. 합계 줄은 '호출 2 · 토큰 4,702 · 비용 $0.0545 · 25초', 제목 10개 중 10개 통과예요. 그 아래에는 다음 실험인 <code>--worker sonnet --lean</code>이 막 시작됐어요.</p>
+<figure>
+  <img src="assets/frame-0707.webp" alt="loop.py 실행 결과: 호출 1 토큰 2,632 $0.0321 통과 9 탈락 1, 호출 2 토큰 2,070 $0.0225 통과 1, 합계 토큰 4,702 비용 $0.0545, 아래에 sonnet 실행 시작">
+  <figcaption>이 판은 5센트 반, 세 판 평균은 7.4센트예요. 같은 Opus로 기준선의 약 14분의 1이에요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=427s" target="_blank" rel="noopener">영상 07:07에서 보기</a></figcaption>
+</figure>
+<h3>일꾼 모델을 낮추면</h3>
+<p>제목 후보만 쓰는 일에 가장 비싼 모델이 꼭 필요하진 않아요. Sonnet으로 돌리니 세 판 평균 4센트였어요. 가장 싼 Haiku는 한 번 호출에 열 개가 전부 통과했고, 세 판 평균이 1센트의 절반도 안 됐어요. 처음 1달러의 263분의 1이에요. 반토막을 노렸는데 자릿수가 바뀌었어요.</p>
+<p>그럼 품질은 어떨까요. 일곱 방식 모두 30개 중 30개가 검사를 통과했지만, 이 검사는 글자 수와 형식만 봐요. Haiku 판 썸네일에는 '같은 일인데 비용이 3배?'라는 문구가 있었어요. 브리프 어디에도 없는 지어낸 숫자예요. 아래 슬라이드 오른쪽 위 태그처럼 Opus 판에서도 같은 숫자가 나왔어요.</p>
+<figure>
+  <img src="assets/frame-0755.webp" alt="'지어낸 숫자 3배' 제목과 'Haiku 판 · Opus 판 둘 다' 태그, 싼 모델 요리사와 돋보기를 든 사람 그림에 '최종 선택 = 사람' 표시">
+  <figcaption>모델이 싸든 비싸든 AI가 쓴 숫자는 그대로 믿으면 안 돼요. 사실 확인과 최종 선택은 사람이 해요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=475s" target="_blank" rel="noopener">영상 07:55에서 보기</a></figcaption>
+</figure>
+<h3>CLAUDE.md만 줄이면</h3>
+<p>마지막으로 처음 궁금했던 걸 확인했어요. 통째로 맡기는 방식은 그대로 두고, CLAUDE.md의 '배운 것' 목록만 <code>lessons.md</code>로 빼서 필요할 때만 읽게 했어요. 아래 슬라이드 왼쪽이 포스트잇이 덕지덕지 붙은 CLAUDE.md, 오른쪽이 따로 꽂아 둔 lessons.md예요.</p>
+<figure>
+  <img src="assets/frame-0807.webp" alt="'통째로 맡기기는 그대로' 태그 아래 '배운 것' 포스트잇이 붙은 CLAUDE.md 책과 'lessons.md · 필요할 때만'이라고 적힌 책장">
+  <figcaption>매 요청에 실리던 목록을 필요할 때만 읽는 파일로 옮겼어요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=487s" target="_blank" rel="noopener">영상 08:07에서 보기</a></figcaption>
+</figure>
+<p>결과는 약 1달러에서 93센트, 10%도 안 줄었어요. 아래 칸을 세어 보면 이유가 보여요. 통째로 맡긴 판은 9~11턴인데, CLAUDE.md를 줄인 판은 11~13턴으로 노란 칸 두 개가 더 붙었어요. 짐은 가벼워졌지만 오가는 횟수가 늘어 아낀 걸 도로 썼어요.</p>
+<figure>
+  <img src="assets/frame-0819.webp" alt="'통째로 · 턴 9~11번' 흰 칸 11개와 'CLAUDE.md 줄인 판 · 턴 11~13번' 흰 칸 11개에 노란 칸 2개가 더 붙은 비교">
+  <figcaption>통째로 맡기는 한, 비용은 짐 무게보다 몇 번 오가느냐가 정해요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=499s" target="_blank" rel="noopener">영상 08:19에서 보기</a></figcaption>
+</figure>
+<p>그래도 매 턴 1만 수천 토큰을 덜 싣는 건 분명한 이득이라, 발표자도 CLAUDE.md는 정리할 생각이라고 해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 비용 문서도 같은 방향을 권해요. CLAUDE.md는 세션 시작 때 통째로 읽히니, 특정 작업에만 쓰는 지시는 필요할 때만 불러오는 스킬로 옮기고 CLAUDE.md는 200줄 아래로 유지하라고 해요. 구독 사용자라면 <code>/usage</code> 화면이 'Trim CLAUDE.md · 요청당 49k 토큰' 같은 줄로 줄일 곳을 짚어 주기도 해요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/costs" target="_blank" rel="noopener">Claude Code 공식 문서 — Manage costs effectively</a></p>
+</aside>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=512s" target="_blank" rel="noopener">08:32</a>
+  <h2>결과표로 본 비용 구조</h2>
+<p>일곱 가지 실험 영수증을 한 화면에 모았어요. 아래 표의 '평균 비용' 열을 위에서 아래로 읽으면 돼요. 통째로 맡기기 $1.0071, CLAUDE.md 다이어트 $0.9316, 판정만 코드로 $0.8192, 도구만 끔 $0.7161까지는 오른쪽 'L0 대비'가 100%에서 71.1% 사이예요. 노랗게 칠한 맨몸 Opus $0.0740부터 자릿수가 바뀌고, 맨 아래 맨몸 Haiku $0.0038은 1/263이에요. '통과' 열은 일곱 줄 모두 30/30이에요.</p>
+<figure>
+  <img src="assets/frame-0852.webp" alt="일곱 가지 루프의 평균 비용, 3판 범위, 평균 토큰, 통과, L0 대비를 정리한 터미널 표. 통째로 맡기기 $1.0071부터 일꾼 맨몸 haiku $0.0038까지">
+  <figcaption>평균 토큰 열도 함께 보세요. 앞 네 줄은 10만~87만 토큰, 맨몸 세 줄은 6천~1만 토큰이에요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=532s" target="_blank" rel="noopener">영상 08:52에서 보기</a></figcaption>
+</figure>
+<p>화면 글자가 작아서 표로 옮겼어요. 영상에 나온 값 그대로예요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>방식</th><th>세 판 평균</th><th>세 판 범위</th><th>평균 토큰</th><th>기준 대비</th></tr></thead>
+    <tbody>
+      <tr><td>통째로 맡기기 (Opus 에이전트)</td><td>$1.0071</td><td>$0.9814~$1.0329</td><td>866,176</td><td>100.0%</td></tr>
+      <tr><td>+ CLAUDE.md 다이어트</td><td>$0.9316</td><td>$0.8927~$0.9888</td><td>851,872</td><td>92.5%</td></tr>
+      <tr><td>판정만 코드로 (일꾼 기본 설정)</td><td>$0.8192</td><td>$0.8080~$0.8314</td><td>574,307</td><td>81.3%</td></tr>
+      <tr><td>+ 일꾼 도구만 끔</td><td>$0.7161</td><td>$0.4318~$1.1088</td><td>104,370</td><td>71.1%</td></tr>
+      <tr><td>일꾼 맨몸 (Opus)</td><td>$0.0740</td><td>$0.0684~$0.0796</td><td>5,989</td><td>7.4%</td></tr>
+      <tr><td>일꾼 맨몸 (Sonnet)</td><td>$0.0397</td><td>$0.0364~$0.0432</td><td>5,831</td><td>1/25</td></tr>
+      <tr><td>일꾼 맨몸 (Haiku)</td><td>$0.0038</td><td>$0.0031~$0.0046</td><td>9,588</td><td>1/263</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>숫자 차이가 워낙 커서, 같은 값을 로그 눈금 막대로 다시 그려 봤어요. 눈금 한 칸이 열 배예요. 앞 네 막대는 거의 같은 길이로 몰려 있고, 맨몸 세 막대에서 한 칸씩 뚝뚝 떨어져요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 300" role="img" aria-label="일곱 가지 루프의 세 판 평균 비용을 로그 눈금 막대로 비교한 그림">
+    <line class="axis" x1="180" y1="262" x2="560" y2="262"/>
+    <line class="axis" x1="180" y1="22" x2="180" y2="262"/>
+    <line class="line dim" x1="302.6" y1="22" x2="302.6" y2="262"/>
+    <line class="line dim" x1="425.2" y1="22" x2="425.2" y2="262"/>
+    <line class="line dim" x1="547.7" y1="22" x2="547.7" y2="262"/>
+    <text x="180" y="282" text-anchor="middle" class="sub">$0.001</text>
+    <text x="302.6" y="282" text-anchor="middle" class="sub">$0.01</text>
+    <text x="425.2" y="282" text-anchor="middle" class="sub">$0.1</text>
+    <text x="547.7" y="282" text-anchor="middle" class="sub">$1</text>
+    <text x="170" y="45" text-anchor="end">통째로 맡기기</text>
+    <rect class="bar alt" x="180" y="29" width="368.1" height="22"/>
+    <text x="554" y="45" class="mono">$1.01</text>
+    <text x="170" y="79" text-anchor="end">CLAUDE.md 다이어트</text>
+    <rect class="bar alt" x="180" y="63" width="364.0" height="22"/>
+    <text x="550" y="79" class="mono">$0.93</text>
+    <text x="170" y="113" text-anchor="end">판정만 코드로</text>
+    <rect class="bar alt" x="180" y="97" width="357.1" height="22"/>
+    <text x="543" y="113" class="mono">$0.82</text>
+    <text x="170" y="147" text-anchor="end">도구만 끔</text>
+    <rect class="bar alt" x="180" y="131" width="350.0" height="22"/>
+    <text x="536" y="147" class="mono">$0.72</text>
+    <text x="170" y="181" text-anchor="end">맨몸 Opus</text>
+    <rect class="bar" x="180" y="165" width="229.1" height="22"/>
+    <text x="415" y="181" class="mono">$0.074</text>
+    <text x="170" y="215" text-anchor="end">맨몸 Sonnet</text>
+    <rect class="bar" x="180" y="199" width="196.0" height="22"/>
+    <text x="382" y="215" class="mono">$0.040</text>
+    <text x="170" y="249" text-anchor="end">맨몸 Haiku</text>
+    <rect class="bar" x="180" y="233" width="71.1" height="22"/>
+    <text x="257" y="249" class="mono">$0.0038</text>
+  </svg>
+  <figcaption>영상 08:52 결과표의 세 판 평균만 옮겼어요. 에이전트 안에서 하나씩 바꾼 앞 네 줄은 반토막도 안 됐고, 일꾼을 맨몸으로 바꾼 순간 한 자릿수가 내려갔어요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=532s" target="_blank" rel="noopener">영상 08:52에서 보기</a></figcaption>
+</figure>
+<p>발표자의 정리는 이래요. 갈린 지점은 하나, 한 번에 얼마나 싣고 그걸 몇 번 다시 싣느냐예요.</p>
+<h3>요청 한 번에 실리는 띠</h3>
+<p>이제 비유를 걷고 실제 구조를 봐요. 모델에게 가는 요청 한 번은 아래 그림 위쪽 띠처럼 이어 붙어요. 맨 앞에 도구 정의, 그다음 시스템 프롬프트, CLAUDE.md 같은 설정, 지금까지의 대화 기록, 맨 끝에 새 질문이에요. 위의 괄호 '캐시 읽기: 앞이 같을 때'처럼 캐시는 앞부분이 글자 하나까지 같을 때만 읽기로 처리돼요. 앞쪽이 조금만 달라져도 그 뒤는 '새로 쓰기'가 돼요. 아래 '기본 53,043'과 '맨몸 574'가 두 호출의 띠 길이예요. 맨몸 띠는 짧은 칸 몇 개와 '질문'이 전부예요.</p>
+<figure>
+  <img src="assets/frame-0939.webp" alt="도구 정의, 시스템 프롬프트, CLAUDE.md·설정, 대화 기록, 새 질문 다섯 칸 띠 위에 '캐시 읽기: 앞이 같을 때' 괄호, 아래 '새로 쓰기' 표시와 '기본 53,043', 짧은 띠 '질문'과 '맨몸 574'">
+  <figcaption>캐시는 앞에서부터 같은 만큼만 싸게 읽어요. 그래서 자주 바뀌는 건 뒤로 가야 해요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=579s" target="_blank" rel="noopener">영상 09:39에서 보기</a></figcaption>
+</figure>
+<p>에이전트 방식을 펼치면 아래 계단 그림이 돼요. 한 줄이 한 턴이고, 회색이 다시 보내는 앞부분, 끝의 초록이 새로 붙은 칸이에요. 턴이 늘수록 줄이 길어지고, 긴 줄을 매번 처음부터 다시 보내요.</p>
+<figure>
+  <img src="assets/frame-0948.webp" alt="'11번 다시' 제목 옆에 한 줄씩 길어지는 막대 11개가 계단처럼 쌓인 그림, 범례 '다시 보내는 앞부분', '새로 붙은 칸', 오른쪽에 '다시 보내는 양' 종이 더미">
+  <figcaption>열한 턴이면 같은 앞부분을 열한 번 다시 보내요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=588s" target="_blank" rel="noopener">영상 09:48에서 보기</a></figcaption>
+</figure>
+<p>파이썬 루프는 이 고리를 끊어요. 아래 그림 왼쪽의 짧은 띠가 모델에게 한 번만 가고, 결과는 오른쪽 저울(검사 = title_check)과 체크리스트(기억 = 통과 9 · 남은 1)로 넘어가요. 남은 일만 추려 아래쪽 모델에게 다시 짧은 띠로 보낼 뿐이에요.</p>
+<figure>
+  <img src="assets/frame-0957.webp" alt="'파이썬 루프' 그림: 짧은 띠가 모델로 가고, 파이썬 저울 '검사 = title_check'와 체크리스트 '기억 = 통과 9 · 남은 1'을 거쳐 두 번째 모델로 이어지는 구조">
+  <figcaption>검사와 기억을 파이썬이 맡으니 모델은 매번 짧은 띠만 받아요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=597s" target="_blank" rel="noopener">영상 09:57에서 보기</a></figcaption>
+</figure>
+<h3>비용 공식</h3>
+<p>그래서 비용은 대략 아래 세 그림의 곱이에요. 배낭이 '싣는 양', 종이 더미가 '다시 싣는 횟수', 동전 더미가 '모델 단가'예요. 각 그림 아래 태그가 이번 실험에서 그걸 깎은 방법이에요. 싣는 양은 '맨몸', 횟수는 '실패만 새로 · 판정은 코드', 단가는 '싼 모델'이에요.</p>
+<figure>
+  <img src="assets/frame-1009.webp" alt="'비용 ≈ 싣는 양 × 다시 싣는 횟수 × 모델 단가' 슬라이드, 각 항 아래 '맨몸', '실패만 새로 · 판정은 코드', '싼 모델' 태그와 '→ 제 작업에선?' 표시">
+  <figcaption>오늘 실험은 이 세 항을 하나씩 깎아 낸 과정이었어요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=609s" target="_blank" rel="noopener">영상 10:09에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=612s" target="_blank" rel="noopener">10:12</a>
+  <h2>실제 작업과 바로 쓰는 루프 템플릿</h2>
+<p>발표자의 영상 제작 루프에도 이 원칙이 이미 들어가 있어요. 아래 그림 위쪽 네 칸 대본 → 목소리 → 화면 → 업로드가 영상 하나가 거치는 단계예요. 단계마다 통과 기준은 스크립트가 직접 검사하고, 어디까지 끝났는지는 가운데 체크리스트 <code>state.json</code> 하나가 따로 기억해요. '여기서부터 이어서'라는 태그처럼 중간에 끊겨도 대화를 다시 읽지 않고 그 단계부터 이어 가요.</p>
+<figure>
+  <img src="assets/frame-1044.webp" alt="대본, 목소리, 화면, 업로드 네 단계가 state.json 체크리스트로 이어지고, 아래에 '윤문 = 아르곤', '자료 찾기 = Codex', '장면 = Opus', 빨간 '지휘 대화 = Opus 하나'와 '제 숙제' 표시">
+  <figcaption>일은 모델별로 나눠 맡기지만, 루프를 지휘하는 대화는 여전히 Opus 하나가 다 하고 있었어요. 발표자가 찾은 숙제예요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=644s" target="_blank" rel="noopener">영상 10:44에서 보기</a></figcaption>
+</figure>
+<p>아래쪽 태그처럼 대본 윤문은 아르곤, 자료 찾기는 Codex, 장면은 Opus에게 넘겨요. <span class="term" data-term="상태 파일" data-en="State file" data-desc="작업이 어디까지 끝났는지 적어 두는 파일이에요. 대화 기록 대신 이걸 읽고 이어 가니 앞 대화를 다시 실을 필요가 없어요." data-g="8">상태 파일</span>이 기억을 맡으니 지휘하는 대화가 길어질 이유가 없는데도, 일주일 기록에서는 그 지휘 대화가 Opus로 계속 돌고 있었다는 거예요.</p>
+<h3>루프 템플릿의 네 부분</h3>
+<p>발표자는 오늘 실험을 바로 쓸 수 있게 <code>loop_template.py</code>로 정리했어요. 아래 화면이 그 구조 요약이에요. 짧지만 네 부분이 오늘 실험의 네 가지 변화와 하나씩 맞물려요.</p>
+<ol class="steps">
+  <li><b><code>check(title)</code>에 통과 기준을 코드로 적어요</b> — 탈락 이유를 돌려주고, 통과면 <code>None</code>이에요. 판정은 코드가 해요.</li>
+  <li><b><code>worker()</code>는 맨몸으로 불러요</b> — <code>claude -p</code>에 <code>--tools ""</code>와 한 줄 <code>--system-prompt</code>를 붙여요.</li>
+  <li><b><code>WORKER_MODEL = "haiku"</code>로 시작해요</b> — 통과율이 낮으면 한 단계씩 올려요.</li>
+  <li><b><code>while todo:</code> 루프에서 떨어진 것만 다시 보내요</b> — <code>fails</code>에 남은 후보와 탈락 이유를 담아 새 호출에 넣어요.</li>
+</ol>
+<figure>
+  <img src="assets/frame-1108.webp" alt="loop_template.py 구조 요약 코드: WORKER_MODEL = haiku, check 함수, --tools와 --system-prompt를 붙인 worker 함수, 떨어진 것만 다시 보내는 while 루프. 오른쪽에 '뉴스레터 제목 10개 · 호출 2번 $0.0011'과 '세 군데만 바꾸면 · 시킬 일'">
+  <figcaption>뉴스레터 제목 10개로 시험하니 호출 두 번, $0.0011이었어요. 시킬 일, 규칙, 검사 함수 세 군데만 바꾸면 다른 일에도 쓸 수 있어요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=668s" target="_blank" rel="noopener">영상 11:08에서 보기</a></figcaption>
+</figure>
+<h3>무엇을 루프로 바꿀까요</h3>
+<p>모든 일을 루프로 바꿀 수는 없어요. 무엇을 해야 할지부터 찾아야 하거나 파일 여러 곳을 뒤져야 하는 일은 지금처럼 에이전트에게 맡기는 게 맞아요. 반대로 아래 슬라이드의 세 가지가 다 맞으면 루프로 바꿀 일이에요. 할 일이 정해져 있는지, 합격 기준을 코드로 쓸 수 있는지, 자주 반복하는지예요.</p>
+<figure>
+  <img src="assets/frame-1131.webp" alt="'루프로 바꿀 일' 슬라이드: '할 일이 정해짐', '합격 기준 = 코드', '자주 반복' 세 줄에 모두 체크 표시">
+  <figcaption>셋 다 맞으면 지금 1달러짜리를 몇 센트로 바꿀 수 있는 일이라고 발표자는 말해요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=691s" target="_blank" rel="noopener">영상 11:31에서 보기</a></figcaption>
+</figure>
+<p>마지막 정리는 네 줄이에요. 아래 체크리스트의 판정은 코드에게, 일꾼은 맨몸으로, 실패만 새로, 쓰기는 싼 모델이에요. 바로 위 비용 공식의 세 항과 겹쳐 보면 각 줄이 어느 항을 깎는지 보여요.</p>
+<figure>
+  <img src="assets/frame-1146.webp" alt="'체크 네 줄' 슬라이드: 판정은 코드에게, 일꾼은 맨몸으로, 실패만 새로, 쓰기는 싼 모델 네 줄에 체크, 아래 '1달러 → 1센트 아래'">
+  <figcaption>이 네 줄로 같은 일이 1달러에서 1센트 아래로 떨어졌어요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=706s" target="_blank" rel="noopener">영상 11:46에서 보기</a></figcaption>
+</figure>
+<blockquote>
+  <p>자주 돌리는 일 하나를 골라, 합격 기준부터 스크립트로 적어 보세요.</p>
+  <cite>— 영상 11:46</cite>
+</blockquote>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-7"><dt>맨몸 호출</dt><dd>발표자가 붙인 이름으로, 도구와 설정 파일을 끄고 시스템 프롬프트를 한 줄로 바꿔 보내는 호출이에요. 질문과 꼭 필요한 규칙만 실려요.</dd></div>
+    <div class="g" id="g-8"><dt>상태 파일<span class="en">State file</span></dt><dd>작업이 어디까지 끝났는지 적어 두는 파일이에요. 대화 기록 대신 이걸 읽고 이어 가니 앞 대화를 다시 실을 필요가 없어요.</dd></div>
+    <div class="g" id="g-4"><dt>시스템 프롬프트<span class="en">System prompt</span></dt><dd>대화 맨 앞에 붙는 모델용 지시문이에요. Claude Code의 기본 시스템 프롬프트는 에이전트로 일하는 법을 길게 적고 있어서 요청마다 무게가 실려요.</dd></div>
+    <div class="g" id="g-3"><dt>캐시 쓰기<span class="en">Cache write</span></dt><dd>앞부분을 처음 캐시에 올리는 것이에요. 일반 입력보다 비싸서, 매번 새로 쓰게 되면 캐시를 안 쓰느니만 못할 수 있어요.</dd></div>
+    <div class="g" id="g-2"><dt>캐시 읽기<span class="en">Cache read</span></dt><dd>캐시에 이미 있는 앞부분을 다시 쓰는 것이에요. 단가는 싸지만 턴마다 긴 앞부분을 통째로 다시 읽으니 쌓이면 가장 큰 비용이 돼요.</dd></div>
+    <div class="g" id="g-6"><dt>턴<span class="en">Turn</span></dt><dd>모델에게 요청을 한 번 보내고 답을 받는 한 바퀴예요. 에이전트는 도구를 쓸 때마다 턴이 늘고, 턴마다 앞 내용을 다시 보내요.</dd></div>
+    <div class="g" id="g-1"><dt>프롬프트 캐싱<span class="en">Prompt caching</span></dt><dd>요청 앞부분이 지난번과 똑같으면 계산해 둔 결과를 재사용해 싸게 처리하는 기능이에요. 앞부분이 한 글자라도 달라지면 그 뒤는 다시 캐시에 써야 해요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g" id="g-5"><dt>CLAUDE.md</dt><dd>Claude Code가 세션마다 자동으로 읽는 프로젝트 규칙 파일이에요. 대화가 한 번 오갈 때마다 같이 실려서, 길어질수록 매 요청이 무거워져요.</dd></div>
+    <div class="g"><dt>CLI</dt><dd>Command-Line Interface</dd></div>
+    <div class="g"><dt>MCP</dt><dd>Model Context Protocol</dd></div>
+    <div class="g"><dt>TTL</dt><dd>Time To Live</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=ndpzi0ocrCA" target="_blank" rel="noopener">원본 영상 — 코난쌤 conanssam</a></li>
+    <li id="src-2"><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching" target="_blank" rel="noopener">Claude API 공식 문서 — Prompt caching</a></li>
+    <li id="src-3"><a href="https://code.claude.com/docs/en/cli-reference" target="_blank" rel="noopener">Claude Code 공식 문서 — CLI reference</a></li>
+    <li id="src-4"><a href="https://code.claude.com/docs/en/costs" target="_blank" rel="noopener">Claude Code 공식 문서 — Manage costs effectively</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 27일에 이 영상을 보고 정리했어요. 원본은 코난쌤 conanssam 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
