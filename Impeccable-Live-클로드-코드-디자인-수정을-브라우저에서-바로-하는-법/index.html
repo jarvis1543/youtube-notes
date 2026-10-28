@@ -1,0 +1,786 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Impeccable Live, 클로드 코드 디자인 수정을 브라우저에서 바로 하는 법</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Impeccable Live, 클로드 코드 디자인 수정을 브라우저에서 바로 하는 법</h1>
+  <p class="lede">브라우저에서 집어서 말하면 Claude Code 세션이 고쳐 줘요</p>
+  <div class="meta">
+    <span>StefanCho</span><span class="dot">·</span>
+    <span>영상 10:04</span><span class="dot">·</span>
+    <span>읽는 데 약 9분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=yep-NVI-Mfs" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li><code>/impeccable live</code>를 치면 백그라운드 <span class="term" data-term="셸" data-en="Shell" data-desc="명령을 실행하는 터미널 작업 공간이에요. 여기선 Claude Code가 뒤에서 띄워 둔 백그라운드 셸에서 서버가 계속 돌아요." data-g="2">셸</span>에서 Live 서버가 돌고, 로컬 사이트 아래에 Live 바가 떠요.</li>
+    <li>바에서 '집기'로 요소를 고르고 지시를 쓰면, Claude Code에 따로 입력하지 않아도 연결된 <span class="term" data-term="세션" data-en="Session" data-desc="터미널에서 열어 둔 Claude Code 대화 하나예요. Live 서버는 처음 /impeccable live를 실행한 바로 그 세션과 이어져요." data-g="3">세션</span>이 받아서 고쳐요.</li>
+    <li><span class="term" data-term="시안" data-en="Variant" data-desc="같은 지시로 만든 여러 결과물 중 하나예요. Live에선 1~4개를 받아 넘겨 보고 하나를 골라 적용해요." data-g="4">시안</span> 개수(1~4)와 액션(자유 지시, 더 과감하게, 재미 등)으로 결과의 폭과 방향을 정해요. 지우기는 1개면 돼요.</li>
+    <li>메모, 끼워 넣기, <code>DESIGN.md</code> 보기도 있고, 내 PC(Personal Computer)에서 띄우는 서버라 바를 한국어로 고치는 식의 커스텀도 돼요.</li>
+    <li>세션이 할 수 있는 일은 다 시킬 수 있어서 이미지 교체, 글 수정, <span class="term" data-term="앵커" data-en="Anchor link" data-desc="페이지 안의 특정 위치로 바로 가게 하는 주소예요. 주소 끝에 #소제목 같은 표시가 붙어서, 공유하면 그 문단부터 열려요." data-g="6">앵커</span> 링크 추가 같은 기능 수정에도 써요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">Impeccable Live가 뭐고 어떻게 켜나요</a></li>
+    <li><a href="#s2">집기로 고르고 말하면 세션이 고쳐요</a></li>
+    <li><a href="#s3">액션과 시안 개수로 방향 정하기</a></li>
+    <li><a href="#s4">메모, 끼워 넣기, DESIGN.md, 한국어 바</a></li>
+    <li><a href="#s5">디자인 말고 글과 기능도 고쳐요</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>Impeccable Live가 뭐고 어떻게 켜나요</h2>
+<p>Impeccable은 AI(Artificial Intelligence) 코딩 도구가 디자인을 더 잘하도록 돕는 <span class="term" data-term="스킬" data-en="Skill" data-desc="Claude Code에 특정 작업 방법을 가르쳐 두는 지침 묶음이에요. 설치해 두면 슬래시 명령으로 불러 쓸 수 있어요." data-g="1">스킬</span>이에요. 발표자는 한동안 안 쓰다가 블로그 디자인을 고치면서 이런저런 방법을 다 써 봤는데, 전부 불편했다고 해요.</p>
+<p>계기는 최근 영상에서 소개한 Be Ambitious 스킬이었어요. 목표를 10~20%가 아니라 1000% 개선처럼 크게 잡도록 이끄는 스킬이에요. 여기에 "디자인을 생산성 있게 고치고 싶다"고 하자 Claude가 Impeccable Live를 켜 줬어요. 아래 그림의 오른쪽 손그림이 그 흐름이에요. Be Ambitious에 '디자인 수정'을 말하니 'Impeccable Live' 스위치가 켜졌다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0056.webp" alt="터미널에 /be-ambitious가 입력돼 있고, 오른쪽 손그림에 Be Ambitious 영상 썸네일, '디자인 수정' 말풍선, 켜진 Impeccable Live 스위치가 그려진 장면">
+  <figcaption>발표자도 처음엔 의아했지만, 써 보고 나서 이게 정답이라고 느꼈다고 해요. <a href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=56s" target="_blank" rel="noopener">영상 00:56에서 보기</a></figcaption>
+</figure>
+<h3>켜는 법: 명령 하나</h3>
+<p>스킬을 설치한 뒤 Claude Code에 <code>/impeccable</code>을 치면 뒤에 붙일 수 있는 하위 명령이 쭉 나와요. 화면에는 shape, audit, critique, animate, bolder, colorize, layout 같은 이름이 보여요. 여기서 <code>/impeccable live</code>를 치면 돼요.</p>
+<figure>
+  <img src="assets/frame-0104.webp" alt="Claude Code 입력창에 /impeccable을 치자 shape, audit, critique, animate, bolder, colorize, delight, layout 등 하위 명령 목록이 자동완성으로 뜬 터미널">
+  <figcaption>Live 말고도 디자인을 다듬는 하위 명령이 많아요. Live 바의 액션 메뉴가 이 명령들과 닮아 있어요. <a href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=64s" target="_blank" rel="noopener">영상 01:04에서 보기</a></figcaption>
+</figure>
+<p>그러면 Claude Code 아래에 셸이 하나 더 떠요. 이게 Impeccable Live 서버예요. 발표자 화면의 Background 목록에는 셸 두 개가 running 상태예요. 위 줄이 <code>.claude/skills/impeccable/scripts/impeccable live…</code>, 아래 줄이 블로그를 띄운 <code>npx astro dev --port 4321</code>이에요.</p>
+<figure>
+  <img src="assets/frame-0120.webp" alt="Claude Code의 Background 패널에 impeccable live 스크립트와 npx astro dev --port 4321 두 개의 백그라운드 셸이 running으로 표시된 화면">
+  <figcaption>내 사이트를 띄운 <span class="term" data-term="개발 서버" data-en="Dev server" data-desc="만들고 있는 사이트를 내 컴퓨터에서 띄워 보는 서버예요. 코드를 고치면 화면에 바로 반영돼서 Live가 이 위에 붙어요." data-g="5">개발 서버</span>와 Live 서버가 나란히 돌아야 해요. <a href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=80s" target="_blank" rel="noopener">영상 01:20에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 저장소는 프로젝트 폴더에서 <code>npx impeccable install</code>로 설치하고, 코딩 도구에서 <code>/impeccable init</code>을 먼저 돌리라고 안내해요. Live 모드는 베타이고, Vite·Next.js·SvelteKit·Astro·Nuxt·Bun이나 정적 HTML(HyperText Markup Language) 같은 웹 프로젝트를 로컬에서 띄웠을 때만 붙어요. 배포된 실제 사이트는 고칠 수 없어요.</p>
+  <p class="cite">출처: <a href="https://github.com/pbakaus/impeccable" target="_blank" rel="noopener">Impeccable GitHub 저장소</a> · <a href="https://impeccable.style/live-mode" target="_blank" rel="noopener">Impeccable 공식 사이트 — Live Mode</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=92s" target="_blank" rel="noopener">01:32</a>
+  <h2>집기로 고르고 말하면 세션이 고쳐요</h2>
+<p>Live를 켜면 로컬 블로그 화면 아래쪽에 검은 바가 떠요. 원래는 영어로 나오는데 발표자는 일부러 한국어로 바꿔 놨어요. 맨 왼쪽 근처의 '집기' 버튼이 원래 Pick이에요. 이걸 누르고 고칠 요소를 클릭하면 돼요.</p>
+<figure>
+  <img src="assets/frame-0140.webp" alt="블로그 글 목록 화면 아래에 집기, 더하기, 눈, 메모, 마이크, 보내기 화살표 버튼이 있는 검은 Live 바가 떠 있는 장면">
+  <figcaption>집기로 요소를 고르면 노란 테두리가 생기고, 그 아래에 지시를 쓰는 칸이 열려요. <a href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=100s" target="_blank" rel="noopener">영상 01:40에서 보기</a></figcaption>
+</figure>
+<p>발표자는 블로그 상단에 예전에 대충 써 둔 소개 문단을 집어서 "이 설명은 지워 줘"라고 보냈어요. 바에는 '시안 3개 만드는 중'이 떠요. 그런데 터미널을 보면 이미 작업이 돌고 있어요. 발표자가 Claude Code에 직접 입력한 건 아무것도 없어요.</p>
+<h3>브라우저와 세션은 어떻게 이어져 있을까요</h3>
+<p>처음 <code>/impeccable live</code>를 실행한 그 Claude Code 세션이 Live 서버와 연결돼 있어서예요. 브라우저에서 보낸 지시가 서버를 거쳐 자동으로 세션에 들어가요. 세션이 소스를 고치면 결과가 다시 브라우저에 떠요. 영상에서 말로 설명한 이 흐름을 그림으로 옮겼어요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["브라우저 Live 바<br/>집기 + 지시"] --> B["Impeccable Live 서버<br/>(백그라운드 셸)"]
+  B --> C["Claude Code 세션<br/>소스 수정"]
+  C --> D["브라우저에 시안 표시<br/>1, 2, 3 중 골라 적용"]
+  D -. 다음 요소 .-> A
+</pre>
+  <figcaption>사람은 브라우저만 보고, 실제 코드 수정은 터미널의 세션이 해요. 세션이 할 수 있는 일이면 무엇이든 이 길로 시킬 수 있다는 게 뒤에서 중요해져요.</figcaption>
+</figure>
+<p>터미널을 보면 세션이 <code>impeccable live-poll</code>로 브라우저 지시를 받아 오고, 일을 마친 뒤 <code>--reply</code>로 답을 돌려줘요. 답에는 "삭제 요청이라 시안 없이 소스에서 설명 문단을 바로 지웠다"는 말이 보여요. 끝에는 "Live 모드는 계속 켜져 있어서 다음 요소를 바로 골라도 된다"고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0220.webp" alt="터미널에 impeccable live-poll --reply 명령과 함께, 설명 문단을 소스에서 바로 지웠고 Live 모드가 계속 켜져 있다는 Claude Code의 한국어 답이 보이는 장면">
+  <figcaption>지운 결과는 브라우저에서도 바로 사라져 있어요. 문구 수정이나 디자인 수정을 이렇게 쉽게 할 수 있어요. <a href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=140s" target="_blank" rel="noopener">영상 02:20에서 보기</a></figcaption>
+</figure>
+<h3>시안 개수는 1~4</h3>
+<p>지시 칸 옆에서 시안(Variants) 개수를 1부터 4까지 고를 수 있어요. 오른쪽 손그림이 그 규칙이에요. 고치기(Edit)는 여러 안을 받아 볼 수 있지만, 지우기(Delete)는 결과가 하나뿐이라 1이면 돼요.</p>
+<figure>
+  <img src="assets/frame-0252.webp" alt="블로그 화면 오른쪽에 Variants 1 2 3 4 상자와, Edit은 하나의 입력에서 여러 결과, Delete는 하나의 결과로 이어지는 손그림이 있는 장면">
+  <figcaption>여러 방향을 비교하고 싶을 때만 숫자를 올리면 돼요. <a href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=172s" target="_blank" rel="noopener">영상 02:52에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=189s" target="_blank" rel="noopener">03:09</a>
+  <h2>액션과 시안 개수로 방향 정하기</h2>
+<p>다음으로 발표자는 글 날짜를 집고 "우측으로 붙여 줘"라고 썼어요. 지시 칸 오른쪽의 '자유 지시'를 누르면 액션 메뉴가 열려요. 결과를 어떤 쪽으로 끌고 갈지 고르는 메뉴예요.</p>
+<figure>
+  <img src="assets/frame-0317.webp" alt="날짜 요소가 노란 테두리로 선택돼 있고, 자유 지시, 더 과감하게, 더 차분하게, 덜어내기, 다듬기, 글자, 색 입히기, 배치, 화면 크기, 움직임, 재미, 끝까지 열두 칸짜리 액션 메뉴가 열린 장면">
+  <figcaption>지시 칸에는 'time' 태그와 '우측으로 붙여줘'가, 오른쪽에는 '자유 지시 · ×1'이 보여요. 액션과 시안 개수를 함께 정하는 자리예요. <a href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=197s" target="_blank" rel="noopener">영상 03:17에서 보기</a></figcaption>
+</figure>
+<p>메뉴는 3줄 4칸이에요. 영상에서 실제로 써 본 건 두 가지예요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>고친 것</th><th>액션</th><th>시안</th><th>결과</th></tr></thead>
+    <tbody>
+      <tr><td>날짜를 오른쪽으로</td><td>자유 지시</td><td>1</td><td>방향이 분명해서 자유 지시면 충분해요</td></tr>
+      <tr><td>헤더 개선</td><td>재미</td><td>2</td><td>설명을 따로 안 써서인지 두 안이 크게 다르지 않았어요</td></tr>
+      <tr><td>날짜 표시 방식</td><td>자유 지시</td><td>1</td><td>같은 스타일의 다른 글에도 다 적용됐어요</td></tr>
+      <tr><td>대표 이미지 교체</td><td>자유 지시</td><td>3</td><td>세 장 중 등대 이미지를 골라 적용했어요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>헤더 시안이 만들어지는 동안에도 터미널에선 세션이 Header 파일을 읽고 고치는 게 보여요. 그사이 발표자는 다른 요소를 또 골라 지시를 넣었어요. 기다리지 않고 다음 일을 맡길 수 있는 셈이에요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>액션 이름은 Impeccable의 영어 하위 명령과 짝이 맞아 보여요. 더 과감하게는 bolder, 더 차분하게는 quieter, 덜어내기는 distill, 다듬기는 polish, 글자는 typeset, 색 입히기는 colorize, 배치는 layout, 화면 크기는 adapt, 움직임은 animate, 재미는 delight, 끝까지는 overdrive로 추정돼요. 발표자가 바를 직접 번역해서 영어 이름은 화면에 나오지 않아요. 영어 바를 쓸 땐 이 이름으로 찾으면 돼요.</p>
+  <p class="cite">출처: <a href="https://github.com/pbakaus/impeccable" target="_blank" rel="noopener">Impeccable GitHub 저장소 — 명령 목록</a></p>
+</aside>
+<h3>느낌만 말해도 돼요: 날짜 표시</h3>
+<p>날짜를 옮겼더니 배치가 어색해졌어요. 발표자는 "날짜 표시가 애매하니 더 잘 배치하고, 한 달 전·7일 전처럼 유저 친화적으로 보여 줘"라고만 했어요. 아래 화면에서 원래 목록 아래에 새 시안이 미리 보여요. 날짜 자리에 '오늘', '4달 전', '5달 전'이 들어가 있어요.</p>
+<figure>
+  <img src="assets/frame-0504.webp" alt="블로그 글 목록에서 원래 날짜 표시 아래에 '오늘 · 생각 녹음 시리즈 1편', '4달 전', '5달 전'처럼 상대 날짜로 바뀐 시안이 함께 보이는 화면">
+  <figcaption>한 글에만 시켰는데 같은 스타일을 쓰는 다른 글에도 다 적용됐어요. 발표자는 훨씬 깔끔해졌다며 적용을 눌러요. <a href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=304s" target="_blank" rel="noopener">영상 05:04에서 보기</a></figcaption>
+</figure>
+<h3>이미지도 바꿀 수 있어요</h3>
+<p>Live는 세션과 연결된 창구라서, 세션에서 할 수 있는 일이면 그대로 시킬 수 있어요. 발표자는 글 상세 페이지의 물결 사진을 고르고 "제목과 더 연관되고 파급력 있는 느낌의 이미지를 Codex로 만들어 교체해 줘"라고 시안 3개를 요청했어요.</p>
+<figure>
+  <img src="assets/frame-0546.webp" alt="'영향력과 판단력에 관하여' 글 상세 페이지의 대표 이미지 자리에 해 질 녘 바위 위 등대가 빛을 비추는 새 이미지가 들어간 시안">
+  <figcaption>1, 2, 3 시안을 넘겨 보다가 등대 이미지를 골라 적용했어요. 이미지 생성은 세션이 쓰는 다른 도구(Codex)에 맡긴 거예요. <a href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=346s" target="_blank" rel="noopener">영상 05:46에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=352s" target="_blank" rel="noopener">05:52</a>
+  <h2>메모, 끼워 넣기, DESIGN.md, 한국어 바</h2>
+<p>요소를 고른 뒤 한 번 더 클릭하면 메모를 남길 수 있어요. 아래 화면에서 제목 옆에 작은 메모 말풍선이 붙어 있어요. 이 상태로 지시를 보내면 메모도 함께 세션으로 가요. 필요 없으면 지울 수도 있어요.</p>
+<figure>
+  <img src="assets/frame-0601.webp" alt="글 상세 페이지에서 제목 영역이 노란 테두리로 선택돼 있고 그 오른쪽에 작은 메모 말풍선이 붙어 있는 장면">
+  <figcaption>말로 다 설명하기 어려운 부분은 요소에 직접 메모를 붙여 보낼 수 있어요. <a href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=361s" target="_blank" rel="noopener">영상 06:01에서 보기</a></figcaption>
+</figure>
+<h3>끼워 넣기: 이 자리에 무언가를</h3>
+<p>'끼워 넣기'는 요소와 요소 사이의 위치를 고르는 기능이에요. 그 자리를 클릭하면 "여기에 넣고 싶다"는 뜻이 전달돼요. 발표자는 제목과 날짜 사이를 골라 "디자인 요소가 들어가면 좋겠다"고 일부러 애매하게 말하고, 시안 2개를 받았어요.</p>
+<p>결과는 두 갈래였어요. 하나는 글의 요약 설명을 넣은 안이고, 다른 하나는 공간만 차지하는 안이에요. 아래는 첫 번째 안을 보는 장면이에요. 제목 밑에 요약 문단이 노란 테두리로 들어가 있고, 그 아래 작은 바에 '1/2', '세부 조정', '적용'이 보여요.</p>
+<figure>
+  <img src="assets/frame-0646.webp" alt="글 제목 아래에 요약 문단이 새로 들어가 노란 테두리로 표시돼 있고, 그 아래에 1/2, 세부 조정, 적용 버튼이 있는 작은 시안 선택 바가 뜬 장면">
+  <figcaption>화살표로 두 안을 넘겨 보고 골라요. 발표자는 두 번째 안을 적용했어요. <a href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=406s" target="_blank" rel="noopener">영상 06:46에서 보기</a></figcaption>
+</figure>
+<h3>DESIGN.md 보기</h3>
+<p>프로젝트에 <code>DESIGN.md</code>가 있으면 바에서 열어 볼 수 있어요. 발표자 블로그엔 이 파일이 있어서, 패널에 Line, Text, Heading 같은 색이 견본과 <span class="term" data-term="OKLCH" data-desc="사람 눈에 비슷한 밝기 차이가 비슷하게 보이도록 설계된 색 표기 방식이에요. 밝기, 채도, 색상 세 값으로 색을 적어요." data-g="7">OKLCH(OK Lightness Chroma Hue)</span> 값으로 나와요. 오른쪽 위 '원문'을 누르면 파일 원문도 보여요.</p>
+<figure>
+  <img src="assets/frame-0637.webp" alt="DESIGN.md 패널이 열려 Line, Text, Heading 색 견본과 각각의 OKLCH 값이 표시되고, 오른쪽 위에 미리보기와 원문 탭이 있는 장면">
+  <figcaption>사이트의 디자인 규칙을 브라우저에서 바로 확인하면서 지시를 쓸 수 있어요. <a href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=397s" target="_blank" rel="noopener">영상 06:37에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Impeccable은 색·글꼴 같은 시각 규칙을 <code>DESIGN.md</code>에 따로 적어 둬요. 파일이 없다면 <code>/impeccable document</code>로 지금 코드에서 뽑아 만들 수 있어요. 공식 Live 안내에는 요소에 코멘트를 달거나 직접 표시를 그려 보내는 기능도 소개돼 있어요.</p>
+  <p class="cite">출처: <a href="https://github.com/pbakaus/impeccable" target="_blank" rel="noopener">Impeccable GitHub 저장소</a> · <a href="https://impeccable.style/live-mode" target="_blank" rel="noopener">Impeccable 공식 사이트 — Live Mode</a></p>
+</aside>
+<h3>바를 내 마음대로 고쳐 쓰기</h3>
+<p>Impeccable에는 한국어 버전이 없어서 설치하면 바가 영어로 나올 거라고 해요. 하지만 Live는 결국 내 PC에서 띄우는 서버예요. 그래서 기능을 내가 다 고칠 수 있어요. 오른쪽 손그림이 그 생각이에요. 위는 'localhost / My PC', 아래는 영어 Pick 바가 Custom을 거쳐 한국어 '집기' 바가 되고, 펜으로 색칠하는 기능까지 붙는 그림이에요.</p>
+<figure>
+  <img src="assets/frame-0731.webp" alt="오른쪽 손그림에 localhost가 떠 있는 노트북과 My PC, Pick 바에서 Custom 화살표를 거쳐 집기 바로 바뀌고 펜으로 낙서하는 원이 그려진 장면">
+  <figcaption>발표자는 처음부터 만들기보다 잘 만든 Live를 가져와 고쳐 쓰는 게 낫다고 봐요. <a href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=451s" target="_blank" rel="noopener">영상 07:31에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=458s" target="_blank" rel="noopener">07:38</a>
+  <h2>디자인 말고 글과 기능도 고쳐요</h2>
+<p>발표자가 가장 크게 본 쓰임새는 디자인 바깥이에요. 그는 HTML로 글을 많이 써요. 보고서 같은 문서에 피드백을 줄 때도 Live를 켜고 텍스트를 골라 고치라고 하면 돼요. 전에는 디자인 요소만 생각했지, 글 내용을 고치는 데 쓸 생각은 아예 못 했다고 해요.</p>
+<figure>
+  <img src="assets/frame-0802.webp" alt="오른쪽 손그림에 집기 바 아래로 점선이 갈라져 Design 디자인, HTML 보고서, Copy 문구 세 칸과 아직 비어 있는 물음표 칸이 그려진 장면">
+  <figcaption>하나의 집기 바가 디자인, HTML 보고서, 문구 수정으로 뻗어 나가요. 물음표 칸은 아직 떠올리지 못한 쓰임새예요. <a href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=482s" target="_blank" rel="noopener">영상 08:02에서 보기</a></figcaption>
+</figure>
+<h3>예: 소제목에 앵커 달기</h3>
+<p>발표자는 글 상세 페이지의 소제목을 클릭해 봤어요. 원래 소제목에는 그 위치로 바로 가는 앵커 주소가 있어야 하는데, 이 블로그엔 없었어요. 그래서 "앵커 URL로 바로 갈 수 있도록 수정해 줘"라고 시안 1개로 시켰어요. 디자인이 아니라 사이트 기능을 바꾸는 요청이에요.</p>
+<p>잠시 뒤 앵커가 들어갔어요. 발표자가 누르자 아래 화면처럼 '에이전트에게 판단을 맡기면' 소제목 위치로 바로 이동했어요.</p>
+<figure>
+  <img src="assets/frame-0926.webp" alt="블로그 글 본문이 '에이전트에게 판단을 맡기면' 소제목 위치로 스크롤된 화면">
+  <figcaption>소제목 앵커가 생겨서 그 위치의 주소로 바로 갈 수 있게 됐어요. <a href="https://www.youtube.com/watch?v=yep-NVI-Mfs&amp;t=566s" target="_blank" rel="noopener">영상 09:26에서 보기</a></figcaption>
+</figure>
+<p>발표자는 Impeccable을 안 지 오래됐지만, 활용은 창의적으로 해야 한다는 걸 이번에 알았다고 해요. Be Ambitious로 목표를 크게 잡고 나서야 이 도구의 잠재력이 보였다는 거예요.</p>
+<blockquote>
+  <p>단순히 이거 디자인 수정하는 것뿐만 아니고 제가 작성된 보고서 같은 거 있잖아요. (…) 그 텍스트를 딱 선택해 가지고 이제 수정을 시킬 수가 있게 되기 때문에</p>
+  <cite>— 영상 07:37</cite>
+</blockquote>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 저장소는 Live가 로컬 코드에서만 동작하고 배포된 사이트는 고치지 않는다고 밝혀요. 또 문구 수정을 적용할 때 <code>package.json</code>에 등록된 검증 스크립트를 셸에서 실행할 수 있으니, 그 스크립트를 먼저 확인하라고 권해요. 글을 고치는 데 많이 쓸 계획이라면 알아둘 부분이에요.</p>
+  <p class="cite">출처: <a href="https://github.com/pbakaus/impeccable" target="_blank" rel="noopener">Impeccable GitHub 저장소</a></p>
+</aside>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 이름이 여러 가지로 받아적혔어요. 화면 자막과 터미널을 보고 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>임팩커블, 임팩커벌, 임팩컵블, 임팩 커버, 임팩블</td><td>Impeccable</td><td>디자인 스킬 이름</td></tr>
+      <tr><td>라이브 에디</td><td>Live Edit</td><td>화면 자막 표기. 공식 이름은 Live Mode</td></tr>
+      <tr><td>비엔비셔스, 비 Ă비스</td><td>Be Ambitious</td><td>발표자가 이전 영상에서 소개한 스킬</td></tr>
+      <tr><td>쉐이</td><td>셸(shell)</td><td>백그라운드 셸</td></tr>
+      <tr><td>픽</td><td>Pick</td><td>한국어 바에서는 &#x27;집기&#x27;</td></tr>
+      <tr><td>베리언트</td><td>Variants</td><td>시안 개수</td></tr>
+      <tr><td>자유 지실</td><td>자유 지시</td><td>액션 메뉴의 첫 칸</td></tr>
+      <tr><td>디자인점m, 디자인점 MD</td><td>DESIGN.md</td><td></td></tr>
+      <tr><td>생선성</td><td>생산성</td><td></td></tr>
+      <tr><td>코덱스</td><td>Codex</td><td>이미지 생성에 쓴 도구</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-5"><dt>개발 서버<span class="en">Dev server</span></dt><dd>만들고 있는 사이트를 내 컴퓨터에서 띄워 보는 서버예요. 코드를 고치면 화면에 바로 반영돼서 Live가 이 위에 붙어요.</dd></div>
+    <div class="g" id="g-3"><dt>세션<span class="en">Session</span></dt><dd>터미널에서 열어 둔 Claude Code 대화 하나예요. Live 서버는 처음 /impeccable live를 실행한 바로 그 세션과 이어져요.</dd></div>
+    <div class="g" id="g-2"><dt>셸<span class="en">Shell</span></dt><dd>명령을 실행하는 터미널 작업 공간이에요. 여기선 Claude Code가 뒤에서 띄워 둔 백그라운드 셸에서 서버가 계속 돌아요.</dd></div>
+    <div class="g" id="g-1"><dt>스킬<span class="en">Skill</span></dt><dd>Claude Code에 특정 작업 방법을 가르쳐 두는 지침 묶음이에요. 설치해 두면 슬래시 명령으로 불러 쓸 수 있어요.</dd></div>
+    <div class="g" id="g-4"><dt>시안<span class="en">Variant</span></dt><dd>같은 지시로 만든 여러 결과물 중 하나예요. Live에선 1~4개를 받아 넘겨 보고 하나를 골라 적용해요.</dd></div>
+    <div class="g" id="g-6"><dt>앵커<span class="en">Anchor link</span></dt><dd>페이지 안의 특정 위치로 바로 가게 하는 주소예요. 주소 끝에 #소제목 같은 표시가 붙어서, 공유하면 그 문단부터 열려요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>HTML</dt><dd>HyperText Markup Language</dd></div>
+    <div class="g" id="g-7"><dt>OKLCH<span class="en">OK Lightness Chroma Hue</span></dt><dd>사람 눈에 비슷한 밝기 차이가 비슷하게 보이도록 설계된 색 표기 방식이에요. 밝기, 채도, 색상 세 값으로 색을 적어요.</dd></div>
+    <div class="g"><dt>PC</dt><dd>Personal Computer</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=yep-NVI-Mfs" target="_blank" rel="noopener">원본 영상 — StefanCho</a></li>
+    <li id="src-2"><a href="https://github.com/pbakaus/impeccable" target="_blank" rel="noopener">Impeccable GitHub 저장소 (pbakaus/impeccable)</a></li>
+    <li id="src-3"><a href="https://impeccable.style/live-mode" target="_blank" rel="noopener">Impeccable 공식 사이트 — Live Mode</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 28일에 이 영상을 보고 정리했어요. 원본은 StefanCho 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Google의 코끼리·금붕어 모델(EGM)로 Claude Code 기능 설계하기</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Google의 코끼리·금붕어 모델(EGM)로 Claude Code 기능 설계하기</h1>
+  <p class="lede">계획을 쓴 에이전트 말고, 대화를 모르는 에이전트에게 검토를 맡겨요</p>
+  <div class="meta">
+    <span>AI LABS</span><span class="dot">·</span>
+    <span>영상 15:54</span><span class="dot">·</span>
+    <span>읽는 데 약 19분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=xxf6D9jynFw" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>코끼리는 프로젝트와 대화를 다 아는 메인 에이전트로 계획을 쓰고, 금붕어는 계획과 코드만 보는 <span class="term" data-term="서브에이전트" data-en="Subagent" data-desc="메인 에이전트가 일을 떼어 맡기는 별도 에이전트예요. 자기 컨텍스트에서 새로 시작하니, 메인 대화의 내용에 영향을 받지 않아요." data-g="2">서브에이전트</span>로 그 계획을 뜯어봐요.</li>
+    <li><span class="term" data-term="플랜 모드" data-en="Plan mode" data-desc="Claude Code 같은 에이전트가 코드를 고치기 전에 계획부터 세워 보여 주는 모드예요. 같은 대화 안에서 계획하고 검토해요." data-g="4">플랜 모드</span>는 같은 대화 안에서 검토해서 자기 생각에 동의하고 끝나요. 금붕어를 대화에서 떼어 놓는 게 EGM(Elephant-Goldfish Model)의 핵심이에요.</li>
+    <li>순서는 bootstrap → brainstorm → draft → review(5라운드)이고, 결과는 <code>docs/designs/</code>의 설계 파일 하나예요.</li>
+    <li>기능을 만든 뒤에는 drift report로 README와 코드가 어긋난 곳을 찾아요. 데모에서는 실제 버그도 나왔어요.</li>
+    <li>최종 결정은 사람이 해요. 한 번에 끝나는 작은 수정에는 쓰지 말라고 해요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">EGM은 무엇인가요</a></li>
+    <li><a href="#s2">코끼리와 금붕어, 그리고 사람</a></li>
+    <li><a href="#s3">설치하고 CLAUDE.md 한 줄 고치기</a></li>
+    <li><a href="#s4">bootstrap: 코끼리에게 앱을 알려 주기</a></li>
+    <li><a href="#s5">brainstorm과 draft: 아이디어에서 설계 문서까지</a></li>
+    <li><a href="#s6">review: 금붕어 다섯 라운드</a></li>
+    <li><a href="#s7">drift report와 언제 쓸지</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>EGM은 무엇인가요</h2>
+<p>보통 에이전트에게 만들라고 하면 바로 만들어요. 문제는 다 만든 뒤에야 드러나죠. EGM은 순서를 뒤집어요. 만들기 전에 계획부터 여러 에이전트에게 뜯기게 해요.</p>
+<p>영상은 이것을 Google식 <span class="term" data-term="스펙 주도 개발" data-en="Spec-driven development" data-desc="코드를 쓰기 전에 무엇을 어떻게 만들지 명세(스펙)부터 완성하고, 에이전트가 그 명세대로 구현하게 하는 방식이에요. 구현 중 추측을 줄이는 게 목적이에요." data-g="1">스펙 주도 개발</span>이라고 소개해요. 앱의 완전한 계획을 먼저 쓰고, 에이전트는 그 계획만 따라 지어요. 계획에 다 적혀 있으니 구현하는 동안 추측할 게 없어요.</p>
+<p>바탕이 된 글은 Dave Rensin의 Medium 글이에요. 화면에 제목과 함께 'Google engineers' 배지가 보여요.</p>
+<figure>
+  <img src="assets/frame-0103.webp" alt="Medium에 올라온 Dave Rensin의 글 'Elephants, Goldfish and the New Golden Age of Software Engineering' 첫 화면">
+  <figcaption>EGM이라는 이름은 이 글의 코끼리와 금붕어 비유에서 왔어요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=63s" target="_blank" rel="noopener">영상 01:03에서 보기</a></figcaption>
+</figure>
+<p>결과물은 계획 문서 하나로 끝나지 않아요. 왼쪽은 계획(Plan), 오른쪽은 무엇을 만들지(Build)와 어떻게 확인할지(Test)를 짝지은 체크리스트예요. 아래 진행 막대가 차면 기능이 끝난 거예요.</p>
+<figure>
+  <img src="assets/frame-0137.webp" alt="Plan 문서 카드 옆에 Build와 Test 두 열로 된 Checklist 카드, 항목마다 초록 체크와 아래 진행 막대">
+  <figcaption>만들 것과 테스트할 것을 한 줄씩 짝지어 두니, 다 됐는지 판단할 기준이 생겨요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=97s" target="_blank" rel="noopener">영상 01:37에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>저장소는 <code>google/elephant-goldfish-model</code>이고 Apache 2.0 라이선스예요. README 맨 아래에는 'Google 공식 지원 제품은 아니다'라는 문구가 있어요. 영상은 'Google의 방법'이라고 부르지만, 정확히는 Google 엔지니어들이 만든 오픈소스 플러그인이에요.</p>
+  <p class="cite">출처: <a href="https://github.com/google/elephant-goldfish-model" target="_blank" rel="noopener">google/elephant-goldfish-model README</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=97s" target="_blank" rel="noopener">01:37</a>
+  <h2>코끼리와 금붕어, 그리고 사람</h2>
+<p>EGM은 역할을 셋으로 나눠요. 코끼리, 금붕어, 그리고 사람이에요. 핵심은 각자 무엇을 볼 수 있는지가 다르다는 점이에요.</p>
+<h3>코끼리는 다 기억하고, 금붕어는 아무것도 기억하지 않아요</h3>
+<p>코끼리는 프로젝트의 역사, 앱이 짜인 방식, 누가 어떻게 쓰는지를 알아요. 사람과 아이디어를 길게 이야기하고, 실패할 지점을 찾고, 계획 파일을 써요. 금붕어는 <span class="term" data-term="컨텍스트" data-en="Context" data-desc="모델이 한 번에 보고 있는 대화·파일·지시의 총량이에요. 이게 보고서로 차면 중요한 내용이 밀려나요." data-g="3">컨텍스트</span>가 비어 있는 서브에이전트예요. 계획과 앱 코드만 보고, 앞선 대화는 보지 못해요.</p>
+<p>아래 그림은 둘이 볼 수 있는 범위를 나란히 놓은 거예요. 금붕어 쪽에서 대화 칸이 빠져 있는 게 전부예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 220" role="img" aria-label="코끼리는 대화, 프로젝트 이력, 계획, 코드를 모두 보고 금붕어는 계획과 코드만 본다">
+    <rect class="box c1 cell" x="10" y="20" width="300" height="180" rx="12"/>
+    <text x="160" y="46" text-anchor="middle">코끼리 (메인 에이전트)</text>
+    <rect class="box accent" x="30" y="62" width="120" height="50" rx="8"/><text x="90" y="92" text-anchor="middle">사람과의 대화</text>
+    <rect class="box" x="170" y="62" width="120" height="50" rx="8"/><text x="230" y="92" text-anchor="middle">역사·구조·사용자</text>
+    <rect class="box" x="30" y="130" width="120" height="50" rx="8"/><text x="90" y="160" text-anchor="middle">계획 문서</text>
+    <rect class="box" x="170" y="130" width="120" height="50" rx="8"/><text x="230" y="160" text-anchor="middle">앱 코드</text>
+    <rect class="box c2 cell" x="330" y="20" width="300" height="180" rx="12"/>
+    <text x="480" y="46" text-anchor="middle">금붕어 (서브에이전트)</text>
+    <rect class="box dim" x="350" y="62" width="120" height="50" rx="8"/><text x="410" y="92" text-anchor="middle" class="sub">대화 못 봄</text>
+    <rect class="box dim" x="490" y="62" width="120" height="50" rx="8"/><text x="550" y="92" text-anchor="middle" class="sub">기억 없음</text>
+    <rect class="box" x="350" y="130" width="120" height="50" rx="8"/><text x="410" y="160" text-anchor="middle">계획 문서</text>
+    <rect class="box" x="490" y="130" width="120" height="50" rx="8"/><text x="550" y="160" text-anchor="middle">앱 코드</text>
+  </svg>
+  <figcaption>둘이 같은 문서를 봐도, 금붕어는 '왜 이렇게 정했는지' 설득당한 적이 없어서 빈틈을 그대로 봐요.</figcaption>
+</figure>
+<p>영상 화면도 같은 이야기를 해요. 주황색 금붕어에서 점선이 plan.md와 Your app 두 카드로만 이어져요.</p>
+<figure>
+  <img src="assets/frame-0219.webp" alt="주황색 금붕어 아이콘에서 점선이 plan.md 카드와 Your app 코드 카드로 이어지는 그림">
+  <figcaption>금붕어의 입력은 계획과 코드 두 가지뿐이에요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=139s" target="_blank" rel="noopener">영상 02:19에서 보기</a></figcaption>
+</figure>
+<p>금붕어는 한 마리가 아니에요. 각자 다른 각도로 계획을 봐요. 영상이 말로 든 예는 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>금붕어가 보는 각도</th><th>묻는 질문</th></tr></thead>
+    <tbody>
+      <tr><td>더 단순한 길</td><td>계획보다 쉬운 방법이 있나? 앱에 이미 같은 일을 하는 게 있나?</td></tr>
+      <tr><td>처음 읽는 사람</td><td>앱을 전혀 모르는 사람이 읽어도 말이 되나?</td></tr>
+      <tr><td>많은 사용자</td><td>사람이 한꺼번에 몰려 쓸 때 생기는 문제는 없나?</td></tr>
+      <tr><td>구현 준비</td><td>모델이 추측 없이 바로 만들 수 있을 만큼 명확한가?</td></tr>
+      <tr><td>문서 자체</td><td>계획이 어떻게 쓰이고 구성됐는가? (두어 마리가 더 봐요)</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>코끼리와 금붕어가 둘 다 동의한 최종 계획이 나오면, 다른 에이전트들이 그 계획을 출발점으로 삼아 일해요. 화면 왼쪽 두 역할이 가운데 Plan에 체크를 받고, 오른쪽 에이전트 셋이 그걸 받아 가요.</p>
+<figure>
+  <img src="assets/frame-0302.webp" alt="왼쪽 Elephant와 Goldfish 카드가 가운데 Plan 카드로 이어지고, Plan에 두 역할의 체크가 있으며 오른쪽 에이전트 셋이 진행 막대와 함께 작업하는 그림">
+  <figcaption>Plan 카드 안의 코끼리·금붕어 체크 두 개가 '둘 다 동의했다'는 표시예요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=182s" target="_blank" rel="noopener">영상 03:02에서 보기</a></figcaption>
+</figure>
+<h3>플랜 모드로는 왜 부족할까요</h3>
+<p>영상은 플랜 모드의 한계를 두 가지로 짚어요. 화면은 그중 두 번째를 보여 줘요. 하나의 Context window 안에 사람 말, plan.md, 그리고 'check the plan' 요청이 다 들어 있어요. 오른쪽 금붕어는 그 창 밖에 있어요.</p>
+<figure>
+  <img src="assets/frame-0342.webp" alt="Context window라는 창 안에 사람 메시지, plan.md, check the plan 요청과 답이 모두 쌓여 있고 창 밖 오른쪽에 금붕어 아이콘이 있는 그림">
+  <figcaption>같은 창 안에서 검토하면 계획을 쓴 맥락이 그대로 남아 있어서, 검토가 자기 동의로 끝나요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=222s" target="_blank" rel="noopener">영상 03:42에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th></th><th>일반 플랜 모드</th><th>EGM</th></tr></thead>
+    <tbody>
+      <tr><td>계획 쓰는 법</td><td>아이디어 설명 → 큰 질문 몇 개 → 계획</td><td>문제가 분명해질 때까지 질문하고 여러 각도로 분석</td></tr>
+      <tr><td>검토하는 쪽</td><td>같은 대화 속 같은 에이전트</td><td>대화를 못 본 금붕어들</td></tr>
+      <tr><td>남는 문제</td><td>빈틈이 나중에 드러나 다시 고쳐야 해요</td><td>빈틈을 만들기 전에 찾아요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>영상은 이 설계의 이유를 Google의 진단으로 설명해요.</p>
+<blockquote>
+  <p>Google says the main problem with models is that they stick to their own wrong ideas and agree with what you want instead of catching mistakes.</p>
+  <p>Google은 모델의 가장 큰 문제가 자기 틀린 생각을 고집하고, 실수를 잡기보다 사용자가 원하는 쪽에 동의하는 것이라고 봐요.</p>
+  <cite>— 영상 03:49</cite>
+</blockquote>
+<h3>세 번째 역할은 사람이에요</h3>
+<p>금붕어들은 의견을 많이 내요. 일부러 그렇게 만들었어요. 화면 아래 You가 금붕어 의견 카드들을 왼쪽 Keep과 오른쪽 Ignore로 나눠요. 모델은 아이디어를 내고 검토하지만, 최종 결정은 사람이 해요.</p>
+<figure>
+  <img src="assets/frame-0410.webp" alt="금붕어 의견 카드 하나를 가운데 두고 왼쪽에 Keep, 오른쪽에 Ignore 표시가 있으며 아래에 You 버튼이 있는 그림">
+  <figcaption>의견이 많은 건 결함이 아니라 설계예요. 쓸 것만 골라 남기면 돼요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=250s" target="_blank" rel="noopener">영상 04:10에서 보기</a></figcaption>
+</figure>
+<p>금붕어들은 '좋은 계획이 갖춰야 할 것'을 적은 규칙을 체크리스트처럼 써서 점수를 매겨요. 또 검토는 Review 서브에이전트 하나가 다른 서브에이전트 여러 개를 띄우는 구조예요. 화면 왼쪽 금붕어 여섯이 가운데 Review로 모이고, 오른쪽 Main agent의 컨텍스트 사용량은 84%에서 12%로 줄어 있어요.</p>
+<figure>
+  <img src="assets/frame-0430.webp" alt="왼쪽 금붕어 아이콘 여섯 개가 가운데 Review 카드로 모이고, 오른쪽 위 Main agent 카드에 Context 84%가 지워지고 12%로 표시되며 아래에 You 카드가 있는 그림">
+  <figcaption>보고서 여섯 개를 Review가 하나로 합쳐 주니, 메인 에이전트와 사람은 합친 보고서 하나만 보면 돼요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=270s" target="_blank" rel="noopener">영상 04:30에서 보기</a></figcaption>
+</figure>
+<p>기능을 다 만든 뒤에도 계획은 쓸모가 있어요. drift라는 점검이 계획과 앱을 비교해서 어긋난 곳을 모두 짚어 줘요. 이건 마지막 섹션에서 데모로 봐요.</p>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=294s" target="_blank" rel="noopener">04:54</a>
+  <h2>설치하고 CLAUDE.md 한 줄 고치기</h2>
+<p>EGM은 Claude Code 전용이 아니에요. 저장소 README의 Install 표에 에이전트별 명령이 따로 있어요. 맨 위 'Any AI agent' 줄은 에이전트에게 저장소 링크를 주며 설치해 달라고 하는 방식이고, 그 아래로 Antigravity, Claude Code, Codex 줄이 있어요.</p>
+<figure>
+  <img src="assets/frame-0504.webp" alt="README의 Install 표. Harness 열에 Any AI agent, Antigravity, Claude Code, Codex, Claude Cowork/ChatGPT가 있고 Install 열에 각 설치 명령이 있다">
+  <figcaption>Claude Code 줄은 마켓플레이스를 추가한 뒤 <code>egm@egm</code> 플러그인을 설치하는 두 명령이에요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=304s" target="_blank" rel="noopener">영상 05:04에서 보기</a></figcaption>
+</figure>
+<p>영상은 웹사이트의 설치 프롬프트를 썼어요. 'install' 뒤에 저장소 링크를 붙인 한 줄이에요. 이걸 에이전트에 보내면 저장소를 내려받아 프로젝트에 설정까지 해 줘요. 다 되면 <code>.claude</code> 폴더 안에 세 폴더가 생겨요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>폴더</th><th>들어 있는 것</th><th>역할</th></tr></thead>
+    <tbody>
+      <tr><td><code>agents</code></td><td>방법론이 쓰는 에이전트 정의</td><td>금붕어</td></tr>
+      <tr><td><code>egm</code></td><td>저장소 전체 사본</td><td>참고 자료</td></tr>
+      <tr><td><code>skills</code></td><td>단계마다 실행하는 스킬 (brainstorm, review 등)</td><td>코끼리</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>그중 중심은 brainstorm 스킬이에요. 화면의 <code>SKILL.md</code> 설명을 보면 'Interactive ideation', 즉 대화로 아이디어를 다듬는 스킬이에요. 설익은 개념을 명확한 질문으로 구조화된 가설로 바꾸고, 사람이 검토할 요약을 만든 뒤 <code>/egm-draft</code>로 넘겨요.</p>
+<figure>
+  <img src="assets/frame-0554.webp" alt="에디터에 열린 .claude/skills/egm-brainstorm/SKILL.md. name egm-brainstorm, license Apache-2.0, description에 Interactive ideation and brainstorming skill이 강조돼 있다">
+  <figcaption>brainstorm은 질문을 이어 가며 문제가 분명해질 때까지 멈추지 않아요. 옆의 review 스킬이 금붕어 검토를 띄워요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=354s" target="_blank" rel="noopener">영상 05:54에서 보기</a></figcaption>
+</figure>
+<h3><code>CLAUDE.md</code>의 틀린 한 줄</h3>
+<p>Claude Code로 설치하면 이 도구용 지시를 <code>CLAUDE.md</code>에도 적어요. 영상은 그 파일 끝부분의 한 줄을 꼭 확인하라고 해요. 11번 줄에 'Claude Code 서브에이전트는 자기 서브에이전트를 띄울 수 없으니, synthesizer 대신 직접 띄우라'고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0614.webp" alt="CLAUDE.md의 Elephant-Goldfish Model 섹션. 11번 줄에 Claude Code subagents cannot spawn their own subagents, so use direct dispatch instead of the synthesizer라고 적혀 있다">
+  <figcaption>옛 Claude Code 기억으로 쓴 줄이에요. 이대로 두면 금붕어들을 묶어 주는 단계가 빠져요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=374s" target="_blank" rel="noopener">영상 06:14에서 보기</a></figcaption>
+</figure>
+<p>물어보니 Claude는 저장소가 시킨 게 아니라 자기가 직접 쓴 줄이라고 답했어요. 서브에이전트도 서브에이전트를 띄울 수 있다고 알려 주자, 직접 테스트한 뒤 그 줄을 바꿨어요. 아래 화면에서 'Test nested subagent spawning' 에이전트가 끝났고, 빨간 11번 줄이 초록 줄 'Subagents can nest, so hierarchical dispatch through egm-synthesizer works'로 바뀌었어요.</p>
+<figure>
+  <img src="assets/frame-0644.webp" alt="터미널에서 Test nested subagent spawning 에이전트가 끝난 뒤 CLAUDE.md 11번 줄이 cannot spawn에서 Subagents can nest로 바뀐 diff">
+  <figcaption>이제 금붕어 검토가 Google이 의도한 계층 구조대로 돌아요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=404s" target="_blank" rel="noopener">영상 06:44에서 보기</a></figcaption>
+</figure>
+<p>저장소가 자주 바뀌니 이 문제를 안 만날 수도 있어요. 그래도 <code>CLAUDE.md</code>에 비슷한 줄이 보이면 고쳐 달라고 하세요. 아니면 웹사이트에서 쓰는 에이전트 탭(Claude Code, Codex, Antigravity)을 골라 전용 명령으로 설치하면 이런 충돌이 없어요.</p>
+<figure>
+  <img src="assets/frame-0704.webp" alt="웹사이트의 설치 상자. Claude Code, Codex, Antigravity 탭 중 Claude Code가 선택돼 있고 claude plugin marketplace add와 claude plugin install egm@egm 두 줄이 보인다">
+  <figcaption>범용 프롬프트 대신 이 탭의 명령을 쓰면 해당 에이전트에 맞게 바로 설치돼요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=424s" target="_blank" rel="noopener">영상 07:04에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Claude Code 공식 문서는 지금 서브에이전트가 기본으로 자기 서브에이전트를 띄울 수 있다고 적고 있어요. 메인 대화 아래 세 층까지이고, <code>CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH</code>로 깊이를 바꿀 수 있어요. 1로 두면 중첩이 꺼져요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code 문서 — Subagents</a></p>
+</aside>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>README는 설치 뒤 새 세션을 시작하라고 해요. Claude Code에서는 스킬 이름 앞에 <code>/egm:</code>을 붙여 <code>/egm:egm-brainstorm</code>처럼 불러요. 또 brainstorm과 review는 새 서브에이전트를 만들 수 있는 세션이어야 하고, 만들 수 없으면 EGM이 검토를 멈춰요.</p>
+  <p class="cite">출처: <a href="https://github.com/google/elephant-goldfish-model" target="_blank" rel="noopener">google/elephant-goldfish-model README</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=428s" target="_blank" rel="noopener">07:08</a>
+  <h2>bootstrap: 코끼리에게 앱을 알려 주기</h2>
+<p>데모 대상은 이미 대부분 만들어 둔 패션 마켓 앱이에요. 화면의 Threadmark는 여러 독립 옷가게를 한 장바구니로 묶는 앱이에요. 여기에 판매자용 페이지를 하나 더하려 해요. 사이즈별로 무엇이 팔리고, 무엇이 품절됐고, 언제 재입고해야 하는지 보여 주는 페이지예요.</p>
+<figure>
+  <img src="assets/frame-0708.webp" alt="Threadmark 앱 첫 화면. Independent clothing shops, all in one bag이라는 큰 제목과 모델 사진들, 상품 26개와 독립 상점 5곳 표시">
+  <figcaption>새 프로젝트가 아니라 이미 굴러가는 앱에 기능을 얹는 상황이에요. 그래서 코끼리가 앱부터 알아야 해요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=428s" target="_blank" rel="noopener">영상 07:08에서 보기</a></figcaption>
+</figure>
+<h3>폴더마다 README를 써요</h3>
+<p>워크플로는 brainstorm부터지만, 그 전에 <code>egm-bootstrap</code>을 돌려요. 코끼리가 새 기능을 계획하기 전에 앱이 어떻게 돌아가는지 알려 주는 단계예요. 폴더를 하나씩 돌며 그 폴더 코드가 하는 일과 지켜야 할 규칙을 README로 써요.</p>
+<p>폴더가 15개를 넘으면 먼저 물어봐요. 터미널의 'User answered Claude's questions' 아래에 '대상 폴더 트리에 하위 폴더가 15개 넘게 있다, 전체를 bootstrap할까?'라는 질문과 'Yes, proceed' 답이 보여요.</p>
+<figure>
+  <img src="assets/frame-0728.webp" alt="터미널에서 /egm-bootstrap 실행 뒤 폴더 목록을 훑고, The target directory tree contains more than 15 subdirectories 질문에 Yes, proceed로 답한 기록">
+  <figcaption>폴더가 많으면 서브에이전트도 그만큼 많이 들어서 확인을 받아요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=448s" target="_blank" rel="noopener">영상 07:28에서 보기</a></figcaption>
+</figure>
+<p>계속하라고 하자 서브에이전트들이 앱의 여러 부분을 나눠 맡았어요. 화면 오른쪽 위 Subagents 18이 동시에 띄운 수이고, 가운데 확인창은 'README 24개를 쓸까요?'라고 물어요.</p>
+<figure>
+  <img src="assets/frame-0758.webp" alt="폴더 아이콘 격자 위에 Subagents 18 표시와 Continue? Write 24 READMEs 확인창, No와 Yes 버튼">
+  <figcaption>확인창은 24개라고 하지만, 영상에서 말한 최종 결과는 새 README 28개예요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=478s" target="_blank" rel="noopener">영상 07:58에서 보기</a></figcaption>
+</figure>
+<p>데모에서는 README 28개를 새로 쓰고, 원래 있던 루트 README도 고쳤어요. 루트 README에 새 섹션이 생겨요. 앱의 각 부분이 하는 일, 항상 지켜야 할 <span class="term" data-term="불변 규칙" data-en="Invariant" data-desc="앱이 어떤 상태든 항상 참이어야 하는 규칙이에요. 예를 들어 &#x27;판매된 상품은 지울 수 없다&#x27; 같은 것이고, 이걸 어기면 버그예요." data-g="5">불변 규칙</span>, 실행할 때 바뀌는 것이 정리돼요. 화면의 'Local Interface &amp; Invariants' 섹션이 그 예예요. 로그인 쿠키가 없으면 어디로 보내는지, 그 검사가 어디까지만 믿을 만한지까지 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0818.webp" alt="루트 README의 Local Interface &amp; Invariants 섹션. proxy.ts가 tm_session 쿠키가 없으면 로그인으로 보내는 경로들과, 실제 인증은 requireUser에서 한다는 설명">
+  <figcaption>'겉으로 막는 것'과 '진짜 인증'을 구분해 적어 두니, 나중에 계획을 세울 때 규칙을 어길 일이 줄어요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=498s" target="_blank" rel="noopener">영상 08:18에서 보기</a></figcaption>
+</figure>
+<p>코드가 있는 폴더는 모두 README를 받아요. 폴더의 목적, 안에 든 것, 각 부분이 하는 일, 부분끼리 어떻게 이어지는지가 담겨요. 코드가 없는 폴더는 건너뛰어요. 이 앱을 만들 때 쓴 계획을 모아 둔 specs 폴더가 그랬어요.</p>
+<h3>README만으로는 Claude가 읽지 않아요</h3>
+<p>문제가 하나 있어요. README는 사람이 읽으라고 쓰는 파일이라, 에이전트는 시키지 않으면 따로 읽지 않아요. bootstrap이 README만 쓰면 Claude Code는 그걸 모르고 지나가요. 영상은 해결책을 셋 들어요.</p>
+<ol class="steps">
+  <li><b>README 옆마다 <code>CLAUDE.md</code>를 둬요</b> — 그 파일에 README도 읽으라고 써요. Codex를 쓰면 <code>AGENTS.md</code>를 둬요.</li>
+  <li><b>bootstrap을 다시 돌려요</b> — 처음부터 <code>CLAUDE.md</code>도 만들라는 설정을 더해서요.</li>
+  <li><b>루트 <code>CLAUDE.md</code>에 한 줄 넣어요</b> — 작업하는 폴더마다 README를 읽으라고요.</li>
+</ol>
+<p>영상은 첫 번째를 골랐어요. 아래 그림이 그 결과예요. 왼쪽 <code>CLAUDE.md</code>의 'Read each folder's README.md' 한 줄에서 선이 checkout, products, sellers, sizes 폴더의 README로 뻗어 나가요.</p>
+<figure>
+  <img src="assets/frame-0918.webp" alt="왼쪽 CLAUDE.md 카드의 Read each folder's README.md 줄에서 오른쪽 checkout, products, sellers, sizes 폴더의 README.md로 선이 이어지는 그림">
+  <figcaption><code>CLAUDE.md</code>는 Claude Code가 알아서 읽으니, 거기서 README로 길을 터 주는 거예요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=558s" target="_blank" rel="noopener">영상 09:18에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 안내에 따르면 bootstrap은 아래에서 위로 요약해요. 맨 끝 폴더마다 README를 쓰고, 상위 폴더 README는 하위 README를 요약해 만들고, 마지막에 루트 README에 시스템 전체 지도를 정리해요. 결과물은 사람이 한 번 검토하라고 해요. 설계 문서가 이미 코드를 다 참조하고 있다면 README가 필요 없을 수도 있다고 적혀 있어요.</p>
+  <p class="cite">출처: <a href="https://github.com/google/elephant-goldfish-model/blob/main/docs/getting_started.md" target="_blank" rel="noopener">EGM Getting started — Bootstrapping</a></p>
+</aside>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=618s" target="_blank" rel="noopener">10:18</a>
+  <h2>brainstorm과 draft: 아이디어에서 설계 문서까지</h2>
+<p>bootstrap이 끝나면 본격적으로 기능을 설계해요. 단계는 GitHub 저장소에 순서대로 나와 있고, 하나씩 돌리면 돼요. 영상 전체에 흩어진 단계를 한 줄로 모으면 이래요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["bootstrap<br/>폴더별 README"] --> B["brainstorm<br/>질문 + 금붕어 6"]
+  B --> C["concepts_brief.md"]
+  C --> D["draft<br/>부분마다 승인"]
+  D --> E["review<br/>금붕어 5라운드"]
+  E --> F["docs/designs/<br/>Proposed"]
+  F --> G["새 대화에서 구현"]
+  G --> H["drift report"]
+</pre>
+  <figcaption>사람이 승인하는 지점이 brainstorm 끝, draft의 부분마다, review 라운드마다 있어요. 금붕어는 brainstorm과 review 두 군데서 들어와요.</figcaption>
+</figure>
+<h3>brainstorm: 질문을 다 받아 내요</h3>
+<p><code>egm-brainstorm</code>에 추가할 기능을 말하면 시작해요. 데모에서는 이 기능의 계획이 이미 있었는데, 그 계획의 문제를 모두 짚은 뒤 질문을 잔뜩 했어요. 계획이 없으면 질문이 더 많아져요. 다 답하면 기능을 어떻게 만들지 최선의 가설을 내놓아요.</p>
+<p>화면 위쪽 상자가 그 가설이에요. 핵심은 판매자용 <code>/sell/insights</code> 페이지에 사이즈별 판매량, 품절 기간, 재입고 제안을 보여 주는 거예요. 아래에 선택지가 둘 있어요. 1번 'Review with Goldfishes'는 이 가설을 고정하고 금붕어 여섯 관점으로 검토해요. 2번 'Clarify more in chat'은 대화로 더 다듬어요.</p>
+<figure>
+  <img src="assets/frame-1048.webp" alt="터미널의 Readiness 상자에 Anchored feature hypothesis로 /sell/insights 페이지 가설이 적혀 있고, 아래에 1. Review with Goldfishes, 2. Clarify more in chat 선택지가 있다">
+  <figcaption>가설 끝에 '아직 남은 위험 두 가지'까지 적어 두고 진행할지 물어요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=648s" target="_blank" rel="noopener">영상 10:48에서 보기</a></figcaption>
+</figure>
+<p>영상은 접근이 괜찮다고 보고 금붕어 검토를 골랐어요. 서브에이전트 하나(<code>egm-synthesizer</code>)가 뒤에서 여섯을 더 띄우고, 각자 대화를 모른 채 새로 시작해요. 화면에 여섯 관점이 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-1058.webp" alt="터미널에 egm-synthesizer가 백그라운드로 돌고, design, codebase details, simplicity/YAGNI, plain-reader comprehension, implementation readiness, structure 여섯 검토자에게 아이디어를 보냈다는 설명과 Core, Secondary, Deferred 범위 목록">
+  <figcaption>설계, 코드베이스 세부, 단순함(YAGNI(You Aren&#x27;t Gonna Need It)), 처음 읽는 사람의 이해, 구현 준비, 구조. 앞에서 말로 설명한 금붕어 각도가 여기 그대로 이름으로 나와요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=658s" target="_blank" rel="noopener">영상 10:58에서 보기</a></figcaption>
+</figure>
+<p>검토가 끝나면 프로젝트 루트에 <code>concepts_brief.md</code>를 써요. 기능 설명, 조사하며 알게 된 것, 걸림돌, 해야 할 일이 담겨요. 원하는 것과 맞는지 읽어 보고, 고칠 게 있으면 몇 번이든 요청하면 돼요.</p>
+<figure>
+  <img src="assets/frame-1108.webp" alt="에디터 왼쪽 파일 목록에 concepts_brief.md가 새로 생겼고, 오른쪽에 Seller Insights: Size Performance and Restock Suggestions 제목과 Overview가 열려 있다">
+  <figcaption>Overview에 '14일 안에 품절된 사이즈는 재입고 제안'처럼 구체적인 규칙이 들어가 있어요. 이 수준이어야 다음 단계에서 추측이 줄어요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=668s" target="_blank" rel="noopener">영상 11:08에서 보기</a></figcaption>
+</figure>
+<h3>draft: 한 부분씩 승인받으며 써요</h3>
+<p>브리프가 마음에 들면 <code>egm-draft</code>를 돌려요. 브리프를 계획의 첫 버전인 design draft로 바꿔요. 먼저 기능, 해결할 문제, 할 것과 안 할 것을 써서 빠지는 게 없게 해요. 터미널에 '첫 섹션을 썼다: Overview, The Problem, Goals, Non-Goals, Open Questions, 그리고 사용자 여정 다섯 개'라고 나와요.</p>
+<figure>
+  <img src="assets/frame-1138.webp" alt="터미널에 I've written the first section of design_draft.md라는 문장과 What it decides 아래 Success test, Edit-form behaviour, Top-up seed case 결정, Still open 항목">
+  <figcaption>무엇을 정했는지와 아직 열린 질문을 나눠 보여 주고 승인을 기다려요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=698s" target="_blank" rel="noopener">영상 11:38에서 보기</a></figcaption>
+</figure>
+<p>사용자 여정은 <span class="term" data-term="크리티컬 유저 저니" data-en="Critical User Journey" data-desc="사용자가 기능을 쓰며 반드시 지나가는 주요 경로예요. Given·When·Then으로 적어 두면 그대로 테스트 시나리오가 돼요." data-g="6">크리티컬 유저 저니</span>(CUJ(Critical User Journey))로 적어요. 사람이 기능을 쓰며 지나가는 주요 경로라서, 나중에 테스트를 바로 이 위에 쓸 수 있어요. 화면의 CUJ 1은 Given(시작 상태), When(행동), Then(결과) 형식이에요.</p>
+<figure>
+  <img src="assets/frame-1148.webp" alt="design_draft.md의 Critical User Journeys (CUJs) 섹션. CUJ 1: Seller spots a size that needs restocking 아래 Given, When, Then 항목">
+  <figcaption>'14일 안에 다시 품절된 사이즈가 재입고 제안에 뜬다'처럼, 그대로 테스트로 옮길 수 있는 문장이에요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=708s" target="_blank" rel="noopener">영상 11:48에서 보기</a></figcaption>
+</figure>
+<p>승인할 때마다 다음 부분으로 넘어가요. 앞부분을 먼저 확인받으니, 그 위에 다음 부분이 쌓이기 전에 방향을 틀 수 있어요. 순서는 이래요.</p>
+<ol class="steps">
+  <li><b>기능 정의</b> — 문제, 목표, 하지 않을 것, 크리티컬 유저 저니</li>
+  <li><b>기술 계획</b> — 실제로 어떻게 만들지</li>
+  <li><b>검토한 대안</b> (Alternatives Considered) — 다른 구현 방법마다 장단점과 버린 이유</li>
+  <li><b>단계별 구현 계획</b> — 대안을 읽고 나면 이어져요</li>
+</ol>
+<p>아래 화면이 대안 섹션 끝이에요. '이 섹션에서 가장 약하게 기각한 대안'까지 따로 적고, 승인하면 구현 계획으로 넘어가겠다고 물어요. 맨 아래에 사람이 친 'approve'가 보여요.</p>
+<figure>
+  <img src="assets/frame-1208.webp" alt="터미널에 Weakest rejection in the section 설명과 Do you approve Alternatives Considered so I can move on to the Detailed Implementation Plan 질문, 그 아래 approve 입력">
+  <figcaption>버린 대안 중 가장 근거가 약한 것을 먼저 밝혀 두니, 사람이 그 결정만 다시 볼 수 있어요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=728s" target="_blank" rel="noopener">영상 12:08에서 보기</a></figcaption>
+</figure>
+<p>다 쓰면 <code>docs/designs/</code> 폴더에 기능 이름으로 파일을 저장해요. 이 방식으로 만드는 모든 기능이 여기 모이고, 에이전트에게 만들라고 할 때 가리키는 것도 이 파일이에요.</p>
+<figure>
+  <img src="assets/frame-1228.webp" alt="에디터 파일 목록의 docs/designs 아래 seller-insights.md가 강조돼 있고, 오른쪽에 Non-Goals와 Open Questions, Critical User Journeys 제목이 보인다">
+  <figcaption>Open Questions가 'None open'으로 비어 있어요. 열린 질문이 남지 않아야 리뷰로 넘어가요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=748s" target="_blank" rel="noopener">영상 12:28에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=762s" target="_blank" rel="noopener">12:42</a>
+  <h2>review: 금붕어 다섯 라운드</h2>
+<p>여기까지의 계획은 처음부터 사람에게 동의해 온 그 에이전트가 썼어요. 그래서 만들기 전에 금붕어에게 넘겨요. <code>egm-review</code>를 돌리면 zoom out이라는 서브에이전트부터 시작해요. 더 쉬운 구현 방법이 있는지, 앱에 이미 같은 일을 하는 게 있는지 보고, 대화는 전혀 몰라요.</p>
+<p>터미널을 보면 문서를 둘로 나눠 봐요. 1~671줄이 기능 명세, 672~1080줄이 구현 계획이에요. 'Stage 5 (Initial Zoom Out) is running now'라는 줄 아래, 끝나면 <code>zoom_out_report.md</code>에 결과를 쓰고 Stage 6(Comprehension Test)으로 갈지 묻겠다고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-1248.webp" alt="터미널에 egm-zoom-out(Stage 5 zoom-out review)이 백그라운드로 돌고, Where the plan splits로 1-671줄 기능 명세와 672-1080줄 구현 계획을 나눈 설명, Stage 5 Initial Zoom Out 진행 중 안내">
+  <figcaption>zoom out 검토자도 대화 기억 없이 문서와 실제 파일만 대조해요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=768s" target="_blank" rel="noopener">영상 12:48에서 보기</a></figcaption>
+</figure>
+<p>끝나면 큰 문제 목록이 나와요. 화면의 Major problems 1번은 설계 버그예요. 판매자가 사이즈 이름을 'M'에서 'Medium'으로 바꾸면 서버가 사이즈를 글자로 맞춰 보는 탓에 저장이 늘 거부돼요. 2번은 Phase 2가 Phase 1만큼 코드가 많은데 성공 기준엔 필요 없다는 지적이고, 3번은 같은 내용이 두 군데 적혀 있는데 이미 서로 다르다는 지적이에요.</p>
+<figure>
+  <img src="assets/frame-1300.webp" alt="터미널의 Major problems 목록. 1. Renaming a size would always be rejected (Z2), 2. Phase 2 is about as much code as Phase 1, 3. The same details appear twice, and the copies already disagree (Z3)">
+  <figcaption>2번은 범위를 줄이자는 제안이라, 받아들일지는 사람이 정한다고 적혀 있어요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=780s" target="_blank" rel="noopener">영상 13:00에서 보기</a></figcaption>
+</figure>
+<p>리뷰는 라운드로 진행해요. 라운드마다 한 가지 방식으로 계획을 보고 결과를 보고해요. 라운드가 끝날 때마다 다음으로 넘어가거나 수정을 요청할 수 있어요.</p>
+<ul>
+  <li>라운드는 모두 다섯 번이고, 번호는 5부터 9까지 붙어요.</li>
+  <li>라운드마다 보고서를 따로 쓰고, <code>docs/designs</code>의 계획을 그 결과대로 고쳐요.</li>
+  <li>다 끝나면 리뷰를 닫아요. 문서 상태가 In Review에서 Proposed로 바뀌어요.</li>
+</ul>
+<figure>
+  <img src="assets/frame-1324.webp" alt="터미널의 diff. Seller Insights 문서 머리에서 Status: In Review 줄이 지워지고 Status: Proposed 줄이 들어갔다">
+  <figcaption>상태 한 줄이 바뀌는 게 '검토 완료'의 표시예요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=804s" target="_blank" rel="noopener">영상 13:24에서 보기</a></figcaption>
+</figure>
+<p>결국 남는 건 <code>docs/designs</code>의 파일 하나예요. 새 대화를 열고 이 파일의 기능을 만들라고 하면 돼요. 화면에 'build the feature described in the docs/design/seller-insights.md'라는 요청이 보여요. 까다로운 경우를 만들기 전에 다 풀어 뒀고, Claude가 따를 규칙이 분명해서 결과가 훨씬 낫다고 해요.</p>
+<figure>
+  <img src="assets/frame-1342.webp" alt="새 Claude Code 세션에서 build the feature described in the docs/design/seller-insights.md를 입력하고 Claude가 docs와 git 상태를 읽기 시작한 터미널">
+  <figcaption>구현은 깨끗한 새 대화에서 해요. 필요한 맥락은 다 파일 안에 있으니까요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=822s" target="_blank" rel="noopener">영상 13:42에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상은 라운드 이름을 다 말하지 않아요. review 스킬 정의를 보면 5단계는 Initial Zoom Out, 6단계 Comprehension Review, 7단계 Design Critique, 8단계 Intermediate Zoom Out, 9단계 Implementation Readiness예요. 기능 명세만 볼 때는 5~8단계, 구현 계획만 볼 때는 9단계로 바로 갈 수도 있어요.</p>
+  <p class="cite">출처: <a href="https://github.com/google/elephant-goldfish-model/blob/main/skills/egm-review/SKILL.md" target="_blank" rel="noopener">egm-review <code>SKILL.md</code></a></p>
+</aside>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=830s" target="_blank" rel="noopener">13:50</a>
+  <h2>drift report와 언제 쓸지</h2>
+<h3>drift report: 문서와 코드가 어긋난 곳 찾기</h3>
+<p>기능을 다 만들어도 앱은 계속 바뀌고, 문서는 그대로 남아요. 이렇게 둘이 조금씩 벌어지는 걸 <span class="term" data-term="드리프트" data-en="Drift" data-desc="시간이 지나며 문서와 실제 코드가 조금씩 어긋나는 현상이에요. 문서를 믿고 계획을 세우면 틀린 전제 위에 짓게 돼요." data-g="8">드리프트</span>라고 해요. 그래서 앱이 README와 어긋나는 곳을 찾는 명령이 따로 있어요. <code>egm-drift-report</code>를 돌리면 앱의 어디까지 볼지 먼저 물어요.</p>
+<p>터미널에서 'drift report가 어떤 문서와 코드를 대조할까요?'라는 질문에 All READMEs(권장)를 골랐어요. 그러자 서브에이전트 둘이 떴어요. 하나는 root, lib, actions를, 다른 하나는 components를 맡아요.</p>
+<figure>
+  <img src="assets/frame-1406.webp" alt="터미널에서 /egm-drift-report 실행, Which documents should the drift report check the code against 질문에 All READMEs 선택, README 목록을 찾은 뒤 Drift check: root, lib, actions와 Drift check: components 두 백그라운드 에이전트 실행">
+  <figcaption>앱을 두 덩어리로 나눠 동시에 대조해요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=846s" target="_blank" rel="noopener">영상 14:06에서 보기</a></figcaption>
+</figure>
+<p>둘이 돌아오면 무엇이 바뀌었고 어디서 앱과 README가 어긋나는지 전체 보고서를 써요. 실제 버그도 잡혔어요. 화면의 'Real bugs in the code' 2번이 영상이 고른 예예요. 판매된 상품은 숨길 수만 있고 지울 수 없다는 규칙('listings with sales can only be archived')이 있는데, 상점 주인이 그런 상품을 지울 수 있었어요.</p>
+<figure>
+  <img src="assets/frame-1430.webp" alt="터미널의 Real bugs in the code 목록. 2번 Owners can delete products that have sales가 강조되고 listings with sales can only be archived 규칙이 표시돼 있다. 1번은 잘못된 비밀번호 해시, 3번은 재고 0으로 수정 시 충돌 등">
+  <figcaption>버튼은 숨겨져 있었지만 서버 쪽 동작이 판매자의 모든 상품을 지울 수 있었어요. 화면으로는 안 보이는 버그예요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=870s" target="_blank" rel="noopener">영상 14:30에서 보기</a></figcaption>
+</figure>
+<p>보고서에 찾은 것을 다 나열하고, 앱의 부분마다 고쳐 달라고 할 수 있어요. 문서와 코드 중 무엇을 고칠지는 사람이 정해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 안내는 drift report를 일주일에 한 번 돌리라고 권해요. 어긋난 곳이 나오면 문서를 고칠지 코드를 고칠지 사람이 고른다고 적혀 있어요.</p>
+  <p class="cite">출처: <a href="https://github.com/google/elephant-goldfish-model/blob/main/docs/getting_started.md" target="_blank" rel="noopener">EGM Getting started — Drift Detection</a></p>
+</aside>
+<h3>언제 쓰고, 언제 안 쓸까요</h3>
+<p>영상의 결론은 '잘못되면 비용이 큰 큰 기능'에 쓰라는 거예요. 지금까지 써 본 다른 방법보다 <span class="term" data-term="엣지 케이스" data-en="Edge case" data-desc="평소엔 잘 안 생기지만 경계에서 터지는 상황이에요. 사이즈 이름을 바꾸는 순간 저장이 막히는 경우 같은 거예요." data-g="7">엣지 케이스</span>와 가능성을 더 깊게 파고들었다고 해요. 화면은 이를 그림으로 표현해요. 다른 두 방법이 3개씩 찾을 때 EGM은 11개를 찾는 모습이에요.</p>
+<figure>
+  <img src="assets/frame-1444.webp" alt="세 칸 비교 애니메이션. 왼쪽 두 칸은 점 3개씩, 오른쪽 EGM 칸은 주황 점 11개를 위에서 아래로 훑어 찾는다">
+  <figcaption>측정치가 아니라 '더 깊게 판다'는 말을 옮긴 연출이에요. 숫자 자체에 의미를 두지는 마세요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=884s" target="_blank" rel="noopener">영상 14:44에서 보기</a></figcaption>
+</figure>
+<p>하지만 모든 일에 쓰라는 건 아니에요. 에이전트가 한 번에 끝낼 작은 수정이라면, 계획하고 검토하는 과정이 속도만 늦춘다고 Google도 말한대요. 화면 위 줄은 일반 에이전트가 small fix를 바로 끝내고, 아래 줄 EGM은 brainstorm, draft, review를 다 거치며 시간이 늘어나요. 그 위에 Google의 'not worth it' 표시가 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-1454.webp" alt="두 줄 비교. 위는 Claude 에이전트가 small fix를 1:02에 끝내고, 아래는 EGM이 brainstorm, draft, review를 거쳐 9:37이 걸리며 Google의 not worth it 말풍선이 붙어 있다">
+  <figcaption>작은 수정에 큰 절차를 붙이면 손해라는 그림이에요. 시간 표시도 연출이에요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=894s" target="_blank" rel="noopener">영상 14:54에서 보기</a></figcaption>
+</figure>
+<p>다른 계획 도구와는 두 가지가 다르다고 정리해요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th></th><th>다른 계획 도구 대부분</th><th>EGM</th></tr></thead>
+    <tbody>
+      <tr><td>계획의 문제 찾기</td><td>계획은 나오지만 문제 찾기는 사람 몫이라 어려워요</td><td>대화를 못 본 금붕어가 찾아서, 사람 말에 설득당하지 않아요</td></tr>
+      <tr><td>만든 뒤 점검</td><td>만든 직후 기능 하나씩 확인</td><td>앱 전체를 계획과 다시 비교</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>아래 화면이 두 번째 차이를 보여 줘요. 다 만든(Built) 앱 위로 EGM의 세로선이 지나가며, 계획과 어긋난 칸 두 곳에 경고 표시를 남겨요.</p>
+<figure>
+  <img src="assets/frame-1518.webp" alt="Your app Built 카드 격자 위로 EGM의 빨간 세로선이 훑고 지나가고, 두 칸에 노란 경고 삼각형이 표시된 그림">
+  <figcaption>만든 지 한참 지난 기능도 다시 훑어서 어긋난 곳을 찾아요. 중요한 기능엔 시간이 더 들어도 쓸 만하다는 게 영상의 결론이에요. <a href="https://www.youtube.com/watch?v=xxf6D9jynFw&amp;t=918s" target="_blank" rel="noopener">영상 15:18에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>README도 같은 기준을 적어 둬요. 구현 전에 설계 결정이 필요한 기능에 쓰고, 작고 분명한 버그 수정은 평소 하던 방식으로 하라고 해요. 또 금붕어 검토가 테스트나 사람의 판단을 대신하지는 않는다고 밝혀요.</p>
+  <p class="cite">출처: <a href="https://github.com/google/elephant-goldfish-model" target="_blank" rel="noopener">google/elephant-goldfish-model README</a></p>
+</aside>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 파일 이름과 제품 이름이 소리 나는 대로 적힌 곳이 있어요. 화면을 보고 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>claw.md / Claude.md</td><td>CLAUDE.md</td><td></td></tr>
+      <tr><td>claw code / claw</td><td>Claude Code / Claude</td><td></td></tr>
+      <tr><td>read me</td><td>README.md</td><td></td></tr>
+      <tr><td>agents.md</td><td>AGENTS.md</td><td></td></tr>
+      <tr><td>EGM bootstrap command</td><td>/egm-bootstrap (Claude Code에서는 /egm:egm-bootstrap)</td><td>다른 단계도 같은 형식이에요</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-8"><dt>드리프트<span class="en">Drift</span></dt><dd>시간이 지나며 문서와 실제 코드가 조금씩 어긋나는 현상이에요. 문서를 믿고 계획을 세우면 틀린 전제 위에 짓게 돼요.</dd></div>
+    <div class="g" id="g-5"><dt>불변 규칙<span class="en">Invariant</span></dt><dd>앱이 어떤 상태든 항상 참이어야 하는 규칙이에요. 예를 들어 &#x27;판매된 상품은 지울 수 없다&#x27; 같은 것이고, 이걸 어기면 버그예요.</dd></div>
+    <div class="g" id="g-2"><dt>서브에이전트<span class="en">Subagent</span></dt><dd>메인 에이전트가 일을 떼어 맡기는 별도 에이전트예요. 자기 컨텍스트에서 새로 시작하니, 메인 대화의 내용에 영향을 받지 않아요.</dd></div>
+    <div class="g" id="g-1"><dt>스펙 주도 개발<span class="en">Spec-driven development</span></dt><dd>코드를 쓰기 전에 무엇을 어떻게 만들지 명세(스펙)부터 완성하고, 에이전트가 그 명세대로 구현하게 하는 방식이에요. 구현 중 추측을 줄이는 게 목적이에요.</dd></div>
+    <div class="g" id="g-7"><dt>엣지 케이스<span class="en">Edge case</span></dt><dd>평소엔 잘 안 생기지만 경계에서 터지는 상황이에요. 사이즈 이름을 바꾸는 순간 저장이 막히는 경우 같은 거예요.</dd></div>
+    <div class="g" id="g-3"><dt>컨텍스트<span class="en">Context</span></dt><dd>모델이 한 번에 보고 있는 대화·파일·지시의 총량이에요. 이게 보고서로 차면 중요한 내용이 밀려나요.</dd></div>
+    <div class="g" id="g-6"><dt>크리티컬 유저 저니<span class="en">Critical User Journey</span></dt><dd>사용자가 기능을 쓰며 반드시 지나가는 주요 경로예요. Given·When·Then으로 적어 두면 그대로 테스트 시나리오가 돼요.</dd></div>
+    <div class="g" id="g-4"><dt>플랜 모드<span class="en">Plan mode</span></dt><dd>Claude Code 같은 에이전트가 코드를 고치기 전에 계획부터 세워 보여 주는 모드예요. 같은 대화 안에서 계획하고 검토해요.</dd></div>
+    <div class="g"><dt>CUJ</dt><dd>Critical User Journey</dd></div>
+    <div class="g"><dt>EGM</dt><dd>Elephant-Goldfish Model</dd></div>
+    <div class="g"><dt>YAGNI</dt><dd>You Aren&#x27;t Gonna Need It</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=xxf6D9jynFw" target="_blank" rel="noopener">원본 영상 — AI LABS</a></li>
+    <li id="src-2"><a href="https://github.com/google/elephant-goldfish-model" target="_blank" rel="noopener">google/elephant-goldfish-model — GitHub 저장소 README</a></li>
+    <li id="src-3"><a href="https://egm.dev" target="_blank" rel="noopener">EGM 공식 사이트</a></li>
+    <li id="src-4"><a href="https://github.com/google/elephant-goldfish-model/blob/main/docs/getting_started.md" target="_blank" rel="noopener">EGM Getting started (Bootstrapping, Drift Detection)</a></li>
+    <li id="src-5"><a href="https://github.com/google/elephant-goldfish-model/blob/main/skills/egm-review/SKILL.md" target="_blank" rel="noopener">egm-review SKILL.md — 리뷰 5~9단계 정의</a></li>
+    <li id="src-6"><a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code 문서 — Subagents (중첩 서브에이전트)</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 28일에 이 영상을 보고 정리했어요. 원본은 AI LABS 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

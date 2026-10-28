@@ -1,0 +1,866 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>무료 오픈 모델로 영상 편집하기 — OpenCode + GLM-5.3-Flash</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>무료 오픈 모델로 영상 편집하기 — OpenCode + GLM-5.3-Flash</h1>
+  <p class="lede">구독 없이 AI에게 편집을 맡기는 구조와 설치 순서를 짚어요</p>
+  <div class="meta">
+    <span>Jad M.H | AI Automation</span><span class="dot">·</span>
+    <span>영상 09:50</span><span class="dot">·</span>
+    <span>읽는 데 약 12분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=S5Y3Hp2P740" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>38초짜리 영상을 무료 모델 GLM-5.3-Flash로 편집했고, <span class="term" data-term="토큰" data-en="Token" data-desc="모델이 글을 읽고 쓰는 단위예요. 유료 모델은 보통 토큰 수만큼 돈을 받아서, 160만 토큰이면 꽤 큰 작업이에요." data-g="5">토큰</span> 160만 개를 쓰고도 비용은 0달러였어요.</li>
+    <li>무료 <span class="term" data-term="에이전트" data-en="AI agent" data-desc="질문에 답만 하는 게 아니라 파일을 열고 명령을 실행하며 여러 단계를 스스로 이어 가는 AI예요. 영상 편집처럼 긴 작업을 맡기려면 이게 필요해요." data-g="1">에이전트</span> OpenCode, 그 안에서 무료가 된 큰 <span class="term" data-term="오픈 모델" data-en="Open-weight model" data-desc="모델 가중치를 공개해서 누구나 내려받아 돌릴 수 있는 AI 모델이에요. 라이선스에 따라 상업적으로도 쓸 수 있어요." data-g="3">오픈 모델</span>, 편집 규칙을 담은 <span class="term" data-term="스킬" data-en="Agent Skill" data-desc="지침 파일 하나와 보조 파일을 담은 폴더예요. 에이전트가 필요할 때 읽어서 그 안의 절차와 규칙대로 일해요. 여기서는 편집 스타일 전체가 들어 있어요." data-g="2">스킬</span>이 한꺼번에 갖춰져서 가능해졌어요.</li>
+    <li>실력은 모델이 아니라 스킬이 들고 있어요. 그래서 긴 프롬프트 없이 한 줄이면 돼요.</li>
+    <li>스킬은 Claude로 만들고 OpenCode에서 쓰라고 권해요. 모션 그래픽처럼 코드가 무거운 스킬은 아직 안 돼요.</li>
+    <li>짧은 영상부터, 수정은 몇 초 지점인지 분명히, 시작 전엔 소요 시간을 물어보라는 팁으로 끝나요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">0달러로 편집한 영상</a></li>
+    <li><a href="#s2">일주일 전엔 왜 안 됐을까요</a></li>
+    <li><a href="#s3">Claude에서 만들고, OpenCode에서 쓰기</a></li>
+    <li><a href="#s4">설치 7단계</a></li>
+    <li><a href="#s5">처음 쓸 때 팁 세 가지</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>0달러로 편집한 영상</h2>
+<p>영상은 결과부터 보여 줘요. 왼쪽 'Raw take'가 손대지 않은 촬영본이고, 오른쪽 'Edited by GLM 5.3 Flash · $0'이 무료 모델이 편집한 결과예요. 오른쪽 아래 타임라인을 보면 자막, 그래픽, 효과음, 음악 트랙이 여러 줄로 쌓여 있어요. 컷만 자른 게 아니라 편집 프로그램에서 하는 작업을 거의 다 했다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0021.webp" alt="왼쪽에 원본 촬영본, 오른쪽에 GLM 5.3 Flash가 편집한 화면과 자막·그래픽·오디오 트랙이 쌓인 타임라인">
+  <figcaption>오른쪽 위 '$0' 표시가 이 영상의 주장이에요. 같은 장면에 'one thing' 자막이 얹혀 있어요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=21s" target="_blank" rel="noopener">영상 00:21에서 보기</a></figcaption>
+</figure>
+<p>발표자가 말하는 '0달러'는 문자 그대로예요. 아래 여섯 칸에 Claude 구독, ChatGPT, 크레딧, API(Application Programming Interface) 키, 계정, 카드가 모두 금지 표시로 지워져 있어요. 가입도 결제 수단 등록도 하지 않았다는 거예요. 쓴 모델은 GLM-5.3-Flash라는 무료 오픈 모델 하나예요.</p>
+<figure>
+  <img src="assets/frame-0049.webp" alt="Claude subscription, ChatGPT, credits, API key, account, card 여섯 개 아이콘에 금지 표시가 그어진 화면">
+  <figcaption>구독도, API 키도, 계정도 없이 편집했다는 걸 한 장으로 정리했어요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=49s" target="_blank" rel="noopener">영상 00:49에서 보기</a></figcaption>
+</figure>
+<p>발표자는 오픈 모델을 코드에 쓰는 사람은 봤어도 영상 편집에 쓴 사례는 찾지 못했다고 해요. 그래서 큰 프롬프트도, 몇 시간짜리 프롬프트 다듬기도 없이 자기 스킬과 짧은 지시 한 줄만으로 해 봤다는 거예요.</p>
+<h3>왜 중요할까요</h3>
+<p>이유는 돈이에요. 처음 시작할 때는 이 일이 나한테 맞는지도 모르는데, 테스트 한 번, 수정 한 번, 실수 한 번마다 돈이 나가요. 결국 배우려고 돈을 내는 셈이고, 편집자를 쓰는 건 더 비싸요. 그래서 형편이 될 때까지 시작을 미루는 사람이 많다는 게 발표자의 문제의식이에요. 화면에는 Claude 요금표가 뜨는데, Free 0달러, Pro 17달러, Max는 100달러부터예요.</p>
+<figure>
+  <img src="assets/frame-0157.webp" alt="Claude 요금표 화면. Free 0달러, Pro 17달러, Max 100달러부터">
+  <figcaption>발표자는 'Claude는 월 20달러'라고 말하는데 화면의 Pro는 17달러예요. 연간 결제 할인가라서 그래요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=117s" target="_blank" rel="noopener">영상 01:57에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Claude 공식 요금표 기준으로 Pro는 연간 결제 시 월 17달러(한 번에 200달러), 월별 결제 시 20달러예요. Max는 월 100달러부터 시작해요. 말로 한 20달러와 화면의 17달러는 결제 방식 차이일 뿐 둘 다 맞아요.</p>
+  <p class="cite">출처: <a href="https://claude.com/pricing" target="_blank" rel="noopener">Claude 공식 요금 페이지</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=143s" target="_blank" rel="noopener">02:23</a>
+  <h2>일주일 전엔 왜 안 됐을까요</h2>
+<p>발표자는 일주일 전만 해도 이게 왜 안 됐는지부터 짚어요. AI(Artificial Intelligence)에게 영상 편집을 맡기려면 대화만 하는 챗봇으로는 부족해요. 화면 가운데 'an agent' 아래 세 칸이 에이전트에게 필요한 능력이에요. 내 파일을 열고, 내 컴퓨터에서 도구를 돌리고, 사람 없이 한 시간 넘게 계속 일하는 거예요.</p>
+<figure>
+  <img src="assets/frame-0235.webp" alt="'if you wanted an AI to edit your video' 아래 an agent 상자와 open your files, run tools on your computer, keep working for an hour without you 세 칸">
+  <figcaption>세 번째 칸, 혼자 오래 버티는 능력이 무료 모델에 가장 부족했던 부분이에요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=155s" target="_blank" rel="noopener">영상 02:35에서 보기</a></figcaption>
+</figure>
+<p>이 세 가지를 갖춘 건 Claude Code 정도였고, 쓰려면 최소 월 20달러 요금제가 필요했어요. 무료 모델도 있긴 했지만 노트북에서 돌릴 만큼 작거나, 편집 전체를 해낼 만큼 똑똑하지 않거나, 오래 일하다 길을 잃었다고 해요. 발표자는 이게 세 가지가 한꺼번에 갖춰지면서 바뀌었다고 설명해요. 아래 그림은 그 세 가지가 각각 무엇을 맡는지 정리한 거예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="OpenCode, GLM-5.3-Flash Free, editor-v1 스킬 세 가지가 합쳐져 0달러 편집이 되는 구조">
+    <defs><marker id="arrow-three" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect x="10" y="20" width="190" height="110" rx="10" class="c1 cell"/>
+    <text x="105" y="50" text-anchor="middle">OpenCode</text>
+    <text x="105" y="76" text-anchor="middle" class="sub">무료 오픈소스 에이전트</text>
+    <text x="105" y="98" text-anchor="middle" class="sub">Claude Code 스킬</text>
+    <text x="105" y="116" text-anchor="middle" class="sub">폴더를 그대로 읽어요</text>
+    <rect x="225" y="20" width="190" height="110" rx="10" class="c2 cell"/>
+    <text x="320" y="50" text-anchor="middle">GLM-5.3-Flash</text>
+    <text x="320" y="76" text-anchor="middle" class="sub">10월 16일부터 무료</text>
+    <text x="320" y="98" text-anchor="middle" class="sub">321B · MIT 라이선스</text>
+    <text x="320" y="116" text-anchor="middle" class="sub">OpenCode 서버에서 실행</text>
+    <rect x="440" y="20" width="190" height="110" rx="10" class="c3 cell"/>
+    <text x="535" y="50" text-anchor="middle">editor-v1 스킬</text>
+    <text x="535" y="76" text-anchor="middle" class="sub">편집 스타일 전부</text>
+    <text x="535" y="98" text-anchor="middle" class="sub">컷 빈도·색·소리·자막</text>
+    <text x="535" y="116" text-anchor="middle" class="sub">어기면 안 되는 규칙</text>
+    <path d="M105 132 L300 172" class="line" marker-end="url(#arrow-three)"/>
+    <path d="M320 132 L320 168" class="line" marker-end="url(#arrow-three)"/>
+    <path d="M535 132 L340 172" class="line" marker-end="url(#arrow-three)"/>
+    <rect x="220" y="176" width="200" height="44" rx="10" class="accent"/>
+    <text x="320" y="204" text-anchor="middle">0달러 영상 편집</text>
+  </svg>
+  <figcaption>어느 하나만으로는 안 되고 셋이 맞물려야 해요. 실력은 모델이 아니라 오른쪽 스킬이 들고 있어요.</figcaption>
+</figure>
+<h3>첫째, OpenCode</h3>
+<p>OpenCode는 Claude Code처럼 <span class="term" data-term="터미널" data-en="Terminal" data-desc="명령어를 글자로 쳐서 컴퓨터를 다루는 창이에요. OpenCode와 Claude Code는 이 안에서 돌아가요." data-g="7">터미널</span>에서 도는 AI 에이전트인데 무료 오픈소스예요. 화면은 OpenCode 첫 화면으로, 입력창 아래 'Build · Big Pickle'이 지금 고른 에이전트 모드와 모델이에요.</p>
+<figure>
+  <img src="assets/frame-0259.webp" alt="터미널에 뜬 opencode 로고와 입력창, Build · Big Pickle OpenCode 표시">
+  <figcaption>생김새부터 Claude Code와 비슷한 터미널 에이전트예요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=179s" target="_blank" rel="noopener">영상 02:59에서 보기</a></figcaption>
+</figure>
+<p>발표자가 놓치기 쉽다고 강조하는 대목은, OpenCode가 Claude Code와 같은 스킬 폴더를 읽는다는 점이에요. 아래 목록은 발표자가 그동안 만든 스킬 폴더들이고, 주황색으로 표시된 live-carousel, motion-carousels, motion-graphics-v2 같은 것들을 OpenCode에서도 다시 만들지 않고 썼다는 거예요.</p>
+<figure>
+  <img src="assets/frame-0311.webp" alt="firecrawl-lead-gen, hyperframes-creative, live-carousel, motion-carousels, motion-graphics-v2 등 스킬 폴더 이름이 두 줄로 나열된 터미널">
+  <figcaption>Claude Code용으로 쌓아 둔 스킬을 그대로 옮겨 쓸 수 있다는 게 OpenCode를 고른 이유예요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=191s" target="_blank" rel="noopener">영상 03:11에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>OpenCode 공식 문서에 따르면 스킬은 여섯 곳에서 찾아요. 자체 폴더(<code>.opencode/skills/</code>, <code>~/.config/opencode/skills/</code>) 말고도 Claude 호환 위치인 <code>.claude/skills/</code>와 <code>~/.claude/skills/</code>, 에이전트 공용 위치인 <code>.agents/skills/</code>와 <code>~/.agents/skills/</code>를 함께 읽어요. 각 스킬은 <code>&lt;이름&gt;/SKILL.md</code> 형태예요.</p>
+  <p class="cite">출처: <a href="https://opencode.ai/docs/skills/" target="_blank" rel="noopener">OpenCode 공식 문서 — Agent Skills</a></p>
+</aside>
+<h3>둘째, 그 안에서 무료가 된 큰 모델</h3>
+<p>10월 16일에 OpenCode가 GLM-5.3-Flash를 무료로 풀었어요. 화면은 <span class="term" data-term="Hugging Face" data-desc="AI 모델과 데이터셋을 올리고 내려받는 공개 저장소 사이트예요. 오픈 모델은 보통 여기에 가중치와 모델 카드를 올려요." data-g="8">Hugging Face</span> 모델 페이지인데, 가운데 'Model size 321B params'와 위쪽 'Downloads last month 6,377,661'이 발표자가 말한 숫자예요. 작은 모델이 아니라는 거죠.</p>
+<figure>
+  <img src="assets/frame-0323.webp" alt="Hugging Face의 GLM-5.3-Flash 페이지. Model size 321B params 강조, 지난달 다운로드 6,377,661">
+  <figcaption>321B 파라미터, 지난달 다운로드 600만 회 이상이에요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=203s" target="_blank" rel="noopener">영상 03:23에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 모델 카드는 GLM-5.3-Flash를 GLM-5 시리즈 첫 네이티브 멀티모달 모델로 소개하고, 전체 파라미터 320B 중 한 번에 쓰는 건 18B뿐인 구조라고 적어요. 페이지 상단 자동 표시는 321B라서 영상 숫자와 맞아요. 라이선스는 MIT(Massachusetts Institute of Technology)예요.</p>
+  <p>OpenCode Zen 문서에는 GLM-5.3-Flash Free가 '한시적' 무료라고 적혀 있어요. 영원히 무료라는 보장은 없다는 뜻이에요. 같은 문서는 이 모델의 제공사가 데이터를 보관하지 않고 학습에도 쓰지 않는다고 밝혀요.</p>
+  <p class="cite">출처: <a href="https://huggingface.co/zai-org/GLM-5.3-Flash" target="_blank" rel="noopener">Hugging Face — zai-org/GLM-5.3-Flash 모델 카드</a> · <a href="https://opencode.ai/docs/zen/" target="_blank" rel="noopener">OpenCode 공식 문서 — Zen</a></p>
+</aside>
+<h3>셋째, 스킬</h3>
+<p>발표자가 진짜 비밀이라고 부르는 건 스킬이에요. 화면의 <code>editor-v1/SKILL.md</code> 아래쪽을 보면 description에 '말하는 사람 촬영본을 EDITOR V1 스타일의 16:9 다큐멘터리풍 영상으로 편집한다'고 적혀 있어요. 이 파일에 편집 시스템이 통째로 들어 있어요. 화면이 얼마나 자주 바뀌는지, 색, 소리, 자막 위치, 그리고 어기면 안 되는 규칙까지요.</p>
+<figure>
+  <img src="assets/frame-0359.webp" alt="editor-v1/SKILL.md 카드. name: editor-v1, description: Edit a talking-head recording into a 16:9 documentary-style video in the EDITOR V1 style">
+  <figcaption>지난 영상에서 '마스터 프롬프트가 있냐'는 질문이 많았는데, 답은 이 스킬 파일이에요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=239s" target="_blank" rel="noopener">영상 03:59에서 보기</a></figcaption>
+</figure>
+<p>그래서 모델이 천재일 필요가 없어요. 레시피, 즉 <span class="term" data-term="가드레일" data-en="Guardrail" data-desc="모델이 벗어나지 않도록 정해 둔 규칙과 제약이에요. 규칙이 촘촘하면 덜 똑똑한 모델도 결과가 크게 흔들리지 않아요." data-g="6">가드레일</span>을 따르기만 하면 되니까요. 발표자는 이렇게 단언해요.</p>
+<blockquote>
+  <p>Whoever tells you, oh, you need to have a massive prompt ... that's complete BS.</p>
+  <p>거대한 프롬프트가 있어야 한다고 말하는 사람이 있다면, 완전히 헛소리예요.</p>
+  <cite>— 영상 03:52</cite>
+</blockquote>
+<h3>어디서 무엇이 돌았나요</h3>
+<p>발표자는 이 부분을 투명하게 밝혀요. 컷 편집, 전환, 그래픽, 렌더링, 사운드 믹싱은 전부 자기 노트북에서 돌았어요. 두뇌인 모델만 OpenCode 서버에서 무료로 돌았고요. 화면 왼쪽 노트북에 'MacBook Air · 16 GB'가, 위쪽에 '321 billion parameters'와 빨간 X가 있어요. 그 크기의 모델은 이 노트북에 들어가지 않는다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0450.webp" alt="MacBook Air 16GB 노트북 위에 321 billion parameters 상자와 빨간 X, 옆에 구름, 아래 'does not fit my computer' 문구">
+  <figcaption>편집 작업은 노트북, 생각은 클라우드로 나뉘어 있어요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=290s" target="_blank" rel="noopener">영상 04:50에서 보기</a></figcaption>
+</figure>
+<p>대신 노트북에서 돌리는 작은 오픈 모델도 있어요. 터미널의 <code>ollama list</code> 결과에 <code>qwen3.5:9b</code>(7.6GB)가 보여요. 9B <span class="term" data-term="파라미터" data-en="Parameter" data-desc="모델이 학습으로 정한 숫자들이에요. 개수가 많을수록 대체로 똑똑하지만, 돌리는 데 메모리가 훨씬 많이 들어요." data-g="4">파라미터</span> 모델로, 와이파이가 없는 비행기 안에서 캐러셀을 만들 때 쓴대요. 편집하기엔 아직 작지만, 오픈 모델이 매달 좋아지니 시간문제라고 봐요.</p>
+<figure>
+  <img src="assets/frame-0505.webp" alt="터미널 ollama list 결과. NAME qwen3.5:9b, SIZE 7.6 GB, MODIFIED 12 days ago 강조">
+  <figcaption>로컬에서 돌리는 9B 모델이에요. 편집은 아직 무리라고 해요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=305s" target="_blank" rel="noopener">영상 05:05에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=317s" target="_blank" rel="noopener">05:17</a>
+  <h2>Claude에서 만들고, OpenCode에서 쓰기</h2>
+<p>발표자는 스킬을 만드는 일과 쓰는 일을 나눠요. 그동안 나눠 준 편집 스킬은 모두 Claude로 만들었어요. 화면 위 'built with Claude' 아래 Editor V1 카드가 그 예예요.</p>
+<figure>
+  <img src="assets/frame-0529.webp" alt="Claude 로고와 'built with Claude' 라벨 아래 'AI Video Editor for Free' Editor V1 카드">
+  <figcaption>만드는 건 Claude, 쓰는 건 OpenCode라는 분업이에요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=329s" target="_blank" rel="noopener">영상 05:29에서 보기</a></figcaption>
+</figure>
+<p>스킬을 만드는 어려운 일은 OpenCode에서 하지 말라고 강하게 권해요. Claude가 훨씬 똑똑하니 거기서 만들고, 완성된 스킬을 OpenCode에서 무료 모델로 쓰면 비용이 안 든다는 거예요. 한번 만들어진 스킬을 따라가는 건 훨씬 쉬워서 무료 모델도 해낼 수 있어요.</p>
+<h3>어떤 스킬이 무료 모델로 될까요</h3>
+<p>아래 화면은 발표자가 나눠 준 편집 스킬 네 개예요. 체크 표시가 붙은 화면 공유 편집(screen share editor), 숏폼 편집(short editor), Editor V1은 무료 모델로도 돌아가요. 빨간 X가 붙은 모션 그래픽(motion graphics)만 안 돼요.</p>
+<figure>
+  <img src="assets/frame-0559.webp" alt="screen share editor, short editor, Editor V1에는 체크 표시, motion graphics에는 빨간 X가 붙은 네 칸">
+  <figcaption>모션 그래픽은 프레임 하나하나와 음악까지 코드로 만드는 무거운 작업이라, 지금 오픈 모델로는 안 된대요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=359s" target="_blank" rel="noopener">영상 05:59에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>편집 스킬</th><th>무료 모델로</th><th>영상이 말한 이유</th></tr></thead>
+    <tbody>
+      <tr><td>화면 공유 편집</td><td>돼요</td><td>스킬을 따라가기만 하면 돼요</td></tr>
+      <tr><td>숏폼 편집</td><td>돼요</td><td>스킬을 따라가기만 하면 돼요</td></tr>
+      <tr><td>Editor V1</td><td>돼요</td><td>이 영상 첫머리 편집이 그 결과예요</td></tr>
+      <tr><td>모션 그래픽</td><td>안 돼요</td><td>모든 프레임과 음악을 코드로 짜는 무거운 작업이에요</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>실제로 입력한 건 한 줄</h3>
+<p>편집할 때 한 일은 영상을 채팅창에 끌어다 놓고 "edit this video with editor v1"이라고 친 게 전부예요. 아래 화면 위쪽이 그 프롬프트이고, 오른쪽 위 'GLM-5.3-Flash Free · max'가 쓴 모델과 강도예요. 아래쪽에 토큰 1,604,496개, 비용 $0.00이 찍혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0913.webp" alt="opencode 창. 영상 파일 경로와 'with editor v1' 프롬프트, GLM-5.3-Flash Free · max, 1,604,496 tokens, $0.00">
+  <figcaption>토큰을 160만 개 넘게 썼는데 비용은 0달러예요. 이 화면은 영상 끝부분에 다시 나와요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=553s" target="_blank" rel="noopener">영상 09:13에서 보기</a></figcaption>
+</figure>
+<p>품질은 어떨까요. 발표자는 Opus 5.5만큼 좋지는 않지만 일은 확실히 해낸다고 평가해요.</p>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=386s" target="_blank" rel="noopener">06:26</a>
+  <h2>설치 7단계</h2>
+<p>Mac과 Windows 둘 다 돼요. Windows에서는 OpenCode가 WSL(Windows Subsystem for Linux)을 쓰라고 권하는데, Windows 안에서 도는 리눅스라고 보면 돼요. 화면은 OpenCode 문서의 Windows (WSL) 항목으로, 'Windows Subsystem for Linux (WSL)'에 표시가 돼 있어요.</p>
+<figure>
+  <img src="assets/frame-0636.webp" alt="OpenCode 문서 Windows (WSL) 항목. Windows Subsystem for Linux (WSL)을 권장한다는 문장 강조">
+  <figcaption>Windows에서 직접 돌릴 수도 있지만 WSL이 더 낫다고 문서가 권해요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=396s" target="_blank" rel="noopener">영상 06:36에서 보기</a></figcaption>
+</figure>
+<p>아래는 발표자가 말한 일곱 단계를 순서대로 옮긴 거예요. 단계마다 화면이 붙어 있어요.</p>
+<ol class="steps">
+  <li><b>OpenCode를 설치해요</b> — Mac에서는 Command+Space로 터미널을 열고, opencode.ai의 설치 명령을 붙여 넣어 Enter를 눌러요. 발표자는 자기가 테스트한 버전이라며 설명란의 명령을 그대로 쓰라고 해요.
+    <span class="done">opencode 로고와 'OpenCode includes free models' 안내가 떠요</span></li>
+</ol>
+<pre><code class="language-bash">curl -fsSL https://opencode.ai/install | bash</code></pre>
+<figure>
+  <img src="assets/frame-0656.webp" alt="터미널에서 curl -fsSL https://opencode.ai/install | bash 실행 후 opencode 1.19.4 설치 완료와 opencode 로고">
+  <figcaption>설치가 끝나면 'OpenCode includes free models'라는 안내가 보여요. 화면의 버전은 1.19.4예요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=416s" target="_blank" rel="noopener">영상 06:56에서 보기</a></figcaption>
+</figure>
+<ol class="steps" start="2">
+  <li><b>Editor V1 zip을 받아요</b> — 발표자 커뮤니티에 올라온 Google Drive에서 받아 다운로드 폴더에 그대로 둬요. 옮기지도, 압축을 풀지도 않아도 설정이 알아서 찾아요.</li>
+</ol>
+<p>Drive 폴더에는 zip 말고도 'READ ME FIRST.txt'와 5단계에서 쓸 'SETUP-PROMPT (copy-paste).txt'가 함께 있어요.</p>
+<figure>
+  <img src="assets/frame-0706.webp" alt="Google Drive의 'NextPhase — Editor V1 Skill' 폴더. NextPhase-EditorV1.zip 강조, READ ME FIRST.txt, SETUP-PROMPT (copy-paste).txt">
+  <figcaption>강조된 zip 파일만 받고 나머지 두 파일은 열어 볼 용도예요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=426s" target="_blank" rel="noopener">영상 07:06에서 보기</a></figcaption>
+</figure>
+<ol class="steps" start="3">
+  <li><b>터미널을 새로 열고 <code>opencode</code>를 쳐요</b> — 로그인은 필요 없어요. connect라는 게 보이면 유료 모델용이니 건너뛰어요.</li>
+  <li><b>무료 모델을 고르고 강도를 max로 올려요</b> — <code>/models</code>를 치고 free로 검색해 GLM-5.3-Flash Free를 골라요. 그다음 Ctrl+T를 눌러 max가 보일 때까지 계속 눌러요.</li>
+</ol>
+<p>모델 선택 창에서 free로 검색하면 무료 모델이 일곱 개 떠요. Flint 40B, Nemotron 3.5 Super VL(Vision-Language), Beam, MiMo-V2.6-Flash, DeepSeek V4.1 Flash, GLM-5.3-Flash, Nemotron 3.5 Lightning이에요. 이 중 아래에서 두 번째 GLM-5.3-Flash Free를 골라요.</p>
+<figure>
+  <img src="assets/frame-0726.webp" alt="OpenCode Select model 창에 free 검색 결과. Flint 40B Free, Nemotron 3.5 Super VL Free, Beam Free, MiMo-V2.6-Flash Free, DeepSeek V4.1 Flash Free, GLM-5.3-Flash Free, Nemotron 3.5 Lightning Free">
+  <figcaption>맨 위에 하이라이트된 건 Flint 40B예요. 발표자가 쓴 GLM-5.3-Flash Free는 아래쪽에 있어요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=446s" target="_blank" rel="noopener">영상 07:26에서 보기</a></figcaption>
+</figure>
+<p>모델을 고른 뒤에는 입력창 아래 줄을 확인해요. 'Build · GLM-5.3-Flash Free OpenCode' 옆에 주황색 'max'가 붙어 있으면 된 거예요. 편집은 큰 작업이라 발표자는 max로 돌렸어요.</p>
+<figure>
+  <img src="assets/frame-0736.webp" alt="OpenCode 입력창 아래 Build · GLM-5.3-Flash Free OpenCode 옆에 max 강조, control + T 키 표시">
+  <figcaption>Ctrl+T는 누를 때마다 모델이 얼마나 깊이 생각할지 단계를 바꿔요. max에서 멈춰요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=456s" target="_blank" rel="noopener">영상 07:36에서 보기</a></figcaption>
+</figure>
+<ol class="steps" start="5">
+  <li><b>설정 프롬프트를 붙여 넣어요</b> — Drive의 설정 프롬프트를 통째로 복사해 OpenCode에 붙여 넣고 Enter를 눌러요.
+    <span class="done">7초짜리 테스트 영상이 만들어지면 설치가 끝난 거예요</span></li>
+</ol>
+<p>프롬프트 첫 줄에 'Claude Code skill'이라고 적혀 있어요. 발표자는 신경 쓰지 말라고 해요. OpenCode가 같은 폴더를 읽기 때문이에요. 그 아래 '1. FIND IT'부터는 다운로드 폴더나 바탕화면에서 zip을 찾고, 압축 안에 또 압축이 있으면 <code>SKILL.md</code>가 나올 때까지 풀라는 지시예요.</p>
+<figure>
+  <img src="assets/frame-0746.webp" alt="SETUP-PROMPT (copy-paste).txt 내용. 'Install the free editor-v1 Claude Code skill' 문구에서 Claude Code 강조, 1. FIND IT 단계">
+  <figcaption>설정 프롬프트가 zip 찾기부터 설치까지 알아서 해요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=466s" target="_blank" rel="noopener">영상 07:46에서 보기</a></figcaption>
+</figure>
+<p>스킬을 깐 다음에는 편집에 필요한 무료 도구를 설치해요. 화면의 네 칸이 FFmpeg, Python, 영상 렌더러, 그리고 목소리를 알아듣는 음성 인식 모델이에요. 빠진 게 있으면 알려 주고, 비밀번호가 필요한 일 전에는 먼저 물어봐요.</p>
+<figure>
+  <img src="assets/frame-0756.webp" alt="'installs all the free tools for you' 아래 FFmpeg, Python, the video render, the speech model 네 아이콘">
+  <figcaption>도구 설치까지 에이전트가 맡아서, 직접 하나씩 깔 필요가 없어요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=476s" target="_blank" rel="noopener">영상 07:56에서 보기</a></figcaption>
+</figure>
+<p>중간에 딱 한 번 질문을 해요. 컷아웃 효과를 쓸지 묻는 거예요. 사람 뒤로 배경이 바뀌고 머리 뒤에 큰 글자가 깔리는 효과예요. 화면의 안내문에는 PyTorch가 필요하고 약 1GB를 한 번 내려받는다고 적혀 있어요. 오른쪽 'preview.mp4 · 7s'가 마지막에 만드는 테스트 영상이에요.</p>
+<figure>
+  <img src="assets/frame-0816.webp" alt="ASK ME ONE QUESTION 카드. 컷아웃 효과를 원하는지 묻고 PyTorch 필요, 약 1GB 일회 다운로드 안내. 오른쪽에 preview.mp4 7초 미리보기">
+  <figcaption>디스크 여유가 있으면 '예'라고 하면 돼요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=496s" target="_blank" rel="noopener">영상 08:16에서 보기</a></figcaption>
+</figure>
+<ol class="steps" start="6">
+  <li><b><code>/new</code>로 새 세션을 열어요</b> — 스킬을 다시 불러오기 위해서예요.</li>
+  <li><b>영상을 끌어다 놓고 한 줄로 시켜요</b> — "edit this video with editor v1"이라고 치고 Enter를 눌러요. 끝났다고 하면 "open it for me"라고 답하고, 보면서 메모를 줘요. 메모를 줄수록 결과가 좋아진대요.</li>
+</ol>
+<p>영상 파일을 터미널에 끌어다 놓으면 입력창에 파일 경로가 들어가요. 화면에서 경로 아래 'GLM-5.3-Flash Free OpenCode · max'가 그대로인지 한 번 더 확인할 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0826.webp" alt="OpenCode 입력창에 /Users/.../Teleprompter-...mp4 영상 경로가 들어가 있고 아래 Build · GLM-5.3-Flash Free OpenCode · max">
+  <figcaption>경로 뒤에 'with editor v1'만 붙이면 끝이에요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=506s" target="_blank" rel="noopener">영상 08:26에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=523s" target="_blank" rel="noopener">08:43</a>
+  <h2>처음 쓸 때 팁 세 가지</h2>
+<p>마지막으로 발표자가 직접 써 보며 얻은 팁 세 가지예요.</p>
+<ol class="steps">
+  <li><b>짧게 시작해요</b> — 발표자가 편집한 영상은 38초였어요. 첫 시도부터 20분짜리 영상을 넣지 말래요.</li>
+  <li><b>수정 요청은 시간으로 적어요</b> — 몇 초 지점인지 분명하게 써야 해요.</li>
+  <li><b>시작 전에 얼마나 걸릴지 물어봐요</b> — 편집 프롬프트를 보내기 전에 물으면 미리 알려 줘요.</li>
+</ol>
+<p>두 번째 팁은 화면이 보여 줘요. 체크 표시가 붙은 'at second five'처럼 쓰는 게 맞고, X 표시가 붙은 표현은 피하래요. 아래 'Real message · OpenCode'는 발표자가 실제로 보낸 메시지로, 'the second 5'처럼 애매하게 썼더니 잘 알아듣지 못했다는 예예요.</p>
+<figure>
+  <img src="assets/frame-0858.webp" alt="Tip two use timestamps. at second five에 체크, not the second five points에 X, 아래 실제 메시지 'can you change the design of the second 5 it's not great'">
+  <figcaption>'5초 지점'처럼 단위를 분명히 적어야 모델이 정확히 그 장면을 찾아요. <a href="https://www.youtube.com/watch?v=S5Y3Hp2P740&amp;t=538s" target="_blank" rel="noopener">영상 08:58에서 보기</a></figcaption>
+</figure>
+<p>발표자의 결론은, 돈 때문에 콘텐츠를 망설였다면 지금이 시작하기 좋은 때라는 거예요. 무료 오픈 모델은 앞으로 더 좋아질 테니까요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 이름이 잘못 받아적힌 곳이 있어요. 화면과 맥락으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>Chad GBT / chat GBT</td><td>ChatGPT</td><td></td></tr>
+      <tr><td>claw / Cloud / CLA / clot</td><td>Claude</td><td></td></tr>
+      <tr><td>Cloud Code / clot code</td><td>Claude Code</td><td></td></tr>
+      <tr><td>Opus 545</td><td>Opus 5.5 (추정)</td><td>뒤에서는 Opus 5.5라고 또렷이 말해요</td></tr>
+      <tr><td>GLM 5.3 flashfree</td><td>GLM-5.3-Flash Free</td><td>OpenCode 모델 목록 표기</td></tr>
+      <tr><td>13.5</td><td>Qwen3.5 (qwen3.5:9b)</td><td>화면의 ollama list 결과</td></tr>
+      <tr><td>Open Code / open code</td><td>OpenCode</td><td></td></tr>
+      <tr><td>/ new</td><td>/new</td><td></td></tr>
+      <tr><td>how hard it fix</td><td>how hard it thinks (추정)</td><td>Ctrl+T로 바꾸는 생각 강도</td></tr>
+      <tr><td>1 GBTE</td><td>1GB</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-6"><dt>가드레일<span class="en">Guardrail</span></dt><dd>모델이 벗어나지 않도록 정해 둔 규칙과 제약이에요. 규칙이 촘촘하면 덜 똑똑한 모델도 결과가 크게 흔들리지 않아요.</dd></div>
+    <div class="g" id="g-2"><dt>스킬<span class="en">Agent Skill</span></dt><dd>지침 파일 하나와 보조 파일을 담은 폴더예요. 에이전트가 필요할 때 읽어서 그 안의 절차와 규칙대로 일해요. 여기서는 편집 스타일 전체가 들어 있어요.</dd></div>
+    <div class="g" id="g-1"><dt>에이전트<span class="en">AI agent</span></dt><dd>질문에 답만 하는 게 아니라 파일을 열고 명령을 실행하며 여러 단계를 스스로 이어 가는 AI예요. 영상 편집처럼 긴 작업을 맡기려면 이게 필요해요.</dd></div>
+    <div class="g" id="g-3"><dt>오픈 모델<span class="en">Open-weight model</span></dt><dd>모델 가중치를 공개해서 누구나 내려받아 돌릴 수 있는 AI 모델이에요. 라이선스에 따라 상업적으로도 쓸 수 있어요.</dd></div>
+    <div class="g" id="g-7"><dt>터미널<span class="en">Terminal</span></dt><dd>명령어를 글자로 쳐서 컴퓨터를 다루는 창이에요. OpenCode와 Claude Code는 이 안에서 돌아가요.</dd></div>
+    <div class="g" id="g-5"><dt>토큰<span class="en">Token</span></dt><dd>모델이 글을 읽고 쓰는 단위예요. 유료 모델은 보통 토큰 수만큼 돈을 받아서, 160만 토큰이면 꽤 큰 작업이에요.</dd></div>
+    <div class="g" id="g-4"><dt>파라미터<span class="en">Parameter</span></dt><dd>모델이 학습으로 정한 숫자들이에요. 개수가 많을수록 대체로 똑똑하지만, 돌리는 데 메모리가 훨씬 많이 들어요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g" id="g-8"><dt>Hugging Face</dt><dd>AI 모델과 데이터셋을 올리고 내려받는 공개 저장소 사이트예요. 오픈 모델은 보통 여기에 가중치와 모델 카드를 올려요.</dd></div>
+    <div class="g"><dt>MIT</dt><dd>Massachusetts Institute of Technology</dd></div>
+    <div class="g"><dt>VL</dt><dd>Vision-Language</dd></div>
+    <div class="g"><dt>WSL</dt><dd>Windows Subsystem for Linux</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=S5Y3Hp2P740" target="_blank" rel="noopener">원본 영상 — Jad M.H | AI Automation</a></li>
+    <li id="src-2"><a href="https://opencode.ai/docs/skills/" target="_blank" rel="noopener">OpenCode 공식 문서 — Agent Skills</a></li>
+    <li id="src-3"><a href="https://opencode.ai/docs/zen/" target="_blank" rel="noopener">OpenCode 공식 문서 — Zen (무료 모델 목록)</a></li>
+    <li id="src-4"><a href="https://huggingface.co/zai-org/GLM-5.3-Flash" target="_blank" rel="noopener">Hugging Face — zai-org/GLM-5.3-Flash 모델 카드</a></li>
+    <li id="src-5"><a href="https://claude.com/pricing" target="_blank" rel="noopener">Claude 공식 요금 페이지</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 28일에 이 영상을 보고 정리했어요. 원본은 Jad M.H | AI Automation 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

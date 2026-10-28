@@ -1,0 +1,929 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Opus 5.5와 AutoSprite로 2.5D Godot 격투 게임 만들기</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Claude Opus 5.5와 AutoSprite로 2.5D Godot 격투 게임 만들기</h1>
+  <p class="lede">빈 프로젝트에서 그림까지 갖춘 게임이 나오기까지의 연결과 지시</p>
+  <div class="meta">
+    <span>Letta Corporation</span><span class="dot">·</span>
+    <span>영상 16:30</span><span class="dot">·</span>
+    <span>읽는 데 약 19분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=bHeLn8QKlZQ" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>빈 Godot 프로젝트와 웹 게임의 영상·소스 코드·프롬프트를 주고, Claude Code(Opus 5.5)에게 <span class="term" data-term="게임 디자인 문서" data-en="Game Design Document" data-desc="게임의 규칙, 캐릭터, 화면, 조작, 에셋 목록을 적은 설계 문서예요. 이 영상에서는 Claude가 구현할 때 따라야 할 기준이자 검수표 역할을 해요." data-g="3">게임 디자인 문서</span>부터 쓰게 했어요.</li>
+    <li>Godot AI(Artificial Intelligence) MCP(Model Context Protocol)로 에디터를, AutoSprite MCP로 캐릭터 그림과 <span class="term" data-term="스프라이트 시트" data-en="Sprite sheet" data-desc="한 동작의 프레임들을 한 장의 이미지에 격자로 모아 둔 파일이에요. 게임 엔진은 이 칸들을 차례로 보여 줘서 캐릭터를 움직이게 해요." data-g="2">스프라이트 시트</span>를 Claude가 직접 다뤄요. 연결은 플러그인 설치와 프롬프트 하나면 돼요.</li>
+    <li>1차 버전은 2시간 43분, 사용량 약 5%였어요. 2D 스프라이트 캐릭터가 3D 풀밭 무대에서 싸우는 <span class="term" data-term="2.5D" data-en="2.5D" data-desc="3D 공간에 2D 그림을 세워 섞는 방식이에요. 무대는 입체로 움직이고 캐릭터는 픽셀 아트로 남아서, 3D 모델을 만들지 않고도 깊이감을 낼 수 있어요." data-g="1">2.5D</span> 구조예요.</li>
+    <li>흔한 기능은 빼고 이 게임만의 기능 7개를 제안하라고 하자, Claude가 조사하고 Codex CLI(Command Line Interface)로 콘셉트 이미지까지 그려 공개 <span class="term" data-term="아티팩트" data-en="Artifact" data-desc="Claude가 만들어 링크로 공유할 수 있는 웹 페이지예요. 이 영상에서는 로그인 없이 누구나 열 수 있는 기능 제안 페이지로 썼어요." data-g="5">아티팩트</span>로 정리했어요.</li>
+    <li>7개를 모두 넣은 2차 버전은 1시간 56분, 사용량 약 3~4%가 더 들었고 안드로이드 폰에서도 돌아가요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">완성된 게임 미리 보기</a></li>
+    <li><a href="#s2">출발점: AutoSprite 팀의 웹 게임</a></li>
+    <li><a href="#s3">세팅: Godot AI MCP와 AutoSprite MCP</a></li>
+    <li><a href="#s4">1차 버전: 3D 무대 위의 2D 캐릭터</a></li>
+    <li><a href="#s5">7가지 새 기능을 제안받기</a></li>
+    <li><a href="#s6">최종 버전과 모바일</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>완성된 게임 미리 보기</h2>
+<p>발표자는 결과물부터 보여 줘요. 게임 이름은 Stormfield Fighters예요. 닌자 관중이 둘러싼 밤의 풀밭 아레나에서 캐릭터 넷 중 하나를 골라 펀치·킥·콤보로 싸워요. 비가 오는 폭풍 속이라 아레나에 번개도 떨어져요. 발표자가 처음부터 내건 목표는 '<span class="term" data-term="AI 슬롭" data-en="AI slop" data-desc="AI가 대충 찍어 낸 티가 나는, 성의 없고 비슷비슷한 결과물을 낮춰 부르는 말이에요. 발표자는 이걸 피하는 것을 목표로 삼아요." data-g="8">AI 슬롭</span>'처럼 보이지 않는, 완성도 있는 게임이었어요.</p>
+<p>아래는 4인 난투 장면이에요. 화면 위쪽에 Ryo·Mina와 Kage·Brawn 네 명의 체력 바가 있고, 오른쪽 위에 '2 HITS Combo!' 같은 콤보 표시가 떠요. 맨 아래 줄에는 'WASD' 이동, J 펀치, K 킥, L 막기, U 필살기, I 슈퍼라는 조작키가 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0032.webp" alt="풀밭 아레나에서 Brawn이 해머로 공격하고 위쪽에 네 캐릭터의 체력 바와 2 HITS Combo 표시가 뜬 게임 화면">
+  <figcaption>체력 바가 네 줄이면 4인 난투 모드예요. 조작키가 화면에 그대로 적혀 있어요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=32s" target="_blank" rel="noopener">영상 00:32에서 보기</a></figcaption>
+</figure>
+<p>메인 메뉴는 'FIGHT', 'Test Your Storm', 'SETTINGS', 'QUIT' 네 개예요. 'FIGHT'를 누르면 캐릭터를 고르고 1 vs CPU(Central Processing Unit)나 4인 난투(4 Way Brawl) 중 하나를 골라요. 메뉴 배경도 바람에 흔들리는 풀밭이라 게임 분위기를 그대로 이어 가요.</p>
+<figure>
+  <img src="assets/frame-0120.webp" alt="STORMFIELD FIGHTERS 제목 아래 FIGHT, Test Your Storm, SETTINGS, QUIT 버튼이 있는 메인 메뉴">
+  <figcaption>대전 말고 Test Your Storm이라는 별도 모드가 하나 더 있어요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=80s" target="_blank" rel="noopener">영상 01:20에서 보기</a></figcaption>
+</figure>
+<p>대전 중에는 바닥의 물건을 집어 던질 수 있어요. 아래 장면에서는 CPU가 던진 횃불 때문에 아레나 가장자리를 따라 불길이 번지고 있어요. 발표자는 이 장면에서 "횃불을 던졌다"며 놀라는데, 이 불길과 번개가 2차 버전에서 넣은 기능이에요.</p>
+<figure>
+  <img src="assets/frame-0208.webp" alt="풀밭 아레나 가장자리를 따라 불길이 번지고 가운데에서 두 캐릭터가 싸우는 장면">
+  <figcaption>횃불 하나로 아레나 둘레에 불이 붙어요. 무대 자체가 공격 수단이 돼요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=128s" target="_blank" rel="noopener">영상 02:08에서 보기</a></figcaption>
+</figure>
+<p>Test Your Storm은 연타 미니게임이에요. 오른쪽 세로 게이지를 빠르게 눌러 빨간 선 위까지 채우면 돌판이 부서지고, 제때 못 채우면 번개를 맞아요. 아래 화면은 3단계 중 2단계 '5 STONE SLABS'를 23번 연타로 깬 순간이에요.</p>
+<figure>
+  <img src="assets/frame-0256.webp" alt="Test Your Storm 2단계, 칼을 든 Ryo 옆에 돌판 더미와 세로 게이지, STORM BREAKER와 23 TAPS 문구가 뜬 화면">
+  <figcaption>단계가 오를수록 부술 돌판이 늘어나요. 모탈 컴뱃의 힘 겨루기 미니게임에서 따온 아이디어예요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=176s" target="_blank" rel="noopener">영상 02:56에서 보기</a></figcaption>
+</figure>
+<p>발표자는 격투 게임이 스프라이트 애니메이션에서 특히 어려운 장르라고 짚어요. 동작 수가 많고, 하나하나 품질도 좋아야 하기 때문이에요. 이 영상에서 그 그림을 전부 AutoSprite로 만들었다는 게 이야기의 출발점이에요.</p>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=190s" target="_blank" rel="noopener">03:10</a>
+  <h2>출발점: AutoSprite 팀의 웹 게임</h2>
+<p>이 게임은 AutoSprite라는 스프라이트 생성 서비스를 만든 팀의 웹 게임에서 시작했어요. AutoSprite 사이트 첫 화면에는 캐릭터 하나를 <span class="term" data-term="8방향" data-en="8-directional sprites" data-desc="캐릭터를 앞·뒤·옆·대각선 여덟 방향에서 본 모습으로 각각 그려 두는 방식이에요. 카메라 각도가 바뀌어도 그 각도에 맞는 그림을 골라 보여 줄 수 있어요." data-g="6">8방향</span> 아이소메트릭 애니메이션으로 바꿔 주는 기능이 소개돼 있어요. 가운데 캐릭터를 둘러싼 아홉 칸이 방향별 모습이에요.</p>
+<figure>
+  <img src="assets/frame-0322.webp" alt="AutoSprite 홈페이지, 8-Directional Isometric Animation 설명과 한 캐릭터의 방향별 모습 아홉 칸">
+  <figcaption>이 '8방향' 기능이 나중에 3D 무대 위 2D 캐릭터를 자연스럽게 보이게 하는 핵심이 돼요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=202s" target="_blank" rel="noopener">영상 03:22에서 보기</a></figcaption>
+</figure>
+<p>AutoSprite 공식 X 계정은 2026년 10월 8일에 "한 시간 안에 격투 게임을 만들었다"는 글을 올렸어요. 본문에는 AutoSprite Brawlers의 모든 캐릭터·공격 애니메이션이 AutoSprite MCP에서 나왔고, AI 에이전트에게 동작을 요청하기만 하면 된다고 적혀 있어요. 영상 속 캐릭터 이름은 Sora와 Nyx예요.</p>
+<figure>
+  <img src="assets/frame-0346.webp" alt="AutoSprite 공식 X 게시물, I made a fighting game in under an hour 문구와 Sora 대 Nyx 대전 영상">
+  <figcaption>발표자는 이 웹 게임도 좋지만 Godot으로 옮겨 더 다듬고 기능을 늘리겠다고 해요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=226s" target="_blank" rel="noopener">영상 03:46에서 보기</a></figcaption>
+</figure>
+<h3>첫 지시: 기획부터 맡기기</h3>
+<p>작업은 'Autosprite - Ideation'이라는 Claude Code 세션에서 시작해요. 오른쪽 아래에 Opus 5.5, High가 보여요. 첫 메시지는 "다음 AutoSprite 프로젝트를 시작하자, 뭐가 필요해?"였고, 이어서 빈 프로젝트·GDD(Game Design Document)·콘셉트 이미지를 만들고 게임 영상을 내려받으라고 했어요.</p>
+<figure>
+  <img src="assets/frame-0412.webp" alt="Claude Code 세션 화면. 사용자 메시지 두 개와 영상 다운로드, 소스 코드 검토, 콘셉트 이미지 생성 에이전트 실행 기록">
+  <figcaption>Claude는 32초짜리 영상을 받아 프레임을 확인하고, 콘셉트 아트와 GDD 작성을 백그라운드 에이전트로 나란히 돌려요. 오른쪽 Outputs에 <code>MCP_SETUP.md</code>, <code>AGENTS.md</code>, 콘셉트 이미지가 쌓여요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=252s" target="_blank" rel="noopener">영상 04:12에서 보기</a></figcaption>
+</figure>
+<p>AutoSprite 팀은 웹 게임의 소스 코드와 플레이 링크도 넘겨줬어요. 웹 버전의 캐릭터 선택 화면에는 Kaito·Sora·Bruno·Nyx 넷이 있고, '1 VS CPU'와 '4-WAY BRAWL' 모드가 보여요. 기본 시스템은 이미 있으니 Godot 프로젝트로 옮기는 게 일이었어요.</p>
+<figure>
+  <img src="assets/frame-0510.webp" alt="웹 버전 STORM FIELD 캐릭터 선택 화면, Kaito Sora Bruno Nyx 네 캐릭터 카드">
+  <figcaption>웹 버전의 캐릭터 구성이 Godot 버전의 뼈대가 돼요. 이름은 Godot 쪽에서 새로 붙여요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=310s" target="_blank" rel="noopener">영상 05:10에서 보기</a></figcaption>
+</figure>
+<p>팀이 실제로 Claude Code에 붙여 넣은 프롬프트도 공개됐어요. 제목은 'Storm Field: the one prompt'예요. 첫 줄에서 three.js + Vite + TypeScript로 완전한 3D 격투 게임을 만들라고 하고, 'THE LOOK' 항목에서 밤의 풀밭, 닌자 관중 링, 3D 세계에 선 2D 픽셀 스프라이트, 8방향 시점, 클래식 격투 게임 HUD(Heads-Up Display)를 차례로 요구해요.</p>
+<figure>
+  <img src="assets/frame-0522.webp" alt="Storm Field: the one prompt 문서. AutoSprite MCP로 three.js 격투 게임을 만들라는 지시와 'THE LOOK' 항목 목록">
+  <figcaption>화면 묘사를 아주 구체적으로 적은 프롬프트예요. 발표자는 이 프롬프트와 소스 코드를 GDD 작성 재료로 함께 줬어요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=322s" target="_blank" rel="noopener">영상 05:22에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=325s" target="_blank" rel="noopener">05:25</a>
+  <h2>세팅: Godot AI MCP와 AutoSprite MCP</h2>
+<p>세팅은 도구 두 개를 Claude에 연결하는 게 전부예요. 하나는 Godot 에디터를, 하나는 AutoSprite를 Claude가 직접 다루게 해 줘요. 나중에 콘셉트 이미지를 그릴 때는 Codex CLI가 하나 더 붙어요. 전체 구조를 한 장으로 그리면 이래요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  U["발표자의 지시"] --> C["Claude Code (Opus 5.5)"]
+  C -->|"Godot AI MCP"| G["Godot 에디터: 씬·노드·스크립트"]
+  C -->|"AutoSprite MCP"| A["AutoSprite: 캐릭터·애니메이션·스프라이트 시트"]
+  C -->|"Codex CLI"| X["콘셉트 이미지"]
+  A --> G
+</pre>
+  <figcaption>Claude가 가운데에서 세 도구를 부려요. AutoSprite가 만든 그림은 Godot 프로젝트로 들어가고, Codex 이미지는 기획 단계에서만 써요.</figcaption>
+</figure>
+<h3>Godot AI MCP 설치</h3>
+<p>Godot 에디터 위쪽의 Asset Store에서 'godot ai'를 검색하면 Godot AI 플러그인이 나와요. 상세 창의 설명은 Claude Code, Codex, Antigravity 같은 MCP 호환 AI 도우미를 실행 중인 Godot 에디터에 연결해 준다는 내용이에요. 노드·씬·UI(User Interface)를 만들고, 스크립트를 붙이고, 애니메이션과 머티리얼을 만들고, 테스트를 돌리는 일을 대화로 할 수 있다고 적혀 있어요. 라이선스는 MIT(Massachusetts Institute of Technology)예요.</p>
+<figure>
+  <img src="assets/frame-0601.webp" alt="Godot Asset Store에서 연 Godot AI 상세 창. 작성자 dlight, MIT 라이선스, 설명문과 Download 버튼">
+  <figcaption>발표자 말로는 Claude가 기본으로는 못 하는 씬·노드 생성을 이 플러그인이 열어 줘요. Download를 누르면 설치가 시작돼요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=361s" target="_blank" rel="noopener">영상 06:01에서 보기</a></figcaption>
+</figure>
+<p>내려받은 뒤 Project → Project Settings → Plugins에서 켜면 오른쪽에 Godot AI 패널이 생겨요. 아래 화면 맨 위의 초록 점 'Server connected'가 연결됐다는 표시예요. 설치 버전 v4.3.0 아래에 v4.3.1 업데이트 알림이 떠 있고, 그 아래 Clients 줄에서 어떤 AI 클라이언트에 연결할지 설정해요. 에디터 버전은 오른쪽 아래의 4.7.2.stable이에요.</p>
+<figure>
+  <img src="assets/frame-0613.webp" alt="Godot 에디터 오른쪽 Godot AI 패널. Server connected, Install v4.3.0, Update available v4.3.1, Clients 4/26 configured">
+  <figcaption>발표자는 구버전(3.x)을 쓰고 있다면 꼭 업데이트하라고 해요. 그다음 Clients &amp; Tools에서 클라이언트를 고르고 Configure를 눌러요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=373s" target="_blank" rel="noopener">영상 06:13에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Godot AI의 공식 저장소는 GitHub의 hi-godot/godot-ai예요. README는 'Claude Code, Codex, Cursor 등 MCP 클라이언트를 실행 중인 Godot 에디터에 연결한다'고 소개하고, 설치 방법으로 Godot의 AssetLib 탭(Asset Store)과 GitHub 릴리스 두 가지를 적어 둬요. 라이선스는 MIT예요.</p>
+  <p class="cite">출처: <a href="https://github.com/hi-godot/godot-ai" target="_blank" rel="noopener">hi-godot/godot-ai (GitHub)</a></p>
+</aside>
+<h3>AutoSprite MCP 연결</h3>
+<p>AutoSprite 사이트의 Developers → MCP 페이지에는 코딩 에이전트에 붙여 넣을 프롬프트가 있어요. 1번은 <span class="term" data-term="MCP 서버" data-en="MCP server" data-desc="AI 에이전트가 외부 프로그램의 기능을 도구처럼 부를 수 있게 해 주는 연결 지점이에요. 여기서는 Godot 에디터와 AutoSprite가 각각 MCP 서버를 열어 Claude가 직접 조작해요." data-g="4">MCP 서버</span> 추가인데 Claude Code용 <code>claude mcp add</code> 명령, Codex용 명령, 그 밖의 도구용 원격 HTTP(HyperText Transfer Protocol) 주소가 나란히 있어요. 2번은 브라우저 로그인 방법, 3번은 <code>get_account</code>를 불러 준비됐는지 알려 달라는 요청이에요.</p>
+<figure>
+  <img src="assets/frame-0649.webp" alt="AutoSprite MCP 페이지 Generate sprite sheets from your editor, Copy prompt 버튼과 3단계 설정 프롬프트">
+  <figcaption>Copy prompt를 눌러 Claude에 붙여 넣으면 Claude가 나머지를 안내해요. 맨 아래에 에디터에서 생성하려면 유료 플랜이 필요하다는 문구가 있어요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=409s" target="_blank" rel="noopener">영상 06:49에서 보기</a></figcaption>
+</figure>
+<p>브라우저 로그인이 안 되는 환경이면 API(Application Programming Interface) 키를 써요. 'Your API &amp; MCP keys' 페이지에서 이름을 붙여 키를 만들고 Claude에 넘기면 돼요. 같은 키를 REST(Representational State Transfer) API와 MCP 양쪽에 쓸 수 있다고 적혀 있어요. 발표자는 전체 과정이 30초도 안 걸린다고 해요.</p>
+<figure>
+  <img src="assets/frame-0701.webp" alt="AutoSprite Your API and MCP keys 페이지. Create a new key 입력칸과 Video, Claude, Codex 이름의 기존 키 목록">
+  <figcaption>발표자는 Claude, Codex, 영상용으로 키를 따로 만들어 두었어요. 어디서 쓰는 키인지 이름으로 구분해요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=421s" target="_blank" rel="noopener">영상 07:01에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>AutoSprite의 MCP 문서는 Claude Code 연결 명령을 <code>claude mcp add --transport http --scope user autosprite https://www.autosprite.io/api/mcp</code>로 안내해요. 로그인은 <code>claude --continue</code>로 다시 연 뒤 <code>/mcp</code>를 실행하면 되고, 에디터에서 생성하려면 유료 플랜이 필요하다고 적혀 있어요.</p>
+  <p class="cite">출처: <a href="https://www.autosprite.io/mcp" target="_blank" rel="noopener">AutoSprite MCP 문서</a></p>
+</aside>
+<h3>Claude가 만든 그림 확인하기</h3>
+<p>연결이 끝나면 Claude가 AutoSprite 도구를 직접 불러 캐릭터와 애니메이션을 만들어요. 결과는 AutoSprite 사이트에서 볼 수 있어요. 왼쪽 목록에 ninja_fan, kage, brawn, mina, ryo가 있고, 가운데는 brawn의 걷기(Walk) 스프라이트 시트, 오른쪽은 숲 배경에서 돌려 본 미리보기예요. 'Perfect loop'에 체크돼 있고 프레임 크기는 128×128이에요.</p>
+<figure>
+  <img src="assets/frame-0713.webp" alt="AutoSprite Preview Animations 화면. 왼쪽 캐릭터 목록, 가운데 brawn 걷기 스프라이트, 오른쪽 2.5D World 숲 배경 미리보기">
+  <figcaption>아래쪽 Engine integrations에 Unity, Godot, RPG(Role-Playing Game) Maker가 있어요. 만든 시트를 엔진으로 바로 가져가는 용도예요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=433s" target="_blank" rel="noopener">영상 07:13에서 보기</a></figcaption>
+</figure>
+<p>Spritesheets 탭에서는 동작별 시트를 한꺼번에 볼 수 있어요. 위쪽은 해머 공격(Hammer…), 무기 꺼내기(Draw Weap…) 같은 필살 동작이고, 아래 Isometric 묶음은 Walk Up, Walk North, Walk Right, Walk South처럼 방향마다 따로 만든 걷기 시트예요.</p>
+<figure>
+  <img src="assets/frame-0737.webp" alt="AutoSprite Spritesheets 탭. 위쪽 필살기 시트 세 장, 아래 Isometric 묶음의 방향별 걷기 시트 네 장">
+  <figcaption>방향마다 시트가 따로 있어서 카메라 각도가 바뀌어도 맞는 모습을 보여 줄 수 있어요. 발표자는 이걸 만드는 동안 AutoSprite를 한 번도 직접 열지 않았다고 해요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=457s" target="_blank" rel="noopener">영상 07:37에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=462s" target="_blank" rel="noopener">07:42</a>
+  <h2>1차 버전: 3D 무대 위의 2D 캐릭터</h2>
+<p>얼마간 작업한 끝에 1차 버전이 나왔어요. 목표는 웹 게임과 비슷하되 더 다듬는 것이었어요. 발표자가 가장 마음에 들어 한 건 2.5D 구조예요. Godot 에디터에서 arena 씬을 열면 왼쪽 씬 트리에 Ground, GrassField, Hills, CrowdRing, ToriiGate, Shrine, WarBanner1~5가 보여요. 화면 속 풀밭과 언덕, 둘러선 관중, 붉은 도리이 문이 모두 진짜 3D 오브젝트예요.</p>
+<figure>
+  <img src="assets/frame-0756.webp" alt="Godot 에디터 3D 뷰의 arena 씬. 왼쪽 씬 트리에 Ground, GrassField, CrowdRing, ToriiGate 노드, 가운데 풀밭과 관중 링">
+  <figcaption>무대는 3D이고, 그 위에 캐릭터만 2D 스프라이트로 세워요. 웹 게임 프롬프트가 요구했던 구조를 Godot 노드로 옮긴 거예요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=476s" target="_blank" rel="noopener">영상 07:56에서 보기</a></figcaption>
+</figure>
+<p>캐릭터 선택 화면에는 Ryo, Mina, Brawn, Kage 네 명이 있어요. 아래쪽 '4 WAY BRAWL'은 아직 'LOCKED'예요. 4인 난투는 발표자가 2차 버전에서 떠올려 GDD에 추가한 기능이라서 그래요. 왼쪽 위 상자에는 1차 버전에 걸린 시간 2시간 43분과 Claude 사용량 약 5%가 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0824.webp" alt="SELECT YOUR FIGHTER 화면. Ryo, Mina, Brawn, Kage 카드와 1 vs CPU, 잠긴 4 WAY BRAWL 버튼, VERSION 1 2h 43m 약 5% 표시">
+  <figcaption>발표자는 버전마다 걸린 시간과 사용량을 화면에 붙여 보여 줘요. 이 숫자는 뒤에서 2차 버전과 비교돼요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=504s" target="_blank" rel="noopener">영상 08:24에서 보기</a></figcaption>
+</figure>
+<h3>GDD에 무엇이 들어 있었나</h3>
+<p>Claude가 쓴 GDD의 첫 장은 'Stormfield Fighters: Build GDD'예요. 요약 문단에 Godot 4.7.2로 만드는 2.5D 일대일 격투 게임이고, 모바일 우선(가로 화면, 터치 조작)이며 PC(Personal Computer) 키보드·게임패드도 지원한다고 적혀 있어요. 아래 이미지는 '콘셉트 1'로, 번개 아래 Ryo가 Kage에게 칼 필살기를 넣는 장면이에요.</p>
+<figure>
+  <img src="assets/frame-0838.webp" alt="Stormfield Fighters Build GDD 첫 페이지. 요약 문단과 Ryo가 번개 아래에서 Kage를 베는 콘셉트 이미지">
+  <figcaption>GDD에는 '원본 게임 콘셉트를 따를 것'이라는 기준이 있어요. 이 콘셉트 이미지가 최종 결과물을 판단하는 기준 이미지 역할을 해요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=518s" target="_blank" rel="noopener">영상 08:38에서 보기</a></figcaption>
+</figure>
+<p>소스 코드를 받았기 때문에 GDD에는 캐릭터별 정보가 처음부터 들어 있었어요. 2.2 The roster 표를 옮기면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>캐릭터</th><th>유형</th><th>무기</th><th>강조 색</th></tr></thead>
+    <tbody>
+      <tr><td>Ryo</td><td>균형형 가라테</td><td>칼(카타나)</td><td>빨강</td></tr>
+      <tr><td>Mina</td><td>빠른 킥복서</td><td>창</td><td>청록</td></tr>
+      <tr><td>Brawn</td><td>거구 난투가</td><td>워해머</td><td>진홍</td></tr>
+      <tr><td>Kage</td><td>돌진형 그림자 닌자</td><td>쌍단검</td><td>보라</td></tr>
+      <tr><td>닌자 관중</td><td>관중</td><td>없음</td><td>없음</td></tr>
+    </tbody>
+  </table>
+</div>
+<figure>
+  <img src="assets/frame-0852.webp" alt="GDD 2. Concept 페이지. 2.1 게임 설명 문단, 2.2 캐릭터 표, 2.3 웹 게임보다 나아갈 점 표">
+  <figcaption>맨 아래 2.3 표가 웹 게임과의 차이예요. D1 모바일 터치 조작, D2 저가 폰에서 60fps로 도는 안드로이드 빌드가 첫 두 줄이에요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=532s" target="_blank" rel="noopener">영상 08:52에서 보기</a></figcaption>
+</figure>
+<p>발표자가 웹 게임에 없던 것으로 가장 먼저 꼽은 건 모바일이에요. GDD의 모바일 HUD 콘셉트를 보면 왼쪽 아래에 조이스틱이, 오른쪽 아래에 펀치·킥·막기·점프·필살기·슈퍼 버튼이 둥글게 모여 있어요.</p>
+<figure>
+  <img src="assets/frame-0906.webp" alt="GDD 11.2 Fight HUD mobile 콘셉트. 왼쪽 아래 조이스틱, 오른쪽 아래 원형 버튼 여섯 개가 있는 대전 화면">
+  <figcaption>모바일 조작을 설계 단계에서 먼저 그려 둔 덕분에, 마지막에 실제 폰에서 같은 배치로 돌아가요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=546s" target="_blank" rel="noopener">영상 09:06에서 보기</a></figcaption>
+</figure>
+<p>GDD에는 AutoSprite 에셋 계획도 있어요. 14.4 Worklist 표에 캐릭터마다 AutoSprite에 넣을 기본 프롬프트가 적혀 있고, 그 아래 '캐릭터당 팩 10개, 8방향, 25프레임, 128px'라는 규격과 동작 목록(fight_stance, walk, run, punch, kick, hit_react, block, jump…)이 이어져요.</p>
+<figure>
+  <img src="assets/frame-0920.webp" alt="GDD 14.4 Worklist 페이지. ryo, mina, brawn, kage, ninja_fan 기본 프롬프트 표와 fight_stance, walk, punch 등 동작 팩 표">
+  <figcaption>Claude가 AutoSprite MCP로 무엇을 몇 장 만들지 미리 목록으로 정해 둔 거예요. 그래서 그림 생성도 계획대로 반복할 수 있어요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=560s" target="_blank" rel="noopener">영상 09:20에서 보기</a></figcaption>
+</figure>
+<h3>플레이해 보니</h3>
+<p>1차 버전에서도 펀치, 킥, 필살기, 슈퍼가 모두 동작했어요. 아래는 Brawn과 Mina의 대결이고, 왼쪽 아래에 3칸짜리 <span class="term" data-term="슈퍼 게이지" data-en="Super meter" data-desc="공격을 주고받으면 차오르는 격투 게임의 필살기 게이지예요. 이 게임은 세 칸이고, 한 칸이면 필살기, 세 칸이면 슈퍼를 쓸 수 있어요." data-g="10">슈퍼 게이지</span>가 보여요. 다만 한때 카메라가 캐릭터를 놓쳐 화면에 아무도 안 보이는 문제가 있었어요. 발표자는 작은 오류가 있었지만 게임 로직은 다 갖춰졌다고 평가해요.</p>
+<figure>
+  <img src="assets/frame-0934.webp" alt="1차 버전 대전 화면. Brawn과 Mina가 풀밭에서 마주 서 있고 VERSION 1 2h 43m 표시">
+  <figcaption>발표자는 풀밭 표현을 특히 마음에 들어 해요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=574s" target="_blank" rel="noopener">영상 09:34에서 보기</a></figcaption>
+</figure>
+<p>이어서 Godot 1차 버전과 원래 웹 게임을 나란히 놓은 비교 화면이 나와요. 왼쪽이 'GODOT: VERSION 1', 오른쪽이 'ORIGINAL WEB GAME'이에요. 둘 다 같은 해머 캐릭터가 비슷한 HUD 아래 싸우고 있어요.</p>
+<figure>
+  <img src="assets/frame-1016.webp" alt="화면을 반으로 나눠 왼쪽 GODOT VERSION 1, 오른쪽 ORIGINAL WEB GAME 대전 장면을 나란히 보여 주는 비교 화면">
+  <figcaption>뼈대는 같고, 무대 표현과 캐릭터 이름이 달라요. 발표자는 Godot 쪽이 전반적으로 더 다듬어졌다고 봐요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=616s" target="_blank" rel="noopener">영상 10:16에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=620s" target="_blank" rel="noopener">10:20</a>
+  <h2>7가지 새 기능을 제안받기</h2>
+<p>다음 버전에 앞서 발표자가 먼저 고치게 한 건 에디터 화면이에요. 게임은 잘 돌았지만 에디터에서 씬을 열면 엉망으로 보였고, 영상으로 보여 줄 에디터도 깔끔해야 했기 때문이에요. 고친 뒤의 main 씬은 3D 뷰에 풀밭, 관중, 도리이 문, 두 캐릭터가 게임 화면처럼 보여요.</p>
+<figure>
+  <img src="assets/frame-1038.webp" alt="고친 뒤의 Godot 에디터 main 씬. 3D 뷰에 풀밭 아레나와 관중, 도리이 문, 마주 선 두 캐릭터">
+  <figcaption>에디터 미리보기도 게임과 같은 모습이 됐어요. 사람이 씬을 직접 열어 손볼 때 중요한 부분이에요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=638s" target="_blank" rel="noopener">영상 10:38에서 보기</a></figcaption>
+</figure>
+<h3>제안을 받는 프롬프트</h3>
+<p>그다음 보낸 메시지가 이번 영상에서 가장 눈여겨볼 지시예요. 아래 화면의 메시지는 다섯 문단이에요. 공개 아티팩트를 만들 것, 그림과 함께 7개의 추가 기능을 제안할 것, 상점 업그레이드처럼 흔한 건 빼고 모탈 컴뱃처럼 집어 던지는 소품이나 환경 위험을 넣을 것, 힘 겨루기 미니게임도 넣을 것, 격투 장르를 조사할 것. 마지막 문단은 실제 게임 화면과 그 위에 그린 콘셉트 이미지를 넣고, Codex를 써도 되니 사이트 끝에 어떻게 썼는지 설명하라는 요구예요.</p>
+<figure>
+  <img src="assets/frame-1056.webp" alt="Claude Code 세션의 사용자 메시지. 공개 아티팩트 생성과 그림을 곁들인 7가지 추가 기능 제안을 요청하는 다섯 문단">
+  <figcaption>무엇을 빼야 하는지(흔한 상점), 어떤 방향이 좋은지(모탈 컴뱃식 소품), 무엇으로 증명할지(실제 캡처와 콘셉트 이미지)를 모두 적었어요. 발표자는 맞춤법이 엉망이라며 사과하지만 내용은 구체적이에요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=656s" target="_blank" rel="noopener">영상 10:56에서 보기</a></figcaption>
+</figure>
+<p>발표자가 보낸 메시지에서 원하는 방향을 짚은 대목은 이래요.</p>
+<blockquote>
+  <p>Not generic stuff like a shop to upgrade characters. Maybe in the environment add stuff that you can grab and drop at the enemies as in Mortal Kombat</p>
+  <p>캐릭터 업그레이드 상점 같은 흔한 건 말고요. 모탈 컴뱃처럼 환경에 집어서 적에게 던질 수 있는 걸 넣는다든지요.</p>
+  <cite>— 영상 10:26 (화면 속 메시지)</cite>
+</blockquote>
+<h3>아티팩트로 정리된 7가지 제안</h3>
+<p>Claude는 조사를 마친 뒤 Codex로 실제 캡처 위에 콘셉트 이미지를 그리고, 결과를 'Stormfield Fighters: Next Storm'이라는 공개 아티팩트로 만들었어요. 발표자는 시크릿 창에서 열어 로그인 없이 누구나 볼 수 있다는 걸 보여 줘요. 영상 속 페이지는 이미 구현이 끝난 뒤의 모습이라, 첫 문단에 7개가 모두 V6~V12 버전으로 게임에 들어갔고 각각 <span class="term" data-term="프로브" data-en="Probe" data-desc="기능을 넣은 뒤 실제 게임을 자동으로 돌려 의도대로 동작하는지 확인하는 검사예요. 아티팩트의 &#x27;PROBE PASS&#x27;가 이 검사를 통과했다는 표시예요." data-g="7">프로브</span>로 검증됐다고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-1150.webp" alt="claude.ai 아티팩트 페이지 Stormfield Fighters 첫 화면. 일곱 가지 추가 기능 소개 문단과 불붙은 아레나 장면">
+  <figcaption>제목 위 'RUN V2 · BUILT'는 콘셉트 단계에서 구현 완료 단계로 페이지를 갱신했다는 뜻이에요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=710s" target="_blank" rel="noopener">영상 11:50에서 보기</a></figcaption>
+</figure>
+<p>일곱 가지를 정리하면 이래요. 이름과 내용은 영상 속 설명과 아티팩트 화면을 따랐어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>#</th><th>이름</th><th>무엇이 일어나나요</th><th>참고한 게임</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Strike Zones (V6)</td><td>폭풍이 14~22초마다 아레나에 원을 표시하고, 1.3초 뒤 그 자리에 번개가 떨어져요</td><td>—</td></tr>
+      <tr><td>2</td><td>Thunderstruck (V7)</td><td>체력 300 이하일 때 경기당 한 번, 다음 슈퍼가 공짜예요</td><td>—</td></tr>
+      <tr><td>3</td><td>Ninja Crowd (V8)</td><td>링 가장자리로 밀린 캐릭터를 닌자들이 다시 밀어 넣어 콤보가 이어져요</td><td>—</td></tr>
+      <tr><td>4</td><td>소품 집어 던지기</td><td>바위 같은 아레나 소품을 집어 상대에게 던져요</td><td>모탈 컴뱃</td></tr>
+      <tr><td>5</td><td>Wildfire (V10)</td><td>횃불을 던지면 풀밭에 불이 번져요</td><td>—</td></tr>
+      <tr><td>6</td><td>Test Your Storm</td><td>연타로 게이지를 채워 돌판을 부수는 미니게임이에요</td><td>모탈 컴뱃</td></tr>
+      <tr><td>7</td><td>Through the Torii (V12)</td><td>경기당 한 번 슈퍼 피니셔로 상대를 날리면 다른 아레나로 바뀌어요</td><td>인저스티스</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>각 제안 칸은 왼쪽에 실제로 구현한 화면('BUILT'), 오른쪽에 처음 제안했던 콘셉트('CONCEPT')를 놓는 식이에요. 첫 번째 Strike Zones를 보면 왼쪽 실제 게임에서는 풀밭 위 원이 푸르게 빛나고, 오른쪽 콘셉트에는 'STRIKE ZONE'이라는 글자와 함께 원 안에서 칼을 휘두르는 장면이 그려져 있어요.</p>
+<figure>
+  <img src="assets/frame-1208.webp" alt="아티팩트의 1번 Strike Zones. 왼쪽 BUILT 실제 게임 화면의 푸른 원, 오른쪽 CONCEPT 이미지의 STRIKE ZONE 표시">
+  <figcaption>콘셉트와 구현을 나란히 둬서, 제안이 실제로 얼마나 그대로 들어갔는지 바로 비교할 수 있어요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=728s" target="_blank" rel="noopener">영상 12:08에서 보기</a></figcaption>
+</figure>
+<p>두 번째 Thunderstruck는 두 칸 모두 'BUILT'예요. 왼쪽은 체력이 바닥난 상태에서 공짜 슈퍼가 터지는 'STORM SUPER!', 오른쪽은 승리 뒤 막기를 누르고 있으면 뜨는 'RESPECT' 장면이에요. 오른쪽 상자에는 크레딧 0, 구현 6분, 프로브 'PASS'가 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-1226.webp" alt="아티팩트의 2번 Thunderstruck. STORM SUPER와 RESPECT 장면 두 장, 설명 세 줄과 CREDITS 0, BUILT IN 6 min, PROBE PASS">
+  <figcaption>발표자는 이 기능을 체력이 낮은 쪽에 기회를 줘 균형을 맞추는 장치로 봐요. 그림이 필요 없는 기능이라 AutoSprite 크레딧은 0이에요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=746s" target="_blank" rel="noopener">영상 12:26에서 보기</a></figcaption>
+</figure>
+<p>세 번째 Ninja Crowd에서는 관중이 경기에 끼어들어요. 왼쪽 실제 화면 위쪽에 관중 구호 'KAGE! KAGE! KAGE!'가 떠 있어요. 아래 설명에는 가장자리로 밀면 닌자 셋이 튀어나와 다시 밀어 주는 '소프트 월', 멋진 플레이로 금색 게이지를 채우면 닌자가 쿠나이나 연막탄을 던져 주는 'Crowd Favor'가 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-1244.webp" alt="아티팩트의 3번 Ninja Crowd. 왼쪽 Kage 구호가 뜬 실제 화면, 오른쪽 닌자들이 캐릭터를 미는 콘셉트, CREDITS 2 kunai smoke bomb">
+  <figcaption>이 기능에는 쿠나이와 연막탄 그림 두 장이 새로 필요해서 크레딧이 2 들었어요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=764s" target="_blank" rel="noopener">영상 12:44에서 보기</a></figcaption>
+</figure>
+<p>마지막 Through the Torii가 발표자가 가장 멋지다고 꼽은 제안이에요. 왼쪽은 슈퍼 피니셔로 상대를 도리이 문 쪽으로 날리는 'THROUGH THE TORII!' 장면, 오른쪽은 그 뒤 이어지는 신사 돌계단 아레나예요. 설명에는 경기당 한 번, 슈퍼 데미지에 150을 더하고, 돌 포장과 석등이 있으며 석등이 던질 소품이 된다고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-1320.webp" alt="아티팩트의 7번 Through the Torii. 왼쪽 THROUGH THE TORII 문구가 뜬 장면, 오른쪽 어두운 돌바닥 신사 아레나, CREDITS 3, BUILT IN 5 min">
+  <figcaption>풀밭이 아닌 아레나라 불이 붙지 않아요. 새 무대에 맞춰 석등·포장·계단 그림 세 장을 만들었어요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=800s" target="_blank" rel="noopener">영상 13:20에서 보기</a></figcaption>
+</figure>
+<h3>Claude 안에서 Codex로 이미지 만들기</h3>
+<p>페이지 끝의 'Claude, Codex, Godot and AutoSprite' 칸은 만든 과정을 다섯 단계로 정리해요. 1) Claude <span class="term" data-term="서브에이전트" data-en="Subagent" data-desc="메인 에이전트가 조사 같은 일을 따로 맡기려고 띄우는 보조 에이전트예요. 결과만 돌려받으니 메인 대화의 컨텍스트가 덜 차요." data-g="9">서브에이전트</span>가 약 40개 자료를 조사, 2) Claude 안에서 Codex로 아이디어마다 콘셉트 이미지 생성, 3) AutoSprite로 픽셀 아트 일곱 장과 불꽃 루프 하나(총 12크레딧), 4) 아이디어마다 규칙 노드를 만들어 Godot AI MCP로 조립하고 프로브로 검증, 5) 아이디어마다 커밋·태그·브랜치를 만들어 V6~V12로 저장이에요.</p>
+<figure>
+  <img src="assets/frame-1346.webp" alt="아티팩트의 How it was made 칸. 다섯 단계 목록과 codex exec 명령 예시">
+  <figcaption>2단계의 명령은 프롬프트를 표준 입력으로 넘기고 실제 캡처(base_fight.png)를 이미지로 붙여 Codex를 비대화형으로 돌려요. 아이디어마다 하나씩, 일곱 개를 동시에 돌렸어요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=826s" target="_blank" rel="noopener">영상 13:46에서 보기</a></figcaption>
+</figure>
+<p>발표자는 Claude 에이전트에게 Codex CLI를 설정하라고만 하면, 이미 쓰고 있는 Codex 구독으로 Claude 안에서 이미지를 만들 수 있다고 정리해요. 그리고 일곱 개 제안이 모두 마음에 든다며 전부 구현하라고 지시해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p><code>codex exec</code>는 Codex를 스크립트에서 돌리는 비대화형 모드예요. OpenAI 문서에 따르면 기본은 읽기 전용 샌드박스라서 파일을 고치게 하려면 <code>--sandbox workspace-write</code>를 붙여요. 프롬프트 인자를 빼면 표준 입력에서 프롬프트를 읽고, Git 저장소 밖에서 돌릴 때는 <code>--skip-git-repo-check</code>로 검사를 건너뛸 수 있어요. 화면 속 명령의 <code>-s workspace-write</code>와 <code>--skip-git-repo-check</code>가 이 옵션이에요.</p>
+  <p class="cite">출처: <a href="https://learn.chatgpt.com/docs/non-interactive-mode" target="_blank" rel="noopener">OpenAI Codex 문서 — Non-interactive mode</a></p>
+</aside>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=825s" target="_blank" rel="noopener">13:45</a>
+  <h2>최종 버전과 모바일</h2>
+<p>2차이자 마지막 버전이에요. 먼저 새로 넣은 4인 난투를 보여 줘요. 화면 위에 체력 바 네 줄이 있고, 발표자는 왼쪽의 Ryo를 조작해요. 왼쪽 위 상자에는 이번 버전에 1시간 56분, 사용량 약 3~4%가 들었고, 누적으로는 4시간 53분, 약 8~9%라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-1413.webp" alt="2차 버전 4인 난투 화면. 위쪽 Ryo, Mina, Kage, Brawn 체력 바, 왼쪽 위 VERSION 2 상자의 시간과 사용량">
+  <figcaption>발표자는 네 명이 한꺼번에 싸우니 너무 혼란스럽다며, 밸런스를 더 손봐야 할 것 같다고 인정해요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=853s" target="_blank" rel="noopener">영상 14:13에서 보기</a></figcaption>
+</figure>
+<p>화면 속 숫자로 두 버전을 비교하면 이래요. 7개 기능을 더한 2차 버전이 1차 버전보다 시간도 사용량도 덜 들었어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 560 210" role="img" aria-label="1차 버전 2시간 43분, 2차 버전 1시간 56분 작업 시간 막대">
+    <line class="axis" x1="150" y1="30" x2="150" y2="150"/>
+    <text x="140" y="68" text-anchor="end">1차 버전</text>
+    <text x="140" y="86" text-anchor="end" class="sub">사용량 약 5%</text>
+    <rect class="bar c1" x="150" y="52" width="326" height="36"/>
+    <text x="484" y="76">2h 43m</text>
+    <text x="140" y="124" text-anchor="end">2차 버전</text>
+    <text x="140" y="142" text-anchor="end" class="sub">사용량 약 3~4%</text>
+    <rect class="bar c2" x="150" y="108" width="232" height="36"/>
+    <text x="390" y="132">1h 56m</text>
+    <text x="150" y="185" class="sub">막대 길이는 작업 시간(분)에 비례해요. 화면 표기 누적: 4h 53m, 약 8~9%</text>
+  </svg>
+  <figcaption>1차는 바닥부터 만드는 단계, 2차는 기존 게임 위에 기능을 더하는 단계였어요. 화면의 누적 시간(4시간 53분)은 두 버전을 더한 4시간 39분보다 조금 길어요. 숫자는 화면 표기 그대로 옮겼어요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=853s" target="_blank" rel="noopener">영상 14:13에서 보기</a></figcaption>
+</figure>
+<p>대전 중에는 2차 버전의 기능들이 차례로 나와요. 아래 장면 위쪽에 관중 구호 'KAGE! KAGE! KAGE!'가 떠 있어요. 체력이 낮아진 캐릭터의 이름을 닌자 관중이 외치는 Ninja Crowd 기능이에요. 발표자는 상대를 가장자리로 밀어 닌자가 나타나는 장면도 보여 주려 하는데, 그 전에 상대가 쓰러져 버려요.</p>
+<figure>
+  <img src="assets/frame-1441.webp" alt="4인 난투 중 Kage Kage Kage 관중 구호가 뜬 장면, Brawn의 체력 바는 OUT 표시">
+  <figcaption>오른쪽 위 Brawn 줄의 'OUT'은 이미 탈락했다는 뜻이에요. 4인 난투는 마지막 한 명이 남을 때까지 이어지는 배틀로얄처럼 흘러가요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=881s" target="_blank" rel="noopener">영상 14:41에서 보기</a></figcaption>
+</figure>
+<p>4인 난투가 너무 혼란스러워 발표자는 1 vs CPU로 바꿔 나머지 기능을 보여 줘요. 점프, 바위 집어 던지기, 번개, 그리고 도리이 통과로 바뀐 돌바닥 아레나까지 나와요. 마지막으로 안드로이드 폰에서 돌리는 모습이에요. 왼쪽 아래 조이스틱과 오른쪽 아래 둥근 버튼들이 GDD의 모바일 HUD 콘셉트 그대로예요.</p>
+<figure>
+  <img src="assets/frame-1619.webp" alt="두 손으로 가로로 든 안드로이드 폰에서 대전 중인 게임, 왼쪽 아래 조이스틱과 오른쪽 아래 원형 버튼">
+  <figcaption>웹 게임에는 없던 모바일 버전이에요. GDD 2.3 표의 첫 두 줄(터치 조작, 안드로이드 빌드)이 실제로 구현됐어요. <a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ&amp;t=979s" target="_blank" rel="noopener">영상 16:19에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 도구 이름이 많이 틀려 있어요. 화면에 보이는 표기를 기준으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>Clous 5.5, Oppus 5.5, oppos efficient</td><td>Claude Opus 5.5</td><td>세션 화면의 모델 표시 기준</td></tr>
+      <tr><td>Godo, Goro, God, go</td><td>Godot</td><td>게임 엔진 이름</td></tr>
+      <tr><td>auto sprite</td><td>AutoSprite</td><td></td></tr>
+      <tr><td>goway MCP</td><td>Godot AI</td><td>Asset Store의 MCP 플러그인 이름</td></tr>
+      <tr><td>clo, cloud</td><td>Claude</td><td></td></tr>
+      <tr><td>codeex, codec</td><td>Codex</td><td></td></tr>
+      <tr><td>ed8</td><td>ideate (추정)</td><td>세션 이름이 Autosprite - Ideation</td></tr>
+      <tr><td>next autopy project</td><td>next AutoSprite project</td><td>화면 속 메시지 기준</td></tr>
+      <tr><td>four-way roll, four-way bro</td><td>4 Way Brawl</td><td>게임 메뉴 표기</td></tr>
+      <tr><td>test your strength</td><td>Test Your Storm</td><td>게임 메뉴 표기. 발표자가 두 이름을 섞어 불러요</td></tr>
+      <tr><td>lining, stripped by a lightning</td><td>lightning, struck by lightning</td><td></td></tr>
+      <tr><td>stuper</td><td>super</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-3"><dt>게임 디자인 문서<span class="en">Game Design Document</span></dt><dd>게임의 규칙, 캐릭터, 화면, 조작, 에셋 목록을 적은 설계 문서예요. 이 영상에서는 Claude가 구현할 때 따라야 할 기준이자 검수표 역할을 해요.</dd></div>
+    <div class="g" id="g-9"><dt>서브에이전트<span class="en">Subagent</span></dt><dd>메인 에이전트가 조사 같은 일을 따로 맡기려고 띄우는 보조 에이전트예요. 결과만 돌려받으니 메인 대화의 컨텍스트가 덜 차요.</dd></div>
+    <div class="g" id="g-10"><dt>슈퍼 게이지<span class="en">Super meter</span></dt><dd>공격을 주고받으면 차오르는 격투 게임의 필살기 게이지예요. 이 게임은 세 칸이고, 한 칸이면 필살기, 세 칸이면 슈퍼를 쓸 수 있어요.</dd></div>
+    <div class="g" id="g-2"><dt>스프라이트 시트<span class="en">Sprite sheet</span></dt><dd>한 동작의 프레임들을 한 장의 이미지에 격자로 모아 둔 파일이에요. 게임 엔진은 이 칸들을 차례로 보여 줘서 캐릭터를 움직이게 해요.</dd></div>
+    <div class="g" id="g-5"><dt>아티팩트<span class="en">Artifact</span></dt><dd>Claude가 만들어 링크로 공유할 수 있는 웹 페이지예요. 이 영상에서는 로그인 없이 누구나 열 수 있는 기능 제안 페이지로 썼어요.</dd></div>
+    <div class="g" id="g-7"><dt>프로브<span class="en">Probe</span></dt><dd>기능을 넣은 뒤 실제 게임을 자동으로 돌려 의도대로 동작하는지 확인하는 검사예요. 아티팩트의 &#x27;PROBE PASS&#x27;가 이 검사를 통과했다는 표시예요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g" id="g-8"><dt>AI 슬롭<span class="en">AI slop</span></dt><dd>AI가 대충 찍어 낸 티가 나는, 성의 없고 비슷비슷한 결과물을 낮춰 부르는 말이에요. 발표자는 이걸 피하는 것을 목표로 삼아요.</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>CLI</dt><dd>Command Line Interface</dd></div>
+    <div class="g"><dt>CPU</dt><dd>Central Processing Unit</dd></div>
+    <div class="g"><dt>GDD</dt><dd>Game Design Document</dd></div>
+    <div class="g"><dt>HTTP</dt><dd>HyperText Transfer Protocol</dd></div>
+    <div class="g"><dt>HUD</dt><dd>Heads-Up Display</dd></div>
+    <div class="g"><dt>MCP</dt><dd>Model Context Protocol</dd></div>
+    <div class="g" id="g-4"><dt>MCP 서버<span class="en">MCP server</span></dt><dd>AI 에이전트가 외부 프로그램의 기능을 도구처럼 부를 수 있게 해 주는 연결 지점이에요. 여기서는 Godot 에디터와 AutoSprite가 각각 MCP 서버를 열어 Claude가 직접 조작해요.</dd></div>
+    <div class="g"><dt>MIT</dt><dd>Massachusetts Institute of Technology</dd></div>
+    <div class="g"><dt>PC</dt><dd>Personal Computer</dd></div>
+    <div class="g"><dt>REST</dt><dd>Representational State Transfer</dd></div>
+    <div class="g"><dt>RPG</dt><dd>Role-Playing Game</dd></div>
+    <div class="g"><dt>UI</dt><dd>User Interface</dd></div>
+    <div class="g" id="g-1"><dt>2.5D<span class="en">2.5D</span></dt><dd>3D 공간에 2D 그림을 세워 섞는 방식이에요. 무대는 입체로 움직이고 캐릭터는 픽셀 아트로 남아서, 3D 모델을 만들지 않고도 깊이감을 낼 수 있어요.</dd></div>
+    <div class="g" id="g-6"><dt>8방향<span class="en">8-directional sprites</span></dt><dd>캐릭터를 앞·뒤·옆·대각선 여덟 방향에서 본 모습으로 각각 그려 두는 방식이에요. 카메라 각도가 바뀌어도 그 각도에 맞는 그림을 골라 보여 줄 수 있어요.</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=bHeLn8QKlZQ" target="_blank" rel="noopener">원본 영상 — Letta Corporation</a></li>
+    <li id="src-2"><a href="https://github.com/hi-godot/godot-ai" target="_blank" rel="noopener">hi-godot/godot-ai — Godot AI 공식 저장소</a></li>
+    <li id="src-3"><a href="https://www.autosprite.io/mcp" target="_blank" rel="noopener">AutoSprite MCP 문서</a></li>
+    <li id="src-4"><a href="https://learn.chatgpt.com/docs/non-interactive-mode" target="_blank" rel="noopener">OpenAI Codex 문서 — Non-interactive mode</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 28일에 이 영상을 보고 정리했어요. 원본은 Letta Corporation 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

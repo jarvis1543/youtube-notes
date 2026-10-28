@@ -1,0 +1,1137 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>데이터베이스 샤딩 입문 — 앱 하나로 따라가는 샤딩의 모든 단계</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>데이터베이스 샤딩 입문 — 앱 하나로 따라가는 샤딩의 모든 단계</h1>
+  <p class="lede">왜 샤딩이 필요한지부터 컨시스턴트 해싱까지 한 흐름으로 짚어요</p>
+  <div class="meta">
+    <span>KodeKloud</span><span class="dot">·</span>
+    <span>영상 48:54</span><span class="dot">·</span>
+    <span>읽는 데 약 23분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=WpXmMxIgzdU" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li><span class="term" data-term="레플리카" data-en="Replica" data-desc="프라이머리 데이터베이스의 데이터 전체를 그대로 복사해 둔 기계예요. 원래는 장애 대비용이지만 읽기 요청도 받을 수 있어요." data-g="1">레플리카</span>는 읽기만 덜어 줘요. 쓰기를 나누면 값이 어긋나서 쓰기는 늘 프라이머리 한 대로 몰려요.</li>
+    <li>샤딩은 행을 여러 기계에 나눠 담아 쓰기를 받는 기계 자체를 늘리는, 쓰기를 확장하는 유일한 방법이에요.</li>
+    <li><span class="term" data-term="샤드 키" data-en="Shard key" data-desc="어느 행을 어느 샤드에 둘지 정하는 기준 열이에요. 데이터가 어떻게 퍼질지를 결정하고, 나중에 바꾸려면 데이터를 대부분 옮겨야 해요." data-g="3">샤드 키</span>는 값이 많고, 고르게 퍼지고, 접근 방식과 맞고, 바뀌지 않고, 관련 데이터를 모아야 해요. 나중에 바꾸기 아주 어려워요.</li>
+    <li>유명인 한 명 때문에 생긴 <span class="term" data-term="핫스팟" data-en="Hotspot" data-desc="데이터를 고르게 나눴는데도 샤드 하나에만 요청이 몰리는 현상이에요. 그 샤드에 같이 사는 다른 사용자까지 느려져요." data-g="9">핫스팟</span>은 전용 샤드, 캐시, <span class="term" data-term="솔팅" data-en="Salting" data-desc="많이 쓰이는 키 뒤에 500-1, 500-2처럼 숫자를 붙여 여러 키로 쪼개는 기법이에요. 해시가 달라져서 쓰기가 여러 샤드로 흩어지지만, 합계를 보려면 다 읽어 더해야 해요." data-g="10">솔팅</span>을 섞어서 풀어요.</li>
+    <li>'해시 ÷ 샤드 수' 규칙은 샤드 하나만 늘려도 80%를 옮기게 해요. <span class="term" data-term="컨시스턴트 해싱" data-en="Consistent hashing" data-desc="샤드 수를 규칙에서 빼고 해시 링 위의 위치로 샤드를 정하는 방식이에요. 샤드를 하나 넣거나 빼도 인접한 구간만 옮겨 가요." data-g="13">컨시스턴트 해싱</span>과 <span class="term" data-term="가상 노드" data-en="Virtual node" data-desc="실제 샤드 하나를 해시 링 위 여러 자리에 놓을 때 그 각각의 자리예요. 샤드마다 작은 구간을 여러 개 맡아 부하가 고르게 퍼져요." data-g="14">가상 노드</span>가 이 이동과 쏠림을 줄여요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">데이터베이스 한 대로 버티다 막히는 지점</a></li>
+    <li><a href="#s2">샤딩: 행을 여러 대에 나눠 담기</a></li>
+    <li><a href="#s3">샤드 키를 고르는 다섯 가지 기준</a></li>
+    <li><a href="#s4">숫자가 아닌 키는 해시로</a></li>
+    <li><a href="#s5">해시 말고 다른 나누기 방식</a></li>
+    <li><a href="#s6">요청을 맞는 샤드로 보내는 라우팅 레이어</a></li>
+    <li><a href="#s7">한 샤드만 바빠질 때: 핫스팟과 솔팅</a></li>
+    <li><a href="#s8">샤드를 하나 늘리면 왜 데이터가 거의 다 움직일까요</a></li>
+    <li><a href="#s9">컨시스턴트 해싱과 가상 노드</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=40s" target="_blank" rel="noopener">00:40</a>
+  <h2>데이터베이스 한 대로 버티다 막히는 지점</h2>
+<p>영상은 존과 앨런이 만든 가상의 SNS(Social Networking Service) 'Chirp' 하나를 끝까지 따라가요. 가입하고, 짧은 글을 올리고, 서로 팔로우하는 앱이에요. 처음에는 앱 서버 한 대와 데이터베이스 한 대로 돌아가요.</p>
+<p>아래 화면 오른쪽에 테이블 두 개가 보여요. 위쪽 <code>users</code>는 사용자 이름과 팔로워 수를, 아래쪽 <code>chirps</code>는 누가 어떤 글을 썼는지를 담아요. 가운데 'WRITE'와 'READ' 표시가 데이터베이스로 하는 일 두 가지예요. 글을 올리거나 팔로우하면 쓰기, 프로필을 열면 읽기예요.</p>
+<figure>
+  <img src="assets/frame-0230.webp" alt="휴대폰 앱, 앱 서버, 데이터베이스가 이어져 있고 오른쪽에 users와 chirps 테이블, 가운데에 WRITE와 READ 표시가 있는 화면">
+  <figcaption>데이터베이스로 하는 일은 결국 읽기와 쓰기 두 가지예요. 뒤의 모든 문제가 이 둘 중 어느 쪽이냐로 갈려요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=150s" target="_blank" rel="noopener">영상 02:30에서 보기</a></figcaption>
+</figure>
+<h3>더 큰 기계로 버티다가 한계에 닿아요</h3>
+<p>사용자가 200명에서 2,000명, 20만 명으로 늘 때마다 두 사람은 더 큰 데이터베이스로 바꿔요. 이렇게 기계 한 대의 사양을 키우는 걸 스케일업이라고 해요. 하지만 수백만 명이 되면 클라우드 회사가 빌려주는 가장 비싼 기계도 모자라요.</p>
+<p>아래 화면 왼쪽 아래 빨간 막대가 'OPEN A PROFILE 3.0 s'예요. 30밀리초 걸리던 프로필 열기가 3초가 됐어요. 앱 서버와 데이터베이스 사이에 'QUERIES PILE UP'이라고 쓰인 줄이 쿼리가 쌓여 기다리는 모습이에요.</p>
+<figure>
+  <img src="assets/frame-0345.webp" alt="수많은 사용자가 앱 서버로 몰리고, 앱 서버와 큰 데이터베이스 사이에 쿼리가 줄지어 쌓여 있으며 프로필 열기가 3.0초로 표시된 화면">
+  <figcaption>기계를 키우는 길이 막히면 쿼리가 줄을 서고, 사용자는 앱이 느리다고 느껴요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=225s" target="_blank" rel="noopener">영상 03:45에서 보기</a></figcaption>
+</figure>
+<h3>읽기는 레플리카로 나눠요</h3>
+<p>실무에서는 원래 데이터베이스를 한 대만 두지 않아요. 프라이머리가 죽으면 대신 나설 레플리카를 한두 대 둬요. 레플리카도 데이터 전체를 갖고 있으니 읽기에 답할 수 있어요. 아래 화면에서 앱 서버 오른쪽의 로드 밸런서가 읽기 요청을 'PRIMARY', 'REPLICA 1', 'REPLICA 2' 세 대로 나눠 보내요.</p>
+<figure>
+  <img src="assets/frame-0435.webp" alt="앱 서버 뒤의 로드 밸런서가 화살표로 프라이머리와 레플리카 두 대에 읽기를 나눠 보내는 화면">
+  <figcaption>장애 대비로 이미 돈을 내고 있던 레플리카를 읽기에도 쓰면, 세 대가 읽기를 나눠 받아요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=275s" target="_blank" rel="noopener">영상 04:35에서 보기</a></figcaption>
+</figure>
+<h3>쓰기는 왜 레플리카에 나눌 수 없을까요</h3>
+<p>영상이 가장 강조하는 대목이에요. 레오의 글에 좋아요가 99개 있을 때 크리스와 마틴이 동시에 좋아요를 눌러요. 아래 화면 오른쪽 상자 두 개를 보면 프라이머리도 레플리카도 '99 → 100'이라고 적었어요. 둘 다 틀렸어요. 진짜 값은 101이에요.</p>
+<figure>
+  <img src="assets/frame-0550.webp" alt="크리스와 마틴이 동시에 좋아요를 누르고, 프라이머리와 레플리카 옆 상자에 각각 99에서 100으로 바뀐 좋아요 수가 표시된 화면">
+  <figcaption>두 기계가 각자 99에서 시작했기 때문에 좋아요 하나가 사라졌어요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=350s" target="_blank" rel="noopener">영상 05:50에서 보기</a></figcaption>
+</figure>
+<p>값을 덮어쓰는 경우는 더 곤란해요. x가 7일 때 프라이머리는 9로, 레플리카는 10으로 바꾸면 화면처럼 'WHICH ONE IS X?'라는 질문만 남아요. 이런 불일치 때문에 쓰기는 모두 프라이머리로 보내고, 프라이머리를 기준값(source of truth)으로 삼아요. 레플리카는 그걸 복사만 해요.</p>
+<figure>
+  <img src="assets/frame-0615.webp" alt="프라이머리 옆에는 x가 7에서 9로, 레플리카 옆에는 7에서 10으로 바뀌었다고 표시되고 그 아래 어느 쪽이 x냐는 물음이 있는 화면">
+  <figcaption>같은 값을 두 기계가 따로 고치면 어느 쪽이 맞는지 정할 방법이 없어요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=375s" target="_blank" rel="noopener">영상 06:15에서 보기</a></figcaption>
+</figure>
+<p>그래서 구조는 아래처럼 돼요. 프라이머리 옆에는 'READS + WRITES', 레플리카 옆에는 'READS ONLY'가 붙어 있어요. 화면 아래 문구가 이 구간의 결론이에요. 'READS got easier. WRITES did not.'</p>
+<figure>
+  <img src="assets/frame-0640.webp" alt="프라이머리에는 읽기와 쓰기, 레플리카 두 대에는 읽기만 표시되고 아래에 읽기는 쉬워졌지만 쓰기는 아니라는 문구가 있는 화면">
+  <figcaption>레플리카는 쓰기에 아무 도움이 안 돼요. 쓰기를 받는 기계는 여전히 한 대예요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=400s" target="_blank" rel="noopener">영상 06:40에서 보기</a></figcaption>
+</figure>
+<p>영상이 여기까지 밟아 온 길을 한 장에 모으면 이래요. 단계마다 무엇이 풀리고 무엇이 남는지 보면, 왜 결국 샤딩까지 가는지 보여요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["기계 키우기<br/>200 → 20만 명"] -->|"가장 큰 기계도 모자람"| B["레플리카<br/>읽기를 나눔"]
+  B -->|"쓰기는 프라이머리 한 대"| C["샤딩<br/>쓰기를 나눔"]
+</pre>
+  <figcaption>스케일업과 레플리카는 쓰기를 받는 기계를 한 대로 남겨 둬요. 그 한 대를 여러 대로 만드는 게 샤딩이에요.</figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=402s" target="_blank" rel="noopener">06:42</a>
+  <h2>샤딩: 행을 여러 대에 나눠 담기</h2>
+<p>샤딩은 행을 여러 기계에 나눠 담아서 어느 기계도 데이터 전체를 갖지 않게 하는 방법이에요. 더 큰 기계 한 대를 빌리는 것과 정반대로, 평범한 기계를 여러 대 두고 행을 나눠요. 그래서 다른 이름이 <span class="term" data-term="수평 확장" data-en="Horizontal scaling" data-desc="기계 한 대를 더 크게 바꾸는 대신 평범한 기계를 여러 대 늘려서 일을 나누는 방식이에요. 기계를 키우는 건 수직 확장(스케일업)이에요." data-g="2">수평 확장</span>이에요.</p>
+<p>아래 화면에서 샤드 네 개가 가로로 늘어서 있고, 각 샤드에 'row 1, row 5', 'row 2, row 6'처럼 행이 두 개씩 들어 있어요. 맨 아래 화살표가 'HORIZONTAL SCALING'이에요. 위쪽에 흐리게 보이는 원통 하나가 원래의 데이터베이스예요.</p>
+<figure>
+  <img src="assets/frame-0718.webp" alt="흐린 데이터베이스 하나 아래로 샤드 네 개가 가로로 놓이고 각 샤드에 행 두 개씩 들어 있으며 아래에 수평 확장 화살표가 있는 화면">
+  <figcaption>데이터 한 조각을 가진 기계 하나가 샤드예요. 샤드끼리는 열과 구조가 같은, 즉 같은 스키마를 써요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=438s" target="_blank" rel="noopener">영상 07:18에서 보기</a></figcaption>
+</figure>
+<h3>ID를 4로 나눈 나머지로 샤드를 정해요</h3>
+<p>존과 앨런은 기계 네 대를 두고 규칙 하나를 정해요. 사용자 ID(Identifier)를 4로 나눈 나머지가 샤드 번호예요. 나머지는 늘 0, 1, 2, 3 중 하나라서 샤드 네 개에 딱 맞아요. 아래 화면 맨 위에 'ID 12 ÷ 4 → REMAINDER'가 있고, 레오(ID 12)는 나머지 0이라 샤드 0의 첫 줄에 들어가 있어요.</p>
+<figure>
+  <img src="assets/frame-0906.webp" alt="ID 12를 4로 나눈 나머지 0이 강조되고, 샤드 0의 테이블 첫 줄에 ID 12 leo가 표시된 화면">
+  <figcaption>샤드 1에는 41, 13, 25처럼 4로 나눠 1이 남는 ID만 모여 있어요. 표의 숫자로 규칙을 바로 확인할 수 있어요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=546s" target="_blank" rel="noopener">영상 09:06에서 보기</a></figcaption>
+</figure>
+<h3>쓰기를 받는 기계가 늘어나요</h3>
+<p>샤딩 전에는 쓰기가 화면 왼쪽처럼 프라이머리 하나로만 갔어요. 이제는 샤드마다 쓰기를 받는 프라이머리가 하나씩 있어요. 네 대로 모자라면 오른쪽 화면처럼 여덟 대, 그 이상으로 늘리면 돼요.</p>
+<figure>
+  <img src="assets/frame-0924.webp" alt="앱에서 나온 쓰기 요청들이 프라이머리 한 대 앞에 줄지어 쌓여 있는 화면">
+  <figcaption>샤딩 전: 쓰기는 'ONE PRIMARY' 앞에서 줄을 서요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=564s" target="_blank" rel="noopener">영상 09:24에서 보기</a></figcaption>
+</figure>
+<figure>
+  <img src="assets/frame-0942.webp" alt="앱 하나에서 샤드 0부터 샤드 7까지 여덟 대로 화살표가 뻗어 있는 화면">
+  <figcaption>샤딩 후: 샤드를 여덟 대로 늘리면 쓰기를 받는 기계도 여덟 대가 돼요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=582s" target="_blank" rel="noopener">영상 09:42에서 보기</a></figcaption>
+</figure>
+<p>영상은 이게 팀들이 샤딩의 번거로움을 감수하는 이유라고 말해요. 쓰기를 여러 기계로 나눠 늘릴 수 있는 길은 이것 하나뿐이에요. 대신 데이터를 쪼개는 순간 새 문제가 생겨요. 첫 번째 문제는 '앨런의 데이터가 어느 샤드에 있는지 시스템이 어떻게 아느냐'예요.</p>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=645s" target="_blank" rel="noopener">10:45</a>
+  <h2>샤드 키를 고르는 다섯 가지 기준</h2>
+<p>답은 앞 규칙에 이미 들어 있어요. 사용자를 나눌 때 기준으로 쓴 열이 사용자 ID였어요. 이렇게 데이터를 나누는 기준 열을 샤드 키라고 해요. 요청이 오면 그 사용자의 ID에 같은 규칙을 적용해서 샤드로 곧장 가요.</p>
+<p>아래 화면 위쪽 상자에 'ID 41 ÷ 4 → 1'이 있고, 샤드 1이 점선으로 강조돼 있어요. 크리스(ID 41)의 행이 그 아래 표에 분홍색으로 표시돼 있어요. 화면 아래 문구가 핵심이에요. 'No searching, nobody to ask.'</p>
+<figure>
+  <img src="assets/frame-1208.webp" alt="ID 41을 4로 나눈 나머지 1이 표시되고 샤드 1이 강조되며, 샤드 1 표에 41 chris_d india 2026 행이 표시된 화면">
+  <figcaption>샤드 키만 알면 찾아다닐 필요도, 물어볼 곳도 없어요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=728s" target="_blank" rel="noopener">영상 12:08에서 보기</a></figcaption>
+</figure>
+<h3>샤드 키는 나중에 바꾸기 어려워요</h3>
+<p>샤드 키를 사용자 ID에서 국가로 바꾼다고 해 볼게요. 아래 화면 위 상자가 'COUNTRY ÷ 4'로 바뀌었어요. 크리스와 레오는 ID 기준으로는 다른 샤드에 있었지만 둘 다 india라서, 국가 기준이면 같은 샤드에 있어야 해요. 그래서 샤드 1 표 맨 아래에 '18 leo'가 새로 끼어들어 있어요. 이걸 모든 샤드의 모든 행에 대해 해야 해요.</p>
+<figure>
+  <img src="assets/frame-1258.webp" alt="샤드 기준이 국가로 바뀌어 샤드 1 표에 india인 chris_d와 leo가 함께 모인 화면">
+  <figcaption>키를 바꾸면 모든 행을 다시 보고 많은 데이터를 옮겨야 해요. 그래서 처음에 확실히 골라야 해요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=778s" target="_blank" rel="noopener">영상 12:58에서 보기</a></figcaption>
+</figure>
+<p>영상은 좋은 샤드 키의 조건을 다섯 가지로 정리해요. 화면 위쪽 탭('1 MANY VALUES'부터 '5 KEEPS DATA TOGETHER'까지)이 이 순서예요. 나쁜 예와 사용자 ID가 통과하는 이유를 한 표에 모으면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>조건</th><th>나쁜 예</th><th>무엇이 문제인가요</th><th>사용자 ID는요</th></tr></thead>
+    <tbody>
+      <tr><td>1. 값이 많아야 해요</td><td>국가</td><td>약 200개 국가를 샤드 64개에 나누면 샤드당 3개꼴이에요. 인구가 많은 나라가 든 샤드만 과부하예요</td><td>수백만 개라 원하는 만큼 나눠요</td></tr>
+      <tr><td>2. 고르게 퍼져야 해요</td><td>가입 연도</td><td>빠르게 크는 앱은 올해 가입자가 대부분이라 올해 샤드만 바빠요</td><td>순서대로 붙어서 0, 1, 2, 3 샤드로 돌아가며 들어가요</td></tr>
+      <tr><td>3. 접근 방식과 맞아야 해요</td><td>글 ID</td><td>'이 사용자의 글 전부'를 찾으려면 모든 샤드에 물어야 해요</td><td>요청이 대부분 사용자 단위예요</td></tr>
+      <tr><td>4. 값이 바뀌지 않아야 해요</td><td>사용자 이름</td><td>이름을 바꾸면 데이터를 다른 샤드로 옮겨야 해요</td><td>한번 정해지면 안 바뀌어요</td></tr>
+      <tr><td>5. 관련 데이터를 모아야 해요</td><td>테이블마다 다른 키</td><td>프로필은 한 샤드, 글은 모든 샤드에 흩어져요</td><td>세 테이블을 모두 같은 키로 나눠요</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>1. 값이 많아야 해요</h3>
+<p>아래 화면 오른쪽 숫자가 '200 COUNTRIES, 64 SHARDS, ≈ 3 COUNTRIES EACH'예요. 왼쪽 원통 묶음에서 'INDIA'와 'CHINA' 두 개만 빨갛게 달아올라 있어요. 그린란드 같은 나라가 든 샤드는 거의 비어 있어요. 이렇게 서로 다른 값이 많은 성질을 <span class="term" data-term="카디널리티" data-en="Cardinality" data-desc="한 열에 서로 다른 값이 몇 가지 있는지예요. 국가처럼 가짓수가 적으면 샤드를 많이 둘 수 없어서 샤드 키로 부적합해요." data-g="4">카디널리티</span>가 높다고 해요.</p>
+<figure>
+  <img src="assets/frame-1348.webp" alt="원통 64개 중 india와 china 두 개만 빨갛게 표시되고 오른쪽에 국가 200개, 샤드 64개, 샤드당 약 3개 국가라는 숫자가 있는 화면">
+  <figcaption>값의 가짓수가 샤드 수에 비해 적으면, 큰 값 몇 개가 샤드 몇 개를 짓눌러요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=828s" target="_blank" rel="noopener">영상 13:48에서 보기</a></figcaption>
+</figure>
+<h3>2. 고르게 퍼져야 해요</h3>
+<p>가입 연도로 나누면 샤드 0~3이 2023, 2024, 2025, 2026년을 맡아요. 아래 화면에서 2026년을 맡은 샤드 3만 데이터가 꽉 차 있고 글자도 밝아요. 지난 해 샤드는 해가 지났으니 새 행을 더 받지도 않아요.</p>
+<figure>
+  <img src="assets/frame-1438.webp" alt="샤드 0부터 3까지 2023년부터 2026년까지 연도가 붙어 있고 2026년 샤드 3만 가득 찬 화면">
+  <figcaption>새 가입자가 모두 올해 샤드로만 가요. 값이 많아도 한쪽으로 쏠리면 소용없어요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=878s" target="_blank" rel="noopener">영상 14:38에서 보기</a></figcaption>
+</figure>
+<h3>3. 접근 방식과 맞아야 해요</h3>
+<p>Chirp 요청 대부분은 '이 사용자가 올린 걸 다 보여 줘'예요. 그런데 글을 글 ID(post_id)로 나누면, 아래 화면처럼 user_id 41의 글이 샤드 네 개 표에 모두 흩어져 있어요. 레오에게서 나간 선이 네 샤드 모두로 뻗어 있어요.</p>
+<figure>
+  <img src="assets/frame-1618.webp" alt="레오의 요청이 샤드 네 개 모두로 퍼지고, 각 샤드의 글 테이블에 user_id 41의 글이 하나씩 들어 있는 화면">
+  <figcaption>모든 샤드에 묻고 답을 이어 붙이는 걸 <span class="term" data-term="스캐터-개더" data-en="Scatter-gather" data-desc="모든 샤드에 같은 질문을 뿌리고 돌아온 답을 모아 합치는 방식이에요. 샤드 수만큼 일이 늘어서 샤딩이 피하려는 패턴이에요." data-g="5">스캐터-개더</span>라고 해요. 영상은 이게 샤딩이 피하려던 바로 그 일이라고 말해요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=978s" target="_blank" rel="noopener">영상 16:18에서 보기</a></figcaption>
+</figure>
+<h3>4. 값이 바뀌지 않아야 해요</h3>
+<p>사용자 이름으로 나눴다고 해 볼게요. 크리스가 이름을 <code>chris_codes</code>로 바꾸자 새 이름은 샤드 3을 가리켜요. 아래 화면에서 샤드 1과 샤드 3 사이 점선이 데이터를 옮기는 길이에요. 복사하다 중간에 실패하면 크리스의 글 일부는 샤드 1에, 일부는 샤드 3에 남고, 앱은 어디서 찾아야 할지 몰라요.</p>
+<figure>
+  <img src="assets/frame-1708.webp" alt="username chris_codes 기준 계산 결과가 샤드 3을 가리키고, 샤드 1에서 샤드 3으로 데이터가 옮겨 가는 점선이 있는 화면">
+  <figcaption>키 값이 바뀌면 데이터 이사가 따라와요. 사용자 ID는 한번 붙으면 안 바뀌니 크리스는 평생 같은 샤드에 있어요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=1028s" target="_blank" rel="noopener">영상 17:08에서 보기</a></figcaption>
+</figure>
+<h3>5. 관련 데이터를 한곳에 모아야 해요</h3>
+<p>Chirp에는 <code>users</code>, <code>chirps</code>, <code>likes</code> 세 테이블이 있어요. 사용자는 사용자 ID로, 글은 글 ID로 나누면 프로필은 샤드 2에 있어도 글은 모든 샤드에 흩어져요. 세 테이블을 모두 user_id로 나누면, 아래 화면 샤드 2의 점선 상자처럼 크리스의 프로필과 글과 좋아요가 한 샤드에 모여요.</p>
+<figure>
+  <img src="assets/frame-1848.webp" alt="샤드 네 개 각각에 users, chirps, likes 테이블이 모두 user_id 기준으로 표시되고 샤드 2의 세 테이블이 점선으로 묶인 화면">
+  <figcaption>관련 데이터를 한 샤드에 모으는 걸 코로케이션이라고 해요. 영상은 뒤에서 이 생각을 다시 쓴다고 미리 짚어 둬요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=1128s" target="_blank" rel="noopener">영상 18:48에서 보기</a></figcaption>
+</figure>
+<p>사용자 ID는 다섯 가지를 모두 통과해서 Chirp의 샤드 키가 돼요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상은 '순서대로 붙는 ID가 샤드에 돌아가며 들어간다'고 했는데, 이건 나머지(÷4) 규칙이라 그래요. 같은 ID를 범위로 나누면 반대가 돼요. MongoDB 문서는 계속 커지는 값(타임스탬프, 순서대로 붙는 ID)을 범위 샤딩의 키로 쓰면 새 데이터가 가장 큰 범위를 맡은 쪽에 몰린다고 설명해요. 그래서 이런 값에는 해시 샤딩을 권해요.</p>
+  <p class="cite">출처: <a href="https://www.mongodb.com/docs/manual/core/hashed-sharding/" target="_blank" rel="noopener">MongoDB 공식 문서 — Hashed Sharding</a> · <a href="https://www.mongodb.com/docs/manual/core/sharding-choose-a-shard-key/" target="_blank" rel="noopener">Choose a Shard Key</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=1150s" target="_blank" rel="noopener">19:10</a>
+  <h2>숫자가 아닌 키는 해시로</h2>
+<p>지금까지는 사용자 ID가 숫자라서 4로 나눌 수 있었어요. 하지만 샤드 키가 이메일이나 사용자 이름이라면 4로 나눌 수 없어요. 어떤 값이든 받아서 숫자를 돌려주고, 사용자를 샤드에 고르게 퍼뜨리는 규칙이 필요해요.</p>
+<p>아래 화면 가운데 'RULE' 상자가 그 규칙이에요. 왼쪽에 <code>chris@gmail.com</code>을 두 번 넣었더니 오른쪽에 두 번 다 같은 숫자 2080014952가 나왔어요. 같은 이메일은 언제나 같은 숫자가 나와야 크리스가 늘 같은 샤드에 있어요.</p>
+<figure>
+  <img src="assets/frame-2100.webp" alt="chris@gmail.com 두 번이 RULE 상자를 지나 둘 다 2080014952라는 같은 숫자로 바뀌는 화면">
+  <figcaption>이런 규칙이 해시 함수이고, 돌려받은 숫자가 해시예요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=1260s" target="_blank" rel="noopener">영상 21:00에서 보기</a></figcaption>
+</figure>
+<p><span class="term" data-term="해시 함수" data-en="Hash function" data-desc="어떤 값이든 받아서 숫자 하나를 돌려주는 규칙이에요. 같은 입력엔 늘 같은 숫자를 주고, 비슷한 입력도 멀리 떨어진 숫자로 바꿔서 고르게 퍼뜨려요." data-g="7">해시 함수</span>는 직접 만들 필요가 없어요. 파이썬이라면 표준 라이브러리의 <code>hashlib</code> 모듈이 있어요. 안에서는 글자를 숫자로 바꾸고 여러 단계로 섞어서, 입력이 한 글자만 달라도 결과가 완전히 달라져요.</p>
+<h3>파이썬 내장 hash()는 샤딩에 못 써요</h3>
+<p>파이썬에는 내장 함수 <code>hash()</code>도 있어요. 아래 화면에서 같은 이메일 두 개가 같은 숫자 8987652885257071915를 받았고, 위에 'Still running → same hash'라고 붙어 있어요. 프로그램이 켜져 있는 동안만 같다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-2215.webp" alt="위에는 hashlib 상자, 아래에는 파이썬 hash() 상자가 있고 같은 이메일 두 개가 같은 긴 숫자를 받으며 실행 중이면 같은 해시라는 표시가 붙은 화면">
+  <figcaption>파이썬은 시작할 때마다 새 무작위 값을 섞어서, 다시 켜면 같은 이메일도 다른 숫자가 나와요. 샤딩에는 늘 같은 답이 필요해요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=1335s" target="_blank" rel="noopener">영상 22:15에서 보기</a></figcaption>
+</figure>
+<p>영상은 이게 보안 때문이라고 설명해요. 실제 시스템은 무작위 값을 섞지 않는 해시를 써서, 어느 기계에서든 재시작해도 같은 숫자가 나오게 해요. 예로 든 게 MongoDB의 해시 샤딩이에요. 고른 열을 데이터베이스가 직접 해시해 줘요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>파이썬 공식 문서에 따르면 무작위 값(salt)이 섞이는 건 기본적으로 <code>str</code>과 <code>bytes</code>의 해시예요. 한 프로세스 안에서는 같지만 실행할 때마다 달라지고, 악의적인 입력으로 서비스를 마비시키는 공격을 막으려는 장치예요. 정수는 이 대상이 아니라서 ID 41의 <code>hash()</code>는 재시작해도 같아요. 그래도 문자열 키에서 깨지니 샤딩에는 <code>hashlib</code>처럼 결과가 고정된 해시를 쓰는 게 맞아요. 환경 변수 <code>PYTHONHASHSEED</code>로 이 무작위 값을 고정할 수도 있어요.</p>
+  <p class="cite">출처: <a href="https://docs.python.org/3/reference/datamodel.html" target="_blank" rel="noopener">Python 공식 문서 — Data model (object.__hash__)</a> · <a href="https://docs.python.org/3/using/cmdline.html" target="_blank" rel="noopener">Command line and environment</a></p>
+</aside>
+<h3>해시가 샤딩에 주는 두 가지</h3>
+<p>아래 화면 가운데 두 줄이 영상이 꼽는 성질이에요. '1. SAME INPUT → ALWAYS THE SAME NUMBER', '2. INPUTS NEXT TO EACH OTHER → FAR APART'. 아래 수직선은 0부터 4,294,967,295까지예요. 41은 873899871, 42는 2714814184로, 바로 옆 숫자인데 선 위에서 멀리 떨어져 있어요.</p>
+<figure>
+  <img src="assets/frame-2330.webp" alt="hashlib 상자 아래 두 가지 성질이 적혀 있고, 0부터 4294967295까지의 수직선 위에 41은 873899871, 42는 2714814184 위치에 찍힌 화면">
+  <figcaption>같은 입력은 늘 같은 샤드로 가고, 이웃한 입력은 서로 다른 샤드로 흩어져요. 그래서 고르게 퍼져요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=1410s" target="_blank" rel="noopener">영상 23:30에서 보기</a></figcaption>
+</figure>
+<p>최종 규칙은 '샤드 키를 해시하고, 샤드 수로 나눈 나머지'예요. 크리스(ID 41)의 해시를 4로 나눈 나머지는 3, 레오(ID 18)의 해시 1867064052를 4로 나눈 나머지는 0이에요. 아래 화면에서 샤드 3 표 맨 아래에 41, 샤드 0 표 맨 아래에 18이 새로 들어가 있어요.</p>
+<figure>
+  <img src="assets/frame-2445.webp" alt="user_id → hash → ÷4 → remainder 규칙 아래 샤드 네 개의 이메일 테이블이 있고, 샤드 0에 18 leo, 샤드 3에 41 chris가 들어 있는 화면">
+  <figcaption>예전 규칙(ID ÷ 4)에서는 크리스가 샤드 1이었는데 이제 샤드 3이에요. 규칙이 바뀌면 자리도 바뀌어요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=1485s" target="_blank" rel="noopener">영상 24:45에서 보기</a></figcaption>
+</figure>
+<p>이 규칙은 사용자 ID와 샤드 수만 있으면 계산돼요. 그래서 어느 기계든 다른 기계를 보지 않고 혼자 샤드를 정할 수 있어요. 뒤에서 이 '샤드 수'가 규칙에 들어 있다는 점이 문제로 돌아와요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=1493s" target="_blank" rel="noopener">24:53</a>
+  <h2>해시 말고 다른 나누기 방식</h2>
+<p>해시만 있는 건 아니에요. 영상은 업계에서 쓰는 다른 방식 세 가지를 앱 종류와 묶어서 보여 줘요.</p>
+<h3>범위 샤딩</h3>
+<p>해시 없이 샤드마다 값의 범위를 줘요. 은행 거래 앱에서 사용자가 대부분 '3월 거래 전부 보여 줘'라고 묻는다면 날짜로 나눠요. 아래 화면에서 샤드 0이 Jan–Mar, 샤드 1이 Apr–Jun을 맡고, 샤드 0 표에 1~3월 거래가 모여 있어요.</p>
+<figure>
+  <img src="assets/frame-2600.webp" alt="DATE → RANGE → SHARD 규칙 아래 샤드 네 개가 Jan–Mar, Apr–Jun, Jul–Sep, Oct–Dec를 맡고 샤드 0 표에 1~3월 거래가 들어 있는 화면">
+  <figcaption>'3월 거래 전부'는 샤드 하나에서 끝나요. 범위로 묻는 질문이 많을 때 강해요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=1560s" target="_blank" rel="noopener">영상 26:00에서 보기</a></figcaption>
+</figure>
+<p>대가도 분명해요. 새 거래는 모두 오늘 날짜라서, 아래 화면처럼 Oct–Dec를 맡은 샤드 3만 빨갛게 달아올라요. 샤드 3 표에만 Oct 5 거래가 계속 쌓이고 있어요. 앞에서 본 '가입 연도' 문제와 같은 모양이에요.</p>
+<figure>
+  <img src="assets/frame-2620.webp" alt="RANGE 상자가 빨갛게 바뀌고 Oct–Dec를 맡은 샤드 3만 빨간색으로 표시되며 표에 10월 거래가 늘어난 화면">
+  <figcaption>그래서 고른 분산보다 범위 질문이 더 중요한 팀이 이 방식을 골라요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=1580s" target="_blank" rel="noopener">영상 26:20에서 보기</a></figcaption>
+</figure>
+<h3>디렉터리 샤딩</h3>
+<p>고객이 어느 샤드에 있는지 적은 조회 테이블(디렉터리)을 둬요. 아래 화면 위 표에 Acme 0, Birch 1, Cobalt 2, Globex 3이 적혀 있어요. 샤드 아래 숫자를 보면 Acme·Birch·Cobalt는 직원 50명인데 Globex만 50,000명이에요. 표의 행 하나만 고쳐서 Globex에게 샤드 3을 통째로 줬어요.</p>
+<figure>
+  <img src="assets/frame-2700.webp" alt="고객별 샤드를 적은 디렉터리 표가 샤드 네 개로 이어지고, 샤드 아래에 Acme 50, Birch 50, Cobalt 50, Globex 50,000이 표시된 화면">
+  <figcaption>큰 고객 하나를 손으로 따로 배치할 수 있어요. 대신 모든 요청이 디렉터리를 먼저 보니, 디렉터리가 멈추면 아무 데이터도 못 찾아요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=1620s" target="_blank" rel="noopener">영상 27:00에서 보기</a></figcaption>
+</figure>
+<h3>지역 샤딩</h3>
+<p>유럽 사용자는 유럽 기계에 두는 식으로 지역별로 나눠요. 이유는 두 가지예요. 데이터가 사용자 가까이 있어서 빠르고, 개인정보 규칙이 유럽 사용자 데이터를 유럽에 두라고 요구할 수 있어요.</p>
+<p>앞에서 국가는 고르지 않아서 샤드 키로 부적합하다고 했어요. 영상은 두 단계로 나눠서 이 문제를 풀어요. 아래 화면 오른쪽 위 두 줄이 그 순서예요. '1. REGION → MACHINE GROUP', '2. USER ID → SHARD'. 점선 상자가 유럽 기계 묶음이고, 그 안에 샤드 세 개가 있어요.</p>
+<figure>
+  <img src="assets/frame-2800.webp" alt="유럽 지도 위 점선 상자 안에 레오와 샤드 세 개가 있고, 오른쪽에 지역으로 기계 묶음을 고르고 사용자 ID로 샤드를 고른다는 두 단계가 적힌 화면">
+  <figcaption>지역은 데이터의 위치를 정하고, 그 안에서는 사용자 ID 해시가 고르게 퍼뜨려요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=1680s" target="_blank" rel="noopener">영상 28:00에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>EU(European Union)의 개인정보 규정인 GDPR(General Data Protection Regulation)은 유럽 밖으로 개인정보를 보내는 걸 무조건 막지는 않아요. 유럽연합 집행위원회는 상대 국가의 보호 수준이 충분하다고 인정한 경우(적정성 결정)나 표준 계약 조항 같은 장치를 갖춘 경우의 이전 규칙을 따로 두고 있어요. 그래서 '반드시 유럽에 둬야 한다'는 업종 규정이나 계약에 따라 달라요. 실제로 지역 샤딩을 설계할 때는 해당 서비스에 적용되는 규정을 확인해야 해요.</p>
+  <p class="cite">출처: <a href="https://commission.europa.eu/law/law-topic/data-protection/international-dimension-data-protection_en" target="_blank" rel="noopener">European Commission — International dimension of data protection</a></p>
+</aside>
+<h3>어떤 걸 고를까요</h3>
+<p>영상은 네 방식을 카드 네 장으로 정리해요. 카드 아래 문구가 각각 언제 쓰는지예요.</p>
+<figure>
+  <img src="assets/frame-2845.webp" alt="HASH, RANGE, DIRECTORY, GEOGRAPHIC 카드 네 장에 각각 프로필 조회, 날짜 같은 범위, 큰 묶음 손 배치, 법이나 속도라는 문구가 붙은 화면">
+  <figcaption>앱에 들어오는 질문의 모양을 보고 고르면 돼요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=1725s" target="_blank" rel="noopener">영상 28:45에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>방식</th><th>나누는 기준</th><th>잘 맞는 경우</th><th>대가</th></tr></thead>
+    <tbody>
+      <tr><td>해시</td><td>키의 해시 ÷ 샤드 수</td><td>다른 사용자의 프로필을 보는 앱</td><td>영상에서는 따로 짚지 않아요</td></tr>
+      <tr><td>범위</td><td>값의 구간(날짜 등)</td><td>'3월 거래 전부' 같은 범위 질문</td><td>새 쓰기가 최신 샤드에 몰려요</td></tr>
+      <tr><td>디렉터리</td><td>조회 테이블</td><td>유독 큰 묶음을 손으로 배치할 때</td><td>모든 요청이 디렉터리를 거쳐요. 멈추면 전부 멈춰요</td></tr>
+      <tr><td>지역</td><td>지역 → 그 안에서 키</td><td>법이나 속도 때문에 위치가 정해질 때</td><td>지역 안에서 다시 좋은 키가 필요해요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>Chirp의 요청은 대부분 '이 사용자 프로필 열기'와 '이 사용자 글 보기'이고, 데이터를 특정 지역에 묶는 규칙도 없어요. 그래서 사용자 ID 해시를 그대로 써요.</p>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=1769s" target="_blank" rel="noopener">29:29</a>
+  <h2>요청을 맞는 샤드로 보내는 라우팅 레이어</h2>
+<p>요청이 들어오면 누군가 사용자 ID를 해시하고, 샤드를 정하고, 그 샤드로 요청을 보내야 해요. 이 일을 하는 부분이 <span class="term" data-term="라우팅 레이어" data-en="Routing layer" data-desc="요청의 샤드 키를 보고 어느 샤드로 보낼지 정해서 넘겨주는 부분이에요. 앱 안, 별도 프록시, 데이터베이스 안 중 한 곳에 둬요." data-g="8">라우팅 레이어</span>예요. 하는 일은 요청을 맞는 샤드로 넘기는 것뿐이고, 놓을 수 있는 자리가 세 곳이에요.</p>
+<h3>1. 앱 안에 두기</h3>
+<p>Chirp 앱은 프로필, 피드, 좋아요를 맡는 작은 마이크로서비스 여러 개로 이뤄져 있어요. 서비스마다 라우팅 규칙을 직접 들고 있으면, 크리스가 자기 데이터를 열 때 프로필 서비스가 '41이면 샤드 3'을 계산해서 바로 연결해요. 중간에 아무것도 없어서 가장 빨라요.</p>
+<p>문제는 샤드 수를 바꿀 때예요. 아래 화면에서 샤드 4가 새로 생겨 'UPDATE ÷ 5'를 했는데, 'PROFILE'과 'FEED' 상자는 '÷ 5'로 바뀌었고 'LIKES' 상자만 아직 '÷ 4'예요.</p>
+<figure>
+  <img src="assets/frame-3109.webp" alt="앱 서버 안 프로필, 피드, 좋아요 서비스 상자 중 프로필과 피드는 ÷5, 좋아요만 ÷4로 표시되고 아래에 샤드 0부터 4까지 다섯 대가 있는 화면">
+  <figcaption>업데이트를 하나만 빠뜨려도 좋아요 서비스는 옛 규칙으로 엉뚱한 샤드에 보내요. 규칙이 여러 곳에 있으면 모두 같이 고쳐야 해요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=1869s" target="_blank" rel="noopener">영상 31:09에서 보기</a></figcaption>
+</figure>
+<h3>2. 프록시로 따로 두기</h3>
+<p>앱과 샤드 사이에 별도 프로그램을 두고 모든 서비스가 요청을 이 프로그램에 보내요. 이 프로그램을 프록시라고 하고, 영상은 MongoDB가 이렇게 동작한다고 말해요. 규칙이 한 곳에만 있으니 샤드 수가 바뀌면 프록시만 고치면 돼요.</p>
+<p>대신 아래 화면 아래쪽 'RESPONSE TIME' 막대 끝에 '+ PROXY STEP'이 붙어 있어요. 단계가 하나 늘어난 만큼 응답이 조금 느려져요. 그리고 모든 요청이 지나가니 프록시가 바빠지면 전체가 느려져요. 그래서 화면 가운데 'PROXY' 줄처럼 여러 벌을 띄워서 나눠 받고, 하나가 죽어도 나머지가 일하게 해요.</p>
+<figure>
+  <img src="assets/frame-3229.webp" alt="앱 서버의 세 서비스가 아래 PROXY로 요청을 보내고 프록시가 샤드 네 대로 나눠 주며, 아래 응답 시간 막대에 프록시 단계가 덧붙은 화면">
+  <figcaption>규칙을 한 곳에 모으는 대가로 한 단계와 잠재적 병목을 얻어요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=1949s" target="_blank" rel="noopener">영상 32:29에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>MongoDB에서 이 프록시 역할을 하는 프로그램 이름은 <code>mongos</code>예요. 공식 문서는 <code>mongos</code>가 쿼리와 쓰기를 샤드로 보내고, 앱 입장에서는 샤드 클러스터로 들어가는 유일한 창구라서 앱이 샤드에 직접 연결하지 않는다고 설명해요.</p>
+  <p class="cite">출처: <a href="https://www.mongodb.com/docs/manual/core/sharded-cluster-query-router/" target="_blank" rel="noopener">MongoDB 공식 문서 — Routing with mongos</a></p>
+</aside>
+<h3>3. 데이터베이스 안에 두기</h3>
+<p>별도 프로그램 없이 아무 샤드에나 요청을 보내요. 요청을 받은 샤드가 데이터를 가진 샤드로 넘겨줘요. 아래 화면에서 앱 서버 전체가 점선으로 묶여 있고, 샤드마다 아래에 'HASH ÷ 4'가 붙어 있어요. 규칙이 샤드들 안에 들어가 있다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-3309.webp" alt="앱 서버의 서비스들이 점선으로 묶이고, 샤드 네 대 아래마다 HASH ÷ 4가 적혀 있는 화면">
+  <figcaption>가장 손이 덜 가요. 대신 데이터베이스가 정한 방식을 받아들여야 해서 유연성이 떨어져요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=1989s" target="_blank" rel="noopener">영상 33:09에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>자리</th><th>좋은 점</th><th>샤드 수가 바뀌면</th><th>약점</th></tr></thead>
+    <tbody>
+      <tr><td>앱 안</td><td>중간 단계가 없어 가장 빨라요</td><td>모든 서비스를 고쳐야 해요</td><td>하나라도 빠뜨리면 엉뚱한 샤드로 가요</td></tr>
+      <tr><td>프록시</td><td>규칙이 한 곳에만 있어요</td><td>프록시만 고쳐요</td><td>한 단계 느려지고 병목이 될 수 있어요</td></tr>
+      <tr><td>데이터베이스 안</td><td>가장 손이 덜 가요</td><td>영상에서는 따로 짚지 않아요</td><td>데이터베이스 방식에 맞춰야 해요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>어디에 두든 라우팅 레이어의 일은 같아요. 모든 요청을 데이터가 실제로 있는 샤드로 보내는 것이에요.</p>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=2006s" target="_blank" rel="noopener">33:26</a>
+  <h2>한 샤드만 바빠질 때: 핫스팟과 솔팅</h2>
+<p>사용자를 고르게 나눴는데도 샤드 하나만 바빠질 수 있어요. 팔로워 4천만 명인 팝스타 레나의 사용자 ID(500)가 해시돼서 샤드 2로 갔다고 해 볼게요. 샤드마다 초당 약 10만 건의 읽기를 감당할 수 있어요.</p>
+<p>레나가 글을 올리면 아래 화면처럼 레나의 팔로워 묶음에서 나온 요청이 샤드 2 하나로 쏟아져요. 샤드 2는 빨갛게 달아올라 '100K READS/SEC' 한계를 넘었고, 나머지 샤드 옆에는 '20K/sec'만 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-3441.webp" alt="팔로워 4천만 명의 요청이 라우팅 레이어를 거쳐 빨갛게 표시된 샤드 2로 몰리고, 다른 샤드에는 초당 2만 건이 표시된 화면">
+  <figcaption>같은 샤드에 사는 다른 사용자까지 함께 느려져요. 한 샤드에 요청이 몰리는 걸 핫스팟, 유명인 한 명 때문이면 셀러브리티 문제라고 불러요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=2081s" target="_blank" rel="noopener">영상 34:41에서 보기</a></figcaption>
+</figure>
+<p>영상은 흔히 쓰는 해법 세 가지를 차례로 쌓아 올려요. 팀들은 보통 셋을 섞어 써요.</p>
+<h3>1. 레나에게 샤드를 따로 줘요</h3>
+<p>라우팅 레이어에 '레나의 ID면 샤드 4로'라는 규칙을 넣어요. 아래 화면 라우팅 레이어 안 DIRECTORY 표에 'USER_ID 500 → SHARD 4'가 강조돼 있어요. 앞에서 배운 디렉터리 샤딩이에요. 레나의 ID가 아니면 평소처럼 해시해서 4로 나눠요.</p>
+<figure>
+  <img src="assets/frame-3531.webp" alt="라우팅 레이어의 디렉터리 표에 사용자 ID 500이 샤드 4로 표시되고, 오른쪽 끝에 새로 생긴 샤드 4가 레나의 데이터를 맡은 화면">
+  <figcaption>샤드가 다섯 대가 됐어요. 하지만 레나의 샤드도 기계 한 대라서 여전히 초당 10만 건이 한계예요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=2131s" target="_blank" rel="noopener">영상 35:31에서 보기</a></figcaption>
+</figure>
+<h3>2. 읽기는 캐시가 받아요</h3>
+<p>레나 쪽 부하는 대부분 읽기예요. 그래서 앱과 라우팅 레이어 사이에 빠른 캐시를 둬요. 아래 화면에서 'APP' 오른쪽의 번개 모양 'CACHE'가 새로 생겼어요. 읽기는 대부분 여기서 답하고 샤드 4까지 가지 않아요.</p>
+<figure>
+  <img src="assets/frame-3621.webp" alt="앱과 라우팅 레이어 사이에 번개 모양의 캐시가 추가되고, 디렉터리 표에는 500이 샤드 4로 남아 있는 화면">
+  <figcaption>캐시는 읽기만 덜어 줘요. 레나 글의 좋아요 같은 쓰기는 여전히 어딘가에 저장해야 해요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=2181s" target="_blank" rel="noopener">영상 36:21에서 보기</a></figcaption>
+</figure>
+<h3>3. 쓰기는 솔팅으로 흩어요</h3>
+<p>큰 앱은 좋아요를 두 번 저장해요. 하나는 누른 사람의 샤드에 둬서 크리스가 누른 좋아요가 모두 크리스의 샤드에 모이게 해요. 다른 하나는 글 옆에 둬서 좋아요 수와 누른 사람 목록을 샤드 하나에서 읽게 해요. 앞에서 본 <span class="term" data-term="코로케이션" data-en="Co-location" data-desc="함께 읽히는 데이터를 같은 샤드에 두는 거예요. 프로필·글·좋아요를 모두 사용자 ID로 나누면 한 사용자의 데이터를 한 샤드에서 다 읽어요." data-g="6">코로케이션</span>이에요. 그러면 레나 글의 좋아요 수백만 건이 전부 샤드 4에 쓰기로 몰려요.</p>
+<p>그래서 키에 숫자를 붙여요. 레나의 ID 500 대신 <code>500-1</code>부터 <code>500-10</code>까지 키 10개를 만들고, 새 좋아요를 그중 하나에 담아요. 붙인 숫자가 솔트예요. 키가 한 글자만 달라도 해시가 완전히 달라지니, 아래 화면처럼 10개 키가 기존 샤드 0~3에 흩어져요(샤드 0에 500-1, 500-3, 500-10).</p>
+<figure>
+  <img src="assets/frame-3801.webp" alt="샤드 0부터 3 아래에 500-1부터 500-10까지의 솔팅된 키가 나뉘어 놓이고, 샤드 4에는 레나의 데이터와 좋아요 목록이 남은 화면">
+  <figcaption>키 10개는 새 기계 10대가 아니에요. 이미 있는 샤드들이 레나의 좋아요를 조금씩 나눠 받아요. 레나의 프로필과 글은 그대로 샤드 4에 있어요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=2281s" target="_blank" rel="noopener">영상 38:01에서 보기</a></figcaption>
+</figure>
+<p>대가도 있어요. 레나 글의 총 좋아요 수를 보여 주려면 10개 키를 여러 샤드에서 다 읽어서 더해야 해요. 그래서 좋아요가 몇 개뿐인 크리스 같은 사용자에게는 솔팅을 하지 않고, 한 키에 쓰기가 몰리는 경우에만 해요. 라우팅 레이어는 어떤 키가 솔팅됐는지 목록을 들고 있어요. 아래 화면 라우팅 레이어 맨 위에 'SALTED KEYS: 500 → 500-1 … 500-10'이 추가됐어요.</p>
+<figure>
+  <img src="assets/frame-3851.webp" alt="라우팅 레이어 안에 솔팅된 키 표(500 → 500-1부터 500-10), 디렉터리 표(500 → 샤드 4), 해시 규칙이 위에서부터 차례로 놓인 화면">
+  <figcaption>이제 라우팅 레이어 안에 규칙이 세 겹이에요. 솔팅된 키, 디렉터리, 기본 해시 규칙이요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=2331s" target="_blank" rel="noopener">영상 38:51에서 보기</a></figcaption>
+</figure>
+<h3>라우팅 레이어가 판단하는 순서</h3>
+<p>영상은 '한 번에 이해 안 되면 두 번 보라'며 판단 순서를 짚어요. 화면에서는 단계가 하나씩 켜지는데, 한 장에 모으면 아래와 같아요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart TD
+  R["요청"] --> C{"읽기이고<br/>캐시에 있나요?"}
+  C -->|"예"| CA["캐시가 바로 답해요"]
+  C -->|"아니오 또는 쓰기"| Q1{"레나 글의<br/>좋아요인가요?"}
+  Q1 -->|"좋아요 누르기"| S1["키 10개 중 하나를<br/>무작위로 골라 저장"]
+  Q1 -->|"좋아요 수 보기"| S2["키 10개를 다 읽어 더하기"]
+  Q1 -->|"아니오"| Q2{"레나의 다른 요청인가요?<br/>(프로필, 글)"}
+  Q2 -->|"예"| D["샤드 4로"]
+  Q2 -->|"아니오"| H["해시 ÷ 4로<br/>평소처럼"]
+</pre>
+  <figcaption>캐시가 먼저 걸러 내고, 라우팅 레이어는 질문 두 개만 던져요. 둘 다 아니면 크리스 같은 평범한 사용자의 요청이에요.</figcaption>
+</figure>
+</section>
+
+<section id="s8">
+  <a class="stamp" href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=2423s" target="_blank" rel="noopener">40:23</a>
+  <h2>샤드를 하나 늘리면 왜 데이터가 거의 다 움직일까요</h2>
+<p>사용자가 계속 늘어 샤드 0~3이 저장 한계에 가까워지면 샤드를 하나 더 넣어야 해요. 레나의 샤드 4는 레나만 담는 예외라서 평범한 사용자용으로는 못 써요. 가장 쉬운 방법은 새 샤드를 넣고 규칙을 '÷ 4'에서 '÷ 5'로 바꾸는 거예요.</p>
+<p>그런데 규칙을 바꾸면 이미 저장된 데이터에도 새 규칙이 적용돼요. 아래 화면 위 상자에 “CHRIS'S HASH 4,821,371 ÷ 5 → 1”이 있어요. 같은 숫자를 4로 나누면 3이라서 크리스는 원래 샤드 3에 있었어요. 이제 샤드 1이 점선으로 강조돼 있어요.</p>
+<figure>
+  <img src="assets/frame-4138.webp" alt="크리스의 해시 4,821,371을 5로 나눈 나머지 1이 표시되고, 샤드 다섯 대 중 샤드 1이 점선으로 강조되며 샤드 3 아래에 크리스의 데이터가 있는 화면">
+  <figcaption>크리스에게는 아무 변화가 없는데도 데이터가 샤드 3에서 샤드 1로 옮겨 가야 해요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=2498s" target="_blank" rel="noopener">영상 41:38에서 보기</a></figcaption>
+</figure>
+<h3>20명 중 16명이 이사해요</h3>
+<p>영상은 사용자 20명으로 직접 세어 봐요. 4로 나눌 때 샤드 0에는 4, 8, 12, 16, 20이 있었어요. 5로 나누면 사용자 5는 샤드 0으로, 8은 샤드 3으로, 12는 샤드 2로 가요. 아래 화면에서 빨간 칸이 자리가 바뀐 사용자이고, 그대로인 건 1, 2, 3, 20 넷뿐이에요.</p>
+<figure>
+  <img src="assets/frame-4343.webp" alt="샤드 다섯 대 아래 사용자 번호가 나열되고 대부분이 빨간색이며 아래에 20명 중 16명이 옮겨졌다는 문구가 있는 화면">
+  <figcaption>기계 한 대를 넣었을 뿐인데 80%가 움직여요. 샤드를 넣거나 뺄 때 데이터를 옮기는 일을 <span class="term" data-term="리샤딩" data-en="Resharding" data-desc="샤드를 넣거나 뺄 때 데이터를 다른 샤드로 옮기는 일이에요. 규칙에 샤드 수가 들어 있으면 거의 모든 데이터가 움직여요." data-g="11">리샤딩</span>이라고 해요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=2623s" target="_blank" rel="noopener">영상 43:43에서 보기</a></figcaption>
+</figure>
+<p>원인은 규칙 자체에 있어요. 샤드 수가 규칙 안에 들어 있어서, 그 숫자가 4에서 5로 바뀌면 거의 모든 사용자의 답이 바뀌어요. 그러면 샤드 수를 규칙에서 빼면 되지 않을까요? 영상은 이 질문으로 다음 개념을 꺼내요.</p>
+</section>
+
+<section id="s9">
+  <a class="stamp" href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=2669s" target="_blank" rel="noopener">44:29</a>
+  <h2>컨시스턴트 해싱과 가상 노드</h2>
+<p>컨시스턴트 해싱은 샤드 수를 규칙에서 빼는 방법이에요. 먼저 나올 수 있는 모든 해시 값을 직선에 늘어놓고, 그 선을 구부려 원을 만들어요. 가장 큰 해시 값 바로 옆에 가장 작은 값이 와요. 모든 해시가 들어 있어서 이 원을 <span class="term" data-term="해시 링" data-en="Hash ring" data-desc="가능한 모든 해시 값을 원 모양으로 이어 붙인 것이에요. 사용자의 해시 자리에서 시계 방향으로 처음 만나는 샤드가 그 사용자를 맡아요." data-g="12">해시 링</span>이라고 불러요.</p>
+<p>샤드들을 링 위 여러 지점에 놓아요. 규칙은 단순해요. 사용자 ID를 해시해서 링 위 자리를 찾고, 거기서 시계 방향으로 가다 처음 만나는 샤드가 그 사용자를 맡아요. 크리스는 샤드 3, 레오는 샤드 0을 만나요.</p>
+<h3>새 샤드는 한 구간만 가져가요</h3>
+<p>새 샤드를 샤드 1과 샤드 2 사이에 넣어요. 아래 화면에서 샤드 1과 새 샤드 사이의 굵은 회색 호가 원래 샤드 2로 가던 구간이에요. 이제 이 구간의 사용자는 새 샤드를 먼저 만나서 그쪽으로 옮겨 가요. 크리스와 레오는 여전히 샤드 3과 샤드 0을 먼저 만나서 그대로예요.</p>
+<figure>
+  <img src="assets/frame-4613.webp" alt="해시 링 위에 샤드 0부터 3이 있고, 레오(1867064052)는 샤드 0으로, 크리스(873899871)는 샤드 3으로 이어지며, 샤드 1과 새 샤드 사이 구간이 회색으로 강조된 화면">
+  <figcaption>움직이는 건 새 샤드 바로 앞 구간뿐이에요. 샤드가 빠질 때도 그 샤드의 사용자만 시계 방향 다음 샤드로 가요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=2773s" target="_blank" rel="noopener">영상 46:13에서 보기</a></figcaption>
+</figure>
+<p>아래 화면이 앞의 규칙과 나란히 비교한 그림이에요. 왼쪽 'OLD RULE'(해시 ÷ 샤드 수)은 '16 of 20 MOVED', 오른쪽 'NEW RULE'(해시 링)은 'ONE SECTION MOVED'예요.</p>
+<figure>
+  <img src="assets/frame-4703.webp" alt="왼쪽에 해시를 샤드 수로 나누는 옛 규칙과 20명 중 16명 이동, 오른쪽에 해시 링과 한 구간만 이동했다는 문구가 나란히 있는 화면">
+  <figcaption>샤드 하나를 넣을 때 옛 규칙은 대부분을, 해시 링은 한 구간만 옮겨요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=2823s" target="_blank" rel="noopener">영상 47:03에서 보기</a></figcaption>
+</figure>
+<h3>남은 문제: 구간 크기가 제각각이에요</h3>
+<p>링을 다시 보면 새 샤드는 늘 두 샤드 사이에 끼어들어요. 그래서 아래 화면처럼 샤드 3은 샤드 2까지 이어지는 'LARGE SECTION'을 맡고, 새 샤드는 'SMALL SECTION'만 맡아요. 부하가 고르지 않아요. 또 샤드 하나가 죽으면 시계 방향 다음 샤드가 그 구간을 통째로 떠안아요.</p>
+<figure>
+  <img src="assets/frame-4728.webp" alt="해시 링 위에서 샤드 3에서 샤드 2까지는 큰 구간, 샤드 1에서 새 샤드까지는 작은 구간으로 표시된 화면">
+  <figcaption>샤드가 링에 한 번씩만 있으면 구간 크기가 운에 맡겨져요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=2848s" target="_blank" rel="noopener">영상 47:28에서 보기</a></figcaption>
+</figure>
+<h3>가상 노드: 한 샤드를 여러 자리에 놓아요</h3>
+<p>해법은 샤드 하나를 링에 여러 번 놓는 거예요. 영상 예시는 샤드마다 10군데예요. 기계 10대가 아니라 같은 기계를 가리키는 자리 10개이고, 이 자리들을 가상 노드라고 해요. 아래 화면에서 색깔별로 샤드 0~3, 새 샤드('NEW'), 하나 더 추가한 샤드('ONE MORE')의 점이 링 곳곳에 섞여 있어요.</p>
+<figure>
+  <img src="assets/frame-4843.webp" alt="해시 링 둘레에 샤드 0부터 3, 새 샤드, 하나 더 추가한 샤드를 뜻하는 여러 색의 점들이 섞여 흩어져 있고 오른쪽에 색깔별 범례가 있는 화면">
+  <figcaption>샤드마다 작은 구간 여러 개를 맡아서 부하가 고르게 퍼져요. 샤드가 빠지거나 들어올 때도 이웃 하나가 아니라 여러 샤드가 조금씩 나눠 맡아요. <a href="https://www.youtube.com/watch?v=WpXmMxIgzdU&amp;t=2923s" target="_blank" rel="noopener">영상 48:43에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>아마존의 2007년 Dynamo 논문도 가상 노드(virtual nodes)를 써요. 논문은 기본 컨시스턴트 해싱이 노드 위치를 무작위로 정해서 부하가 고르지 않고, 기계마다 성능이 다른 점도 반영하지 못한다고 짚어요. 그래서 노드 하나를 링의 한 점이 아니라 여러 점(토큰)에 배치했다고 설명해요. 영상의 설명과 같은 구조예요.</p>
+  <p class="cite">출처: <a href="https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf" target="_blank" rel="noopener">DeCandia 외, Dynamo: Amazon's Highly Available Key-value Store (SOSP 2007)</a></p>
+</aside>
+<p>영상은 이 링을 머릿속에 그리기도, 손으로 관리하기도 어렵다는 말로 끝나요. 아래에서 직접 숫자를 바꿔 보며 두 규칙의 차이를 확인해 볼 수 있어요.</p>
+<div class="explore" id="reshard">
+  <span class="tag">직접 돌려 보기</span>
+  <div class="controls">
+    <label>사용자 수 <input type="range" min="20" max="2000" step="20" value="20"> <output>20</output>명</label>
+    <label>지금 샤드 수 <input type="range" min="2" max="10" step="1" value="4"> <output>4</output>대</label>
+    <label>샤드당 가상 노드 <input type="range" min="1" max="50" step="1" value="1"> <output>1</output>개</label>
+  </div>
+  <div class="legend"><span><i style="background:var(--danger)"></i>옮겨 가는 사용자</span><span><i style="background:var(--brand)"></i>샤드별 사용자 수(링, 샤드 추가 후)</span></div>
+  <div class="stage">
+    <svg viewBox="0 0 400 230" aria-label="두 규칙에서 옮겨 가는 사용자 비율과 샤드별 사용자 수"></svg>
+    <div class="readout">
+      <p>샤드를 한 대 늘리면</p>
+      <p>나머지 규칙: <span class="val" data-k="mod">0</span></p>
+      <p>해시 링: <span class="val" data-k="ring">0</span></p>
+      <p>링에서 가장 많이 맡은 샤드와 가장 적게 맡은 샤드: <span class="val" data-k="spread">0</span></p>
+      <p class="sub">가정: 나머지 규칙은 영상의 20명 예시처럼 ID 1번부터 차례로 ID ÷ 샤드 수의 나머지를 써요. 해시 링의 해시는 영상에 나오지 않은 FNV-1a 32비트 함수로 계산했어요.</p>
+    </div>
+  </div>
+  <div class="try"><b>해 볼 것</b><ol>
+    <li>처음 값(20명, 4대)에서 나머지 규칙 숫자를 보세요. 영상과 같은 16명(80%)이 나와요.</li>
+    <li>사용자를 2,000명으로 늘려 보세요. 나머지 규칙은 여전히 80% 근처인데, 해시 링은 새 샤드 바로 앞 구간만 움직여서 훨씬 적어요.</li>
+    <li>샤드 수를 10대, 사용자를 2,000명으로 두고 가상 노드를 1개, 10개, 50개로 올려 보세요. 가장 적게 맡은 샤드가 한 자릿수에서 100명대로 올라오고 막대 높이가 비슷해져요. 영상이 말한 '부하가 고르게 퍼진다'는 효과예요.</li>
+  </ol></div>
+</div>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 영어 자막이라 받아적기가 틀린 곳이 있어요. 화면과 문맥으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>Allan / Allen / Alen</td><td>Alan</td><td>화면 이름표 기준</td></tr>
+      <tr><td>Jon</td><td>John</td><td>화면 이름표 기준</td></tr>
+      <tr><td>high cardality</td><td>high cardinality</td><td></td></tr>
+      <tr><td>collocation</td><td>co-location (코로케이션)</td><td></td></tr>
+      <tr><td>rights</td><td>writes</td><td>&#x27;scales rights&#x27;, &#x27;fix is for rights&#x27; 등 쓰기를 말하는 곳</td></tr>
+      <tr><td>rangebased</td><td>range-based</td><td></td></tr>
+      <tr><td>leoggmail.com</td><td>leo@gmail.com</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-14"><dt>가상 노드<span class="en">Virtual node</span></dt><dd>실제 샤드 하나를 해시 링 위 여러 자리에 놓을 때 그 각각의 자리예요. 샤드마다 작은 구간을 여러 개 맡아 부하가 고르게 퍼져요.</dd></div>
+    <div class="g" id="g-8"><dt>라우팅 레이어<span class="en">Routing layer</span></dt><dd>요청의 샤드 키를 보고 어느 샤드로 보낼지 정해서 넘겨주는 부분이에요. 앱 안, 별도 프록시, 데이터베이스 안 중 한 곳에 둬요.</dd></div>
+    <div class="g" id="g-1"><dt>레플리카<span class="en">Replica</span></dt><dd>프라이머리 데이터베이스의 데이터 전체를 그대로 복사해 둔 기계예요. 원래는 장애 대비용이지만 읽기 요청도 받을 수 있어요.</dd></div>
+    <div class="g" id="g-11"><dt>리샤딩<span class="en">Resharding</span></dt><dd>샤드를 넣거나 뺄 때 데이터를 다른 샤드로 옮기는 일이에요. 규칙에 샤드 수가 들어 있으면 거의 모든 데이터가 움직여요.</dd></div>
+    <div class="g" id="g-3"><dt>샤드 키<span class="en">Shard key</span></dt><dd>어느 행을 어느 샤드에 둘지 정하는 기준 열이에요. 데이터가 어떻게 퍼질지를 결정하고, 나중에 바꾸려면 데이터를 대부분 옮겨야 해요.</dd></div>
+    <div class="g" id="g-10"><dt>솔팅<span class="en">Salting</span></dt><dd>많이 쓰이는 키 뒤에 500-1, 500-2처럼 숫자를 붙여 여러 키로 쪼개는 기법이에요. 해시가 달라져서 쓰기가 여러 샤드로 흩어지지만, 합계를 보려면 다 읽어 더해야 해요.</dd></div>
+    <div class="g" id="g-2"><dt>수평 확장<span class="en">Horizontal scaling</span></dt><dd>기계 한 대를 더 크게 바꾸는 대신 평범한 기계를 여러 대 늘려서 일을 나누는 방식이에요. 기계를 키우는 건 수직 확장(스케일업)이에요.</dd></div>
+    <div class="g" id="g-5"><dt>스캐터-개더<span class="en">Scatter-gather</span></dt><dd>모든 샤드에 같은 질문을 뿌리고 돌아온 답을 모아 합치는 방식이에요. 샤드 수만큼 일이 늘어서 샤딩이 피하려는 패턴이에요.</dd></div>
+    <div class="g" id="g-4"><dt>카디널리티<span class="en">Cardinality</span></dt><dd>한 열에 서로 다른 값이 몇 가지 있는지예요. 국가처럼 가짓수가 적으면 샤드를 많이 둘 수 없어서 샤드 키로 부적합해요.</dd></div>
+    <div class="g" id="g-13"><dt>컨시스턴트 해싱<span class="en">Consistent hashing</span></dt><dd>샤드 수를 규칙에서 빼고 해시 링 위의 위치로 샤드를 정하는 방식이에요. 샤드를 하나 넣거나 빼도 인접한 구간만 옮겨 가요.</dd></div>
+    <div class="g" id="g-6"><dt>코로케이션<span class="en">Co-location</span></dt><dd>함께 읽히는 데이터를 같은 샤드에 두는 거예요. 프로필·글·좋아요를 모두 사용자 ID로 나누면 한 사용자의 데이터를 한 샤드에서 다 읽어요.</dd></div>
+    <div class="g" id="g-9"><dt>핫스팟<span class="en">Hotspot</span></dt><dd>데이터를 고르게 나눴는데도 샤드 하나에만 요청이 몰리는 현상이에요. 그 샤드에 같이 사는 다른 사용자까지 느려져요.</dd></div>
+    <div class="g" id="g-12"><dt>해시 링<span class="en">Hash ring</span></dt><dd>가능한 모든 해시 값을 원 모양으로 이어 붙인 것이에요. 사용자의 해시 자리에서 시계 방향으로 처음 만나는 샤드가 그 사용자를 맡아요.</dd></div>
+    <div class="g" id="g-7"><dt>해시 함수<span class="en">Hash function</span></dt><dd>어떤 값이든 받아서 숫자 하나를 돌려주는 규칙이에요. 같은 입력엔 늘 같은 숫자를 주고, 비슷한 입력도 멀리 떨어진 숫자로 바꿔서 고르게 퍼뜨려요.</dd></div>
+    <div class="g"><dt>EU</dt><dd>European Union</dd></div>
+    <div class="g"><dt>GDPR</dt><dd>General Data Protection Regulation</dd></div>
+    <div class="g"><dt>ID</dt><dd>Identifier</dd></div>
+    <div class="g"><dt>SNS</dt><dd>Social Networking Service</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=WpXmMxIgzdU" target="_blank" rel="noopener">원본 영상 — KodeKloud, Database Sharding Explained for Beginners (with Hands-On Labs)</a></li>
+    <li id="src-2"><a href="https://www.mongodb.com/docs/manual/core/hashed-sharding/" target="_blank" rel="noopener">MongoDB 공식 문서 — Hashed Sharding</a></li>
+    <li id="src-3"><a href="https://www.mongodb.com/docs/manual/core/sharding-choose-a-shard-key/" target="_blank" rel="noopener">MongoDB 공식 문서 — Choose a Shard Key</a></li>
+    <li id="src-4"><a href="https://www.mongodb.com/docs/manual/core/sharded-cluster-query-router/" target="_blank" rel="noopener">MongoDB 공식 문서 — Routing with mongos</a></li>
+    <li id="src-5"><a href="https://docs.python.org/3/reference/datamodel.html" target="_blank" rel="noopener">Python 공식 문서 — Data model (object.__hash__)</a></li>
+    <li id="src-6"><a href="https://docs.python.org/3/using/cmdline.html" target="_blank" rel="noopener">Python 공식 문서 — Command line and environment (PYTHONHASHSEED)</a></li>
+    <li id="src-7"><a href="https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf" target="_blank" rel="noopener">DeCandia 외, Dynamo: Amazon&#x27;s Highly Available Key-value Store (SOSP 2007)</a></li>
+    <li id="src-8"><a href="https://commission.europa.eu/law/law-topic/data-protection/international-dimension-data-protection_en" target="_blank" rel="noopener">European Commission — International dimension of data protection</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 28일에 이 영상을 보고 정리했어요. 원본은 KodeKloud 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/reshard.js
+(() => {
+  const root = document.getElementById('reshard');
+  if (!root) return;
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs, text) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  };
+  const [usersIn, shardsIn, vnIn] = root.querySelectorAll('input');
+  const svg = root.querySelector('svg');
+  const out = (k) => root.querySelector(`.val[data-k="${k}"]`);
+
+  // FNV-1a 32-bit
+  function fnv(str) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    // final avalanche so nearby strings spread
+    h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b) >>> 0;
+    h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35) >>> 0;
+    h ^= h >>> 16;
+    return h >>> 0;
+  }
+
+  function buildRing(shards, vn) {
+    const pts = [];
+    for (let s = 0; s < shards; s++)
+      for (let v = 0; v < vn; v++) pts.push([fnv(`shard-${s}#${v}`), s]);
+    pts.sort((a, b) => a[0] - b[0]);
+    return pts;
+  }
+  function owner(ring, h) {
+    let lo = 0, hi = ring.length;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (ring[m][0] < h) lo = m + 1; else hi = m; }
+    return ring[lo === ring.length ? 0 : lo][1];
+  }
+
+  function model() {
+    const n = +usersIn.value, s = +shardsIn.value, vn = +vnIn.value;
+    let modMoved = 0, ringMoved = 0;
+    const before = buildRing(s, vn), after = buildRing(s + 1, vn);
+    const counts = new Array(s + 1).fill(0);
+    for (let id = 1; id <= n; id++) {
+      if (id % s !== id % (s + 1)) modMoved++;
+      const h = fnv(`user-${id}`);
+      const a = owner(before, h), b = owner(after, h);
+      if (a !== b) ringMoved++;
+      counts[b]++;
+    }
+    return { n, s, modMoved, ringMoved, counts };
+  }
+
+  function draw() {
+    const m = model();
+    svg.replaceChildren();
+    // top: two moved bars (0..100%)
+    const W = 300, x0 = 90;
+    const rows = [['나머지 규칙', m.modMoved], ['해시 링', m.ringMoved]];
+    rows.forEach(([name, v], i) => {
+      const y = 14 + i * 34;
+      const w = Math.max(1, (v / m.n) * W);
+      svg.append(el('text', { x: 0, y: y + 15, class: 'sub' }, name));
+      svg.append(el('rect', { x: x0, y, width: W, height: 22, rx: 4, class: 'box' }));
+      svg.append(el('rect', { x: x0, y, width: w, height: 22, rx: 4, class: 'bad' }));
+      svg.append(el('text', { x: x0 + 6, y: y + 15 }, `${Math.round(v / m.n * 100)}%`));
+    });
+    // bottom: per-shard counts on ring after adding
+    const base = 214, H = 110, max = Math.max(...m.counts, 1);
+    const bw = Math.min(40, (W + x0 - 10) / m.counts.length - 6);
+    svg.append(el('line', { x1: 0, y1: base, x2: 400, y2: base, class: 'axis' }));
+    m.counts.forEach((c, i) => {
+      const h = (c / max) * H;
+      const x = 6 + i * (bw + 6);
+      svg.append(el('rect', { x, y: base - h, width: bw, height: h, class: i === m.s ? 'bar alt' : 'bar' }));
+      svg.append(el('text', { x: x + bw / 2, y: base - h - 4, 'text-anchor': 'middle', class: 'sub', 'font-size': 10 }, String(c)));
+    });
+    svg.append(el('text', { x: 400, y: 92, 'text-anchor': 'end', class: 'sub', 'font-size': 11 }, '샤드별 사용자 수 (주황 = 새 샤드)'));
+    const pct = (v) => `${v}명 (${Math.round(v / m.n * 100)}%)`;
+    out('mod').textContent = pct(m.modMoved);
+    out('ring').textContent = pct(m.ringMoved);
+    out('spread').textContent = `${Math.max(...m.counts)}명 / ${Math.min(...m.counts)}명`;
+  }
+
+  root.addEventListener('input', (e) => {
+    if (e.target.matches('input')) e.target.nextElementSibling.textContent = e.target.value;
+    draw();
+  });
+  draw();
+})();
+</script>
+</body>
+</html>
