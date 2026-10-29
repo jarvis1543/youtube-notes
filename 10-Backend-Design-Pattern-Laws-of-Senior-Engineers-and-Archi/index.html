@@ -1,0 +1,942 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>시니어 백엔드 개발자가 아는 디자인 패턴 10가지</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>시니어 백엔드 개발자가 아는 디자인 패턴 10가지</h1>
+  <p class="lede">패턴 이름보다 각 패턴이 푸는 문제를 짚어요</p>
+  <div class="meta">
+    <span>Cloud X Berry</span><span class="dot">·</span>
+    <span>영상 14:17</span><span class="dot">·</span>
+    <span>읽는 데 약 15분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=b4IlyJSIlL0" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>영상이 꼽은 패턴은 리포지토리, 팩토리, 싱글턴, 전략, 옵저버, 빌더, 어댑터, 데코레이터, CQRS(Command Query Responsibility Segregation), 서킷 브레이커예요.</li>
+    <li>대부분은 한 클래스가 너무 많은 걸 알게 되는 문제를 나눠요. 데이터 접근, 객체 생성, 할인 규칙, 후속 작업, 외부 형식이 각자 자리로 옮겨 가요.</li>
+    <li>싱글턴은 전역 변수처럼 쓰면 <span class="term" data-term="숨은 의존성" data-en="Hidden dependency" data-desc="생성자나 인자에 드러나지 않고 코드 안쪽에서 몰래 기대는 의존 관계예요. 겉만 봐서는 무엇이 필요한지 모르니 테스트할 때 바꿔 끼우기 어려워요." data-g="3">숨은 의존성</span>이 생기고, CQRS는 단순한 CRUD(Create, Read, Update, Delete) 앱에 넣으면 복잡도만 늘어요.</li>
+    <li>서킷 브레이커는 죽은 외부 서비스 때문에 내 앱까지 무너지는 걸 막아요.</li>
+    <li>실제 백엔드는 패턴을 함께 써요. 정의보다 패턴 뒤의 문제를 아는 게 중요해요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">왜 패턴이 필요할까요, 그리고 리포지토리</a></li>
+    <li><a href="#s2">객체를 만드는 쪽: 팩토리와 싱글턴</a></li>
+    <li><a href="#s3">규칙과 후속 작업 나누기: 전략과 옵저버</a></li>
+    <li><a href="#s4">만들기와 연결: 빌더와 어댑터</a></li>
+    <li><a href="#s5">덧붙이기와 나누기: 데코레이터와 CQRS</a></li>
+    <li><a href="#s6">장애가 번지지 않게: 서킷 브레이커와 정리</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>왜 패턴이 필요할까요, 그리고 리포지토리</h2>
+<p>영상은 백엔드 앱이 자라는 과정부터 짚어요. 언어를 배우고 프레임워크를 고르고 데이터베이스를 붙여 API(Application Programming Interface) 몇 개를 만들 때까지는 다 잘 돌아가요. 그런데 기능이 늘고, 같은 코드를 만지는 사람이 늘고, 요구 사항이 바뀌기 시작하면 이야기가 달라져요.</p>
+<p>아래 슬라이드가 그 변화를 벽돌로 보여 줘요. 왼쪽의 반듯한 파란 벽은 'PERFECTLY FINE', 오른쪽의 들쭉날쭉한 주황 벽은 '이해하기 어렵고(DIFFICULT TO UNDERSTAND) 위험한(RISKY)' 상태예요. 같은 코드가 시간이 지나며 이렇게 변해요.</p>
+<figure>
+  <img src="assets/frame-0033.webp" alt="반듯한 파란 벽돌 벽에서 화살표를 따라 어긋난 주황 벽돌 벽으로 바뀌는 슬라이드. 아래에 PERFECTLY FINE, DIFFICULT TO UNDERSTAND, RISKY 라벨">
+  <figcaption>
+    처음엔 멀쩡하던 코드가 고치기 겁나는 코드로 바뀌는 순간을 패턴이 막아 줘요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=33s" target="_blank" rel="noopener">영상 00:33에서 보기</a>
+  </figcaption>
+</figure>
+<p>디자인 패턴은 이렇게 되풀이되는 문제에 이미 검증된 구조를 주는 거예요. 영상은 2027년을 앞두고 알아 둘 만한 패턴 10개를 차례로 소개해요.</p>
+
+<h3>1. 리포지토리 패턴: 데이터 접근을 떼어 내기</h3>
+<p>흔한 출발점은 컨트롤러나 서비스 안에 SQL(Structured Query Language)을 바로 넣는 거예요. 빠르고 쉬워서죠. 문제는 그 클래스가 검증, 비즈니스 규칙, 계산, 응답 만들기까지 떠안을 때예요. 데이터베이스도 너무 많이 알고 비즈니스도 너무 많이 아는 클래스가 되면 테스트도 어렵고 고치기는 더 어려워요.</p>
+<p>리포지토리 패턴은 서비스와 데이터베이스 사이에 리포지토리를 하나 둬요. 슬라이드에서 서비스는 초록 리포지토리에 <code>findById()</code>, <code>save()</code>만 요청해요. 오른쪽에 늘어선 MySQL, PostgreSQL, MongoDB 아이콘 중 무엇을 실제로 쓰는지는 리포지토리만 알아요.</p>
+<figure>
+  <img src="assets/frame-0131.webp" alt="SERVICE에서 REPOSITORY로 선이 이어지고, 리포지토리 오른쪽에 MySQL, PostgreSQL, MongoDB, 일반 데이터베이스 아이콘이 갈라져 붙은 다이어그램. 아래에 findById(), save() 메서드 이름">
+  <figcaption>
+    서비스는 '무엇을' 달라고만 하고, '어디에서 어떻게'는 리포지토리가 맡아요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=91s" target="_blank" rel="noopener">영상 01:31에서 보기</a>
+  </figcaption>
+</figure>
+<p>이렇게 나눠 두면 좋은 점이 두 가지예요. 비즈니스 로직을 테스트할 때 진짜 리포지토리 대신 <span class="term" data-term="목" data-en="Mock" data-desc="테스트에서 진짜 객체 대신 끼우는 가짜 객체예요. 리포지토리를 목으로 바꾸면 데이터베이스 없이 비즈니스 로직만 시험할 수 있어요." data-g="1">목</span>을 끼울 수 있어요. 그리고 데이터베이스 구현이 바뀌어도 데이터베이스 전용 코드가 리포지토리 안에 갇혀 있어서 나머지 코드는 거의 그대로 둘 수 있어요. 영상은 Spring Boot의 <code>CrudRepository</code>, ASP(Active Server Pages).NET Core, NestJS가 모두 이 방식을 기본으로 쓴다고 짚어요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>리포지토리라는 이름은 마틴 파울러의 책 『Patterns of Enterprise Application Architecture』 카탈로그에서 널리 알려졌어요. 거기서는 리포지토리를 도메인과 데이터 매핑 계층 사이를 '컬렉션 같은 인터페이스'로 이어 주는 것으로 정의해요. 서비스 입장에서는 메모리에 있는 목록을 다루듯 꺼내고 넣는다는 뜻이에요.</p>
+  <p class="cite">출처: <a href="https://martinfowler.com/eaaCatalog/repository.html" target="_blank" rel="noopener">Martin Fowler — Repository (P of EAA Catalog)</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=122s" target="_blank" rel="noopener">02:02</a>
+  <h2>객체를 만드는 쪽: 팩토리와 싱글턴</h2>
+<h3>2. 팩토리 패턴: 만드는 곳을 한 군데로</h3>
+<p>팩토리는 같은 기능에 구현이 여러 개일 때 쓸모가 생겨요. 영상의 예는 결제예요. 처음엔 Stripe 하나뿐이라 결제 객체를 직접 만들어도 문제가 없어요. 그러다 Razorpay가 붙고, PayPal이 붙고, 다른 결제사가 더 붙어요.</p>
+<p>아래 슬라이드는 그때 벌어지는 일을 보여 줘요. 빨간 상자마다 <code>new StripePayment()</code>가 흩어져 있고, 가운데 새 결제사('NEW PROVIDER')가 들어오는 순간 그 상자들을 'MULTIPLE PLACES'에서 다 고쳐야 해요.</p>
+<figure>
+  <img src="assets/frame-0235.webp" alt="여섯 개의 빨간 코드 상자에 new StripePayment()가 적혀 있고, 가운데 NEW PROVIDER 아이콘에서 모든 상자로 선이 뻗어 MULTIPLE PLACES라고 표시된 슬라이드">
+  <figcaption>
+    객체를 만드는 코드가 흩어져 있으면 결제사 하나가 늘 때마다 여러 파일을 고쳐야 해요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=155s" target="_blank" rel="noopener">영상 02:35에서 보기</a>
+  </figcaption>
+</figure>
+<p>팩토리를 두면 앱은 "Stripe 결제 객체를 만들어"가 아니라 "결제 수단이 하나 필요해"라고만 말해요. 어떤 구현을 돌려줄지는 설정이나 비즈니스 규칙을 보고 팩토리가 정해요. 슬라이드 위쪽의 코드 블록 줄에 'INDEPENDENT'가 붙어 있고, 아래 Stripe·Razorpay·PayPal 옆의 + 칸이 새 결제사를 쉽게 더할 수 있다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0259.webp" alt="위쪽 코드 블록 여섯 개에 INDEPENDENT 라벨이 있고, 가운데 주황 톱니 아이콘(팩토리) 아래로 Stripe, Razorpay, PayPal, 빈 + 칸이 갈라지는 다이어그램">
+  <figcaption>
+    중요한 건 팩토리 클래스 자체가 아니라 객체 생성을 한곳에 모으는 거예요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=179s" target="_blank" rel="noopener">영상 02:59에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>3. 싱글턴 패턴: 하나만 있어야 하는 것</h3>
+<p>설정 관리자, 로깅 서비스, 캐시 관리자처럼 앱 안에 여러 개 있으면 오히려 이상한 객체가 있어요. 싱글턴은 앱이 살아 있는 동안 인스턴스를 하나만 두어서, 모두가 같은 공유 자원을 쓰게 해요. 쓸데없이 객체를 여러 번 만들지 않는 효과도 있어요.</p>
+<p>영상은 여기서 경고를 하나 붙여요. 싱글턴은 남용하기 쉬운 패턴이에요. 아래 슬라이드처럼 <code>ConfigManager</code>를 'GLOBAL VARIABLE'처럼 쓰면, <code>OrderService</code>, <code>PaymentService</code>, <code>CartService</code>가 모두 몰래 거기에 기대게 돼요. 맨 아래 빨간 'HIDDEN DEPENDENCIES'가 그 결과예요.</p>
+<figure>
+  <img src="assets/frame-0353.webp" alt="GLOBAL VARIABLE 라벨이 붙은 ConfigManager에서 OrderService, PaymentService, CartService로 빨간 선이 내려가고, 아래에 HIDDEN DEPENDENCIES 경고가 있는 슬라이드">
+  <figcaption>
+    어디서 무엇에 기대는지 코드에 드러나지 않으니 테스트할 때 갈아 끼우기도 어려워요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=233s" target="_blank" rel="noopener">영상 03:53에서 보기</a>
+  </figcaption>
+</figure>
+<p>요즘 백엔드에서는 <span class="term" data-term="의존성 주입" data-en="Dependency Injection" data-desc="객체가 필요한 다른 객체를 스스로 만들지 않고 바깥(프레임워크)에서 넣어 받는 방식이에요. 객체를 하나만 만들지 여러 개 만들지도 프레임워크가 정해 줘서, 싱글턴을 직접 짤 일이 줄어요." data-g="2">의존성 주입</span> 프레임워크가 객체 생명주기를 대신 관리해 줘요. 다음 슬라이드에서 <code>ConfigManager</code>는 'DEPENDENCY INJECTION' 상자 안에 'SINGLETON' 표시를 달고 있고, 세 서비스에 주입되는 쪽으로 선이 나가요. 직접 싱글턴을 구현하지 않아도 이미 같은 이점을 얻고 있을 수 있다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0406.webp" alt="DEPENDENCY INJECTION 상자 안에 SINGLETON 표시가 붙은 ConfigManager가 있고, 오른쪽 OrderService, CustomerService, PaymentService로 선이 이어진 다이어그램. 아래에 ConfigManager.getInstance() 코드">
+  <figcaption>
+    영상의 요지는 "할 수 있으니까"가 아니라 "왜 공유 인스턴스가 필요한지"를 먼저 묻는 거예요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=246s" target="_blank" rel="noopener">영상 04:06에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=254s" target="_blank" rel="noopener">04:14</a>
+  <h2>규칙과 후속 작업 나누기: 전략과 옵저버</h2>
+<h3>4. 전략 패턴: 규칙마다 따로 떼기</h3>
+<p>같은 작업을 상황에 따라 다르게 해야 할 때가 있어요. 영상의 예는 쇼핑몰 할인이에요. 프리미엄 회원 할인, 학생 할인, 명절 프로모션 가격이 다 다른 규칙을 따라요. 한 메서드에 if-else를 계속 붙여도 처음엔 돌아가지만, 모든 규칙이 한곳에 쌓이면서 점점 읽기 어려워져요.</p>
+<p>전략 패턴은 규칙마다 전략 하나씩을 만들어요. 아래 화면에서 <code>interface DiscountStrategy</code> 아래로 <code>PremiumDiscount</code>, <code>StudentDiscount</code>, <code>FestivalPricing</code>이 나란히 있고, 맨 아래에 새로 끼워 넣은 <code>DiscountPolicy</code>가 보여요.</p>
+<figure>
+  <img src="assets/frame-0512.webp" alt="interface DiscountStrategy 아래 PremiumDiscount, StudentDiscount, FestivalPricing, DiscountPolicy 네 줄이 목록으로 쌓인 화면">
+  <figcaption>
+    새 할인 정책은 전략 하나를 더하는 걸로 끝나고, 기존 전략은 건드리지 않아요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=312s" target="_blank" rel="noopener">영상 05:12에서 보기</a>
+  </figcaption>
+</figure>
+<p>앱은 상황에 맞는 전략을 골라 쓰기만 해요. 영상은 인증 방식, 결제 처리, 배송비 계산, 세금 규칙, 추천 시스템처럼 '같은 일을 하는 방법이 여러 개'인 곳이면 어디든 같은 방식을 쓸 수 있다고 해요.</p>
+
+<h3>5. 옵저버 패턴: 후속 작업은 각자 듣게</h3>
+<p>주문 하나가 들어오면 할 일이 줄줄이 따라와요. 재고를 갱신하고, 확인 메일을 보내고, 적립금을 쌓고, 분석에 기록하고, 고객이나 창고 팀에 알림을 보내요. 아래 <code>OrderService.java</code>의 <code>placeOrder()</code> 안에 다섯 줄이 바로 그 일들이에요. 왼쪽 아이콘 다섯 개가 각 줄이 부르는 서비스예요.</p>
+<figure>
+  <img src="assets/frame-0553.webp" alt="OrderService.java의 placeOrder 메서드 안에 inventory.update, emailService.sendConfirmation, loyalty.creditPoints, analytics.recordPurchase, notifications.send 다섯 줄이 있고, 왼쪽에 각 서비스 아이콘이 붙은 코드 화면">
+  <figcaption>
+    주문 서비스가 다른 서비스 다섯 개를 직접 부르면, 그 다섯 개와 <span class="term" data-term="단단히 묶여요" data-en="Tight coupling" data-desc="한 부분을 바꾸면 다른 부분도 따라 고쳐야 하는 강한 결합 상태예요. 옵저버 패턴은 이벤트를 사이에 둬서 이 결합을 느슨하게 만들어요." data-g="4">단단히 묶여요</span>.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=353s" target="_blank" rel="noopener">영상 05:53에서 보기</a>
+  </figcaption>
+</figure>
+<p>옵저버 방식에서는 주문 서비스가 '주문 완료' 이벤트 하나만 발행해요. 아래 슬라이드에서 <code>publish()</code>로 나온 주황 'ORDER PLACED' 막대 아래에 재고, 이메일, 적립금, 분석 서비스가 각자 매달려 있어요. 주문 서비스는 이들이 무슨 일을 하는지 몰라도 돼요.</p>
+<figure>
+  <img src="assets/frame-0610.webp" alt="ORDER SERVICE에서 publish()로 주황색 ORDER PLACED 이벤트 막대가 나오고, 그 아래 INVENTORY, EMAIL, LOYALTY, ANALYTICS 네 서비스가 놓인 다이어그램">
+  <figcaption>
+    구매 뒤 쿠폰 보내기 같은 새 기능은 리스너만 하나 더 붙이면 되고, 주문 서비스는 그대로예요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=370s" target="_blank" rel="noopener">영상 06:10에서 보기</a>
+  </figcaption>
+</figure>
+<p>이런 이벤트 기반 방식은 메시지 브로커 기술과 바로 이어져요. 영상은 Kafka, RabbitMQ, Azure Service Bus를 말하고, 슬라이드에는 AWS(Amazon Web Services) SNS(Social Networking Service)와 Google Pub/Sub까지 다섯 개가 올라와 있어요.</p>
+<figure>
+  <img src="assets/frame-0652.webp" alt="EVENT-DRIVEN 아이콘에서 Kafka, RabbitMQ, Azure Service Bus, AWS SNS, Google Pub/Sub 다섯 항목으로 가지가 뻗은 목록">
+  <figcaption>
+    서비스 간 이벤트를 실제로 실어 나르는 도구들이에요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=412s" target="_blank" rel="noopener">영상 06:52에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=412s" target="_blank" rel="noopener">06:52</a>
+  <h2>만들기와 연결: 빌더와 어댑터</h2>
+<h3>6. 빌더 패턴: 한 단계씩 채워서 만들기</h3>
+<p>앱이 복잡해지면 선택 속성이 잔뜩 붙은 객체가 생겨요. 사용자 프로필을 예로 들면, 이름과 이메일만 있는 사람도 있고 전화번호, 주소, 프로필 사진, 회사 정보, SNS 링크, 구독 설정, 알림 설정까지 다 있는 사람도 있어요.</p>
+<p>이걸 생성자 하나로 받으면 아래처럼 돼요. <code>new UserProfile(</code> 뒤에 문자열과 <code>true, false, true, null</code>이 줄줄이 이어지고, 오른쪽에 큰 숫자 11이 인자 개수를 세고 있어요. 네 번째 <code>true</code>가 무슨 뜻인지 코드만 봐서는 알 수 없어요.</p>
+<figure>
+  <img src="assets/frame-0720.webp" alt="UserService.java에서 new UserProfile 생성자에 이름, 이메일, 전화번호, 주소, 이미지, 회사, SNS, PREMIUM, true, false, true, null, en-US, UTC, false가 줄줄이 들어간 코드와 오른쪽의 숫자 11">
+  <figcaption>
+    인자가 10~15개가 되면 어느 값이 어느 칸인지 잊어버리기 쉬워요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=440s" target="_blank" rel="noopener">영상 07:20에서 보기</a>
+  </figcaption>
+</figure>
+<p>빌더는 값을 한 번에 다 넘기지 않고, 이름을 붙여 하나씩 채운 뒤 마지막에 만들어요. 아래 비교에서 왼쪽 빌더 코드는 <code>.name("Emily Carter")</code>, <code>.email(...)</code>처럼 각 값이 무엇인지 드러나서 'EXPLICITLY IDENTIFIED'예요. 오른쪽 생성자 코드는 이메일과 이름 순서를 바꿔 넣었는데도 티가 안 나서 'WRONG ORDER'예요.</p>
+<figure>
+  <img src="assets/frame-0749.webp" alt="왼쪽에 UserProfile.Builder로 name, email을 채우고 build()하는 코드와 EXPLICITLY IDENTIFIED 초록 버튼, 오른쪽에 new UserProfile에 이메일과 이름을 거꾸로 넣은 코드와 WRONG ORDER 빨간 버튼">
+  <figcaption>
+    값마다 이름이 붙으니 순서를 틀리는 실수가 줄어요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=469s" target="_blank" rel="noopener">영상 07:49에서 보기</a>
+  </figcaption>
+</figure>
+<p>이 방식은 복잡한 설정 객체에서 특히 흔해요. 아래 <code>AppConfig.java</code>의 <code>ClientConfig.builder().endpoint(...).build()</code>가 그 모양이고, 아래에 Java, Kotlin, C#, 클라우드 SDK(Software Development Kit)가 같은 방식을 쓴다고 나와요.</p>
+<figure>
+  <img src="assets/frame-0758.webp" alt="AppConfig.java의 ClientConfig.builder().endpoint(...).build() 코드 아래로 JAVA, KOTLIN, C#, CLOUD SDKS 네 아이콘이 이어진 슬라이드">
+  <figcaption>
+    객체 만들기가 복잡해지면 생성자 하나에 다 밀어 넣지 말고 단계별로 만들자는 게 핵심이에요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=478s" target="_blank" rel="noopener">영상 07:58에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>7. 어댑터 패턴: 외부 형식을 번역하기</h3>
+<p>백엔드는 혼자 돌지 않아요. 결제 게이트웨이, 은행 시스템, 배송사, 외부 API, 오래된 <span class="term" data-term="레거시 시스템" data-en="Legacy system" data-desc="오래전에 만들어져 아직 돌아가는 기존 시스템이에요. 바꾸기 어렵고 형식이 낡은 경우가 많아서, 어댑터로 감싸 붙이는 일이 흔해요." data-g="5">레거시 시스템</span>과 언젠가는 붙어야 해요. 그리고 이들은 데이터를 저마다 다르게 표현해요. 아래 화면 위쪽에서 한 시스템은 <code>"customer_id": 101</code>, 다른 시스템은 그냥 <code>"id": 101</code>이에요. 아래쪽은 camelCase와 snake_case가 다른 경우예요.</p>
+<figure>
+  <img src="assets/frame-0838.webp" alt="두 응답 상자에 각각 customer_id: 101과 id: 101이 적혀 있고, 아래에 camelCase와 snake라고 적힌 두 상자가 있는 슬라이드">
+  <figcaption>
+    같은 고객 번호를 시스템마다 다른 이름과 표기법으로 보내요. 영상은 JSON(JavaScript Object Notation)과 XML(Extensible Markup Language)이 섞이는 경우도 들어요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=518s" target="_blank" rel="noopener">영상 08:38에서 보기</a>
+  </figcaption>
+</figure>
+<p>이 차이가 코드 곳곳에 퍼지면 모든 코드가 모든 외부 시스템의 사정을 알아야 해요. 어댑터는 앱과 외부 시스템 사이에 층을 하나 둬요. 아래 그림에서 외부 시스템은 <code>"customer_id"</code>로 보내고, 가운데 어댑터를 지나면 앱이 기대하는 <code>"customerId"</code>로 바뀌어 있어요.</p>
+<figure>
+  <img src="assets/frame-0905.webp" alt="위에서부터 YOUR APPLICATION, ADAPTER, EXTERNAL SYSTEM이 세로로 놓이고, 외부 시스템 옆 customer_id: 101이 어댑터를 거쳐 앱 옆 customerId: 101로 바뀌는 다이어그램">
+  <figcaption>
+    결제사가 API를 바꿔도 이상적으로는 어댑터만 고치면 돼요. 영상은 어댑터를 두 시스템 사이의 '통역사'에 비유해요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=545s" target="_blank" rel="noopener">영상 09:05에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=567s" target="_blank" rel="noopener">09:27</a>
+  <h2>덧붙이기와 나누기: 데코레이터와 CQRS</h2>
+<h3>8. 데코레이터 패턴: 감싸서 기능 더하기</h3>
+<p>처음엔 상품 정보만 돌려주던 서비스가 있어요. 그런데 요구가 계속 붙어요. 캐싱, 로깅, 성능 측정, 권한 확인, 감사 기록, 요청 수 제한까지요. 매번 원래 서비스를 고치면 아래 <code>ProductService.java</code>처럼 돼요. <code>getProduct()</code> 한 메서드 안에 <code>rateLimiter</code>, <code>auth</code>, <code>audit</code>, <code>log</code>, <code>metrics</code>, <code>cache</code>가 줄줄이 섞여 있고, 아래에 'TOO MANY THINGS', 'DIFFICULT TO UNDERSTAND'가 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-0956.webp" alt="ProductService.java의 getProduct 메서드 안에 rateLimiter.acquire, auth.check, audit.record, log.info, metrics.increment, cache.get이 색깔별로 쌓인 코드와 TOO MANY THINGS, DIFFICULT TO UNDERSTAND 라벨">
+  <figcaption>
+    상품을 꺼내는 본업은 마지막 한 줄뿐이고, 나머지는 덧붙은 요구예요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=596s" target="_blank" rel="noopener">영상 09:56에서 보기</a>
+  </figcaption>
+</figure>
+<p>데코레이터는 원래 구현을 고치지 않고 바깥을 감싸서 기능을 더해요. 캐싱 데코레이터로 한 번 감싸고, 그 위를 로깅 데코레이터로, 또 그 위를 지표 수집이나 권한 확인 데코레이터로 감싸는 식이에요. 아래 슬라이드 왼쪽에는 'CACHING', 'LOGGING', 'METRICS', 'AUTHORIZATION' 스위치가 있고, 켜진 것만 오른쪽 <code>ProductService</code>를 겹겹이 둘러싸요. 'METRICS'는 꺼져 있어서 그만큼 고리가 없어요.</p>
+<figure>
+  <img src="assets/frame-1015.webp" alt="왼쪽 DECORATORS 패널에 CACHING, LOGGING, AUTHORIZATION 스위치는 켜져 있고 'METRICS'는 꺼져 있으며, 오른쪽에 ProductService가 색이 다른 테두리 세 겹으로 감싸인 그림">
+  <figcaption>
+    필요한 것만 골라 조합할 수 있고, 가운데 서비스는 본업에만 집중해요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=615s" target="_blank" rel="noopener">영상 10:15에서 보기</a>
+  </figcaption>
+</figure>
+<p>백엔드 프레임워크의 <span class="term" data-term="미들웨어" data-en="Middleware" data-desc="요청이 본 로직에 닿기 전후로 끼어들어 인증, 로깅, 캐싱 같은 공통 일을 처리하는 단계예요. 여러 개를 줄 세워 쓸 수 있어서 데코레이터와 생각이 비슷해요." data-g="6">미들웨어</span>가 비슷한 생각이에요. 아래 그림에서 요청은 사용자에서 출발해 인증, 로깅, 캐싱 미들웨어를 차례로 지난 뒤에야 오른쪽 애플리케이션 로직에 닿아요.</p>
+<figure>
+  <img src="assets/frame-1031.webp" alt="BACKEND FRAMEWORK 상자 안에서 사용자 아이콘부터 AUTHENTICATION, LOGGING, CACHING, + 를 지나 APPLICATION LOGIC으로 이어지는 MIDDLEWARE 줄">
+  <figcaption>
+    핵심 구현을 계속 고치는 대신, 바깥을 감싸서 동작을 늘리는 방식이에요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=631s" target="_blank" rel="noopener">영상 10:31에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>9. CQRS: 읽기와 쓰기를 나누기</h3>
+<p>CQRS는 이름은 어렵게 들리지만 생각은 단순해요. 데이터를 읽는 일과 바꾸는 일을 같은 방식으로 처리하지 말고 두 책임으로 나누는 거예요. 아래 슬라이드 맨 위에 풀네임이 적혀 있고, 그 아래 'READING'과 'CHANGING DATA'가 각자 상자로 갈라져 있어요.</p>
+<figure>
+  <img src="assets/frame-1058.webp" alt="맨 위에 Command Query Responsibility Segregation이 적혀 있고, 아래 READING과 CHANGING DATA 두 상자가 하나의 데이터베이스로 이어지는 슬라이드">
+  <figcaption>
+    처음엔 같은 데이터베이스를 쓰더라도 읽기와 쓰기의 책임부터 나눠요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=658s" target="_blank" rel="noopener">영상 10:58에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상의 예는 SNS예요. 수백만 명이 매일 프로필을 읽지만 수정은 그보다 훨씬 적어요. 시스템이 커지면 읽기와 쓰기의 요구가 크게 달라져서, 같은 모델과 인프라로 양쪽을 다 처리하는 게 최선이 아닐 수 있어요. CQRS에서는 커맨드가 데이터를 바꾸고, 쿼리는 읽기만 해요. 아래 그림에서 <code>UpdateProfileCommand</code>는 빨간 선으로 데이터베이스에 가서 'CHANGING DATA'를 하고, 쿼리 쪽은 읽기만 해요.</p>
+<figure>
+  <img src="assets/frame-1122.webp" alt="COMMANDS 아이콘에서 UpdateProfileCommand를 거쳐 CHANGING DATA라고 적힌 빨간 선이 데이터베이스로 이어지는 다이어그램">
+  <figcaption>
+    양쪽을 따로 최적화할 수 있고, 큰 시스템에서는 읽기·쓰기가 다른 모델이나 데이터베이스를 쓰기도 해요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=682s" target="_blank" rel="noopener">영상 11:22에서 보기</a>
+  </figcaption>
+</figure>
+<p>그렇다고 모든 앱에 넣을 건 아니에요. 아래 슬라이드는 단순한 CRUD 앱에 CQRS를 더하면 오른쪽 'UNNECESSARY COMPLEXITY'처럼 상자와 선이 잔뜩 늘어난다는 식으로 보여 줘요. 아래 초록 줄은 분리가 실제 문제를 풀 때만 쓰라는 문장이 써지는 중이에요.</p>
+<figure>
+  <img src="assets/frame-1153.webp" alt="SIMPLE CRUD APP 상자 더하기 CQRS 아이콘이 UNNECESSARY COMPLEXITY 상자와 같다는 식의 슬라이드, 아래에 USE IT WHEN THE SEPARATION 문장이 일부만 나타난 초록 상자">
+  <figcaption>
+    읽기와 쓰기 부하가 아주 다른 고트래픽 시스템이 아니라면 오히려 짐이 돼요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=713s" target="_blank" rel="noopener">영상 11:53에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>마틴 파울러는 CQRS를 그렉 영(Greg Young)에게서 처음 들었다고 써요. 그리고 영상과 같은 쪽으로 더 세게 경고해요. 대부분의 시스템에서 CQRS는 위험한 복잡도를 더하고, 본 사례 중 다수는 결과가 좋지 않았다고요. 시스템 전체가 아니라 특정 부분에만 쓰라는 조언도 함께 있어요.</p>
+  <p class="cite">출처: <a href="https://martinfowler.com/bliki/CQRS.html" target="_blank" rel="noopener">Martin Fowler — CQRS</a></p>
+</aside>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=715s" target="_blank" rel="noopener">11:55</a>
+  <h2>장애가 번지지 않게: 서킷 브레이커와 정리</h2>
+<h3>10. 서킷 브레이커: 죽은 서비스에 계속 매달리지 않기</h3>
+<p>분산 시스템은 다른 서비스에 기대서 돌아가고, 언젠가는 그중 하나가 죽어요. 외부 결제 게이트웨이가 갑자기 멈췄다고 해 봐요. 아래 슬라이드에서 오른쪽 결제 게이트웨이에 빨간 'DOWN'이 붙어 있는데, 앱은 계속 <code>POST /payments</code>를 보내고 있어요. 그 사이 모래시계 모양의 대기 요청이 쌓이고, 왼쪽 'CONNECTIONS'와 'THREADS' 막대가 주황으로 가득 찼어요.</p>
+<figure>
+  <img src="assets/frame-1221.webp" alt="YOUR APPLICATION 상자의 'CONNECTIONS'와 'THREADS' 막대가 가득 찬 채 POST /payments 요청이 DOWN 표시된 PAYMENT GATEWAY로 가고, 사이에 모래시계 아이콘 여섯 개가 쌓인 슬라이드">
+  <figcaption>
+    요청마다 타임아웃을 기다리며 커넥션과 스레드를 붙잡으니, 남의 장애가 내 앱의 장애가 돼요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=741s" target="_blank" rel="noopener">영상 12:21에서 보기</a>
+  </figcaption>
+</figure>
+<p>서킷 브레이커는 실패가 반복되는 걸 감지하면 회로를 열어서, 그 서비스로 요청을 잠시 보내지 않아요. 아래 그림에서 앱과 오른쪽 서비스 사이의 원이 빨갛게 'OPEN'이 되고, 그 너머 선은 흐리게 끊겨 있어요.</p>
+<figure>
+  <img src="assets/frame-1234.webp" alt="APPLICATION과 오른쪽 빨간 서버 사이에 CIRCUIT BREAKER 원이 있고, 원이 빨갛게 바뀌며 아래에 OPEN 라벨이 붙은 다이어그램">
+  <figcaption>
+    열려 있는 동안은 타임아웃을 기다리지 않고 바로 <span class="term" data-term="대체 응답" data-en="Fallback response" data-desc="원래 서비스가 응답하지 못할 때 대신 돌려주는 응답이에요. 캐시된 값이나 &#x27;잠시 후 다시 시도&#x27; 같은 안내가 될 수 있어요." data-g="7">대체 응답</span>을 돌려주거나 다른 방식으로 실패를 처리해요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=754s" target="_blank" rel="noopener">영상 12:34에서 보기</a>
+  </figcaption>
+</figure>
+<p>시간이 좀 지나면 회로는 요청 몇 개만 흘려보내서 외부 서비스가 회복했는지 확인해요. 슬라이드의 'OPEN', 'HALF-OPEN', 'CLOSED' 세 칸이 그 상태들이에요. 아래 화면은 확인용 요청이 통과해 서비스가 'WORKING AGAIN'이 되고, 맨 아래 'CLOSED'가 초록으로 켜진 순간이에요.</p>
+<figure>
+  <img src="assets/frame-1253.webp" alt="CIRCUIT BREAKER 상자 안에 OPEN, HALF-OPEN, CLOSED 세 상태가 세로로 있고 CLOSED가 초록으로 켜져 있으며, 오른쪽 EXTERNAL SERVICE가 초록으로 WORKING AGAIN 표시된 다이어그램">
+  <figcaption>
+    살아났으면 닫아서 평소대로 돌리고, 아직 실패하면 다시 열어 둬요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=773s" target="_blank" rel="noopener">영상 12:53에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상이 말로 설명한 상태 변화를 한 그림으로 모으면 이래요. 슬라이드는 세 상태를 나열만 해서, 어떤 조건에서 어디로 넘어가는지는 말로만 나와요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> CLOSED
+  CLOSED --> OPEN: 실패가 반복됨
+  OPEN --> HALF_OPEN: 일정 시간이 지남
+  HALF_OPEN --> CLOSED: 시험 요청 성공
+  HALF_OPEN --> OPEN: 여전히 실패
+</pre>
+  <figcaption>열린 동안에는 요청을 아예 보내지 않으니, 망가진 서비스 하나가 내 자원을 다 잡아먹지 못해요.</figcaption>
+</figure>
+<p>마지막으로 영상은 구현체를 셋 꼽아요. 아래 슬라이드에 Resilience4j, Polly, 그리고 'SERVICE MESH'로 묶인 Istio가 있어요. 클라우드 네이티브나 분산 시스템에서 특히 쓸모 있는 패턴이라는 말과 함께요.</p>
+<figure>
+  <img src="assets/frame-1313.webp" alt="CIRCUIT BREAKER 아이콘 아래로 Resilience4j, Polly, SERVICE MESH 라벨이 붙은 Istio 세 상자가 나란히 놓인 슬라이드">
+  <figcaption>
+    라이브러리로 코드에 넣을 수도 있고, <span class="term" data-term="서비스 메시" data-en="Service mesh" data-desc="서비스 사이의 통신을 코드 바깥의 프록시 층에서 관리하는 인프라예요. 재시도, 타임아웃, 서킷 브레이커를 앱 코드 수정 없이 설정으로 걸 수 있어요." data-g="8">서비스 메시</span>처럼 인프라 층에서 처리할 수도 있어요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=793s" target="_blank" rel="noopener">영상 13:13에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>마틴 파울러는 이 패턴이 마이클 나이가드(Michael Nygard)의 책 『Release It!』으로 널리 알려졌다고 정리해요. 상태 이름은 구현체마다 조금씩 달라요. Resilience4j 문서는 기본 상태 세 개(<code>CLOSED</code>, <code>OPEN</code>, <code>HALF_OPEN</code>) 말고도 <code>METRICS_ONLY</code>, <code>DISABLED</code>, <code>FORCED_OPEN</code>이라는 특수 상태를 따로 둬요. <code>DISABLED</code>는 항상 통과, <code>FORCED_OPEN</code>은 항상 차단이에요.</p>
+  <p class="cite">출처: <a href="https://martinfowler.com/bliki/CircuitBreaker.html" target="_blank" rel="noopener">Martin Fowler — CircuitBreaker</a> · <a href="https://resilience4j.readme.io/docs/circuitbreaker" target="_blank" rel="noopener">Resilience4j 공식 문서 — CircuitBreaker</a></p>
+</aside>
+
+<h3>정리: 패턴은 함께 쓰여요</h3>
+<p>영상은 실제 백엔드가 이 패턴들을 따로따로 쓰지 않는다고 강조해요. 패턴마다 푸는 문제가 달라서 한 앱 안에 여러 개가 함께 들어가요. 영상이 다룬 열 개를 '어떤 문제를 푸나'로 다시 묶으면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>패턴</th><th>이런 문제가 생기면</th><th>이렇게 나눠요</th></tr></thead>
+    <tbody>
+      <tr><td>리포지토리</td><td>서비스가 데이터베이스 쿼리까지 직접 알고 있어요</td><td>데이터 접근을 리포지토리 뒤로 숨겨요</td></tr>
+      <tr><td>팩토리</td><td>결제사가 늘 때마다 여러 곳을 고쳐야 해요</td><td>객체 만드는 일을 한곳에 모아요</td></tr>
+      <tr><td>싱글턴</td><td>설정·로깅처럼 하나만 있어야 할 객체가 있어요</td><td>인스턴스를 하나로 유지해요 (남용 주의)</td></tr>
+      <tr><td>전략</td><td>할인 규칙 if-else가 한 메서드에 쌓여요</td><td>규칙마다 전략을 따로 만들어요</td></tr>
+      <tr><td>옵저버</td><td>주문 서비스가 후속 작업을 다 직접 불러요</td><td>이벤트를 발행하고 각자 듣게 해요</td></tr>
+      <tr><td>빌더</td><td>생성자 인자가 10~15개로 늘어나요</td><td>이름 붙여 한 단계씩 채워 만들어요</td></tr>
+      <tr><td>어댑터</td><td>외부 시스템마다 데이터 형식이 달라요</td><td>사이에서 형식을 번역해요</td></tr>
+      <tr><td>데코레이터</td><td>캐싱·로깅·권한이 원래 메서드에 섞여요</td><td>바깥을 감싸서 기능을 더해요</td></tr>
+      <tr><td>CQRS</td><td>읽기와 쓰기의 부하와 요구가 크게 달라요</td><td>커맨드와 쿼리를 나눠요 (단순한 앱엔 과함)</td></tr>
+      <tr><td>서킷 브레이커</td><td>죽은 외부 서비스 때문에 내 앱까지 막혀요</td><td>실패가 반복되면 회로를 열어 요청을 끊어요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>영상은 정의를 외울 필요는 없다고 해요. 중요한 건 패턴 뒤의 문제를 이해하고, 언제 그 패턴이 코드를 더 낫게 만드는지 알아보는 거예요. 아래 슬라이드에서 'PROBLEM'이 'PATTERN'으로 이어지고, 거기서 'EASIER TO MAINTAIN', 'EASIER TO EXTEND', 'MORE RESILIENT' 세 갈래가 나와요.</p>
+<figure>
+  <img src="assets/frame-1355.webp" alt="PROBLEM 아이콘이 PATTERN으로 이어지고, 거기서 EASIER TO MAINTAIN, EASIER TO EXTEND, MORE RESILIENT 세 초록 버튼으로 갈라지는 다이어그램">
+  <figcaption>
+    패턴은 문제에서 출발해요. 유지보수, 확장, 회복력 중 무엇을 얻으려는지 먼저 따져 봐요.
+    <a href="https://www.youtube.com/watch?v=b4IlyJSIlL0&amp;t=835s" target="_blank" rel="noopener">영상 13:55에서 보기</a>
+  </figcaption>
+</figure>
+<blockquote>
+  <p>As a back-end developer, writing code that works is only the beginning.</p>
+  <p>백엔드 개발자에게 동작하는 코드는 시작일 뿐이에요.</p>
+  <cite>— 영상 13:51</cite>
+</blockquote>
+<p>영상은 기능, 개발자, 외부 서비스, 실제 트래픽이 계속 늘어나는 동안 코드를 이해 가능하고, 테스트 가능하고, 믿을 만하게 지키는 게 진짜 과제라고 맺어요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 라이브러리 이름 표기가 화면과 다른 곳이 있어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>resilience 4J</td><td>Resilience4j</td><td>슬라이드 13:13 표기 기준</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-4"><dt>단단히 묶여요<span class="en">Tight coupling</span></dt><dd>한 부분을 바꾸면 다른 부분도 따라 고쳐야 하는 강한 결합 상태예요. 옵저버 패턴은 이벤트를 사이에 둬서 이 결합을 느슨하게 만들어요.</dd></div>
+    <div class="g" id="g-7"><dt>대체 응답<span class="en">Fallback response</span></dt><dd>원래 서비스가 응답하지 못할 때 대신 돌려주는 응답이에요. 캐시된 값이나 &#x27;잠시 후 다시 시도&#x27; 같은 안내가 될 수 있어요.</dd></div>
+    <div class="g" id="g-5"><dt>레거시 시스템<span class="en">Legacy system</span></dt><dd>오래전에 만들어져 아직 돌아가는 기존 시스템이에요. 바꾸기 어렵고 형식이 낡은 경우가 많아서, 어댑터로 감싸 붙이는 일이 흔해요.</dd></div>
+    <div class="g" id="g-1"><dt>목<span class="en">Mock</span></dt><dd>테스트에서 진짜 객체 대신 끼우는 가짜 객체예요. 리포지토리를 목으로 바꾸면 데이터베이스 없이 비즈니스 로직만 시험할 수 있어요.</dd></div>
+    <div class="g" id="g-6"><dt>미들웨어<span class="en">Middleware</span></dt><dd>요청이 본 로직에 닿기 전후로 끼어들어 인증, 로깅, 캐싱 같은 공통 일을 처리하는 단계예요. 여러 개를 줄 세워 쓸 수 있어서 데코레이터와 생각이 비슷해요.</dd></div>
+    <div class="g" id="g-8"><dt>서비스 메시<span class="en">Service mesh</span></dt><dd>서비스 사이의 통신을 코드 바깥의 프록시 층에서 관리하는 인프라예요. 재시도, 타임아웃, 서킷 브레이커를 앱 코드 수정 없이 설정으로 걸 수 있어요.</dd></div>
+    <div class="g" id="g-3"><dt>숨은 의존성<span class="en">Hidden dependency</span></dt><dd>생성자나 인자에 드러나지 않고 코드 안쪽에서 몰래 기대는 의존 관계예요. 겉만 봐서는 무엇이 필요한지 모르니 테스트할 때 바꿔 끼우기 어려워요.</dd></div>
+    <div class="g" id="g-2"><dt>의존성 주입<span class="en">Dependency Injection</span></dt><dd>객체가 필요한 다른 객체를 스스로 만들지 않고 바깥(프레임워크)에서 넣어 받는 방식이에요. 객체를 하나만 만들지 여러 개 만들지도 프레임워크가 정해 줘서, 싱글턴을 직접 짤 일이 줄어요.</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>ASP</dt><dd>Active Server Pages</dd></div>
+    <div class="g"><dt>AWS</dt><dd>Amazon Web Services</dd></div>
+    <div class="g"><dt>CQRS</dt><dd>Command Query Responsibility Segregation</dd></div>
+    <div class="g"><dt>CRUD</dt><dd>Create, Read, Update, Delete</dd></div>
+    <div class="g"><dt>JSON</dt><dd>JavaScript Object Notation</dd></div>
+    <div class="g"><dt>SDK</dt><dd>Software Development Kit</dd></div>
+    <div class="g"><dt>SNS</dt><dd>Social Networking Service</dd></div>
+    <div class="g"><dt>SQL</dt><dd>Structured Query Language</dd></div>
+    <div class="g"><dt>XML</dt><dd>Extensible Markup Language</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=b4IlyJSIlL0" target="_blank" rel="noopener">원본 영상 — Cloud X Berry</a></li>
+    <li id="src-2"><a href="https://martinfowler.com/eaaCatalog/repository.html" target="_blank" rel="noopener">Martin Fowler — Repository (P of EAA Catalog)</a></li>
+    <li id="src-3"><a href="https://martinfowler.com/bliki/CQRS.html" target="_blank" rel="noopener">Martin Fowler — CQRS</a></li>
+    <li id="src-4"><a href="https://martinfowler.com/bliki/CircuitBreaker.html" target="_blank" rel="noopener">Martin Fowler — CircuitBreaker</a></li>
+    <li id="src-5"><a href="https://resilience4j.readme.io/docs/circuitbreaker" target="_blank" rel="noopener">Resilience4j 공식 문서 — CircuitBreaker</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 29일에 이 영상을 보고 정리했어요. 원본은 Cloud X Berry 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

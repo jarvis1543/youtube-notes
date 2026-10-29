@@ -1,0 +1,1160 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jev 방식 결정 모델을 처음부터: 프리필만으로 답 고르기</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Jev 방식 결정 모델을 처음부터: 프리필만으로 답 고르기</h1>
+  <p class="lede">LLM이 글을 쓰지 않고 선택지 확률만 내게 만드는 법을 코드로 따라가요</p>
+  <div class="meta">
+    <span>freeCodeCamp.org</span><span class="dot">·</span>
+    <span>영상 1:25:54</span><span class="dot">·</span>
+    <span>읽는 데 약 23분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=aZglGvBPQGs" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>LLM(Large Language Model) 호출은 프롬프트를 읽는 <span class="term" data-term="프리필" data-en="Prefill" data-desc="프롬프트 전체를 한 번의 순방향 계산으로 읽는 단계예요. 계산이 몰리지만 한 번이면 끝나서, Jev 방식은 여기서 답을 꺼내요." data-g="1">프리필</span> 1번과 답을 쓰는 <span class="term" data-term="디코드" data-en="Decode" data-desc="답을 토큰 하나씩 만들고, 만든 토큰을 다시 넣어 다음 토큰을 만드는 반복 단계예요. 답이 길수록 모델을 그만큼 더 돌려요." data-g="2">디코드</span> 여러 번으로 나뉘어요. Jev 방식은 디코드를 건너뛰고 선택지 확률만 읽어서, 지연이 일정하고 형식이 깨진 출력이 없어요.</li>
+    <li>질문은 choice(순서 없음), score(<span class="term" data-term="서열형" data-en="Ordinal" data-desc="차분함 · 짜증 · 매우 화남처럼 순서를 매길 수 있는 범주예요. 한 단계 틀린 것과 두 단계 틀린 것을 다르게 봐야 해서 RPS를 따로 써요." data-g="5">서열형</span>), noul(예/아니오) 세 모양이고, 강의는 셋 다 질문마다 소프트맥스 하나로 만들어요.</li>
+    <li>인코더 방식은 질문 앞, 선택지마다 <code>[MASK]</code>, 문서 뒤로 배치해요. 질문마다 문서를 다시 읽어야 하고, 학습 없이는 틀려요.</li>
+    <li>디코더 방식은 문서를 한 번 읽어 캐시하고, 질문끼리 서로 못 보게 하는 마스크로 여러 질문을 한 번에 처리해요. 학습 없이도 95%, 97%로 맞혔어요.</li>
+    <li>학습은 교사 확률을 따라가는 증류예요. 잡음으로 만든 경로를 <span class="term" data-term="로그 점수" data-en="Log score" data-desc="교사 확률로 가중한 학생 확률의 로그 합이에요. 교사가 확률을 둔 칸에 학생이 작은 확률을 두면 크게 깎여요." data-g="13">로그 점수</span> + 0.75 × <span class="term" data-term="구면 점수" data-en="Spherical score" data-desc="학생 확률 분포가 교사 분포와 같은 방향을 가리키는지 보는 점수예요. 값이 0과 1 사이로 묶여 있어서 한 샘플이 학습을 휘두르지 않아요." data-g="14">구면 점수</span> − RPS(Ranked Probability Score)로 채점해 GRPO(Group Relative Policy Optimization)로 밀어요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">Jev가 하려는 일: 디코드를 건너뛰기</a></li>
+    <li><a href="#s2">기준선: JSON을 토큰 하나씩 쓰게 하기</a></li>
+    <li><a href="#s3">인코더 방식: 질문 먼저, 선택지마다 MASK 토큰</a></li>
+    <li><a href="#s4">인코더 출력에서 확률 꺼내기</a></li>
+    <li><a href="#s5">디코더 방식: 문서는 한 번 읽고 캐시</a></li>
+    <li><a href="#s6">질문끼리 서로 못 보게 하는 마스크</a></li>
+    <li><a href="#s7">디코더 구현: 캐시 재사용과 결정 지점</a></li>
+    <li><a href="#s8">학습: 교사 확률을 따라가는 GRPO와 채점식</a></li>
+    <li><a href="#s9">인코더냐 디코더냐</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>Jev가 하려는 일: 디코드를 건너뛰기</h2>
+<p>이 강의는 Jev라는 결정 모델이 쓰는 방식을 직접 만들어 보는 과정이에요. 출발점은 LLM 호출이 두 단계로 나뉜다는 사실이에요. 프롬프트 전체를 한 번에 읽는 단계와, 답을 한 토큰씩 쓰는 단계예요.</p>
+<p>슬라이드는 두 단계를 막대로 비교해요. 위쪽 회색 막대 하나가 prefill(1 pass)이고, 아래쪽 주황 칸 23개가 decode(23 passes)예요. 막대 하나가 순방향 계산 한 번이에요.</p>
+<figure>
+  <img src="assets/frame-0200.webp" alt="prefill 막대 하나에 1 pass, decode 주황 칸 23개에 23 passes라고 적힌 슬라이드">
+  <figcaption>프리필은 한 번이면 끝나지만, 디코드는 답의 토큰 수만큼 모델을 다시 돌려요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=120s" target="_blank" rel="noopener">영상 02:00에서 보기</a></figcaption>
+</figure>
+<p>디코드에서는 첫 토큰이 나오면 그걸 입력 뒤에 붙여 다시 넣고, 다음 토큰이 나오면 또 붙여요. 500토큰 프롬프트라면 501번째, 502번째 토큰을 차례로 만들어 가는 식이에요. Jev는 이 두 번째 단계를 통째로 건너뛰어요. 문제를 처음부터 "선택지 중 무엇인가"로 정해 두고, 프리필 한 번에서 선택지 점수만 읽어요.</p>
+<p>주황 슬라이드 아래 세 칸이 그 결과예요. 순방향 계산 1번, 생성한 토큰 0개, 형식이 틀린 출력 0개예요. 막대 오른쪽의 작은 칸 세 개가 "토큰을 쓰는 대신 선택지에 점수를 매긴다"는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0240.webp" alt="Jev just skips the second one 제목 아래 1 forward pass, 0 tokens generated, 0 invalid outputs 세 칸이 있는 주황 슬라이드">
+  <figcaption>발표자가 꼽는 장점은 두 가지예요. 지연이 일정하고, 출력 형식이 미리 정해져 있어요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=160s" target="_blank" rel="noopener">영상 02:40에서 보기</a></figcaption>
+</figure>
+<h3>물어볼 수 있는 세 가지 모양</h3>
+<p>Jev에 던지는 질문은 세 가지예요. 발표자가 슬라이드 위에 빨간 글씨로 nominal, ordinal, binary를 덧써 놨어요. 각 카드 아래의 작은 설명도 눈여겨볼 만해요. choice는 "최대 255개 중 하나", score는 "순서 있는 단계, 답이 두 단계 사이에 떨어질 수 있음", noul은 "숫자 하나가 그대로 확신도"예요.</p>
+<figure>
+  <img src="assets/frame-0520.webp" alt="choice(nominal), score(ordinal), noul(binary) 세 카드와 we build all three from one softmax per question 문구가 있는 슬라이드">
+  <figcaption>아래 왼쪽 상자가 이 강의의 단순화예요. 세 유형 모두 질문 하나에 소프트맥스 하나로 만들어요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=320s" target="_blank" rel="noopener">영상 05:20에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>유형</th><th>성격</th><th>영상의 예</th></tr></thead>
+    <tbody>
+      <tr><td>choice</td><td>순서 없는 선택지(명목형)</td><td>동서남북, 어느 팀 담당인가</td></tr>
+      <tr><td>score</td><td>순서 있는 단계(서열형)</td><td>차분함 · 짜증 · 매우 화남</td></tr>
+      <tr><td>noul</td><td>예/아니오</td><td>환불을 요청하나요?</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>동서남북은 어느 쪽이 더 크다고 말할 수 없어요. 반면 고객 감정은 불만 정도로 줄을 세울 수 있어요. 이 차이가 나중에 학습 채점식에서 score 질문에만 RPS 항이 붙는 이유가 돼요. 오른쪽 회색 상자의 "단계별 따로 판정, 유형별 온도, 유형을 입력으로" 같은 실제 구현 세부는 강의에서 건너뛰어요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Jev는 TypeSafe AI(Artificial Intelligence)가 만든 모델이에요. 공식 문서는 Jev를 텍스트 대신 '타입이 정해진 결정과 확률'을 돌려주는 System One 모델의 첫 번째로 소개해요. 세 질문 유형의 공식 이름도 Choice, Score, Noul이에요. 자막에는 noul이 null이나 boolean처럼 받아적혀 있어요. Choice 문서에는 선택지를 최대 255개까지 넣을 수 있다고 적혀 있어요.</p>
+  <p class="cite">출처: <a href="https://docs.typesafe.ai/concepts/system-one" target="_blank" rel="noopener">TypeSafe 문서 — System One</a>, <a href="https://docs.typesafe.ai/primitives/choice.md" target="_blank" rel="noopener">TypeSafe 문서 — Choice</a></p>
+</aside>
+<h3>수강 전제와 진행 순서</h3>
+<p>왼쪽 카드가 꼭 알아야 할 것, 가운데가 있으면 좋은 것, 오른쪽 자물쇠 카드가 필요 없는 것이에요. 발표자는 왼쪽 카드 중 하나라도 모르면 따라오기 어렵다고 분명히 말해요.</p>
+<figure>
+  <img src="assets/frame-0600.webp" alt="assumed(attention, KV cache, logits &amp; softmax, PyTorch shapes), helpful(hugging face, a debugger, BERT next to GPT), not needed(a GPU, training experience, maths past softmax) 세 카드 슬라이드">
+  <figcaption>구현은 추론만 다뤄서 GPU(Graphics Processing Unit)가 없어도 돼요. 수학도 소프트맥스까지면 충분해요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=360s" target="_blank" rel="noopener">영상 06:00에서 보기</a></figcaption>
+</figure>
+<p>진행 순서 슬라이드는 세 단계의 입력 배치를 색으로 보여 줘요. 파랑이 문서(state), 회색이 질문, 주황이 선택지예요. 1번 보통 생성은 긴 회색 막대 뒤에 주황 칸이 줄줄이 붙어요. 2번 인코더는 질문을 앞에 두고 문서를 뒤에 둬요. 3번 디코더는 문서를 맨 앞에 두고 질문과 선택지를 번갈아 이어 붙여요.</p>
+<figure>
+  <img src="assets/frame-0720.webp" alt="1 generate, 2 encoder, 3 decoder 세 줄에 state(파랑), question(회색), options(주황) 막대가 다르게 배치된 슬라이드">
+  <figcaption>이 문서에서 직접 그린 그림은 파랑을 문서로, 주황을 질문으로, 초록을 선택지로 통일했어요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=440s" target="_blank" rel="noopener">영상 07:20에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=480s" target="_blank" rel="noopener">08:00</a>
+  <h2>기준선: JSON을 토큰 하나씩 쓰게 하기</h2>
+<p>Jev 방식으로 가기 전에, 평범한 생성이 어떻게 도는지 디버거로 한 줄씩 따라가요. 모델은 Qwen3-0.6B로, 노트북에도 올라가는 작은 모델이에요.</p>
+<p>상황은 사기 의심 건이에요. "카드 끝자리 4412가 3분 동안 4개국에서 9번 결제됐다. 카드 주인은 카드가 아직 주머니에 있다고 전화했다." 스키마는 세 가지 유형을 일부러 섞어 놨어요. <code>priority</code>(<code>HIGH</code>/<code>LOW</code>), <code>decision</code>(<code>FRAUD</code>/<code>FRAUD_REVIEW</code>/<code>CLEAR</code>), <code>escalate</code>(boolean)예요.</p>
+<p>아래 캡처 오른쪽이 실제로 모델에 들어가는 프롬프트예요. <code>&lt;|im_start|&gt;system</code> 뒤에 "Output ONLY a valid JSON object" 지시와 JSON(JavaScript Object Notation) 스키마가 있어요. 그 아래 user 메시지에 상황이 들어가고, assistant 차례 끝에 <code>{</code>를 미리 열어 둬요. 모델이 JSON을 바로 이어 쓰게 하려는 거예요.</p>
+<figure>
+  <img src="assets/frame-1120.webp" alt="VS Code 디버그 콘솔에 system 메시지, JSON Schema(priority, decision, escalate), user 메시지(카드 4412 사례)가 출력된 화면">
+  <figcaption>보통 LLM API(Application Programming Interface)에 Pydantic 스키마를 넘길 때와 같은 모양이에요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=680s" target="_blank" rel="noopener">영상 11:20에서 보기</a></figcaption>
+</figure>
+<h3>토큰 하나를 고르는 법</h3>
+<p>이 프롬프트는 약 130토큰이에요. 트랜스포머는 토큰 5개를 넣으면 예측 5개를 내놓고, 예측마다 어휘 전체에 대한 분포가 들어 있어요. 그래서 <span class="term" data-term="로짓" data-en="Logit" data-desc="소프트맥스를 거치기 전의 원점수예요. 토큰 위치마다 어휘 크기만큼 나오고, 여기서 선택지 토큰의 값만 골라 확률을 만들어요." data-g="4">로짓</span> 모양이 130 × 약 152K예요. 다음 토큰만 필요하니 마지막 줄만 남기고 소프트맥스를 한 뒤 argmax를 골라요. argmax의 위치가 곧 토큰 ID(Identifier)예요.</p>
+<p>캡처의 33~38번 줄이 그 반복이에요. <code>past_key_values=cache</code>로 캐시를 넘기고, <code>out.logits[0, -1]</code>로 마지막 줄을 꺼내고, <code>argmax()</code>로 토큰을 골라 멈춤 토큰이면 빠져나가요.</p>
+<figure>
+  <img src="assets/frame-1320.webp" alt="for 문 안에서 model(**inputs, past_key_values=cache, use_cache=True)를 부르고 logits[0, -1]에 softmax와 argmax를 적용하는 코드">
+  <figcaption>최대 200번 도는 루프예요. 한 바퀴에 토큰 하나가 나와요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=800s" target="_blank" rel="noopener">영상 13:20에서 보기</a></figcaption>
+</figure>
+<p>한 바퀴의 흐름을 그림으로 옮기면 이래요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["입력 토큰<br>(첫 바퀴 130개)"] --> B["모델 순방향<br>+ KV 캐시"]
+  B --> C["로짓 130 × 152K"]
+  C --> D["마지막 줄만<br>소프트맥스"]
+  D --> E["argmax<br>= 새 토큰 ID"]
+  E -->|"멈춤 토큰이 아니면<br>새 토큰 1개만 다시 넣기"| B
+</pre>
+  <figcaption>두 번째 바퀴부터는 새 토큰 하나만 넣어요. 앞부분은 KV(Key-Value) 캐시에 들어 있어서 다시 계산하지 않아요.</figcaption>
+</figure>
+<p>몇 바퀴 돌리면 따옴표, <code>priority</code>, 콜론이 차례로 붙고, 이어서 <code>"HIGH"</code>와 <code>"FRAUD"</code>가 나와요. 발표자는 ChatGPT 화면에서 글자가 하나씩 나오는 이유가 바로 이 반복이라고 짚어요. 최종 JSON은 맞게 나왔어요. 하지만 따옴표, 키 이름, 콜론까지 전부 한 토큰씩 만드느라 시간이 들었어요. 끝난 뒤에도 JSON이 제대로 닫혔는지 확인하는 뒷정리가 필요해요.</p>
+<p>발표자는 적어도 이런 문제라면 처음부터 다르게 세워서 이 반복을 피할 수 있었다고 정리해요. 같은 문서에 질문을 여러 개 던질 때 문서 부분의 캐시를 재사용하는 요령도 여기서 미리 언급해요. 이 아이디어는 디코더 방식에서 다시 나와요.</p>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=1284s" target="_blank" rel="noopener">21:24</a>
+  <h2>인코더 방식: 질문 먼저, 선택지마다 MASK 토큰</h2>
+<p>첫 번째 재구성은 인코더로 해요. BERT(Bidirectional Encoder Representations from Transformers) 같은 인코더 전용 모델을 가져와(화면의 코드는 ModernBERT를 써요) 학습 없이 어디까지 되는지 보고, 안 되면 어떤 학습을 붙일지 정해요.</p>
+<p>슬라이드 위쪽 막대가 입력 배치예요. 왼쪽 회색이 질문, 주황 두 칸이 선택지마다 붙는 <code>[MASK] a</code>, <code>[MASK] b</code>, 오른쪽 긴 파랑이 문서예요. 문서 아래에 "질문마다 다시 읽음(re-read every question)"이라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-2204.webp" alt="question, [MASK] a, [MASK] b, state 순서의 막대 아래 dot product, linear head, head + LoRA, full backbone 네 칸이 있는 슬라이드">
+  <figcaption>아래 네 칸은 다음 섹션에서 다룰 '점수 읽는 방법'이에요. 맨 왼쪽 dot product가 이 강의의 구현이고, 학습을 안 해서 틀린다고 적혀 있어요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=1324s" target="_blank" rel="noopener">영상 22:04에서 보기</a></figcaption>
+</figure>
+<h3>왜 질문을 앞에 둘까요</h3>
+<p>보통은 문서를 먼저 주고 질문을 나중에 해요. 여기서는 반대예요. 발표자는 어텐션이 시퀀스 앞쪽 토큰에 무게를 많이 두기 때문이라고 설명해요. 반대 순서로도 실험해 봤는데 이쪽이 더 나았다고 전해요.</p>
+<p>그럼 문서를 앞에 두고 캐시하면 질문만 바꿔 가며 쓸 수 있지 않을까요. 발표자는 인코더에서는 안 된다고 답해요. 인코더는 <span class="term" data-term="양방향" data-en="Bidirectional attention" data-desc="모든 토큰이 앞뒤 토큰을 다 보는 어텐션이에요. 질문이 바뀌면 문서 쪽 계산도 전부 바뀌어서 캐시를 재사용할 수 없어요." data-g="6">양방향</span>이라 질문 한 글자만 바뀌어도 모든 위치의 어텐션 값이 달라져요. 순서를 뒤집어도 마찬가지예요. 그래서 질문마다 문서 전체를 다시 계산해야 하고, 문서가 길고 질문이 많으면 확장성이 떨어져요. 대신 모든 토큰이 서로를 보니까 파라미터 하나하나의 효율은 가장 좋아요.</p>
+<h3>입력을 조립하는 build 함수</h3>
+<p>예시 문서는 "티켓 #8812: 같은 주문이 두 번 결제됐고, 4일째 답이 없다. 취소하고 돈을 돌려 달라, 아니면 카드사에 이의를 제기하겠다"예요. 질문은 "고객이 환불을 요청하나요?"이고 선택지는 no와 yes예요. 이해를 돕기 위해 질문을 배치로 묶지 않고 for 문으로 하나씩 처리해요.</p>
+<p>캡처 오른쪽 디버그 콘솔의 마지막 줄이 조립 결과예요. <code>[CLS]Is the customer asking for money back?[SEP][MASK]no[MASK]yes'</code>까지 보여요. 코드에서는 두 가지를 기록해 둬요. 질문이 차지하는 위치 <code>span = (1, 9)</code>와, <code>[MASK]</code>가 들어간 위치 <code>markers = [10, 12]</code>예요.</p>
+<figure>
+  <img src="assets/frame-2924.webp" alt="build 함수 코드와 디버그 콘솔에 [CLS] 질문 [SEP] [MASK]no [MASK]yes로 디코드된 ids가 출력된 화면">
+  <figcaption>이 뒤에 <code>[SEP]</code>, 문서, <code>[SEP]</code>가 이어져요. BERT의 마스크 언어 모델 입력과 같은 꼴이에요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=1764s" target="_blank" rel="noopener">영상 29:24에서 보기</a></figcaption>
+</figure>
+<p>이 기록 덕분에 모델 출력에서 "질문 부분"과 "선택지 자리"를 정확히 골라낼 수 있어요. 모델에 넣으면 마지막 은닉 상태가 54 × 768로 나와요. 토큰 54개 각각에 768차원 벡터가 하나씩이에요.</p>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=1920s" target="_blank" rel="noopener">32:00</a>
+  <h2>인코더 출력에서 확률 꺼내기</h2>
+<p>이제 54 × 768 출력에서 확률을 만들어요. 재료는 두 가지예요.</p>
+<ul>
+  <li><b>질문 벡터</b>: 질문 토큰 1~8번 위치의 벡터를 평균 내요(<span class="term" data-term="평균 풀링" data-en="Mean pooling" data-desc="여러 토큰의 벡터를 평균 내서 벡터 하나로 줄이는 방법이에요. 여기서는 질문 토큰들을 질문 벡터 하나로 만들 때 써요." data-g="8">평균 풀링</span>). 0번은 <code>[CLS]</code>라서 빼요. 모델이 본 질문을 가장 잘 대표하는 768 벡터 하나가 돼요.</li>
+  <li><b>선택지 벡터</b>: <code>[MASK]</code> 자리(10번, 12번)의 벡터 두 개예요. 모아서 2 × 768 행렬이 돼요.</li>
+</ul>
+<p>발표자가 화이트보드에 그린 그림이 이 과정이에요. 맨 윗줄이 입력 순서(질문, <code>[M]</code>O<sub>1</sub>, <code>[M]</code>O<sub>2</sub>, <code>[SEP]</code>, 문서)이고, 각 자리에서 768 벡터가 내려와요. 선택지 쪽 2×768과 질문 쪽 768×1이 화살표로 만나 2×1 확률이 돼요.</p>
+<figure>
+  <img src="assets/frame-3640.webp" alt="화이트보드에 질문과 [M]O1, [M]O2, [SEP] ctx/state를 쓰고, 각각 768 벡터로 내려와 2x768과 768x1이 만나는 그림">
+  <figcaption>가장 단순한 Jev 공식이에요. 내적 두 번, 소프트맥스 한 번이면 끝나요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=2200s" target="_blank" rel="noopener">영상 36:40에서 보기</a></figcaption>
+</figure>
+<p>깔끔하게 다시 그리면 이래요. 선택지 행렬과 질문 벡터를 곱하면 선택지마다 스칼라가 하나씩 나오고, 그 둘에 소프트맥스를 씌워 확률로 읽어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 210" role="img" aria-label="질문 토큰 평균 풀링 벡터와 MASK 자리 벡터 두 개를 내적해 소프트맥스로 확률 두 개를 만드는 그림">
+    <defs><marker id="arrow-enc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect x="10" y="20" width="150" height="40" rx="8" class="c2 cell"/><text x="85" y="45" text-anchor="middle">질문 토큰 1~8</text>
+    <rect x="10" y="90" width="150" height="40" rx="8" class="c3 cell"/><text x="85" y="115" text-anchor="middle">[MASK] no</text>
+    <rect x="10" y="150" width="150" height="40" rx="8" class="c3 cell"/><text x="85" y="175" text-anchor="middle">[MASK] yes</text>
+    <path d="M162 40 h50" class="line" marker-end="url(#arrow-enc)"/>
+    <rect x="216" y="20" width="140" height="40" rx="8" class="box"/><text x="286" y="38" text-anchor="middle">평균 풀링</text><text x="286" y="53" text-anchor="middle" class="sub">768 × 1</text>
+    <path d="M162 140 h50" class="line" marker-end="url(#arrow-enc)"/>
+    <rect x="216" y="115" width="140" height="50" rx="8" class="box"/><text x="286" y="137" text-anchor="middle">선택지 행렬</text><text x="286" y="154" text-anchor="middle" class="sub">2 × 768</text>
+    <path d="M358 40 C400 40 400 90 430 90" class="line" marker-end="url(#arrow-enc)"/>
+    <path d="M358 140 C400 140 400 110 430 110" class="line" marker-end="url(#arrow-enc)"/>
+    <rect x="434" y="75" width="80" height="50" rx="8" class="accent"/><text x="474" y="97" text-anchor="middle">내적</text><text x="474" y="114" text-anchor="middle" class="sub">2 × 1</text>
+    <path d="M516 100 h22" class="line" marker-end="url(#arrow-enc)"/>
+    <rect x="542" y="65" width="90" height="70" rx="8" class="box"/><text x="587" y="88" text-anchor="middle">소프트맥스</text><text x="587" y="106" text-anchor="middle" class="sub">no 0.70</text><text x="587" y="122" text-anchor="middle" class="sub">yes 0.30</text>
+  </svg>
+  <figcaption>학습 없이 돌린 결과예요. 정답은 '예'인데 yes가 30% 정도만 나왔어요.</figcaption>
+</figure>
+<p>당연히 틀려요. 학습을 하나도 안 한 백본이니까요. 발표자는 그래도 이 구조가 바탕이 된다고 말해요. 임베딩 자체는 품질이 높아서 신호는 다 들어 있고, 이 벡터를 확률로 읽어야 한다는 걸 모델이 모를 뿐이에요.</p>
+<h3>학습을 붙이는 세 단계</h3>
+<p>화이트보드 아래쪽에 발표자가 번호를 매겨 적어 둔 세 가지가 그 해결책이에요. 위쪽에는 첫 번째 방법을 따로 풀어 놨어요. 선택지 벡터마다 768 → 1 <span class="term" data-term="선형 헤드" data-en="Linear head" data-desc="백본 출력 위에 얹는 작은 선형 층이에요. 768차원 벡터를 점수 하나로 바꿔 주고, 이것만 학습해도 확률이 크게 나아질 수 있어요." data-g="9">선형 헤드</span>를 거쳐 스칼라를 내고, 두 스칼라가 확률이 돼요.</p>
+<figure>
+  <img src="assets/frame-3920.webp" alt="화이트보드에 Linear head가 768에서 1로 스칼라를 내는 그림과, 1 Linear Head, 2 LoRA, 3 Full backbone retraining 목록">
+  <figcaption>과제가 어려울수록, 데이터가 많을수록 아래 단계로 내려가요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=2360s" target="_blank" rel="noopener">영상 39:20에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>방법</th><th>무엇을 학습하나</th><th>슬라이드가 든 예</th></tr></thead>
+    <tbody>
+      <tr><td>내적(dot product)</td><td>아무것도 안 함. 강의 구현</td><td>틀림: 아니요라고 답함</td></tr>
+      <tr><td>선형 헤드</td><td><code>[MASK]</code>마다 붙인 768 → 1 층</td><td>Laya · GLiNER</td></tr>
+      <tr><td>헤드 + <span class="term" data-term="LoRA" data-en="Low-Rank Adaptation" data-desc="원래 가중치는 얼려 두고 작은 저랭크 행렬만 학습해 모델을 조금 움직이는 미세조정 방법이에요. 전체 재학습보다 훨씬 가벼워요." data-g="10">LoRA</span></td><td>헤드와 인코더를 조금</td><td>GLiNER2 trainer</td></tr>
+      <tr><td>백본 전체</td><td>모든 가중치</td><td>Laya · GLiNER2.5</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>슬라이드 아래 문구는 "우리 것만 아무것도 학습하지 않는다, 그래서 우리 것만 틀린다"예요. 어느 단계를 고를지는 과제의 복잡도와 투자할 수 있는 데이터 양에 달려 있어요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=2442s" target="_blank" rel="noopener">40:42</a>
+  <h2>디코더 방식: 문서는 한 번 읽고 캐시</h2>
+<p>디코더로도 디코드 없이 프리필 한 번에 끝낼 수 있어요. 이번에는 인코더와 정반대로 문서를 맨 앞에 둬요.</p>
+<p>슬라이드 막대를 보면 왼쪽 절반 이상을 파란 문서가 차지하고, "한 번 읽고 캐시(read once, cached)"라고 적혀 있어요. 그 뒤로 회색 질문 1, 주황 <code>A:</code>, 회색 질문 2, 주황 <code>A:</code>가 번갈아 와요. 질문 뒤를 <code>A:</code>처럼 열어 두면 모델 입장에서는 자동 완성 과제가 돼요.</p>
+<figure>
+  <img src="assets/frame-4042.webp" alt="state(read once, cached), question 1, A:, question 2, A: 순서의 막대와 first token, letter slots, pointer head, pooled span 네 칸이 있는 슬라이드">
+  <figcaption>가운데 줄 문구가 다음 섹션의 주제예요. 질문들을 마스크로 서로 격리하고, Clef는 격리하지 않는다고 적혀 있어요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=2442s" target="_blank" rel="noopener">영상 40:42에서 보기</a></figcaption>
+</figure>
+<p>디코더는 <span class="term" data-term="인과 마스크" data-en="Causal mask" data-desc="각 토큰이 자기와 앞 토큰만 보게 막는 마스크예요. 앞부분 계산이 뒤에 오는 내용과 무관해서 문서를 캐시해 둘 수 있어요." data-g="7">인과 마스크</span>라서, 앞쪽 토큰은 뒤에 무엇이 오든 계산 결과가 같아요. 그러니 문서의 <span class="term" data-term="KV 캐시" data-en="Key-Value cache" data-desc="앞 토큰들의 어텐션 키·값을 저장해 둔 것이에요. 이게 있으면 같은 문서를 다시 계산하지 않고 뒤에 질문만 붙여 이어 갈 수 있어요." data-g="3">KV 캐시</span>를 한 번 만들어 두고 질문만 갈아 끼우면 돼요. 발표자는 컨텍스트가 32K이고 문서가 1K라면, 남은 31K를 질문과 선택지로 채울 수 있다고 예를 들어요.</p>
+<p>발표자는 Jev가 문서 하나에 질문을 5,000개까지 받는다는 점을 보면 디코더 방식일 거라고 추측해요. 다만 Jev 쪽에서 공개한 게 없어서 확실하지 않다고 직접 덧붙여요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>TypeSafe의 모델 문서에는 질문 개수에 따로 상한이 없다고 적혀 있어요. 대신 두 가지 길이 제한을 맞춰야 해요. 요청 전체(문서 + 모든 질문)는 64K, 문서 + 질문 하나는 32K예요. 문서는 한 번 받아들이고 모든 질문을 그 위에서 병렬로 평가한다고 설명해요. 이 글을 쓰는 시점의 현재 모델은 Jev 1.14와 1.13이에요.</p>
+  <p class="cite">출처: <a href="https://docs.typesafe.ai/models.md" target="_blank" rel="noopener">TypeSafe 문서 — Models</a></p>
+</aside>
+<h3>선택지 점수를 읽는 네 가지 방법</h3>
+<p>슬라이드 아래 네 칸이 디코더 쪽 선택지예요. 각 칸 맨 아래 줄은 그 방식을 쓰는 실제 구현 이름이에요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>방법</th><th>어떻게</th><th>학습</th><th>슬라이드의 예</th></tr></thead>
+    <tbody>
+      <tr><td>첫 토큰</td><td>다음 토큰 분포에서 선택지 첫 토큰의 확률만 골라요</td><td>없음</td><td>이 강의. 앞 토큰이 같으면 비김</td></tr>
+      <tr><td>글자 슬롯</td><td>선택지를 (A)(B)로 바꾸고 글자 하나만 답하게 해요</td><td>없음</td><td>decider</td></tr>
+      <tr><td>포인터 헤드</td><td>결정 지점 벡터 × 선택지 벡터를 헤드로 계산해요</td><td>헤드</td><td>kev</td></tr>
+      <tr><td>풀링 스팬</td><td>선택지 토큰 전체를 풀링하고 헤드를 붙여요</td><td>헤드</td><td>Clef</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>슬라이드 결론은 "앞의 둘은 학습이 없고, 글자만 절대 충돌하지 않는다"예요. 강의는 첫 토큰 방식만 구현하고, 캐시 재사용과 질문 교체에 집중해요. 발표자는 이것만으로도 충분히 어렵다고 말해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>슬라이드가 decider로 부른 것은 Nokia 연구진의 오픈소스 라이브러리 AnyJev에 들어 있는 학습 없는 <code>Decider</code>로 보여요. AnyJev README는 날것의 라벨 로짓이 선택지 순서를 뒤집으면 답이 바뀔 수 있다고 지적해요. 그래서 기본 모드(L0)는 선택지 순서를 돌려 가며 여러 번 읽고 위치 편향을 평균 내요. 강의의 첫 토큰 방식에도 같은 순서 편향이 있을 수 있다는 점을 기억해 두면 좋아요.</p>
+  <p class="cite">출처: <a href="https://github.com/nokia-applied-research/AnyJev" target="_blank" rel="noopener">AnyJev GitHub 저장소</a></p>
+</aside>
+<h3>앞 토큰이 같은 선택지</h3>
+<p>첫 토큰 방식의 약점을 발표자가 슬라이드 위에 직접 적어 보여 줘요. "이게 맞는 질문인가?"에 선택지 ① Fraud, ② Fraud review를 붙이면, 두 선택지의 첫 토큰이 똑같아요.</p>
+<figure>
+  <img src="assets/frame-4522.webp" alt="Pack it all into one sequence 슬라이드 위에 빨간 펜으로 is this legit? 1 Fraud 2 Fraud review를 적고 first token 칸에 밑줄을 그은 화면">
+  <figcaption>첫 토큰만 보면 둘을 구분할 수 없어서 50:50 언저리가 나와요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=2722s" target="_blank" rel="noopener">영상 45:22에서 보기</a></figcaption>
+</figure>
+<p>강의 구현은 이런 경우 조용히 비긴 답을 내지 않고 오류를 내요. 사용자가 선택지 이름을 바꾸게 하려는 거예요. 예를 들어 Fraud review를 그냥 review로 바꾸면 문제가 사라져요. 글자 슬롯은 A와 B로 바꾸니 처음부터 이 문제가 없고, 풀링 스팬은 선택지 전체를 보니 완전히 같은 선택지까지 구분할 여지가 있어요.</p>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=2782s" target="_blank" rel="noopener">46:22</a>
+  <h2>질문끼리 서로 못 보게 하는 마스크</h2>
+<p>질문 여러 개를 한 시퀀스에 넣으면 문제가 하나 생겨요. 보통 인과 마스크라면 두 번째 질문의 토큰이 첫 번째 질문을 볼 수 있어요.</p>
+<p>발표자는 이걸 "모르는 질문으로 문맥을 오염시키는 것"이라고 불러요. 그러면 질문 순서를 바꿀 때마다 답이 달라지고, 결과를 재현할 수 없어요. 원하는 규칙은 세 가지예요.</p>
+<ul>
+  <li>문서 블록 안은 평소처럼 인과 마스크예요.</li>
+  <li>각 질문은 문서 전체와 자기 블록 안의 앞쪽 토큰을 봐요.</li>
+  <li>다른 질문의 토큰은 하나도 보지 않아요.</li>
+</ul>
+<p>발표자는 문서 3토큰(S1~S3), 질문 1(Q11, Q12), 질문 2(Q21, Q22)로 화이트보드에 행렬을 그려요. 행이 지금 계산하는 토큰, 열이 볼 수 있는 토큰이에요. 동그라미 친 덩어리가 볼 수 있는 블록이고, 오른쪽 아래 Q21·Q22 줄의 Q11·Q12 칸에는 F가 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-5202.webp" alt="화이트보드에 S1 S2 S3 Q11 Q12 Q21 Q22 행렬을 그리고 T와 F로 채운 뒤 문서 블록과 각 질문 블록에 동그라미를 친 그림">
+  <figcaption>Q21과 Q22 줄에서 Q11·Q12 열만 F예요. 두 번째 질문은 첫 번째 질문을 못 봐요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=3122s" target="_blank" rel="noopener">영상 52:02에서 보기</a></figcaption>
+</figure>
+<p>같은 행렬을 깔끔하게 다시 그렸어요. 칠한 칸이 볼 수 있는 칸(True)이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 520 330" role="img" aria-label="문서 3토큰과 질문 두 개(각 2토큰)로 만든 7x7 어텐션 마스크. 각 질문은 문서와 자기 토큰만 보고 다른 질문은 보지 않음">
+    <g id="fig-mask"></g>
+  </svg>
+  <figcaption>파랑은 문서를 보는 칸, 주황은 자기 질문을 보는 칸, 빨간 테두리는 '보통 인과 마스크라면 보였을' 다른 질문 칸이에요. 이 칸들을 꺼야 순서를 바꿔도 답이 같아요.</figcaption>
+</figure>
+<p>발표자는 Cloudflare의 Clef가 이 격리를 하지 않는다고 보고, 질문 순서를 섞으면 결과가 달라질 텐데 이해가 안 된다고 말해요. 이 마스크를 만드는 데는 배열 조작이 좀 필요해서, 여러 구현을 둘러보기보다 이 원리 하나에 집중한다고 해요. 원리를 알면 회사마다 다른 변형도 쉽게 읽힌다는 이유예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Clef 모델 카드는 백본 위에 작은 트랜스포머 헤드(joint schema head)를 얹어 '모든 질문의 모든 선택지를 함께(jointly) 점수 매긴다'고 설명해요. 질문끼리 서로 정보가 오갈 수 있는 설계라는 점은 발표자의 지적과 맞아요. 다만 이 때문에 순서에 따라 답이 실제로 얼마나 바뀌는지는 모델 카드에 나와 있지 않아요.</p>
+  <p class="cite">출처: <a href="https://huggingface.co/Cloudflare/clef" target="_blank" rel="noopener">Hugging Face — Cloudflare/clef 모델 카드</a>, <a href="https://blog.cloudflare.com/clef-decision-models" target="_blank" rel="noopener">Cloudflare 블로그 — Introducing Clef</a></p>
+</aside>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=3136s" target="_blank" rel="noopener">52:16</a>
+  <h2>디코더 구현: 캐시 재사용과 결정 지점</h2>
+<p>이제 디코더 버전을 디버거로 따라가요. 문서는 "Charged twice, want my money back."이에요. 질문은 두 개예요. "고객이 환불을 요청하나요?(yes/no)"와 "어느 팀 담당인가요?(billing/technical)"예요. 모델은 기준선과 같은 Qwen3-0.6B예요.</p>
+<h3>1단계: 문서를 한 번 프리필</h3>
+<p>문서 38토큰을 모델에 넣고 <code>past_key_values</code>를 받아 둬요. 이게 문서의 KV 캐시예요. 발표자가 콘솔에서 모양을 확인해요. 층이 28개이고, 층마다 키 텐서 하나와 값 텐서 하나가 있어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>축</th><th>크기</th></tr></thead>
+    <tbody>
+      <tr><td>층</td><td>28</td></tr>
+      <tr><td>키 / 값</td><td>2</td></tr>
+      <tr><td>배치</td><td>1</td></tr>
+      <tr><td>KV 헤드</td><td>8</td></tr>
+      <tr><td>토큰</td><td>38</td></tr>
+      <tr><td>헤드 차원</td><td>128</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>2단계: 질문 마스크 만들기</h3>
+<p>질문 두 개와 선택지를 합치면 35토큰이에요. 토큰마다 몇 번째 질문인지 적은 <code>segments</code>(1, 1, …, 2, 2, …)를 만들고, 마스크는 세 줄로 만들어요.</p>
+<ol class="steps">
+  <li><b><code>causal</code></b> — <code>arange</code>를 자기 전치와 <code>&gt;=</code>로 비교해 보통 인과 마스크를 만들어요.</li>
+  <li><b><code>same_question</code></b> — <code>seg</code>를 자기 전치와 <code>==</code>로 비교해 같은 질문끼리만 True인 행렬을 만들어요.</li>
+  <li><b><code>visible</code></b> — 앞에 문서 38칸을 전부 True로 붙이고, 뒤에 <code>same_question &amp; causal</code>을 이어 붙여요.</li>
+</ol>
+<p>캡처의 284~288번 줄이 정확히 이 세 단계예요. 오른쪽 콘솔에는 <code>causal</code> 텐서가 찍혀 있어요.</p>
+<figure>
+  <img src="assets/frame-5816.webp" alt="common.py의 question_mask 함수. seg, causal, same_question, visible, mask를 차례로 만드는 코드와 콘솔의 causal 텐서">
+  <figcaption>290번 줄에서 False 칸을 아주 작은 값으로 채워 실제 어텐션 마스크로 바꿔요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=3496s" target="_blank" rel="noopener">영상 58:16에서 보기</a></figcaption>
+</figure>
+<p><code>visible</code>의 모양은 35 × 73이에요. 행은 새로 넣는 질문 토큰 35개, 열은 문서 38개 + 질문 35개예요. 문서끼리의 위쪽 블록은 이미 캐시에 있으니 필요 없어요. 콘솔에서 보면 첫 몇 줄은 앞쪽이 True, 끝쪽이 False이고, 마지막 줄은 끝까지 True예요.</p>
+<figure>
+  <img src="assets/frame-010116.webp" alt="디버그 콘솔에 visible 텐서 일부와 visible.shape가 torch.Size([35, 73])로 출력된 화면">
+  <figcaption>38번째 열부터 잘라 보면 왼쪽 아래(질문 2 → 질문 1)와 오른쪽 위가 모두 False예요. 앞 섹션 그림과 같은 모양이에요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=3676s" target="_blank" rel="noopener">영상 01:01:16에서 보기</a></figcaption>
+</figure>
+<h3>3단계: 한 번의 순방향 계산</h3>
+<p>모델에는 질문 토큰 ID, 방금 만든 마스크, 문서 캐시, 그리고 위치 ID를 같이 넘겨요. 위치 ID는 38부터 시작해요. 캐시에 이미 38토큰이 들어 있으니, 새 토큰의 위치를 그 뒤로 매겨야 RoPE 위치 임베딩이 맞게 계산돼요.</p>
+<p>로짓은 35 × 151,936으로 나와요. 토큰마다 어휘 전체의 분포예요. 이 중 필요한 건 각 질문이 끝나는 결정 지점(18번, 34번) 두 줄뿐이에요. 그 줄에서 후보 토큰의 로짓만 골라 소프트맥스를 해요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>질문</th><th>후보 토큰 ID</th><th>결과</th></tr></thead>
+    <tbody>
+      <tr><td>환불을 요청하나요?</td><td>no 902 · yes 9834</td><td>yes 95%</td></tr>
+      <tr><td>어느 팀 담당인가요?</td><td>billing 33531 · technical 10916</td><td>billing 97%, technical 약 2.5%</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>캡처의 50번 줄이 그 계산이에요. <code>logits[decision][torch.tensor(option_ids)]</code>로 후보만 고른 뒤 소프트맥스를 해요. 오른쪽 콘솔을 보면 질문이 <code>Q: … - no - yes A</code> 꼴로 들어가 있고, 후보 토큰은 <code>[[902, 9834], [33531, 10916]]</code>이에요. 첫 질문은 18번 자리에서 끝나요.</p>
+<figure>
+  <img src="assets/frame-010616.webp" alt="answer 함수의 50번 줄 probs = torch.softmax(logits[decision][option_ids]) 코드와 디버그 콘솔의 질문 디코드, candidates, probs 출력">
+  <figcaption>선택지가 세 개면 확률도 세 개가 나와요. 코드는 그대로예요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=3976s" target="_blank" rel="noopener">영상 01:06:16에서 보기</a></figcaption>
+</figure>
+<p>인코더와 달리 학습 없이 바로 맞았어요. 발표자가 보여 주고 싶었던 디코더의 장점은 그다음이에요. 코드 끝에 score형 질문 "고객이 얼마나 화났나요?(calm/furious)"를 하나 더 붙여 놨는데, 문서는 다시 계산하지 않아요. 질문을 더 붙이거나 바꾸거나, 사용자와 대화하며 하나씩 물어도 문서 캐시는 그대로예요.</p>
+<h3>남은 약점: 앞 토큰 충돌</h3>
+<p>학습 이야기로 넘어가기 전에 발표자가 정리한 슬라이드예요. 왼쪽 막대에서 <code>FRAUD</code>와 <code>FRAUD_REVIEW</code>의 첫 칸(읽는 유일한 토큰)이 같은 주황색이에요. 오른쪽 상자는 "같은 숫자를 두 번 읽으니 비긴 걸 깰 수 없다"는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-010912.webp" alt="When two answers start the same way 슬라이드. FRAUD와 FRAUD_REVIEW의 첫 토큰이 같고 아래에 rename them, score every token, use letters, marker in front 네 칸">
+  <figcaption>아래 네 칸이 해결책이에요. 이름 바꾸기는 공짜, 토큰마다 점수는 한 번 더 계산, 글자는 충돌 없음, 앞쪽 마커는 인코더라 처음부터 면역이에요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=4152s" target="_blank" rel="noopener">영상 01:09:12에서 보기</a></figcaption>
+</figure>
+<p>토큰마다 점수를 매기려면 디코드 단계를 몇 번 더 돌린 뒤 평균 풀링으로 점수를 내야 해요. 인코더는 <code>[MASK]</code>가 선택지 앞 자리를 차지하고 있어서 위치로 구분돼요. 그래서 앞 토큰이 겹치는 문제는 디코더에만 있어요.</p>
+</section>
+
+<section id="s8">
+  <a class="stamp" href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=4275s" target="_blank" rel="noopener">01:11:15</a>
+  <h2>학습: 교사 확률을 따라가는 GRPO와 채점식</h2>
+<p>마지막 덤으로 학습을 다뤄요. 코드나 데이터셋은 보여 주지 않고, 학습 한 스텝을 숫자로 풀어 RLCD(Reinforcement Learning for Calibrated Decisions)의 감을 잡게 해요. GitHub에 올릴 보너스 스크립트에는 합성 데이터로 돌리는 학습 코드가 들어간다고 해요.</p>
+<h3>교사-학생 증류</h3>
+<p>발표자는 이런 학습이 결국 <span class="term" data-term="교사-학생 증류" data-en="Teacher-student distillation" data-desc="큰 교사 모델이 낸 확률 분포를 작은 학생 모델이 흉내 내도록 학습하는 방법이에요. 정답 하나보다 분포 전체를 배워서 확신도까지 따라가요." data-g="11">교사-학생 증류</span>라고 정리해요. 라벨이 붙은 데이터가 있거나, 확률을 줄 수 있는 교사 모델이 있으면 돼요.</p>
+<p>슬라이드 위쪽 표가 출발점이에요. "어느 팀 담당인가"에 교사는 billing 0.70, technical 0.20, account 0.10을 줘요. 학생의 원점수(소프트맥스 전, 선형 헤드에서 나온 값)는 1.00, 0.80, 0.20이고, 소프트맥스를 하면 0.441, 0.361, 0.198이에요. 순위는 교사와 같지만, 분포를 교사에 더 가깝게 만들고 싶어요.</p>
+<figure>
+  <img src="assets/frame-011112.webp" alt="One training step, worked out 슬라이드. 교사 확률, 학생 점수와 답, 잡음 섞은 점수 네 줄과 각 답, grade, vs average 열이 있는 표">
+  <figcaption>아래 표의 grade 열이 각 경로의 채점이고, 맨 오른쪽 vs average가 어드밴티지예요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=4272s" target="_blank" rel="noopener">영상 01:11:12에서 보기</a></figcaption>
+</figure>
+<h3>잡음으로 만든 경로 네 개와 GRPO</h3>
+<p>GRPO는 강화학습 방법이에요. 원래는 같은 문제에 답을 여러 번 생성해 채점하고, 평균보다 나은 답을 더 자주 내도록 밀어 줘요. 평균을 뺀 나머지가 <span class="term" data-term="어드밴티지" data-en="Advantage" data-desc="한 경로의 점수가 그룹 평균보다 얼마나 나은지를 표준편차 단위로 잰 값이에요. 양수면 그 방향으로, 음수면 반대로 모델을 밀어요." data-g="12">어드밴티지</span>예요. 그런데 이 모델은 생성을 하지 않으니 경로가 하나뿐이에요. 그래서 원점수에 무작위 잡음을 네 번 섞어 경로를 직접 만들어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>경로</th><th>잡음 섞은 점수</th><th>그 답</th><th>채점</th><th>어드밴티지</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>1.22 · 0.71 · 0.07</td><td>0.523 · 0.313 · 0.164</td><td>-0.3380</td><td>+1.24</td></tr>
+      <tr><td>2</td><td>1.02 · 1.15 · -0.16</td><td>0.409 · 0.465 · 0.126</td><td>-0.5217</td><td>-0.80</td></tr>
+      <tr><td>3</td><td>1.18 · 1.32 · -0.50</td><td>0.429 · 0.492 · 0.079</td><td>-0.5241</td><td>-0.82</td></tr>
+      <tr><td>4</td><td>1.03 · 0.60 · 0.36</td><td>0.462 · 0.301 · 0.237</td><td>-0.4154</td><td>+0.38</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>채점 네 개의 평균은 -0.4498이에요. 슬라이드는 이걸 "유일한 기준선, 비평가(critic) 없음"이라고 적어요. 1번은 (-0.3380 − (-0.4498)) ÷ 0.0901 = +1.24예요. 0.0901은 네 채점의 표준편차예요.</p>
+<p>왜 1번이 가장 높을까요. billing을 0.441에서 0.523으로 올리면서 순위를 그대로 지켜서, 교사 분포 쪽으로 가장 많이 다가갔어요. 2번과 3번은 technical이 billing을 앞질러 순위가 뒤집혔어요. 그래서 업데이트는 1번과 4번 쪽으로, 2번과 3번에서 멀어지는 방향으로 가요.</p>
+<h3>채점 -0.3380은 어디서 나왔을까요</h3>
+<p>채점은 두 점수의 합이에요. 슬라이드 왼쪽 주황 표가 로그 점수, 오른쪽 파란 표가 구면 점수예요.</p>
+<ul>
+  <li><b>로그 점수</b> — "교사가 확률을 둔 곳에 너도 뒀니?" 학생 확률의 로그(ln q)에 교사 확률(t)을 곱해 더해요. 작은 q는 비싸요. 0.164는 1.805, 0.523은 0.648만큼 깎여요. 합은 -0.8669예요.</li>
+  <li><b>구면 점수</b> — "답 전체가 교사와 같은 방향이니?" 교사 확률로 가중한 학생 확률 합 0.4450을 학생 벡터 길이 0.6311로 나눠 0.7052, 여기에 0.75를 곱해 0.5289예요. 0과 1 사이로 묶여 있어서 한 샘플이 그룹 전체를 휘두르지 못해요.</li>
+</ul>
+<figure>
+  <img src="assets/frame-011654.webp" alt="Where the grade -0.3380 comes from 슬라이드. log score 표(t, q, ln q, t×ln q, 합 -0.8669)와 spherical 계산(0.4450, 0.6311, 0.7052, ×0.75 = 0.5289), -0.8669 + 0.5289 = -0.3380">
+  <figcaption>오른쪽 아래 초록 상자의 -0.2507이 받을 수 있는 최고점이에요. 교사와 똑같이 0.70 · 0.20 · 0.10으로 답할 때예요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=4614s" target="_blank" rel="noopener">영상 01:16:54에서 보기</a></figcaption>
+</figure>
+<p>아래 계산기에서 학생의 원점수를 바꿔 보면 이 두 점수가 어떻게 움직이는지 볼 수 있어요. 교사 확률은 슬라이드의 0.70 · 0.20 · 0.10으로 고정했어요.</p>
+<div class="explore" id="grade">
+  <span class="tag">직접 돌려 보기</span>
+  <div class="controls">
+    <label>billing 점수 <input type="range" min="-1" max="3" step="0.01" value="1.22"> <output>1.22</output></label>
+    <label>technical 점수 <input type="range" min="-1" max="3" step="0.01" value="0.71"> <output>0.71</output></label>
+    <label>account 점수 <input type="range" min="-1" max="3" step="0.01" value="0.07"> <output>0.07</output></label>
+  </div>
+  <div class="stage">
+    <svg viewBox="0 0 400 200" aria-label="교사 확률과 학생 확률을 선택지별로 나란히 그린 막대"></svg>
+    <div class="readout">
+      <p>학생 확률 <span class="val" data-k="q">-</span></p>
+      <p>로그 점수 <span class="val" data-k="log">-</span></p>
+      <p>0.75 × 구면 점수 <span class="val" data-k="sph">-</span></p>
+      <p>채점 <span class="val" data-k="grade">-</span> (최고점 -0.2507)</p>
+    </div>
+  </div>
+  <div class="try"><b>해 볼 것</b><ol>
+    <li>처음 값(경로 1의 1.22 · 0.71 · 0.07)에서 채점이 슬라이드와 같은 -0.3380 근처인지 보세요.</li>
+    <li>billing 점수를 -1까지 내려 보세요. 교사가 0.70을 둔 칸의 확률이 작아지면 로그 점수가 크게 깎여서 '작은 q는 비싸다'는 말이 보여요.</li>
+    <li>technical을 billing보다 높게 올려 순위를 뒤집어 보세요. 경로 2·3처럼 채점이 -0.52 언저리로 떨어져요.</li>
+    <li>원점수를 1.95 · 0.70 · 0.00 근처로 맞춰 보세요. 학생 확률이 교사와 같아지면서 채점이 최고점 -0.2507에 다가가요.</li>
+  </ol></div>
+</div>
+<h3>순서 있는 질문에만 붙는 RPS</h3>
+<p>score 질문에는 세 번째 항이 붙어요. 단계가 차분함 · 짜증 · 매우 화남이고 정답이 "매우 화남"이라고 해요. "짜증"이라고 답한 모델이 "차분함"이라고 답한 모델보다 덜 틀렸어요. 그런데 로그 점수는 정답 칸에 둔 확률(둘 다 0.1)만 보니까 둘 다 -2.303으로 같아요.</p>
+<p>슬라이드의 running total 열이 해결책이에요. 확률을 앞에서부터 누적하면 짜증은 0.1 · 0.9 · 1.0, 차분함은 0.8 · 0.9 · 1.0이에요. 정답의 누적 0.0 · 0.0 · 1.0과의 차이를 제곱해 k − 1개(여기선 2개)로 평균 낸 값이 RPS예요. 짜증은 0.410, 차분함은 0.725로 갈려요.</p>
+<figure>
+  <img src="assets/frame-011949.webp" alt="Wrong by one level, or wrong by two 슬라이드. 정답, says frustrated, says calm 줄의 answer, running total, log score(-2.303 둘 다), RPS(0.410, 0.725)와 grade 계산">
+  <figcaption>아래 초록 상자에서 앞의 두 항은 똑같고, RPS만 차이를 만들어요. 짜증 -2.620, 차분함 -2.935예요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=4789s" target="_blank" rel="noopener">영상 01:19:49에서 보기</a></figcaption>
+</figure>
+<p>그래서 최종 채점은 <b>로그 점수 + 0.75 × 구면 점수 − RPS</b>예요. 슬라이드 맨 아래 문구대로, choice와 noul은 "멀고 가까움"을 따질 순서가 없어 RPS를 내지 않아요.</p>
+<h3>최종 손실</h3>
+<p>발표자는 최종 손실을 교차 엔트로피 전체에 이 강화학습 손실을 더한 것으로 정리해요. 강화학습 쪽은 잡음으로 만든 GRPO 경로들을 위 채점으로 평가해서 나와요. 이 손실을 역전파할 대상은 선형 헤드만, LoRA, 백본 전체 중에서 정확도 목표와 예산에 맞게 골라요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>RLCD는 TypeSafe가 자기 학습 방식에 붙인 이름이에요(Reinforcement Learning for Calibrated Decisions). 공식 문서는 RLHF(Reinforcement Learning from Human Feedback)가 사람이 선호하는 답을, RLVR(Reinforcement Learning with Verifiable Rewards)이 검증 가능한 정답을 노린다면, RLCD는 텍스트 없이 결정과 보정된 확률을 돌려주는 것을 노린다고 설명해요. 보정이 잘 됐다면 0.8이라고 답한 일은 약 80% 맞아야 해요. 영상의 채점식(로그 + 구면 − RPS)은 발표자가 재구성한 버전이고, TypeSafe가 공개한 손실식은 아니에요.</p>
+  <p class="cite">출처: <a href="https://docs.typesafe.ai/introduction/machine-learning-primer.md" target="_blank" rel="noopener">TypeSafe 문서 — AI primer</a></p>
+</aside>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>GRPO(Group Relative Policy Optimization)는 DeepSeekMath 논문에서 처음 제안됐어요. 별도의 가치 모델(critic) 없이, 같은 질문에 대한 여러 출력의 그룹 평균을 기준선으로 써서 메모리를 줄인 것이 핵심이에요. 슬라이드의 '평균이 유일한 기준선, critic 없음'이 바로 이 특징이에요.</p>
+  <p class="cite">출처: <a href="https://arxiv.org/abs/2402.03300" target="_blank" rel="noopener">arXiv 2402.03300 — DeepSeekMath</a></p>
+</aside>
+</section>
+
+<section id="s9">
+  <a class="stamp" href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=4997s" target="_blank" rel="noopener">01:23:17</a>
+  <h2>인코더냐 디코더냐</h2>
+<p>마지막 슬라이드는 두 구현을 아홉 가지 기준으로 비교해요. 왼쪽이 기준, 가운데 파란 열이 인코더, 오른쪽 주황 열이 디코더예요. 초록 글씨가 그쪽이 유리한 칸이에요.</p>
+<figure>
+  <img src="assets/frame-012317.webp" alt="Which one should you build? 비교표. state kept between questions부터 what you have to write까지 아홉 줄과 encoder, decoder 두 열, 아래 count the questions you ask of one document 상자">
+  <figcaption>아래 초록 상자가 결론이에요. 한 문서에 몇 개를 물어보는지 세면 돼요. <a href="https://www.youtube.com/watch?v=aZglGvBPQGs&amp;t=4997s" target="_blank" rel="noopener">영상 01:23:17에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>기준</th><th>인코더</th><th>디코더</th></tr></thead>
+    <tbody>
+      <tr><td>질문 사이에 문서 유지</td><td>아니요, 매번 다시 읽음</td><td>예, 한 번 읽고 캐시</td></tr>
+      <tr><td>질문이 늘 때 비용</td><td>질문마다 늘어남</td><td>거의 그대로, 질문만 새로 계산</td></tr>
+      <tr><td>가장 긴 문서</td><td>512~8K 토큰</td><td>32K 이상</td></tr>
+      <tr><td>문서를 읽을 때 질문이 보이나</td><td>예</td><td>아니요, 캐시의 대가</td></tr>
+      <tr><td>여러 토큰짜리 선택지</td><td>괜찮음, 마커가 앞에 있음</td><td>비용을 더 내지 않으면 비김</td></tr>
+      <tr><td>라벨 여러 개 동시에</td><td>예, 선택지마다 시그모이드</td><td>아니요, 소프트맥스는 하나만 고름</td></tr>
+      <tr><td>학습 전에 쓸 수 있나</td><td>아니요, 출력이 무작위</td><td>예, 출력 헤드를 빌려 씀</td></tr>
+      <tr><td>필요한 모델 크기</td><td>150M~400M</td><td>0.6B~27B</td></tr>
+      <tr><td>직접 짜야 하는 것</td><td>질문마다 시퀀스 하나</td><td>마스크, 위치, 캐시</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>발표자의 설명을 몇 줄 덧붙이면 이래요. 질문이 많고 문서가 유한하면 디코더가 맞아요. 문서가 길어도 디코더예요. 반대로 인코더는 양방향이라 문서를 읽으면서 질문을 볼 수 있어서 늘 약간 앞서요. 같은 일을 하는 데 400M 인코더라면 디코더는 더 큰 모델이 필요해요. 디코더에서 여러 라벨을 동시에 고르려면 구조를 조금 손봐야 해요.</p>
+<p>슬라이드의 결론은 "한 문서에 던지는 질문 수를 세라"예요. 한두 개면 인코더가 더 작고 더 잘해요. 수십 개면 문서를 수십 번이 아니라 한 번만 읽는 디코더가 나아요. 손익분기는 두 모델 크기의 비율 근처이고, 표의 나머지는 부차적이라고 적혀 있어요. 메모리가 빠듯하거나 속도가 중요하다면 이 기준들을 자기 도메인과 문제에 맞춰 따져 봐야 해요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 이름과 숫자가 잘못 받아적힌 곳이 있어요. 화면의 코드와 슬라이드를 기준으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>Jeff, JAF</td><td>Jev</td><td>같은 영상 안에서도 Jev와 섞여 받아적혔어요</td></tr>
+      <tr><td>null, boolean nulls</td><td>noul</td><td>슬라이드와 TypeSafe 문서의 예/아니오 질문 유형 이름</td></tr>
+      <tr><td>quant 3.6B, Qwen 3.6 billion</td><td>Qwen3-0.6B</td><td>화면의 토크나이저 경로 Qwen/Qwen3-0.6B</td></tr>
+      <tr><td>let us lots</td><td>letter slots (추정)</td><td>슬라이드의 (A)(B) 방식 이름</td></tr>
+      <tr><td>This is what uh Jeff has implemented</td><td>Kev (추정)</td><td>슬라이드에서 pointer head 칸의 예가 kev예요</td></tr>
+      <tr><td>mean pulled</td><td>mean pooled</td><td>평균 풀링</td></tr>
+      <tr><td>pre-cash</td><td>pre-cache</td><td>문서를 미리 캐시한다는 뜻</td></tr>
+      <tr><td>30531 (billing 토큰 ID)</td><td>33531</td><td>디버그 콘솔의 candidates 값</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-11"><dt>교사-학생 증류<span class="en">Teacher-student distillation</span></dt><dd>큰 교사 모델이 낸 확률 분포를 작은 학생 모델이 흉내 내도록 학습하는 방법이에요. 정답 하나보다 분포 전체를 배워서 확신도까지 따라가요.</dd></div>
+    <div class="g" id="g-14"><dt>구면 점수<span class="en">Spherical score</span></dt><dd>학생 확률 분포가 교사 분포와 같은 방향을 가리키는지 보는 점수예요. 값이 0과 1 사이로 묶여 있어서 한 샘플이 학습을 휘두르지 않아요.</dd></div>
+    <div class="g" id="g-2"><dt>디코드<span class="en">Decode</span></dt><dd>답을 토큰 하나씩 만들고, 만든 토큰을 다시 넣어 다음 토큰을 만드는 반복 단계예요. 답이 길수록 모델을 그만큼 더 돌려요.</dd></div>
+    <div class="g" id="g-13"><dt>로그 점수<span class="en">Log score</span></dt><dd>교사 확률로 가중한 학생 확률의 로그 합이에요. 교사가 확률을 둔 칸에 학생이 작은 확률을 두면 크게 깎여요.</dd></div>
+    <div class="g" id="g-4"><dt>로짓<span class="en">Logit</span></dt><dd>소프트맥스를 거치기 전의 원점수예요. 토큰 위치마다 어휘 크기만큼 나오고, 여기서 선택지 토큰의 값만 골라 확률을 만들어요.</dd></div>
+    <div class="g" id="g-5"><dt>서열형<span class="en">Ordinal</span></dt><dd>차분함 · 짜증 · 매우 화남처럼 순서를 매길 수 있는 범주예요. 한 단계 틀린 것과 두 단계 틀린 것을 다르게 봐야 해서 RPS를 따로 써요.</dd></div>
+    <div class="g" id="g-9"><dt>선형 헤드<span class="en">Linear head</span></dt><dd>백본 출력 위에 얹는 작은 선형 층이에요. 768차원 벡터를 점수 하나로 바꿔 주고, 이것만 학습해도 확률이 크게 나아질 수 있어요.</dd></div>
+    <div class="g" id="g-6"><dt>양방향<span class="en">Bidirectional attention</span></dt><dd>모든 토큰이 앞뒤 토큰을 다 보는 어텐션이에요. 질문이 바뀌면 문서 쪽 계산도 전부 바뀌어서 캐시를 재사용할 수 없어요.</dd></div>
+    <div class="g" id="g-12"><dt>어드밴티지<span class="en">Advantage</span></dt><dd>한 경로의 점수가 그룹 평균보다 얼마나 나은지를 표준편차 단위로 잰 값이에요. 양수면 그 방향으로, 음수면 반대로 모델을 밀어요.</dd></div>
+    <div class="g" id="g-7"><dt>인과 마스크<span class="en">Causal mask</span></dt><dd>각 토큰이 자기와 앞 토큰만 보게 막는 마스크예요. 앞부분 계산이 뒤에 오는 내용과 무관해서 문서를 캐시해 둘 수 있어요.</dd></div>
+    <div class="g" id="g-8"><dt>평균 풀링<span class="en">Mean pooling</span></dt><dd>여러 토큰의 벡터를 평균 내서 벡터 하나로 줄이는 방법이에요. 여기서는 질문 토큰들을 질문 벡터 하나로 만들 때 써요.</dd></div>
+    <div class="g" id="g-1"><dt>프리필<span class="en">Prefill</span></dt><dd>프롬프트 전체를 한 번의 순방향 계산으로 읽는 단계예요. 계산이 몰리지만 한 번이면 끝나서, Jev 방식은 여기서 답을 꺼내요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>BERT</dt><dd>Bidirectional Encoder Representations from Transformers</dd></div>
+    <div class="g"><dt>GPU</dt><dd>Graphics Processing Unit</dd></div>
+    <div class="g"><dt>GRPO</dt><dd>Group Relative Policy Optimization</dd></div>
+    <div class="g"><dt>ID</dt><dd>Identifier</dd></div>
+    <div class="g"><dt>JSON</dt><dd>JavaScript Object Notation</dd></div>
+    <div class="g"><dt>KV</dt><dd>Key-Value</dd></div>
+    <div class="g" id="g-3"><dt>KV 캐시<span class="en">Key-Value cache</span></dt><dd>앞 토큰들의 어텐션 키·값을 저장해 둔 것이에요. 이게 있으면 같은 문서를 다시 계산하지 않고 뒤에 질문만 붙여 이어 갈 수 있어요.</dd></div>
+    <div class="g"><dt>LLM</dt><dd>Large Language Model</dd></div>
+    <div class="g" id="g-10"><dt>LoRA<span class="en">Low-Rank Adaptation</span></dt><dd>원래 가중치는 얼려 두고 작은 저랭크 행렬만 학습해 모델을 조금 움직이는 미세조정 방법이에요. 전체 재학습보다 훨씬 가벼워요.</dd></div>
+    <div class="g"><dt>RLCD</dt><dd>Reinforcement Learning for Calibrated Decisions</dd></div>
+    <div class="g"><dt>RLHF</dt><dd>Reinforcement Learning from Human Feedback</dd></div>
+    <div class="g"><dt>RLVR</dt><dd>Reinforcement Learning with Verifiable Rewards</dd></div>
+    <div class="g"><dt>RPS</dt><dd>Ranked Probability Score</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=aZglGvBPQGs" target="_blank" rel="noopener">원본 영상 — freeCodeCamp.org, Jev Course: Prefill-Only Inference &amp; Decision Models from Scratch</a></li>
+    <li id="src-2"><a href="https://docs.typesafe.ai/concepts/system-one" target="_blank" rel="noopener">TypeSafe 문서 — System One</a></li>
+    <li id="src-3"><a href="https://docs.typesafe.ai/primitives/choice.md" target="_blank" rel="noopener">TypeSafe 문서 — Choice</a></li>
+    <li id="src-4"><a href="https://docs.typesafe.ai/models.md" target="_blank" rel="noopener">TypeSafe 문서 — Models</a></li>
+    <li id="src-5"><a href="https://docs.typesafe.ai/introduction/machine-learning-primer.md" target="_blank" rel="noopener">TypeSafe 문서 — AI primer</a></li>
+    <li id="src-6"><a href="https://github.com/nokia-applied-research/AnyJev" target="_blank" rel="noopener">AnyJev GitHub 저장소 (Nokia Applied Research)</a></li>
+    <li id="src-7"><a href="https://huggingface.co/Cloudflare/clef" target="_blank" rel="noopener">Hugging Face — Cloudflare/clef 모델 카드</a></li>
+    <li id="src-8"><a href="https://blog.cloudflare.com/clef-decision-models" target="_blank" rel="noopener">Cloudflare 블로그 — Introducing Clef</a></li>
+    <li id="src-9"><a href="https://arxiv.org/abs/2402.03300" target="_blank" rel="noopener">arXiv 2402.03300 — DeepSeekMath (GRPO 제안 논문)</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 29일에 이 영상을 보고 정리했어요. 원본은 freeCodeCamp.org 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+(() => {
+  const g = document.getElementById('fig-mask');
+  if (!g) return;
+  const labels = ['S1', 'S2', 'S3', 'Q11', 'Q12', 'Q21', 'Q22'];
+  const block = [0, 0, 0, 1, 1, 2, 2]; // 0 = 문서, 1·2 = 질문 번호
+  const x0 = 70, y0 = 40, s = 38;
+  labels.forEach((name, i) => {
+    g.append(el('text', { x: x0 + i * s + s / 2, y: y0 - 10, 'text-anchor': 'middle', class: 'sub' }, name));
+    g.append(el('text', { x: x0 - 10, y: y0 + i * s + s / 2 + 4, 'text-anchor': 'end', class: 'sub' }, name));
+  });
+  for (let r = 0; r < 7; r++) {
+    for (let c = 0; c < 7; c++) {
+      const causal = c <= r;
+      const sameQ = block[r] === block[c];
+      const visible = causal && (block[c] === 0 || sameQ);
+      const leaked = causal && !visible; // 보통 인과 마스크라면 보였을 칸
+      let cls = 'box dim';
+      if (visible) cls = (block[c] === 0 ? 'c1' : 'c2') + ' cell';
+      const rect = el('rect', { x: x0 + c * s + 2, y: y0 + r * s + 2, width: s - 4, height: s - 4, rx: 4, class: cls });
+      g.append(rect);
+      if (leaked) g.append(el('rect', { x: x0 + c * s + 2, y: y0 + r * s + 2, width: s - 4, height: s - 4, rx: 4, class: 'bad', 'fill-opacity': '0.15' }));
+      g.append(el('text', { x: x0 + c * s + s / 2, y: y0 + r * s + s / 2 + 4, 'text-anchor': 'middle', class: 'mono' }, visible ? 'T' : 'F'));
+    }
+  }
+  const lx = 350;
+  const legend = [['c1 cell', '문서를 봄'], ['c2 cell', '자기 질문을 봄'], ['bad', '다른 질문 (막음)'], ['box dim', '미래 토큰 (막음)']];
+  legend.forEach(([cls, text], i) => {
+    g.append(el('rect', { x: lx, y: 60 + i * 34, width: 22, height: 22, rx: 4, class: cls }));
+    g.append(el('text', { x: lx + 30, y: 76 + i * 34 }, text));
+  });
+  g.append(el('text', { x: lx, y: 230, class: 'sub' }, '행 = 계산하는 토큰'));
+  g.append(el('text', { x: lx, y: 250, class: 'sub' }, '열 = 볼 수 있는 토큰'));
+})();
+</script>
+<script>
+// widgets/grade.js
+(() => {
+  const root = document.getElementById('grade');
+  if (!root) return;
+  const NS = 'http://www.w3.org/2000/svg';
+  const teacher = [0.70, 0.20, 0.10];
+  const names = ['billing', 'technical', 'account'];
+  const inputs = root.querySelectorAll('input');
+  const svg = root.querySelector('svg');
+  const out = {};
+  root.querySelectorAll('.val').forEach((v) => { out[v.dataset.k] = v; });
+
+  function softmax(xs) {
+    const m = Math.max(...xs);
+    const e = xs.map((x) => Math.exp(x - m));
+    const s = e.reduce((a, b) => a + b, 0);
+    return e.map((x) => x / s);
+  }
+  // 영상의 채점식: 로그 점수 + 0.75 × 구면 점수
+  function model() {
+    const q = softmax([...inputs].map((i) => parseFloat(i.value)));
+    const log = teacher.reduce((a, t, i) => a + t * Math.log(q[i]), 0);
+    const dot = teacher.reduce((a, t, i) => a + t * q[i], 0);
+    const norm = Math.sqrt(q.reduce((a, x) => a + x * x, 0));
+    const sph = 0.75 * (dot / norm);
+    return { q, log, sph, grade: log + sph };
+  }
+  function mk(tag, attrs, text) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function draw() {
+    const r = model();
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    const base = 165, h = 130;
+    svg.append(mk('line', { x1: 20, y1: base, x2: 390, y2: base, class: 'axis' }));
+    names.forEach((n, i) => {
+      const x = 40 + i * 120;
+      const th = teacher[i] * h, qh = r.q[i] * h;
+      svg.append(mk('rect', { x, y: base - th, width: 36, height: th, class: 'c1' }));
+      svg.append(mk('rect', { x: x + 42, y: base - qh, width: 36, height: qh, class: 'c3' }));
+      svg.append(mk('text', { x: x + 18, y: base - th - 4, 'text-anchor': 'middle', class: 'sub' }, teacher[i].toFixed(2)));
+      svg.append(mk('text', { x: x + 60, y: base - qh - 4, 'text-anchor': 'middle', class: 'sub' }, r.q[i].toFixed(3)));
+      svg.append(mk('text', { x: x + 39, y: base + 18, 'text-anchor': 'middle' }, n));
+    });
+    svg.append(mk('rect', { x: 250, y: 8, width: 12, height: 12, class: 'c1' }));
+    svg.append(mk('text', { x: 266, y: 18, class: 'sub' }, '교사'));
+    svg.append(mk('rect', { x: 310, y: 8, width: 12, height: 12, class: 'c3' }));
+    svg.append(mk('text', { x: 326, y: 18, class: 'sub' }, '학생'));
+    out.q.textContent = r.q.map((x) => x.toFixed(3)).join(' · ');
+    out.log.textContent = r.log.toFixed(4);
+    out.sph.textContent = r.sph.toFixed(4);
+    out.grade.textContent = r.grade.toFixed(4);
+  }
+  root.addEventListener('input', (e) => {
+    if (e.target.matches('input')) e.target.nextElementSibling.textContent = parseFloat(e.target.value).toFixed(2);
+    draw();
+  });
+  draw();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI로 게임 3D 에셋 만들 때 필수 툴 세 가지</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>AI로 게임 3D 에셋 만들 때 필수 툴 세 가지</h1>
+  <p class="lede">Blender, Tripo, Mixamo를 어떤 작업에 쓰는지 짚어요</p>
+  <div class="meta">
+    <span>MGD - Midnight Game Devs</span><span class="dot">·</span>
+    <span>영상 01:08</span><span class="dot">·</span>
+    <span>읽는 데 약 4분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=QABrVsOm0Zg" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>직접 만들고 고칠 땐 Blender, 이미지로 생성할 땐 Tripo, 사람형 캐릭터를 움직일 땐 Mixamo예요.</li>
+    <li>Blender에 AI(Artificial Intelligence)를 연결하면 소품·건물은 말로 만들 수 있지만, 복잡한 모델은 스타일 일관성과 마감이 아직 아쉬워요.</li>
+    <li>계획하는 AI와 실행하는 AI를 나누면 사용량은 늘어도 결과가 더 좋았어요.</li>
+    <li>Tripo는 Smart Mesh로 <span class="term" data-term="폴리곤" data-en="Polygon" data-desc="메시를 이루는 작은 면 하나예요. 보통 삼각형이나 사각형이고, 개수가 적을수록 게임에서 가볍게 돌아가요." data-g="3">폴리곤</span> 수를 처음부터 낮게 잡고, Smart UV로 표면 펼치기를 자동으로 해 줘요.</li>
+    <li>사람형이 아닌 몬스터는 다른 툴을 사기 전에 AI에게 Blender로 뼈대와 동작부터 만들게 해 봐요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">Blender — AI에게 말로 시켜 만들고 고치기</a></li>
+    <li><a href="#s2">Tripo — 이미지로 생성할 때</a></li>
+    <li><a href="#s3">Mixamo — 캐릭터에 동작 붙이기</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=QABrVsOm0Zg&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>Blender — AI에게 말로 시켜 만들고 고치기</h2>
+<p>Blender를 AI와 연결하면 건물이나 소품 같은 단순한 <span class="term" data-term="에셋" data-en="Asset" data-desc="게임에 들어가는 3D 모델, 텍스처, 애니메이션 같은 재료 하나하나예요. 이 영상은 그중 3D 모델과 동작을 다뤄요." data-g="1">에셋</span>은 말로 시켜서 만들고 고칠 수 있어요. 아래 화면의 시계탑 건물은 이 팀의 실제 프로젝트 에셋을 Blender로 렌더링한 거예요. 지붕, 창문, 시계처럼 반듯한 부품이 모인 모양이라 말로 지시하기 좋은 종류예요.</p>
+<figure>
+  <img src="assets/frame-0007.webp" alt="Blender 로고 위에 시계가 달린 2층 벽돌 건물 3D 모델이 놓인 화면, 제목은 'Blender — AI와 연결해 직접 만들고 수정'">
+  <figcaption>소품이나 건물처럼 반듯한 에셋이 AI에게 말로 시키기 좋은 대상이에요. <a href="https://www.youtube.com/watch?v=QABrVsOm0Zg&amp;t=7s" target="_blank" rel="noopener">영상 00:07에서 보기</a></figcaption>
+</figure>
+<h3>만드는 것과 완성은 달라요</h3>
+<p>Astra로 복잡한 <span class="term" data-term="메시" data-en="Mesh" data-desc="점과 선, 면으로 이어 붙여 만든 3D 모델의 겉모양이에요. 면이 고르게 깔려야 다듬거나 움직이기 쉬워요." data-g="2">메시</span>도 만들 수는 있어요. 그런데 이 팀이 써 보니 게임에 바로 넣기엔 두 가지가 아쉬웠다고 해요. 화면의 몬스터에 노란 선으로 짚은 '스타일 일관성'과 '마감'이에요. 다른 에셋과 화풍이 맞는지, 이음새나 표면이 손본 것처럼 정리돼 있는지가 문제라는 거예요.</p>
+<figure>
+  <img src="assets/frame-0016.webp" alt="주황색 등껍질을 진 두 발 몬스터 모델에 '스타일 일관성'과 '마감' 두 라벨이 선으로 붙은 화면, 제목은 '만드는 것 ≠ 완성'">
+  <figcaption>복잡한 모델은 '만들 수는 있다'에서 멈춰요. 화면 아래 작은 글씨에 따르면 이 몬스터가 Astra로 만든 것인지는 확인되지 않은 예시예요. <a href="https://www.youtube.com/watch?v=QABrVsOm0Zg&amp;t=16s" target="_blank" rel="noopener">영상 00:16에서 보기</a></figcaption>
+</figure>
+<h3>계획하는 AI와 실행하는 AI를 나눠요</h3>
+<p>팀이 효과를 본 팁은 역할 나누기예요. 화면 왼쪽 '계획' 칸의 AI는 형태·비율·제작 순서를 정하고, 오른쪽 '실행' 칸의 AI는 그 계획을 Blender에서 구현해요. AI를 두 번 부르니 사용량은 늘지만 결과가 더 좋았다고 해요.</p>
+<figure>
+  <img src="assets/frame-0025.webp" alt="'계획(형태·비율·제작 순서)' 칸에서 '실행(Blender에서 구현)' 칸으로 화살표가 이어지고, 아래에 작은 건물 모델이 있는 화면">
+  <figcaption>화면 하단에는 '같은 프롬프트로 품질을 비교한 실험은 아님'이라고 적혀 있어요. 팀의 사용 경험으로 받아들이면 돼요. <a href="https://www.youtube.com/watch?v=QABrVsOm0Zg&amp;t=25s" target="_blank" rel="noopener">영상 00:25에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Blender는 GNU(GNU&#x27;s Not Unix) GPL(General Public License)로 배포되는 자유 소프트웨어라 무료로 쓰고, 만든 결과물도 팔 수 있어요. 세 툴 중 Tripo만 유료인 셈이에요.</p>
+  <p class="cite">출처: <a href="https://www.blender.org/about/license/" target="_blank" rel="noopener">Blender 공식 사이트 — License</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=QABrVsOm0Zg&amp;t=27s" target="_blank" rel="noopener">00:27</a>
+  <h2>Tripo — 이미지로 생성할 때</h2>
+<p>이 팀은 Meshy, VARCO 3D, Rodin 같은 이미지·텍스트 기반 3D 생성 툴을 유료로 써 봤어요. 그중 지금 가장 추천하는 건 화면 맨 아래 노란 글씨로 따로 띄운 Tripo예요.</p>
+<figure>
+  <img src="assets/frame-0030.webp" alt="Meshy.ai, VARCO 3D, Rodin 로고 아래에 구분선이 있고 그 밑에 노란 글씨로 Tripo가 강조된 화면">
+  <figcaption>세 툴을 다 써 본 뒤의 추천이라는 점이 이 화면의 요지예요. Rodin은 Hyper3D 마크로 표시돼 있어요. <a href="https://www.youtube.com/watch?v=QABrVsOm0Zg&amp;t=30s" target="_blank" rel="noopener">영상 00:30에서 보기</a></figcaption>
+</figure>
+<h3>Smart Mesh P2.0 — 폴리곤 수를 처음부터 낮게</h3>
+<p>추천 이유 첫째는 새로 나온 Smart Mesh예요. 생성할 때부터 폴리곤 수를 낮게 목표로 잡을 수 있어요. 화면 가운데 노란 글씨가 '목표 삼각형 500–50,000'이에요. 왼쪽 컬러 캐릭터 이미지가 오른쪽 흰 메시로 바뀌는데, 메시 선이 고르게 깔려 있는 게 보여요. 팀도 써 보니 면이 고르고 깔끔했다고 해요.</p>
+<figure>
+  <img src="assets/frame-0034.webp" alt="분홍 머리 엘프 캐릭터 일러스트와 그것을 3D로 만든 흰색 와이어프레임 모델이 나란히 있고, 아래에 '목표 삼각형 500–50,000'이 적힌 화면">
+  <figcaption>게임에 넣을 모델은 폴리곤이 적어야 가벼워요. 나중에 줄이는 대신 처음부터 낮게 뽑는 게 핵심이에요. 화면 하단에는 목표치와 실제 출력이 다를 수 있다고 적혀 있어요. <a href="https://www.youtube.com/watch?v=QABrVsOm0Zg&amp;t=34s" target="_blank" rel="noopener">영상 00:34에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Tripo 개발자 문서에서 P2 모델의 면 수 한도는 삼각형 48~50,000개, 사각형(quad) 출력이면 48~25,000개예요. 영상 화면의 500은 문서의 하한과 달라요. 문서는 P2가 사각형 위주 메시(native quad)를 만들고, UV 펼치기 옵션이 기본으로 켜져 있다고도 설명해요.</p>
+  <p class="cite">출처: <a href="https://developers.tripo3d.com/en/models/p1" target="_blank" rel="noopener">Tripo 개발자 문서 — Smart Mesh 모델(P1·P2)</a></p>
+</aside>
+<h3>Smart UV — 표면 펼치기를 자동으로</h3>
+<p>둘째는 Smart UV예요. 3D 모델에 색을 입히려면 입체 표면을 잘라 평면에 펼친 지도가 필요해요. 화면 왼쪽 의자 모델의 노란 좌판이 오른쪽 2D <span class="term" data-term="UV 지도" data-en="UV map" data-desc="입체 모델의 표면을 잘라 평면에 펼친 지도예요. 텍스처(색·무늬)를 그릴 때 이 지도 위에 그려서 모델에 입혀요." data-g="4">UV 지도</span>의 노란 조각과 짝을 이뤄요. 이 펼치기를 Tripo가 자동으로 해 줘요.</p>
+<figure>
+  <img src="assets/frame-0044.webp" alt="왼쪽에 노란 좌판이 있는 의자 3D 모델(3D 표면), 화살표 오른쪽에 같은 의자를 조각조각 펼친 흰 UV 지도(2D UV)가 있고 좌판 조각만 노랗게 표시된 화면">
+  <figcaption>좌판 하나가 지도 위 어느 조각인지 색으로 맞춰 보여 줘요. 유료지만 손보는 시간을 줄이는 데 돈을 쓰는 거라는 게 팀의 판단이에요. <a href="https://www.youtube.com/watch?v=QABrVsOm0Zg&amp;t=44s" target="_blank" rel="noopener">영상 00:44에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=QABrVsOm0Zg&amp;t=47s" target="_blank" rel="noopener">00:47</a>
+  <h2>Mixamo — 캐릭터에 동작 붙이기</h2>
+<p>Mixamo는 사람형 캐릭터에 <span class="term" data-term="리깅" data-en="Rigging" data-desc="모델 안에 뼈대를 넣고 뼈가 움직이면 겉면이 따라 움직이도록 연결하는 작업이에요. 이게 있어야 걷기·달리기 같은 동작을 붙일 수 있어요." data-g="5">리깅</span>을 해서 뼈대를 넣고, 걷기나 달리기 같은 동작을 붙여 주는 무료 툴이에요. 화면의 고양이 캐릭터 두 컷이 각각 '걷기'와 '달리기' 동작을 붙인 모습이에요.</p>
+<figure>
+  <img src="assets/frame-0049.webp" alt="두 발로 선 검은 고양이 캐릭터가 왼쪽은 걷기, 오른쪽은 달리기 자세를 한 화면, 제목은 'Mixamo — 사람형 리깅 + 애니메이션 라이브러리'">
+  <figcaption>두 발로 서는 캐릭터라면 고양이여도 사람형으로 다룰 수 있어요. 화면 하단에 따르면 기존 Mixamo 동작 파일을 다시 렌더링한 것이고, 리깅 과정을 녹화한 건 아니에요. <a href="https://www.youtube.com/watch?v=QABrVsOm0Zg&amp;t=49s" target="_blank" rel="noopener">영상 00:49에서 보기</a></figcaption>
+</figure>
+<h3>사람형이 아니라면 AI와 Blender로</h3>
+<p>네 발로 걷는 몬스터처럼 사람형이 아닌 캐릭터는 Mixamo로 처리하기 어려워요. 이럴 땐 다른 유료 툴을 결제하기 전에, AI에게 Blender로 기본 뼈대와 동작부터 만들어 보라고 시켜 보래요. 화면의 '4족 몬스터 리깅'이 이 팀이 실제로 그렇게 해결한 사례예요.</p>
+<figure>
+  <img src="assets/frame-0058.webp" alt="갈색 등껍질을 진 네 발 몬스터 모델 두 컷이 회색 배경 위에 있고, 아래에 '4족 몬스터 리깅'이 적힌 화면, 제목은 'AI + Blender'">
+  <figcaption>화면 하단에는 실제 프로젝트이며 모델·리그 이력은 따로 확인했다고 적혀 있어요. <a href="https://www.youtube.com/watch?v=QABrVsOm0Zg&amp;t=58s" target="_blank" rel="noopener">영상 00:58에서 보기</a></figcaption>
+</figure>
+<h3>작업에 맞춰 고르기</h3>
+<p>마지막 화면은 세 툴을 한 장으로 정리해요. Blender 밑에는 '직접 제작·수정', Tripo 밑에는 '이미지 → 3D', Mixamo 밑에는 '사람형 → 동작'이 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0104.webp" alt="'작업에 맞춰 고르세요' 제목 아래 Blender(직접 제작·수정), Tripo(이미지 → 3D), Mixamo(사람형 → 동작)가 세로로 나열된 정리 화면">
+  <figcaption>세 툴은 겹치지 않고 각자 한 단계를 맡아요. <a href="https://www.youtube.com/watch?v=QABrVsOm0Zg&amp;t=64s" target="_blank" rel="noopener">영상 01:04에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>이럴 때</th><th>툴</th><th>영상에서 말한 비용</th></tr></thead>
+    <tbody>
+      <tr><td>소품·건물을 직접 만들고 고칠 때</td><td>Blender (AI 연결)</td><td>언급 없음</td></tr>
+      <tr><td>이미지로 모델을 생성할 때</td><td>Tripo</td><td>유료</td></tr>
+      <tr><td>사람형 캐릭터를 움직일 때</td><td>Mixamo</td><td>무료</td></tr>
+      <tr><td>사람형이 아닌 캐릭터를 움직일 때</td><td>AI + Blender</td><td>다른 툴 결제 전에 먼저 시도</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 툴 이름이 잘못 받아적힌 곳이 있어요. 화면 글씨를 기준으로 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>3DS</td><td>3D 에셋</td><td></td></tr>
+      <tr><td>아스트라</td><td>Astra</td><td>화면 하단 표기 기준</td></tr>
+      <tr><td>매시</td><td>메시</td><td></td></tr>
+      <tr><td>트리포 / 트리</td><td>Tripo</td><td></td></tr>
+      <tr><td>스마트 매</td><td>Smart Mesh (P2.0)</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-5"><dt>리깅<span class="en">Rigging</span></dt><dd>모델 안에 뼈대를 넣고 뼈가 움직이면 겉면이 따라 움직이도록 연결하는 작업이에요. 이게 있어야 걷기·달리기 같은 동작을 붙일 수 있어요.</dd></div>
+    <div class="g" id="g-2"><dt>메시<span class="en">Mesh</span></dt><dd>점과 선, 면으로 이어 붙여 만든 3D 모델의 겉모양이에요. 면이 고르게 깔려야 다듬거나 움직이기 쉬워요.</dd></div>
+    <div class="g" id="g-1"><dt>에셋<span class="en">Asset</span></dt><dd>게임에 들어가는 3D 모델, 텍스처, 애니메이션 같은 재료 하나하나예요. 이 영상은 그중 3D 모델과 동작을 다뤄요.</dd></div>
+    <div class="g" id="g-3"><dt>폴리곤<span class="en">Polygon</span></dt><dd>메시를 이루는 작은 면 하나예요. 보통 삼각형이나 사각형이고, 개수가 적을수록 게임에서 가볍게 돌아가요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>GNU</dt><dd>GNU&#x27;s Not Unix</dd></div>
+    <div class="g"><dt>GPL</dt><dd>General Public License</dd></div>
+    <div class="g" id="g-4"><dt>UV 지도<span class="en">UV map</span></dt><dd>입체 모델의 표면을 잘라 평면에 펼친 지도예요. 텍스처(색·무늬)를 그릴 때 이 지도 위에 그려서 모델에 입혀요.</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=QABrVsOm0Zg" target="_blank" rel="noopener">원본 영상 — MGD - Midnight Game Devs</a></li>
+    <li id="src-2"><a href="https://www.blender.org/about/license/" target="_blank" rel="noopener">Blender 공식 사이트 — License</a></li>
+    <li id="src-3"><a href="https://developers.tripo3d.com/en/models/p1" target="_blank" rel="noopener">Tripo 개발자 문서 — Smart Mesh 모델(P1·P2)</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 29일에 이 영상을 보고 정리했어요. 원본은 MGD - Midnight Game Devs 채널에 있어요. 영상이 1분짜리 쇼츠라 화면 슬라이드를 중심으로 정리했어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
