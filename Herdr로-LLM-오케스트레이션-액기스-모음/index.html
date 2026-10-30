@@ -1,0 +1,1057 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Herdr로 LLM 오케스트레이션 액기스 모음</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Herdr로 LLM 오케스트레이션 액기스 모음</h1>
+  <p class="lede">에이전트가 에이전트를 띄우고, 다른 컴퓨터까지 부리게 하는 법</p>
+  <div class="meta">
+    <span>코드팩토리</span><span class="dot">·</span>
+    <span>영상 21:09</span><span class="dot">·</span>
+    <span>읽는 데 약 15분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=1AlbTXb8oPc" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>Herdr는 코딩 에이전트 여러 개를 한 터미널 화면에서 부리는 TUI(Terminal User Interface)예요. 사이드바에서 어떤 에이전트가 일하는 중인지, 끝났는지, 막혔는지 바로 보여요.</li>
+    <li><span class="term" data-term="Herdr 스킬" data-en="Herdr agent skill" data-desc="에이전트에게 herdr 명령으로 패널·워크트리·다른 에이전트를 다루는 법을 알려 주는 지침 파일이에요. 이게 있어야 말로 시킨 일을 에이전트가 직접 실행해요." data-g="7">Herdr 스킬</span>을 쓰면 '<span class="term" data-term="워크트리" data-en="Git worktree" data-desc="한 저장소에서 여러 브랜치를 서로 다른 폴더에 동시에 꺼내 두는 git 기능이에요. 에이전트 여러 개가 같은 저장소를 건드려도 파일이 섞이지 않아요." data-g="6">워크트리</span> 만들고 오른쪽에 Codex <span class="term" data-term="패널" data-en="Pane" data-desc="탭 하나를 나눈 칸이에요. 칸마다 진짜 터미널이 하나씩 있어서 다른 에이전트를 띄울 수 있어요. 영상에서는 &#x27;페인&#x27;이라고도 불러요." data-g="4">패널</span> 띄워 줘'처럼 말로만 시켜도 에이전트가 Herdr 명령을 직접 실행해요.</li>
+    <li>대화하는 메인 에이전트와 일하는 에이전트를 나눠요. 구현은 새 패널에 넘기고, 메인과는 계속 이야기해요.</li>
+    <li>같은 일을 여러 모델·여러 <span class="term" data-term="effort" data-en="Reasoning effort" data-desc="모델이 답하기 전에 얼마나 오래, 깊게 생각할지 정하는 설정이에요. 높이면 결과가 좋아질 수 있지만 시간과 사용량이 더 들어요." data-g="9">effort</span>로 동시에 돌리고 가장 좋은 결과를 골라요. 기다렸다 다시 시키는 시간이 사라져요.</li>
+    <li>다른 컴퓨터를 등록하면 로컬과 원격 에이전트를 한 화면에서 함께 부려요. 집 밖에서는 <span class="term" data-term="Tailscale" data-en="Tailscale" data-desc="여러 기기를 하나의 사설 네트워크로 묶어 주는 VPN 서비스예요. 서로 다른 와이파이에 있어도 같은 네트워크처럼 접속할 수 있어요." data-g="11">Tailscale</span>로 같은 네트워크처럼 묶어요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">Herdr 설치와 화면 구성</a></li>
+    <li><a href="#s2">패널 나누기와 에이전트 상태 보기</a></li>
+    <li><a href="#s3">AI에게 워크트리와 패널 만들기 시키기</a></li>
+    <li><a href="#s4">대화하는 에이전트와 일하는 에이전트 나누기</a></li>
+    <li><a href="#s5">같은 일을 여러 에이전트에 동시에 던지기</a></li>
+    <li><a href="#s6">원격 컴퓨터 등록하고 함께 쓰기</a></li>
+    <li><a href="#s7">Tailscale로 밖에서 연결하기</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>Herdr 설치와 화면 구성</h2>
+<p>이 영상은 코딩 에이전트 여러 개를 한 화면에서 부리는 작업 흐름을 빠르게 훑어요. 발표자는 Claude Code와 Codex를 여러 프로젝트에서 같이 쓰다 보니 창을 직접 열고 일을 나눠 주는 게 번거로웠다고 해요. 그래서 지금은 AI(Artificial Intelligence)가 다른 에이전트를 띄우고 일까지 나눠 주게 해 둔다고 해요. 그 도구가 Herdr예요.</p>
+
+<h3>터미널부터 고르기</h3>
+<p>Herdr는 터미널 안에서 도는 TUI라서, 바탕이 되는 <span class="term" data-term="터미널 에뮬레이터" data-en="Terminal emulator" data-desc="명령줄 화면을 띄워 주는 앱이에요. Ghostty, iTerm2 같은 것들이고, Herdr는 이 안에서 돌아가요." data-g="2">터미널 에뮬레이터</span>가 가볍고 빠를수록 득을 봐요. 발표자는 Ghostty를 추천하지만, 좋아하는 터미널이 따로 있으면 그걸 써도 된다고 해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>발표자는 Ghostty가 'Rust 같은 걸로' 만들어졌다고 말하는데, Ghostty 공식 문서에 따르면 핵심부(libghostty)는 Zig로, macOS 화면은 Swift로 만들었어요. 가볍고 빠르다는 요지는 같아요.</p>
+  <p class="cite">출처: <a href="https://ghostty.org/docs/about" target="_blank" rel="noopener">Ghostty 공식 문서 — About</a></p>
+</aside>
+
+<h3>설치</h3>
+<p>Herdr 설치 페이지에는 Linux·macOS용 <code>curl</code> 한 줄, Windows용 PowerShell 한 줄, 그리고 맨 아래 'Install with Homebrew'가 있어요. 발표자는 Homebrew로 깔아도 된다고 짚어요. 설치한 뒤 터미널에서 <code>herdr</code>를 치면 시작돼요.</p>
+<figure>
+  <img src="assets/frame-0153.webp" alt="Herdr 공식 문서의 Install 페이지. 맨 위에 Linux·macOS용 curl 설치 명령, 그 아래 Windows용 명령, 맨 아래 Install with Homebrew 제목">
+  <figcaption>
+    macOS라면 <code>brew install herdr</code>가 가장 간단해요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=113s" target="_blank" rel="noopener">영상 01:53에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>지금 herdr.dev 첫 화면은 새로 나온 네이티브 앱 'Herdr'를 소개해요. 영상에서 쓰는 터미널 버전은 'Herdr TUI'라는 이름으로 herdr.dev/tui에 따로 있어요. 공식 설명으로는 둘은 별개 프로그램이라 한쪽에서 띄운 에이전트가 다른 쪽에 보이지 않아요. 영상을 따라 하려면 TUI 쪽 문서를 보면 돼요.</p>
+  <p class="cite">출처: <a href="https://herdr.dev/" target="_blank" rel="noopener">herdr.dev</a> · <a href="https://herdr.dev/tui/docs/install/" target="_blank" rel="noopener">Herdr TUI 설치 문서</a></p>
+</aside>
+
+<h3>화면은 사이드바와 메인 두 칸</h3>
+<p>처음 켜면 비어 있지만, 발표자 화면은 이미 세팅돼 있어서 복잡해 보여요. 아래 화면에서 왼쪽 사이드바를 보면 위쪽 <code>machines</code> 아래에 Local(자기 맥)의 <span class="term" data-term="워크스페이스" data-en="Workspace" data-desc="Herdr에서 가장 큰 단위예요. 보통 저장소나 프로젝트 하나에 하나씩 두고, 그 안에 탭과 패널이 들어가요." data-g="3">워크스페이스</span> 목록이, 그 밑에 Company Mac이 있어요. 아래쪽 <code>agents</code>에는 실행 중인 에이전트가 줄지어 있어요. 오른쪽 넓은 칸이 메인 화면이에요.</p>
+<figure>
+  <img src="assets/frame-0221.webp" alt="Herdr 화면. 왼쪽 사이드바 위쪽에 machines 아래 Local의 워크스페이스 목록과 Company Mac, 아래쪽에 agents 목록, 오른쪽 메인 화면에 에이전트 대화 내용">
+  <figcaption>
+    사이드바의 Company Mac은 발표자 맥이 아니라 같은 네트워크의 다른 컴퓨터예요. 원격 컴퓨터도 같은 사이드바에 함께 올라와요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=141s" target="_blank" rel="noopener">영상 02:21에서 보기</a>
+  </figcaption>
+</figure>
+<p>구조만 떼어 그리면 이래요. 발표자가 알아 두라고 한 세 가지가 사이드바 위, 사이드바 아래, 메인 화면이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 250" role="img" aria-label="Herdr 화면 구조: 사이드바 위쪽 컴퓨터와 워크스페이스, 사이드바 아래쪽 에이전트 목록, 오른쪽 메인 화면의 탭과 패널">
+    <rect class="box c1 cell" x="10" y="10" width="190" height="125" rx="8"/>
+    <text x="105" y="36" text-anchor="middle">컴퓨터 · 워크스페이스</text>
+    <text x="105" y="62" text-anchor="middle" class="sub">Local</text>
+    <text x="105" y="82" text-anchor="middle" class="sub">ㄴ demo, stocks …</text>
+    <text x="105" y="108" text-anchor="middle" class="sub">Company Mac</text>
+    <rect class="box c2 cell" x="10" y="145" width="190" height="95" rx="8"/>
+    <text x="105" y="172" text-anchor="middle">에이전트 목록</text>
+    <text x="105" y="198" text-anchor="middle" class="sub">상태: 작업 중 · 완료</text>
+    <text x="105" y="218" text-anchor="middle" class="sub">대기 · 막힘</text>
+    <rect class="box" x="215" y="10" width="415" height="230" rx="8"/>
+    <rect class="box accent" x="230" y="22" width="70" height="24" rx="5"/>
+    <text x="265" y="39" text-anchor="middle" class="sub">Demo</text>
+    <rect class="box" x="306" y="22" width="70" height="24" rx="5"/>
+    <text x="341" y="39" text-anchor="middle" class="sub">Demo 2</text>
+    <text x="395" y="39" class="sub">+ 탭</text>
+    <rect class="box c4 cell" x="230" y="58" width="190" height="170" rx="6"/>
+    <text x="325" y="140" text-anchor="middle">패널: Claude Code</text>
+    <rect class="box c5 cell" x="428" y="58" width="190" height="80" rx="6"/>
+    <text x="523" y="103" text-anchor="middle">패널: Codex</text>
+    <rect class="box c5 cell" x="428" y="146" width="190" height="82" rx="6"/>
+    <text x="523" y="192" text-anchor="middle">패널: 셸</text>
+  </svg>
+  <figcaption>워크스페이스 안에 탭이 있고, 탭 안을 패널로 나눠요. 패널 하나하나가 진짜 터미널이라 어떤 에이전트든 띄울 수 있어요.</figcaption>
+</figure>
+
+<h3>탭 만들고 이름 바꾸기</h3>
+<p>왼쪽 아래 <code>new</code>를 누르면 새 탭이 생기고, 탭 이름 칸을 오른쪽 클릭하면 이름을 바꾸는 작은 창이 떠요. 발표자는 모든 동작에 단축키가 있지만 다 외우기보다는 마우스를 쓰거나, 뒤에 보여 줄 것처럼 AI에게 부탁하라고 권해요.</p>
+<figure>
+  <img src="assets/frame-0331.webp" alt="빈 터미널 화면 가운데에 rename tab 입력창과 save, clear, esc cancel 버튼">
+  <figcaption>
+    탭 이름은 작업 단위로 붙여 두면 사이드바에서 찾기 쉬워요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=211s" target="_blank" rel="noopener">영상 03:31에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=236s" target="_blank" rel="noopener">03:56</a>
+  <h2>패널 나누기와 에이전트 상태 보기</h2>
+<h3>마우스로 나누기</h3>
+<p>새 탭에서 <code>demo</code> 폴더를 만들고 Claude Code를 켠 다음, Codex도 같이 쓰고 싶으면 패널을 오른쪽 클릭해요. 아래 화면 가운데 메뉴에 Rename pane, Split right, Split down, Zoom, Close pane이 보여요. Split right를 고르면 오른쪽에 새 패널이 생기고, 거기서 Codex를 켜면 돼요.</p>
+<figure>
+  <img src="assets/frame-0356.webp" alt="왼쪽에 Claude Code가 떠 있는 Herdr 탭에서 오른쪽 클릭 메뉴가 열려 Rename pane, Split right, Split down, Zoom, Send right-clicks to pane, Close pane 항목이 보이는 화면">
+  <figcaption>
+    처음 배울 때는 이 메뉴 하나로 충분해요. 아래로 나누기도 같은 메뉴에 있어요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=236s" target="_blank" rel="noopener">영상 03:56에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>단축키로 나누기</h3>
+<p>단축키는 <code>Ctrl+B</code>를 <span class="term" data-term="프리픽스" data-en="Prefix key" data-desc="단축키 앞에 먼저 누르는 키예요. Herdr 기본값은 Ctrl+B이고, 누른 다음 키가 터미널이 아니라 Herdr 동작으로 들어가요. tmux와 같은 방식이에요." data-g="5">프리픽스</span>로 먼저 누르고 동작 키를 누르는 방식이에요. 아래 화면 맨 아래 줄에 'PREFIX' 표시가 켜져 있는 게 <code>Ctrl+B</code>를 누른 상태예요. 왼쪽 Claude Code, 오른쪽 Codex로 이미 나눠 둔 모습이에요.</p>
+<figure>
+  <img src="assets/frame-0451.webp" alt="왼쪽 패널에 Claude Code(Opus 5.5 with high effort), 오른쪽 패널에 OpenAI Codex가 떠 있고 화면 맨 아래에 'PREFIX' 표시가 켜진 Herdr 화면">
+  <figcaption>
+    'PREFIX'가 켜진 동안 누르는 다음 키가 Herdr 동작으로 들어가요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=291s" target="_blank" rel="noopener">영상 04:51에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>누르는 키</th><th>하는 일</th><th>발표자 설명</th></tr></thead>
+    <tbody>
+      <tr><td><code>Ctrl+B</code> → <code>V</code></td><td>세로로 나누기</td><td>버티컬의 V</td></tr>
+      <tr><td><code>Ctrl+B</code> → <code>-</code></td><td>아래로 나누기</td><td>0 옆의 마이너스 키</td></tr>
+      <tr><td><code>Ctrl+B</code> → <code>Z</code></td><td>지금 패널만 크게 보기, 다시 누르면 원래대로</td><td>줌의 Z. 포커스된 패널은 테두리 색이 바뀌어요</td></tr>
+    </tbody>
+  </table>
+</div>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 빠른 시작 문서는 키보드 조작이 선택 사항이고 마우스로 다 된다고 적어요. 영상에 나온 키 말고도 <code>prefix+c</code>(새 탭), <code>prefix+n</code>/<code>prefix+p</code>(다음·이전 탭), <code>prefix+q</code>(화면만 닫기, 에이전트는 계속 실행)가 있고, <code>prefix+?</code>를 누르면 지금 쓸 수 있는 키가 다 나와요.</p>
+  <p class="cite">출처: <a href="https://herdr.dev/tui/docs/quick-start/" target="_blank" rel="noopener">Herdr TUI 문서 — Quick start</a></p>
+</aside>
+
+<h3>사이드바에서 에이전트 상태 보기</h3>
+<p>Claude Code에 "안녕. 너희 이름은 뭐야?"라고 물으면 일하는 동안 사이드바에 진행 표시가 뜨고, 끝나면 초록색 표시로 돌아와요. 아래 화면 왼쪽 아래 <code>agents</code> 목록을 보면 맨 위 줄에 체크(✓)가, 나머지에 동그라미(○)가 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-0535.webp" alt="Herdr 왼쪽 아래 agents 목록. 맨 위 에이전트에 체크 표시, 나머지에 동그라미 표시가 붙어 있고 각 줄에 Local·Company Mac 같은 컴퓨터 이름과 claude·codex 같은 에이전트 종류가 적힌 화면">
+  <figcaption>
+    줄마다 어느 컴퓨터에서 도는지(Local, Company Mac)와 어떤 에이전트인지(claude, codex)가 함께 적혀요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=335s" target="_blank" rel="noopener">영상 05:35에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>표시</th><th>뜻</th><th>할 일</th></tr></thead>
+    <tbody>
+      <tr><td>진행 표시</td><td>작업 중</td><td>기다려요</td></tr>
+      <tr><td>✓ 체크</td><td>작업이 끝났어요</td><td>결과를 확인해요. 체크된 것만 걸러 볼 수 있어요</td></tr>
+      <tr><td>○ 동그라미</td><td>이미 확인한, 대기 중인 에이전트</td><td>—</td></tr>
+      <tr><td>✕ X</td><td>막혀 있어요(권한 승인 같은 선택을 기다림)</td><td>들어가서 권한을 주면 다시 움직여요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>여기까지가 사람이 직접 알아야 하는 기본이에요. 이다음부터는 같은 일을 AI에게 시켜요.</p>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=363s" target="_blank" rel="noopener">06:03</a>
+  <h2>AI에게 워크트리와 패널 만들기 시키기</h2>
+<p>먼저 Codex에게 "README.md 파일 만들고 git 초기화해 줘"라고 시켜 첫 커밋을 만들어요. 이제 새 기능을 따로 떨어진 곳에서 작업하고 싶다고 해 볼게요. 손으로 하면 <code>new</code>로 탭을 만들고, 워크트리를 만들고, 그 워크트리로 워크스페이스를 옮겨야 해요. 발표자는 이걸 한 문장으로 시켜요.</p>
+
+<h3>워크트리를 워크스페이스로 등록하기</h3>
+<p>"feat/update 워크트리를 생성하고 Herdr 워크스페이스에 등록해 줘"라고 하면 Codex가 Herdr 스킬을 읽고 명령을 직접 실행해요. 아래 화면 중간에 <code>herdr worktree create --workspace wE --branch feat/update</code>가 보여요. 맨 아래에는 브랜치, 경로(<code>~/.herdr/worktrees/demo/feat-update</code>), 새 워크스페이스 이름이 정리돼 있어요. 왼쪽 사이드바 <code>demo</code> 아래에도 <code>feat/update</code>가 새로 붙었어요.</p>
+<figure>
+  <img src="assets/frame-0633.webp" alt="Codex 화면에 herdr workspace, herdr worktree create 같은 명령 실행 기록과 생성 및 Herdr 등록 완료 요약(브랜치 feat/update, 경로, Herdr 워크스페이스 feat-update)이 나오고, 왼쪽 사이드바 demo 아래에 feat/update가 추가된 화면">
+  <figcaption>
+    첫 시도에서 옵션이 틀려 한 번 실패하자 에이전트가 <code>--help</code>를 보고 다시 실행해요. 사람이 명령을 몰라도 되는 이유예요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=393s" target="_blank" rel="noopener">영상 06:33에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Herdr 스킬은 Herdr가 공식으로 내놓은 에이전트용 지침 파일(<code>skills/herdr/SKILL.md</code>)이에요. <code>npx skills add herdrdev/herdr --skill herdr -g</code>로 설치하고, Herdr가 깔려 있으면 <code>herdr --skill</code>로 버전에 맞는 내용을 볼 수 있어요. 스킬은 환경 변수 <code>HERDR_ENV=1</code>이 있을 때만, 즉 Herdr 패널 안에서 실행된 에이전트일 때만 Herdr를 조작하게 막아 둬요.</p>
+  <p class="cite">출처: <a href="https://herdr.dev/tui/docs/agent-skill/" target="_blank" rel="noopener">Herdr TUI 문서 — Agent skill file</a></p>
+</aside>
+
+<h3>워크스페이스 없이 지금 탭에 패널로 열기</h3>
+<p>워크트리는 필요하지만 독립 워크스페이스까지는 싫을 때도 있어요. "feat/test 워크트리를 만들고 현재 탭의 오른쪽에 Codex --yolo 패인 생성해 줘"라고 하면 지금 탭을 확인한 뒤 오른쪽에 패널을 열어요. 아래 화면 오른쪽 패널에 Codex의 Folder access 확인 창이 떠 있고, 경로가 <code>~/.herdr/worktrees/demo/feat-test</code>예요.</p>
+<figure>
+  <img src="assets/frame-0718.webp" alt="왼쪽 Codex 패널에 feat/test 워크트리 생성과 패널 분할 명령 기록, 오른쪽 새 패널에 Codex의 Folder access 확인 창(Trust and continue 선택)이 뜬 화면">
+  <figcaption>
+    발표자는 일부러 엔터를 치지 않아요. 그대로 두면 메인 에이전트가 신뢰 확인까지 알아서 눌러 줘요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=438s" target="_blank" rel="noopener">영상 07:18에서 보기</a>
+  </figcaption>
+</figure>
+<p>이번에는 사이드바에 새 워크스페이스가 생기지 않아요. 요청한 대로 지금 탭 안에 패널만 만든 거예요. 아래 화면 오른쪽 패널 위쪽 경로가 feat-test 워크트리를 가리켜요.</p>
+<figure>
+  <img src="assets/frame-0748.webp" alt="Demo 탭 안에서 왼쪽은 메인 Codex 대화, 오른쪽은 feat-test 워크트리 경로에서 실행된 Codex 패널인 화면">
+  <figcaption>
+    한 탭 안에서 메인 브랜치와 워크트리를 나란히 볼 수 있어요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=468s" target="_blank" rel="noopener">영상 07:48에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>두 방법 중 무엇을 고를까요</h3>
+<p>발표자는 편한 쪽을 고르면 된다고 해요. 그림으로 나란히 놓으면 차이가 분명해요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="워크트리를 다루는 두 방법 비교: 워크스페이스로 등록하기와 지금 탭에 패널로 열기">
+    <text x="160" y="22" text-anchor="middle">(a) 워크스페이스로 등록</text>
+    <rect class="box c1 cell" x="20" y="36" width="280" height="40" rx="6"/>
+    <text x="160" y="61" text-anchor="middle">사이드바: demo</text>
+    <rect class="box c2 cell" x="50" y="86" width="250" height="40" rx="6"/>
+    <text x="175" y="111" text-anchor="middle">ㄴ feat/update (새 워크스페이스)</text>
+    <text x="160" y="160" text-anchor="middle" class="sub">사이드바에 따로 올라가요</text>
+    <text x="160" y="182" text-anchor="middle" class="sub">독립적으로 관리하기 좋아요</text>
+    <text x="160" y="204" text-anchor="middle" class="sub">개발 작업에 맞는 쪽</text>
+    <text x="480" y="22" text-anchor="middle">(b) 지금 탭에 패널로</text>
+    <rect class="box" x="340" y="36" width="280" height="110" rx="6"/>
+    <rect class="box c1 cell" x="350" y="46" width="125" height="90" rx="5"/>
+    <text x="412" y="88" text-anchor="middle" class="sub">메인 Codex</text>
+    <text x="412" y="106" text-anchor="middle" class="sub">(demo)</text>
+    <rect class="box c2 cell" x="485" y="46" width="125" height="90" rx="5"/>
+    <text x="547" y="88" text-anchor="middle" class="sub">Codex</text>
+    <text x="547" y="106" text-anchor="middle" class="sub">(feat-test)</text>
+    <text x="480" y="182" text-anchor="middle" class="sub">사이드바는 그대로예요</text>
+    <text x="480" y="204" text-anchor="middle" class="sub">한눈에 보고 싶을 때</text>
+  </svg>
+  <figcaption>두 경우 모두 워크트리는 <code>~/.herdr/worktrees/</code> 아래에 생겨요. 다른 건 사이드바에 올리느냐뿐이에요.</figcaption>
+</figure>
+<p>탭도 같은 워크스페이스 안의 독립된 공간이에요. 발표자는 유튜브 콘텐츠용 워크스페이스 하나에 주제별 탭을 만들어 둬요. 같은 폴더라 스킬은 함께 쓰면서도 콘텐츠끼리 섞이지 않아요. 소프트웨어를 만드는 데 많이 쓴다면 워크트리를 독립 워크스페이스로 두는 쪽에 더 힘이 실릴 거라고 해요.</p>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=540s" target="_blank" rel="noopener">09:00</a>
+  <h2>대화하는 에이전트와 일하는 에이전트 나누기</h2>
+<p>발표자는 관리용 메인 에이전트로 Codex를 즐겨 쓰고, 웹사이트나 앱을 만들 때는 거의 늘 Opus 5.5를 써요. 예시로 Codex에게 "주식 차트 모니터링하는 프로그램 만들 건데 기본 기능 세 가지만 리스트업해 줘"라고 물어 MVP(Minimum Viable Product)에 넣을 기능 세 가지를 정해요.</p>
+
+<h3>메인 세션에 바로 시키면 안 되는 이유</h3>
+<p>여기서 Codex에게 바로 구현을 시키면, 구현이 끝날 때까지 Codex와 대화를 할 수 없어요. 발표자는 이게 아주 큰 단점이라 Codex에게 시키든 다른 에이전트에게 시키든 꼭 새 독립 세션을 만들어 넘기라고 해요. 그래야 대화의 맥락은 메인에 남고, 일은 다른 에이전트가 해요. 영상은 이걸 아래 그림으로 보여 줘요. 왼쪽 메인 세션은 대화만 이어 가고, 오른쪽 Codex와 다른 에이전트 칸이 '주가 차트', '관심 종목', '조건 알림'을 하나씩 나눠 맡아요.</p>
+<figure>
+  <img src="assets/frame-1015.webp" alt="영상의 설명 그래픽 '독립 세션에 넘기기'. 왼쪽 메인 세션 칸에는 대화 말풍선, 오른쪽 Codex 칸에 주가 차트와 관심 종목, 다른 에이전트 칸에 조건 알림이 진행 막대와 함께 표시">
+  <figcaption>
+    기능 세 개가 메인 세션을 떠나 작업 칸으로 옮겨 가요. 메인 세션은 비어서 계속 이야기할 수 있어요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=615s" target="_blank" rel="noopener">영상 10:15에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>한 문장으로 넘기기</h3>
+<p>실제로는 "Opus 5.5 Effort High 패널을 현재 탭에서 생성하고 우리가 기획한 3가지 기능이 있는 차트 모니터링 사이트를 Next.js로 만들어 줘"라고만 해요. 아래 화면 왼쪽 Codex 기록에 <code>herdr pane split</code>, <code>herdr agent start stock-opus --kind claude</code>, <code>herdr agent prompt stock-opus</code>가 차례로 보여요. 오른쪽 새 패널에는 Claude Code가 떠 있고, Codex가 직접 쓴 긴 작업 지시문이 들어가 있어요.</p>
+<figure>
+  <img src="assets/frame-1100.webp" alt="왼쪽 Codex 패널에 herdr pane split, herdr agent start stock-opus, herdr agent prompt 명령 기록, 오른쪽 패널에 Claude Code(Opus 5.5 with high effort)가 실행되고 Next.js 주식 차트 사이트를 만들라는 한국어 지시문이 입력된 화면">
+  <figcaption>
+    사람은 아무것도 만지지 않았어요. 패널 만들기, Claude Code 실행, 프롬프트 작성까지 Codex가 했어요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=660s" target="_blank" rel="noopener">영상 11:00에서 보기</a>
+  </figcaption>
+</figure>
+<p>발표자는 이걸 <span class="term" data-term="메타프롬프팅" data-en="Meta-prompting" data-desc="AI가 다른 AI에게 줄 프롬프트를 대신 써 주는 방식이에요. 여기서는 메인 Codex가 새 패널의 Claude Code에게 줄 작업 지시문을 직접 써서 넣어요." data-g="8">메타프롬프팅</span>까지 한 번에 된다고 말해요. Claude Code가 처음에 accept edits 모드로 떠도, <span class="term" data-term="bypass permissions" data-en="Bypass permissions mode" data-desc="Claude Code가 파일 수정이나 명령 실행 때마다 승인을 묻지 않고 바로 진행하는 모드예요. 빠르지만 그만큼 맡기는 범위가 넓어져요." data-g="10">bypass permissions</span> 모드로 실행하라고 하면 그대로 해 줘요. 오가는 흐름을 순서대로 놓으면 이래요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  participant 나
+  participant M as 메인 Codex
+  participant W as 새 패널 Opus 5.5
+  나->>M: 기능 세 가지 정하기 (대화)
+  나->>M: 패널 만들어 Next.js로 구현시켜 줘
+  M->>W: 패널 생성, Claude Code 실행, 프롬프트 입력
+  나->>M: 다음 기능·리서치 이야기 계속
+  W-->>M: 작업 끝났어요 (결과 보고)
+  M-->>나: 결과 전달
+</pre>
+  <figcaption>대화 상대는 끝까지 메인 Codex 하나예요. 구현하는 동안에도 대화가 끊기지 않아요.</figcaption>
+</figure>
+<p>오른쪽에서 실제 제품이 만들어지는 동안, 왼쪽에서는 어떤 기능이 더 있으면 좋을지 이야기하고 리서치를 미리 해 둬요. 그러다 다른 기능이 떠오르면 "패널 하나 더 만들어서 새 워크트리에 B 기능을 만들어 봐"라고 시키면 돼요. 그러면 세 번째 패널이 생겨 동시에 일해요. 발표자는 이렇게 계속 늘려 갈 수 있다는 점을 Herdr의 큰 장점으로 꼽아요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=718s" target="_blank" rel="noopener">11:58</a>
+  <h2>같은 일을 여러 에이전트에 동시에 던지기</h2>
+<p>꼭 에이전트 하나에 일 하나로 짝지을 필요는 없어요. 발표자는 레이싱 게임을 예로 들어요. 메인 Codex에게 레이싱 게임의 핵심 요소 세 가지를 묻고, 이어서 그걸 담은 게임 콘셉트 세 가지를 추천받아요. 꼭 추천을 받을 필요는 없고, 대화하다 생긴 여러 선택지를 각각 다른 에이전트에게 넘기면 된다고 해요.</p>
+<figure>
+  <img src="assets/frame-1230.webp" alt="영상의 설명 그래픽 '옵션마다 다른 에이전트'. 메인 에이전트에서 나온 옵션 1, 옵션 2, 옵션 3이 각각 오른쪽의 서로 다른 에이전트 칸으로 이어지는 그림">
+  <figcaption>
+    옵션 하나에 에이전트 하나씩 붙여요. 복사해 붙여 넣고 프롬프트를 다시 쓸 일이 없어요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=750s" target="_blank" rel="noopener">영상 12:30에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>콘셉트 세 개를 동시에</h3>
+<p>요청은 대충 써도 돼요. "현재 탭에서 Opus 5.5 3개 만들어서 각 콘셉트 동시에 작업해 줘. Effort는 High." 조금 기다리면 패널 세 개가 생기고 각자 독립적으로 일을 받아요. 아래 화면 왼쪽 위 Codex 요약에 오른쪽 위 '네온 나이트', 왼쪽 아래 '그래비티 러시', 오른쪽 아래 '다운힐 라이벌'이 어느 패널인지 적혀 있어요. 세 패널은 각자 다른 폴더에서 게임을 만들어요.</p>
+<figure>
+  <img src="assets/frame-1350.webp" alt="한 탭이 네 칸으로 나뉜 Herdr 화면. 왼쪽 위는 메인 Codex가 Opus 5.5 High 패널 3개를 만들었다는 요약, 나머지 세 칸은 각각 네온 나이트, 그래비티 러시, 다운힐 라이벌 콘셉트를 구현 중인 Claude Code 패널">
+  <figcaption>
+    세 패널 하단 상태 줄에 모두 Opus 5.5가 찍혀 있어요. 같은 모델로 콘셉트만 다르게 돌린 경우예요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=830s" target="_blank" rel="noopener">영상 13:50에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>모델과 effort도 섞어서</h3>
+<p>발표자는 이 기능을 가장 많이 쓴다고 해요. 스크립트 초안이 여러 개 필요할 때, 버그 수정 결과를 여러 개 받아 보고 싶을 때가 있어요. 하나 만들어 보고 마음에 안 들어 다시 시키면 시간이 들어요. 그래서 처음부터 세 개, 다섯 개, 일곱 개를 동시에 돌려요. 영상 그래픽처럼 작업 하나를 Codex, Opus, MiniMax 같은 서로 다른 모델에, effort도 다르게 해서 던져요.</p>
+<figure>
+  <img src="assets/frame-1334.webp" alt="영상의 설명 그래픽 '모델·effort 다르게'. 왼쪽 작업 하나에서 여러 갈래 선이 나와 Codex, Opus, MiniMax가 번갈아 적힌 일곱 칸으로 이어지고, 칸마다 effort 수준을 뜻하는 막대가 붙은 그림">
+  <figcaption>
+    칸 오른쪽의 막대가 effort 수준이에요. 모델과 effort를 바꿔 가며 결과를 비교해요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=814s" target="_blank" rel="noopener">영상 13:34에서 보기</a>
+  </figcaption>
+</figure>
+<p>결과는 각자 다른 워크트리에 받아 가장 마음에 드는 걸 머지하거나, 이번 데모처럼 콘셉트별로 폴더를 나눠 받아요. 발표자는 Claude와 Codex 모두 상위 요금제를 쓰고 있어서, 구독을 여러 개 쓸수록 이 방식의 이득이 커진다고 말해요.</p>
+
+<h3>스킬로 단계까지 설계하면</h3>
+<p>한 걸음 더 가면, 메인 에이전트가 탭 안의 모든 패널을 백그라운드에서 계속 지켜보게 할 수 있어요. 발표자는 간단한 스크립트라 가능하다고 해요. 그리고 스킬에 단계를 꼼꼼히 설계해요. 발표자가 든 예는 웹사이트를 운영하며 사용자 피드백을 처리하는 흐름이에요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["사용자 피드백 받기"] --> B["중요도 리서치,<br/>우선순위 매기기"]
+  B --> C["중요한 것만<br/>독립 브랜치에서 작업"]
+  C --> D["검증 받기"]
+  M["메인 에이전트<br/>(계속 모니터링)"] -.-> B
+  M -.-> C
+  M -.-> D
+</pre>
+  <figcaption>단계가 끝날 때마다 메인 에이전트가 새 패널을 만들어요. 어느 단계에 어떤 모델을 쓸지는 스킬에 미리 적어 둬요.</figcaption>
+</figure>
+<p>이렇게 단계별로 어떤 모델로 어떻게 작업할지 정의해 두면, 꽤 복잡한 <span class="term" data-term="오케스트레이션" data-en="Orchestration" data-desc="여러 에이전트에게 일을 나눠 주고, 진행을 지켜보고, 결과를 모으는 지휘 역할이에요. 이 영상에서는 그 지휘까지 메인 에이전트에게 맡겨요." data-g="1">오케스트레이션</span>도 쉽게 풀린다고 해요. 영상은 이 스킬을 실제로 보여 주지는 않고 구상만 설명해요.</p>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=915s" target="_blank" rel="noopener">15:15</a>
+  <h2>원격 컴퓨터 등록하고 함께 쓰기</h2>
+<p>발표자가 꼽는 Herdr의 가장 강력한 기능은 다른 컴퓨터를 연결하는 기능이에요. 이것도 스킬에 다 들어 있어서 말로 시켜요.</p>
+
+<h3>등록된 컴퓨터 확인하기</h3>
+<p>"Herdr에 현재 등록돼 있는 Remote 컴퓨터 확인해 줘"라고 하면 Codex가 <code>herdr machine list</code>와 <code>herdr machine status --json</code>을 실행해요. 아래 화면 맨 아래 표에 등록된 컴퓨터 1대가 나와요. 이름은 Company Mac, 세션은 default, 상태는 '활성화 · 연결 가능'이에요.</p>
+<figure>
+  <img src="assets/frame-1551.webp" alt="Codex 화면에 herdr machine list, herdr machine status --json 실행 기록과 현재 Herdr에 등록된 Remote 컴퓨터 1대의 표(이름 Company Mac, SSH 주소, 세션 default, 상태 활성화·연결 가능)">
+  <figcaption>
+    표의 둘째 칸이 SSH(Secure Shell) 주소예요. Herdr의 원격 연결은 SSH 위에서 돌아가요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=951s" target="_blank" rel="noopener">영상 15:51에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>같은 네트워크의 컴퓨터 찾아 등록하기</h3>
+<p>컴퓨터들이 같은 와이파이나 같은 랜에 있으면 등록이 쉬워요. "현재 같은 네트워크에 있는 컴퓨터 전부 찾아 줘"라고 하면 에이전트가 네트워크를 뒤져 목록을 만들어요. 발표자는 이 찾기는 Herdr 기능이 아니라 IP(Internet Protocol) 테이블 같은 일반 도구로 하는 거라고 덧붙여요. 아래 화면 위 표에는 자기 MacBook Pro와 Company Mac 두 대가 '연결됨'으로, 아래 표에는 공유기와 종류를 모르는 기기가 따로 나와요.</p>
+<figure>
+  <img src="assets/frame-1639.webp" alt="Codex가 같은 Wi-Fi에서 찾은 컴퓨터 표(현재 컴퓨터와 Company Mac, 로컬 IP, 연결됨)와 추가로 발견된 기기 표(공유기, 기기 종류 미확인)를 보여 주고, 그 아래 'Herdr machines에 컴퓨터 전부 등록해줘' 요청이 입력된 화면">
+  <figcaption>
+    맨 아래 줄 'Herdr machines에 컴퓨터 전부 등록해줘'가 다음 요청이에요. 몇 대만 골라 등록해도 돼요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=999s" target="_blank" rel="noopener">영상 16:39에서 보기</a>
+  </figcaption>
+</figure>
+<p>이어서 "Herdr machines에 컴퓨터 전부 등록해 줘"라고 하면 등록돼요. 발표자는 이미 등록해 둬서 새로 생기진 않았어요. 몇 대든 등록할 수 있어서, 맥 미니 열 대로 E2E(End-to-End) 테스트를 나눠 돌리는 것도 된다고 해요. 등록한 컴퓨터를 사이드바에서 고르고 <code>new</code>를 누르면 그 컴퓨터의 터미널이 열려요. 거기서 Codex를 켜면 프롬프트는 밖에 있는 맥북에 들어가요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 문서 기준으로 원격 컴퓨터를 붙이려면 그 컴퓨터에 보통의 SSH 접속이 먼저 돼야 해요. 등록은 <code>herdr machine add &lt;호스트&gt;</code>로 하고, 원격에 Herdr가 없으면 확인을 받은 뒤 설치까지 해 줘요. 컴퓨터마다 자기 Herdr 서버와 세션을 따로 가져서, 한 대의 연결이 끊겨도 나머지는 그대로예요. 영상에서 '같은 네트워크면 바로 등록된다'는 건 SSH로 닿을 수 있다는 뜻으로 읽으면 돼요.</p>
+  <p class="cite">출처: <a href="https://herdr.dev/tui/docs/connecting-machines/" target="_blank" rel="noopener">Herdr TUI 문서 — Connecting machines</a></p>
+</aside>
+
+<h3>로컬 하나, 원격 둘로 나눠 돌리기</h3>
+<p>등록하고 나면 앞의 '콘셉트 세 개 동시에'를 여러 컴퓨터에 흩어 놓을 수 있어요. 대화는 로컬에서 하고, 에이전트만 다른 컴퓨터로 쏘는 거예요. 아래 화면 위쪽에는 앞 장면의 Opus 5.5 패널 3개 기록이, 가운데에는 새 요청 "패널 3개를 현재 탭에 만들거야 하나는 현재 로컬 컴퓨터에서 실행하고 두개는 Company Mac Remote Machine에서 실행해서 3가지 컨셉 구현해줘"가 보여요.</p>
+<figure>
+  <img src="assets/frame-1801.webp" alt="Codex 화면 위쪽에 herdr agent start race-gravity, race-downhill 같은 Opus 5.5 패널 생성 기록, 가운데에 패널 3개 중 하나는 로컬, 두 개는 Company Mac 원격 머신에서 실행하라는 요청과 Codex의 답변">
+  <figcaption>
+    Codex는 '로컬 패널 하나와 Company Mac 원격 패널 두 개로 구성을 바꾸겠다'고 답해요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=1081s" target="_blank" rel="noopener">영상 18:01에서 보기</a>
+  </figcaption>
+</figure>
+<figure class="diagram">
+  <svg viewBox="0 0 640 210" role="img" aria-label="한 탭의 패널 세 개 중 하나는 로컬 컴퓨터, 두 개는 Company Mac 원격 컴퓨터에서 실행되는 구조">
+    <defs><marker id="arrow-remote" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="box" x="10" y="20" width="300" height="170" rx="8"/>
+    <text x="160" y="44" text-anchor="middle">로컬 맥의 Herdr 탭</text>
+    <rect class="box c1 cell" x="25" y="60" width="130" height="55" rx="6"/>
+    <text x="90" y="84" text-anchor="middle" class="sub">메인 Codex</text>
+    <text x="90" y="102" text-anchor="middle" class="sub">(대화)</text>
+    <rect class="box c2 cell" x="165" y="60" width="130" height="55" rx="6"/>
+    <text x="230" y="84" text-anchor="middle" class="sub">Opus 5.5</text>
+    <text x="230" y="102" text-anchor="middle" class="sub">로컬에서 실행</text>
+    <rect class="box c3 cell" x="25" y="125" width="130" height="55" rx="6"/>
+    <text x="90" y="149" text-anchor="middle" class="sub">Opus 5.5</text>
+    <text x="90" y="167" text-anchor="middle" class="sub">화면만 로컬</text>
+    <rect class="box c3 cell" x="165" y="125" width="130" height="55" rx="6"/>
+    <text x="230" y="149" text-anchor="middle" class="sub">Opus 5.5</text>
+    <text x="230" y="167" text-anchor="middle" class="sub">화면만 로컬</text>
+    <path class="line" d="M312 152 H420" marker-end="url(#arrow-remote)"/>
+    <text x="366" y="142" text-anchor="middle" class="sub">SSH</text>
+    <rect class="box c3 cell" x="425" y="70" width="205" height="120" rx="8"/>
+    <text x="527" y="98" text-anchor="middle">Company Mac</text>
+    <text x="527" y="126" text-anchor="middle" class="sub">실제 실행은 여기서</text>
+    <text x="527" y="148" text-anchor="middle" class="sub">데이터 · CPU · GPU도</text>
+    <text x="527" y="170" text-anchor="middle" class="sub">이 컴퓨터 것을 써요</text>
+  </svg>
+  <figcaption>같은 탭 안에 있어도 아래 두 패널은 원격 컴퓨터의 자원을 써요. 로컬 맥은 지휘만 해요.</figcaption>
+</figure>
+<p>영상 그래픽도 같은 이야기를 해요. 원격 패널이 돌면 데이터, CPU(Central Processing Unit), GPU(Graphics Processing Unit)가 모두 원격 컴퓨터 쪽이에요. 컴퓨터가 세 대든 열 대든 한 컴퓨터에서 문어발처럼 지휘할 수 있다고 해요.</p>
+<figure>
+  <img src="assets/frame-1837.webp" alt="영상의 설명 그래픽 '원격 실행'. 리모트 컴퓨터 상자 안의 터미널 두 개가 데이터, CPU, GPU 세 항목으로 이어지는 그림">
+  <figcaption>
+    원격 패널 두 개가 데이터·CPU·GPU를 원격 쪽에서 가져다 써요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=1117s" target="_blank" rel="noopener">영상 18:37에서 보기</a>
+  </figcaption>
+</figure>
+
+<h3>발표자가 좋아하는 쓰임: E2E 테스트</h3>
+<p>사람이 클릭하듯 눌러 보며 버그를 찾는 E2E 테스트는 계속 돌려야 할 때가 있어요. 로컬에서 Ego Lite 같은 도구로 해도 되지만, 로컬 컴퓨터는 꺼야 할 때도 있고 무거운 작업으로 CPU·GPU가 튀어 문제가 생기기도 해요. 그래서 원격 컴퓨터를 다 등록해 두고 Linear 같은 곳에서 이슈를 관리해요. 테스트할 거리가 100개면 열 묶음으로 나눠 원격 머신에 병렬로 던지고, 결과만 로컬로 받아요. 아래 그래픽 오른쪽 Herdr 목록에 등록된 원격 머신들이 줄지어 있어요.</p>
+<figure>
+  <img src="assets/frame-1925.webp" alt="영상의 설명 그래픽 '원격 머신 등록'. 왼쪽 로컬 컴퓨터 칸에 CPU, GPU 막대, 오른쪽 Herdr 칸에 원격 머신 여러 대가 세로로 나열된 그림">
+  <figcaption>
+    로컬은 CPU·GPU를 아끼고, 무거운 테스트는 오른쪽 머신들이 나눠 맡아요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=1165s" target="_blank" rel="noopener">영상 19:25에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=1192s" target="_blank" rel="noopener">19:52</a>
+  <h2>Tailscale로 밖에서 연결하기</h2>
+<p>지금까지는 같은 와이파이 안이라서 원격 머신이 바로 등록됐어요. 하지만 카페에 있으면서 회사의 맥 미니 열 대에 붙고 싶을 때도 있어요. 아래 그래픽처럼 카페의 내 컴퓨터와 회사 컴퓨터는 서로 다른 와이파이에 있어서 그대로는 닿지 않아요.</p>
+<figure>
+  <img src="assets/frame-2006.webp" alt="영상의 설명 그래픽 '와이파이 밖에서 접근'. 왼쪽 카페 상자 안의 내 컴퓨터에서 점선이 오른쪽 '같은 와이파이' 상자의 컴퓨터로 이어지는 그림">
+  <figcaption>
+    점선은 아직 닿지 않는 연결이에요. 같은 와이파이가 아니면 바로 등록이 안 돼요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=1206s" target="_blank" rel="noopener">영상 20:06에서 보기</a>
+  </figcaption>
+</figure>
+<p>이럴 때는 VPN(Virtual Private Network)으로 네트워크를 같은 곳처럼 묶어요. 발표자는 Tailscale을 쓰고 무료로 쓰고 있다고 해요. 몇 대까지 무료인지는 잘 모르지만, 많아지면 돈을 내도 아깝지 않을 만큼 좋아하는 서비스라고 해요. 컴퓨터들을 Tailscale에 등록해 두고 원격으로 붙고 싶을 때만 켜면 돼요. 아래 그래픽은 카페의 내 컴퓨터와 회사의 맥 미니 10대가 한 네트워크로 묶인 모습이에요.</p>
+<figure>
+  <img src="assets/frame-2013.webp" alt="영상의 설명 그래픽 '같은 네트워크로 묶기'. 카페 상자의 내 컴퓨터와 회사 상자의 맥 미니 10대가 하나의 큰 상자 안에 함께 들어간 그림">
+  <figcaption>
+    컴퓨터 무리를 Tailscale에 등록해 두면 어디서든 같은 네트워크로 인식돼 한 번에 접근할 수 있어요.
+    <a href="https://www.youtube.com/watch?v=1AlbTXb8oPc&amp;t=1213s" target="_blank" rel="noopener">영상 20:13에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>발표자가 모르겠다고 한 무료 범위는 Tailscale 요금 페이지에 나와 있어요. 개인용 Personal 플랜은 0달러이고, 사용자는 6명까지, 사용자 기기(컴퓨터, 휴대폰 등)는 개수 제한이 없어요. 혼자 맥 여러 대를 묶는 정도라면 무료로 충분해요. 요금 조건은 바뀔 수 있으니 가입할 때 다시 확인하는 게 좋아요.</p>
+  <p class="cite">출처: <a href="https://tailscale.com/pricing" target="_blank" rel="noopener">Tailscale 요금 페이지</a></p>
+</aside>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 이름이 잘못 받아적힌 곳이 많아요. 화면에 나온 글자를 기준으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>하더, 허더, 이더, 어더, 헐더, HR더</td><td>Herdr</td><td>화면의 herdr 명령과 공식 사이트</td></tr>
+      <tr><td>고스티, 코스</td><td>Ghostty</td><td>터미널 에뮬레이터</td></tr>
+      <tr><td>클로드 코덱스</td><td>Claude Code, Codex</td><td>에이전트 두 개를 붙여 읽은 것</td></tr>
+      <tr><td>스플릿 라이트</td><td>Split right</td><td>오른쪽 클릭 메뉴</td></tr>
+      <tr><td>리드미 2.md, 기초기화</td><td>README.md, git 초기화</td><td>화면의 요청 문장</td></tr>
+      <tr><td>피처 업데이트, 피 테스트</td><td>feat/update, feat/test</td><td>브랜치 이름</td></tr>
+      <tr><td>오퍼스 5.5, 오버스 5.5</td><td>Opus 5.5</td><td>패널 상태 줄</td></tr>
+      <tr><td>엑셉 에디온, 바이패스 퍼미션스</td><td>accept edits on, bypass permissions</td><td>Claude Code 권한 모드</td></tr>
+      <tr><td>넥스트 JS</td><td>Next.js</td><td></td></tr>
+      <tr><td>포트는 하이, F2</td><td>Effort는 High, effort</td><td>화면의 요청 문장과 영상 그래픽</td></tr>
+      <tr><td>컴패리 맥, 컴패니 맥</td><td>Company Mac</td><td>등록된 원격 컴퓨터 이름</td></tr>
+      <tr><td>SSC</td><td>SSH</td><td></td></tr>
+      <tr><td>머신스</td><td>Herdr machines</td><td></td></tr>
+      <tr><td>이골라이트</td><td>Ego Lite (추정)</td><td>화면에 ego-browser, Ego Lite 업데이트 알림이 보여요</td></tr>
+      <tr><td>리니어</td><td>Linear</td><td>이슈 관리 도구</td></tr>
+      <tr><td>엔드투 엔드, 엔드인드</td><td>E2E(엔드투엔드) 테스트</td><td></td></tr>
+      <tr><td>테일스캐이, 테일스케일</td><td>Tailscale</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-8"><dt>메타프롬프팅<span class="en">Meta-prompting</span></dt><dd>AI가 다른 AI에게 줄 프롬프트를 대신 써 주는 방식이에요. 여기서는 메인 Codex가 새 패널의 Claude Code에게 줄 작업 지시문을 직접 써서 넣어요.</dd></div>
+    <div class="g" id="g-1"><dt>오케스트레이션<span class="en">Orchestration</span></dt><dd>여러 에이전트에게 일을 나눠 주고, 진행을 지켜보고, 결과를 모으는 지휘 역할이에요. 이 영상에서는 그 지휘까지 메인 에이전트에게 맡겨요.</dd></div>
+    <div class="g" id="g-3"><dt>워크스페이스<span class="en">Workspace</span></dt><dd>Herdr에서 가장 큰 단위예요. 보통 저장소나 프로젝트 하나에 하나씩 두고, 그 안에 탭과 패널이 들어가요.</dd></div>
+    <div class="g" id="g-6"><dt>워크트리<span class="en">Git worktree</span></dt><dd>한 저장소에서 여러 브랜치를 서로 다른 폴더에 동시에 꺼내 두는 git 기능이에요. 에이전트 여러 개가 같은 저장소를 건드려도 파일이 섞이지 않아요.</dd></div>
+    <div class="g" id="g-2"><dt>터미널 에뮬레이터<span class="en">Terminal emulator</span></dt><dd>명령줄 화면을 띄워 주는 앱이에요. Ghostty, iTerm2 같은 것들이고, Herdr는 이 안에서 돌아가요.</dd></div>
+    <div class="g" id="g-4"><dt>패널<span class="en">Pane</span></dt><dd>탭 하나를 나눈 칸이에요. 칸마다 진짜 터미널이 하나씩 있어서 다른 에이전트를 띄울 수 있어요. 영상에서는 &#x27;페인&#x27;이라고도 불러요.</dd></div>
+    <div class="g" id="g-5"><dt>프리픽스<span class="en">Prefix key</span></dt><dd>단축키 앞에 먼저 누르는 키예요. Herdr 기본값은 Ctrl+B이고, 누른 다음 키가 터미널이 아니라 Herdr 동작으로 들어가요. tmux와 같은 방식이에요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g" id="g-10"><dt>bypass permissions<span class="en">Bypass permissions mode</span></dt><dd>Claude Code가 파일 수정이나 명령 실행 때마다 승인을 묻지 않고 바로 진행하는 모드예요. 빠르지만 그만큼 맡기는 범위가 넓어져요.</dd></div>
+    <div class="g"><dt>CPU</dt><dd>Central Processing Unit</dd></div>
+    <div class="g"><dt>E2E</dt><dd>End-to-End</dd></div>
+    <div class="g" id="g-9"><dt>effort<span class="en">Reasoning effort</span></dt><dd>모델이 답하기 전에 얼마나 오래, 깊게 생각할지 정하는 설정이에요. 높이면 결과가 좋아질 수 있지만 시간과 사용량이 더 들어요.</dd></div>
+    <div class="g"><dt>GPU</dt><dd>Graphics Processing Unit</dd></div>
+    <div class="g" id="g-7"><dt>Herdr 스킬<span class="en">Herdr agent skill</span></dt><dd>에이전트에게 herdr 명령으로 패널·워크트리·다른 에이전트를 다루는 법을 알려 주는 지침 파일이에요. 이게 있어야 말로 시킨 일을 에이전트가 직접 실행해요.</dd></div>
+    <div class="g"><dt>IP</dt><dd>Internet Protocol</dd></div>
+    <div class="g"><dt>MVP</dt><dd>Minimum Viable Product</dd></div>
+    <div class="g"><dt>SSH</dt><dd>Secure Shell</dd></div>
+    <div class="g" id="g-11"><dt>Tailscale<span class="en">Tailscale</span></dt><dd>여러 기기를 하나의 사설 네트워크로 묶어 주는 VPN 서비스예요. 서로 다른 와이파이에 있어도 같은 네트워크처럼 접속할 수 있어요.</dd></div>
+    <div class="g"><dt>TUI</dt><dd>Terminal User Interface</dd></div>
+    <div class="g"><dt>VPN</dt><dd>Virtual Private Network</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=1AlbTXb8oPc" target="_blank" rel="noopener">원본 영상 — 코드팩토리</a></li>
+    <li id="src-2"><a href="https://herdr.dev/" target="_blank" rel="noopener">Herdr 공식 사이트 (새 네이티브 앱)</a></li>
+    <li id="src-3"><a href="https://herdr.dev/tui/docs/install/" target="_blank" rel="noopener">Herdr TUI 문서 — Install</a></li>
+    <li id="src-4"><a href="https://herdr.dev/tui/docs/quick-start/" target="_blank" rel="noopener">Herdr TUI 문서 — Quick start</a></li>
+    <li id="src-5"><a href="https://herdr.dev/tui/docs/agent-skill/" target="_blank" rel="noopener">Herdr TUI 문서 — Agent skill file</a></li>
+    <li id="src-6"><a href="https://herdr.dev/tui/docs/connecting-machines/" target="_blank" rel="noopener">Herdr TUI 문서 — Connecting machines</a></li>
+    <li id="src-7"><a href="https://ghostty.org/docs/about" target="_blank" rel="noopener">Ghostty 공식 문서 — About</a></li>
+    <li id="src-8"><a href="https://tailscale.com/pricing" target="_blank" rel="noopener">Tailscale 요금 페이지</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 30일에 이 영상을 보고 정리했어요. 원본은 코드팩토리 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

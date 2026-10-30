@@ -1,0 +1,886 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>아스트라 + 블렌더 + 힉스필드로 AI 영상 비용 반토막 내기</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>아스트라 + 블렌더 + 힉스필드로 AI 영상 비용 반토막 내기</h1>
+  <p class="lede">재생성 횟수를 줄이는 프리비즈의 원리와 노하우 세 가지</p>
+  <div class="meta">
+    <span>브랜드 도적단 / 반토막AI</span><span class="dot">·</span>
+    <span>영상 12:45</span><span class="dot">·</span>
+    <span>읽는 데 약 13분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=lyNzEk8H9AM" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>AI(Artificial Intelligence) 영상 비용은 모델 단가보다 <span class="term" data-term="재생성" data-desc="원하는 결과가 나올 때까지 같은 장면을 다시 생성하는 것이에요. 영상 AI 비용이 불어나는 가장 큰 원인이에요." data-g="3">재생성</span> 횟수가 정해요. 한 컷에 42번을 뽑으면 단가를 반으로 깎아도 소용없어요.</li>
+    <li>Genjutsu가 한 번에 안 되는 건 원본 생김새, 넣은 이미지, 프롬프트가 한꺼번에 섞여서예요.</li>
+    <li><span class="term" data-term="프리비즈" data-en="Previs (Previsualization)" data-desc="촬영이나 생성 전에 장면을 미리 시각화해 두는 작업이에요. 이 영상에선 생김새를 걷어 내고 움직임·카메라·컷만 남긴 참고 영상을 말해요." data-g="1">프리비즈</span>로 생김새를 걷어 내고 움직임만 남기면 Seedance 2.5가 한 번에 맞혀요. 영상 속 예시는 77크레딧으로 끝났어요.</li>
+    <li>동작을 바꾸려면 블렌더 프리비즈를 Codex의 GPT-6 Astra에게 말로 시켜요. 고칠 때는 영상 <span class="term" data-term="크레딧" data-en="Credit" data-desc="Higgsfield 같은 생성 플랫폼에서 생성 한 번마다 차감되는 사용량 단위예요. 다시 뽑을 때마다 그대로 다시 나가요." data-g="2">크레딧</span>이 들지 않아요.</li>
+    <li>노하우는 셋이에요. 덩어리로만 만들기, 대상마다 다른 색 칠하기, 프리비즈·사진·글에 맥락 나눠 주기.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">비용은 재생성 횟수에서 나와요</a></li>
+    <li><a href="#s2">프리비즈로 맥락 걷어 내기</a></li>
+    <li><a href="#s3">블렌더 프리비즈와 노하우 세 가지</a></li>
+    <li><a href="#s4">원하는 동작으로 고치고 한 번에 생성하기</a></li>
+    <li><a href="#s5">블렌더가 아니어도 돼요</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>비용은 재생성 횟수에서 나와요</h2>
+<p>영상은 숫자로 시작해요. Higgsfield가 공개한 자료로 계산하면 10분짜리 AI 드라마 한 편에 약 2천만 원어치 크레딧이 들어요. 10초짜리 한 컷을 건지려고 42번을 생성했다는 뜻이에요. Seedance 2.5 기준으로 한 컷에 30만 원이 넘게 들어간 셈이죠.</p>
+<p>아래 화면 왼쪽 위의 '42번 생성' 라벨과 그 둘레에 깔린 썸네일들이 바로 그 시도 횟수를 보여 줘요. 가운데 한 장만 쓰이고 나머지는 버려진 결과예요.</p>
+<figure>
+  <img src="assets/frame-0039.webp" alt="'42번 생성' 라벨 아래 농구 골대 앞에 선 여성 영상 한 장을 수십 개의 작은 생성 결과 썸네일이 둘러싼 화면, 오른쪽에 발표자">
+  <figcaption>건진 건 한 컷인데 값은 42번 치렀어요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=39s" target="_blank" rel="noopener">영상 00:39에서 보기</a></figcaption>
+</figure>
+<p>그래서 많은 사람이 더 싼 모델이나 플랫폼을 찾아다녀요. 발표자는 이게 답이 아니라고 봐요. 단가를 반으로 깎아도 한 컷에 42번을 뽑으면 크레딧은 그대로 새요. 결국 줄여야 할 건 <b>재생성 횟수</b>예요.</p>
+
+<h3>Genjutsu가 한 번에 안 되는 이유</h3>
+<p>예시로 든 건 Higgsfield의 Genjutsu예요. 화면 왼쪽 위에 'HIGGSFIELD GENJUTSU' 카드가 있고, 오른쪽에 'TURN ONE VIDEO INTO MANY'라는 문구가 보여요. 인스타에서 자주 보이는 바이럴 쇼츠를 내 인물이나 제품으로 바꿔 생성하도록 미리 설정해 둔 기능이에요.</p>
+<figure>
+  <img src="assets/frame-0143.webp" alt="Higgsfield 화면. 왼쪽에 HIGGSFIELD GENJUTSU 카드와 Motion transfer, Objects swap 버튼, 오른쪽에 TURN ONE VIDEO INTO MANY 문구">
+  <figcaption>원본 영상 하나를 여러 버전으로 바꿔 준다는 기능이에요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=103s" target="_blank" rel="noopener">영상 01:43에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Higgsfield 공식 페이지는 Genjutsu를 두 모드로 설명해요. Motion Transfer는 원본의 움직임, 카메라, 타이밍을 남기고 장면을 참고 이미지로 다시 만들어요. Object Swap은 인물·옷·제품·장소 같은 일부만 바꾸고 나머지는 원본 그대로 둬요. 원본 영상은 4~30초, 참고 이미지는 최대 30장까지 넣을 수 있다고 적혀 있어요.</p>
+  <p class="cite">출처: <a href="https://higgsfield.ai/genjutsu" target="_blank" rel="noopener">Higgsfield Genjutsu 공식 페이지</a></p>
+</aside>
+<p>하지만 써 본 사람은 알듯이 한 번에 원하는 대로 나오지 않아요. 컷이 바뀌는 장면에선 조명과 체형이 달라져요. 아래 두 장이 동물 예시예요. 첫 장은 원본(털이 덥수룩하고 귀가 처진 개)과 넣은 이미지(분홍 선글라스를 쓴 조랑말)예요.</p>
+<figure>
+  <img src="assets/frame-0204.webp" alt="왼쪽 '원본'은 무대에서 춤추는 두 사람 사이의 회색 털 개, 오른쪽 '넣은 이미지'는 분홍 선글라스를 쓴 크림색 조랑말">
+  <figcaption>원본의 개를 오른쪽 조랑말로 바꾸려는 시도예요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=124s" target="_blank" rel="noopener">영상 02:04에서 보기</a></figcaption>
+</figure>
+<p>둘째 장 오른쪽 'Genjutsu 결과'를 보면 조랑말의 털과 선글라스는 들어갔지만 머리 모양과 귀가 원본 개를 따라갔어요. 발표자 말대로 귀가 큰 동물을 다른 동물로 바꿔도 원본의 귀를 따라가 버린 거예요.</p>
+<figure>
+  <img src="assets/frame-0207.webp" alt="왼쪽 '원본' 개, 오른쪽 '젠주츠 결과'는 크림색 털에 선글라스를 썼지만 개처럼 귀가 늘어진 동물">
+  <figcaption>넣은 이미지와 원본의 생김새가 섞인 결과예요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=127s" target="_blank" rel="noopener">영상 02:07에서 보기</a></figcaption>
+</figure>
+<p>원인은 <b>맥락이 섞이는 것</b>이에요. 원본 영상의 생김새, 내가 넣은 이미지, 프롬프트 세 가지가 한꺼번에 들어가니 AI가 무엇을 정답으로 삼을지 몰라 섞어 버려요. 그래서 될 때까지 다시 뽑게 되고, 그게 다 비용이 돼요.</p>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=146s" target="_blank" rel="noopener">02:26</a>
+  <h2>프리비즈로 맥락 걷어 내기</h2>
+<p>발표자는 많은 사람이 프리비즈를 오해한다고 말해요. 프리비즈가 꼭 블렌더로 만드는 회색 영상은 아니에요. 프리비주얼라이제이션의 줄임말로, 영화에서 촬영 전에 카메라와 동선을 미리 그려 보듯 <b>미리 시각화하는 장치</b>예요. 어떤 방식을 쓰든 필요 없는 맥락은 걷어 내고 원하는 맥락만 남기면 프리비즈예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Blender Studio도 프리비즈를 '촬영 전에 장면을 시각화하려는 모든 기법'이라고 넓게 정의해요. 목적은 판단하고 고치기 쉬운 더 싼 모형을 먼저 만드는 거라고 해요. 발표자가 말하는 '도구보다 원리'와 같은 이야기예요.</p>
+  <p class="cite">출처: <a href="https://studio.blender.org/blog/charge-previsualization/" target="_blank" rel="noopener">Blender Studio — Charge previsualization</a></p>
+</aside>
+
+<h3>Wan 3.0으로 원본을 마네킹 영상으로</h3>
+<p>가장 빠른 방법은 영상 AI로 원본을 바로 프리비즈로 바꾸는 거예요. 화면 왼쪽 위 'Wan 3.0' 라벨 아래 Higgsfield 생성 화면이 보여요. 가운데 하이라이트된 프롬프트가 핵심이에요.</p>
+<figure>
+  <img src="assets/frame-0302.webp" alt="Higgsfield에서 Wan 3.0을 고른 생성 화면. 'Turn Video 1 into a clean 3D previs render. Change only how things look; keep every motion exactly as it is.' 프롬프트가 강조되어 있음">
+  <figcaption>'겉모습만 바꾸고 움직임은 그대로 두라'는 한 줄이에요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=182s" target="_blank" rel="noopener">영상 03:02에서 보기</a></figcaption>
+</figure>
+<pre><code>Turn Video 1 into a clean 3D previs render.
+Change only how things look; keep every motion exactly as it is.</code></pre>
+<p>뜻은 '영상 1을 깔끔한 3D 프리비즈 렌더로 바꾸되, 겉모습만 바꾸고 움직임은 하나도 건드리지 마라'예요.</p>
+<p>그러면 외모도 옷도 배경도 없는 마네킹 영상이 나와요. 남는 건 움직임, 카메라, 컷뿐이라 섞일 생김새가 없어요. 여기에 얼굴·제품·장소 사진을 따로 붙이고 '이 영상은 움직임만 참고하고 겉모습은 가져오지 마라'고 적은 뒤 Seedance 2.5로 생성해요.</p>
+<p>아래 세 칸이 그 흐름이에요. 왼쪽 원본에서 덩크하는 사람이, 가운데 프리비즈에선 파란 마네킹이 되고, 오른쪽 결과에선 분홍 상의와 갈색 치마를 입은 다른 인물이 같은 자세로 점프해요.</p>
+<figure>
+  <img src="assets/frame-0326.webp" alt="세 칸 비교. '원본' 농구 골대 앞 점프 장면, '프리비즈' 파란·주황 마네킹이 같은 자세로 점프, '결과' 분홍 상의와 갈색 치마 차림 여성이 공을 들고 점프">
+  <figcaption>움직임은 원본, 생김새는 넣은 사진이에요. 둘이 섞이지 않았어요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=206s" target="_blank" rel="noopener">영상 03:26에서 보기</a></figcaption>
+</figure>
+<p>비용도 비교했어요. Genjutsu로 원하는 결과가 나올 때까지 돌리면 200~300크레딧을 쏟아부었을 거라고 해요. 이 방식은 프리비즈 변환 14크레딧, Seedance 생성 63크레딧으로 합쳐서 77크레딧이에요. 화면에도 '77 크레딧' 옆에 프리비즈와 Seedance 2.5 결과가 나란히 있어요.</p>
+<figure>
+  <img src="assets/frame-0350.webp" alt="'77 크레딧' 큰 글자 옆에 '프리비즈' 파란 마네킹과 'Seedance 2.5' 결과 여성 이미지가 나란히 놓인 화면">
+  <figcaption>정해진 비용으로 한 번에 끝났다는 점이 핵심이에요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=230s" target="_blank" rel="noopener">영상 03:50에서 보기</a></figcaption>
+</figure>
+<figure class="diagram">
+  <svg viewBox="0 0 560 190" role="img" aria-label="Genjutsu 반복 생성 200~300크레딧과 프리비즈 방식 77크레딧(변환 14 + 생성 63) 비교 막대">
+    <line class="axis" x1="150" y1="20" x2="150" y2="150"/>
+    <text x="140" y="60" text-anchor="end">Genjutsu 반복</text>
+    <rect class="bar bad" x="150" y="42" width="240" height="26"/>
+    <rect class="box" x="390" y="42" width="120" height="26"/>
+    <text x="390" y="34" text-anchor="middle" class="sub">200</text>
+    <text x="510" y="34" text-anchor="middle" class="sub">300</text>
+    <text x="140" y="120" text-anchor="end">프리비즈 방식</text>
+    <rect class="c2 cell" x="150" y="102" width="17" height="26"/>
+    <rect class="bar ok" x="167" y="102" width="76" height="26"/>
+    <text x="253" y="120">77 (14 + 63)</text>
+    <text x="150" y="172" class="sub">짧은 칸: 프리비즈 변환 14 · 긴 칸: Seedance 생성 63 · 단위: 크레딧</text>
+  </svg>
+  <figcaption>영상 03:20 부근에서 말한 숫자만 같은 축척으로 그렸어요. 200~300은 발표자의 어림값이라 200 이후는 빈 칸으로 표시했어요.</figcaption>
+</figure>
+
+<h3>영상 AI 프리비즈의 한계</h3>
+<p>문제는 고칠 수 없다는 거예요. 원본에서 여자가 점프하며 손가락 욕을 하는데, 발표자는 그 손에 선글라스를 들게 하고 싶어 해요. 착지해서는 선글라스를 쓰고 어깨를 털며 잘난 척하는 장면으로요. 원본에 없는 움직임이라 프리비즈부터 바꿔야 해요. 영상 AI로 고칠 때마다 영상 크레딧을 또 쓰면 프리비즈를 만드는 의미가 없어요.</p>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=267s" target="_blank" rel="noopener">04:27</a>
+  <h2>블렌더 프리비즈와 노하우 세 가지</h2>
+<p>그래서 블렌더를 써요. 블렌더를 직접 다룰 필요는 없어요. ChatGPT 앱 안의 Codex에서 GPT-6 Astra에게 말로 시키면 알아서 만들어 줘요. 고칠 때도 영상 크레딧은 안 들고 Astra의 <span class="term" data-term="토큰" data-en="Token" data-desc="언어 모델이 글을 읽고 쓰는 단위예요. 블렌더 프리비즈를 고칠 때는 영상 크레딧 대신 Astra의 토큰만 조금 써요." data-g="4">토큰</span>만 조금 써요.</p>
+<p>다만 '블렌더로 프리비즈 만들어 줘'라고만 하면 토큰은 토큰대로 쓰고 Seedance는 계속 다시 뽑게 된다고 해요. 그래서 발표자가 테스트하며 정리한 노하우 세 가지를 무료 <span class="term" data-term="스킬" data-en="Agent Skill" data-desc="Codex나 ChatGPT가 특정 작업에서 꺼내 쓰는 지시문·자료 묶음이에요. 발표자는 프리비즈 노하우를 스킬로 만들어 나눠 줘요." data-g="5">스킬</span>에 넣어 뒀어요.</p>
+
+<h3>스킬 설치와 첫 요청</h3>
+<p>설치는 설명란에서 받은 스킬 파일을 Codex 대화창에 끌어다 놓고 '이 스킬 설치해 줘'라고 하면 끝이에요. 아래 화면 오른쪽 아래 모델 선택란에 'GPT-6 Astra Ultra'가 보여요. 영상에서 '아스트라'라고 부르는 게 이 모델이에요.</p>
+<figure>
+  <img src="assets/frame-0515.webp" alt="왼쪽 위 '스킬 설치' 라벨, 검은 Codex 대화창 아래 입력칸, 오른쪽 모델 선택에 GPT-6 Astra Ultra">
+  <figcaption>설치도 대화로 해요. 따로 설정 화면을 열지 않아요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=315s" target="_blank" rel="noopener">영상 05:15에서 보기</a></figcaption>
+</figure>
+<p>새 채팅을 열고 원본 영상과 함께 나중에 최종 영상을 만들 때 쓸 사진도 같이 올려요. 발표자는 앞·옆·뒤 각도가 담긴 얼굴 시트, 앞뒤 <span class="term" data-term="착장 시트" data-desc="한 인물의 옷차림을 앞뒤 여러 각도로 모아 둔 참고 이미지예요. 생성할 때 옷과 체형이 흔들리지 않게 잡아 줘요." data-g="7">착장 시트</span>, 농구장 사진을 넣었어요.</p>
+<figure>
+  <img src="assets/frame-0529.webp" alt="세 묶음의 사진. '얼굴 시트'는 같은 여성의 정면·측면·뒷모습, '착장 시트'는 분홍 상의와 갈색 치마의 앞뒤, '농구장 사진'은 야간 농구 골대">
+  <figcaption>나중에 넣을 사진을 미리 알려 줘야 색 구분(노하우 2)을 할 수 있어요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=329s" target="_blank" rel="noopener">영상 05:29에서 보기</a></figcaption>
+</figure>
+<p>그리고 스킬을 불러 '이 영상을 프리비즈로 만들어 줘. 여자는 이 얼굴·착장 시트로, 남자 수비수는 다른 남자로, 배경은 이 농구장으로 바꿀 거야'라고 말해요. Astra는 원본을 프레임 단위로 쪼개서 몇 초에 누가 어디서 어디로 움직이고 카메라가 어떻게 따라가는지 읽어 내요. 그다음 블렌더로 프리비즈 영상까지 만들어요. 아래가 Astra가 만든 블렌더 파일을 연 화면이에요.</p>
+<figure>
+  <img src="assets/frame-0557.webp" alt="블렌더 창. 회색 바닥 위에 작은 회색 인물 덩어리 하나가 서 있고 아래에 타임라인이 있음">
+  <figcaption>사람이 손대지 않고 Astra가 만든 파일이에요. 세 노하우가 이 안에 다 들어 있어요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=357s" target="_blank" rel="noopener">영상 05:57에서 보기</a></figcaption>
+</figure>
+
+<h3>노하우 1 · 빼기</h3>
+<p>AI가 블렌더를 잘 다룬다니 프리비즈를 고퀄리티로 만들고 싶어지지만, 그러면 Astra 토큰만 많이 들어요. 오히려 생김새를 넣지 않아야 해요. 아래 화면처럼 사람은 머리·상체·하체 세 덩어리로만 만들어요.</p>
+<figure>
+  <img src="assets/frame-0619.webp" alt="회색 블렌더 화면의 세로로 긴 덩어리 하나. 위에서부터 '머리', '상체', '하체' 라벨">
+  <figcaption>얼굴도 손가락도 없어요. 자리와 자세만 알려 주면 돼요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=379s" target="_blank" rel="noopener">영상 06:19에서 보기</a></figcaption>
+</figure>
+<p>제품도 실제 크기 정도의 상자 하나면 돼요. 이유는 Seedance에 있어요. 어설프게 자세히 만들면 Seedance가 그 형태를 그대로 따라가 버려요. 대충 만든 손 모양이 결과에 그대로 찍히는 식이에요.</p>
+<figure>
+  <img src="assets/frame-0622.webp" alt="회색 바닥 위 작은 갈색 직육면체에 '제품' 라벨, 오른쪽에 보라색 큰 덩어리 일부">
+  <figcaption>제품은 크기만 맞춘 상자예요. 생김새는 나중에 사진이 정해요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=382s" target="_blank" rel="noopener">영상 06:22에서 보기</a></figcaption>
+</figure>
+
+<h3>노하우 2 · 색으로 표시</h3>
+<p>덩어리만 봐서는 누가 누군지 알 수 없어요. 그래서 바꿀 대상마다 <span class="term" data-term="더미" data-en="Dummy" data-desc="실제 대상 대신 자리와 크기만 잡아 두는 단순한 덩어리예요. 사람은 머리·상체·하체, 제품은 상자로 만들어요." data-g="6">더미</span>에 다른 색을 칠해요. 아래 화면에서 보라 덩어리에 '여자', 노란 덩어리에 '수비수', 뒤쪽 청록 덩어리들에 '관중' 라벨이 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-0653.webp" alt="블렌더 농구장. 보라색 인물 덩어리에 '여자', 노란색에 '수비수', 뒤쪽 여러 청록색 덩어리에 '관중' 라벨">
+  <figcaption>색이 곧 '이 자리에 어느 사진을 입힐지'를 정하는 표시예요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=413s" target="_blank" rel="noopener">영상 06:53에서 보기</a></figcaption>
+</figure>
+<p>앞에서 나중에 넣을 사진을 미리 알려 준 게 이 때문이에요. 얼굴·착장 시트를 입힐 여자는 보라, 다른 사람으로 바꿀 수비수는 노랑, 관중은 청록으로 따로 칠해 둬야 Seedance가 어느 사진을 누구에게 입힐지 헷갈리지 않아요. 한 가지 더, 그 자리에 실제로 들어갈 색과 겹치면 안 돼요. 노란 옷을 입을 사람을 노랑으로 칠하면 색 표시인지 옷 색인지 구분이 안 되니까요.</p>
+
+<h3>노하우 3 · 나누기</h3>
+<p>마지막으로 카메라를 넣을 때 세 번째 노하우가 나와요. 맥락마다 맡을 곳을 나눠 주는 거예요. 영상에선 말로만 설명해서 아래에 그려 봤어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="프리비즈는 어디에·어느 각도로·언제, 사진은 얼굴·옷, 텍스트는 손·표정·질감을 맡고 세 가지가 따로 Seedance로 들어가는 그림">
+    <defs><marker id="arrow-split" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="c1 cell" x="20" y="20" width="180" height="86" rx="10"/>
+    <text x="110" y="52" text-anchor="middle">프리비즈</text>
+    <text x="110" y="78" text-anchor="middle" class="sub">어디에 · 어느 각도로 · 언제</text>
+    <rect class="c2 cell" x="230" y="20" width="180" height="86" rx="10"/>
+    <text x="320" y="52" text-anchor="middle">사진</text>
+    <text x="320" y="78" text-anchor="middle" class="sub">얼굴 · 옷</text>
+    <rect class="c3 cell" x="440" y="20" width="180" height="86" rx="10"/>
+    <text x="530" y="52" text-anchor="middle">텍스트(프롬프트)</text>
+    <text x="530" y="78" text-anchor="middle" class="sub">손 · 표정 · 질감</text>
+    <path class="line" d="M110 108 L290 162" marker-end="url(#arrow-split)"/>
+    <path class="line" d="M320 108 L320 160" marker-end="url(#arrow-split)"/>
+    <path class="line" d="M530 108 L350 162" marker-end="url(#arrow-split)"/>
+    <rect class="accent" x="230" y="164" width="180" height="50" rx="10"/>
+    <text x="320" y="194" text-anchor="middle">Seedance 2.5</text>
+  </svg>
+  <figcaption>세 칸이 겹치지 않아야 해요. 한 정보를 여러 곳에 섞어 주면 Genjutsu 때처럼 AI가 다시 섞어 버려요.</figcaption>
+</figure>
+<p>프리비즈에는 위치, 각도, 타이밍만 담고 얼굴과 옷은 사진이, 손·표정·질감은 텍스트가 맡아요. 이렇게 완성된 프리비즈를 원본과 나란히 보면 카메라와 동선은 물론 관중이 서 있던 자리까지 그대로 따라왔다고 해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>OpenAI 문서는 스킬을 ChatGPT와 Codex에 작업별 능력을 더하는 묶음이라고 설명해요. 지시문, 자료, 필요하면 스크립트까지 담은 폴더이고, 안에 <code>SKILL.md</code> 파일이 있어요. 평소엔 이름과 설명만 보고 있다가 쓸 때가 되면 전체를 읽어요. 그래서 세 노하우를 스킬에 넣어 두면 매번 프롬프트로 설명하지 않아도 Astra가 덩어리·색·나누기 규칙을 따라요.</p>
+  <p class="cite">출처: <a href="https://learn.chatgpt.com/docs/build-skills" target="_blank" rel="noopener">OpenAI 문서 — Build skills</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=455s" target="_blank" rel="noopener">07:35</a>
+  <h2>원하는 동작으로 고치고 한 번에 생성하기</h2>
+<p>여기부터가 블렌더를 쓰는 진짜 이유예요. 원본과 다른 동작을 만들 수 있거든요. 프리비즈가 완성되면 Astra가 '고칠 곳이 있나요?'라고 물어요. 바꾸고 싶은 부분을 말로 묘사하면 돼요.</p>
+<p>아래 화면 위쪽에 Astra가 정리한 색 규칙(보라=여자, 노랑=수비수, 청록=관중·마지막 통행인, 연두=공)과 질문이 보여요. 그 아래 입력칸에 발표자가 선글라스 사진을 붙이고 '점프할 때 주머니에서 이 선글라스를 꺼내 들고, 착지해서 쓰고 어깨를…'이라고 쓰는 중이에요.</p>
+<figure>
+  <img src="assets/frame-0757.webp" alt="Codex 대화창. 위에 '보라 = 여자 · 노랑 = 수비수 · 청록 = 관중·마지막 통행인 · 연두 = 공입니다'와 '고칠 곳이 있나요?', 아래 입력칸에 선글라스 사진과 '점프할 때 주머니에서 이 선글라스를 꺼내 들고, 착지해서 쓰고 어깨를' 문장">
+  <figcaption>고치는 요청도 평소 말투 그대로예요. 화면 위 '반토막 프리비즈 스킬'이 이 대화를 이끌어요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=477s" target="_blank" rel="noopener">영상 07:57에서 보기</a></figcaption>
+</figure>
+<p>Astra는 선글라스 실제 크기만 한 번 물어봐요. 그리고 앞부분은 그대로 두고 점프하는 손과 착지 뒤 동작만 바꾼 새 버전을 내요. 아래 '수정 전'과 '수정 후'를 비교하면 수정 후 보라 덩어리 손 근처에 흰 테두리로 표시한 작은 주황 상자가 생겼어요. 그게 선글라스예요.</p>
+<figure>
+  <img src="assets/frame-0808.webp" alt="두 칸 비교. '수정 전'은 보라색 인물 덩어리와 연두색 공, '수정 후'는 같은 장면에서 보라 덩어리 손 위쪽에 흰 테두리로 강조된 작은 주황 상자가 추가됨">
+  <figcaption>바뀐 건 손에 든 상자 하나예요. 나머지 동선은 그대로예요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=488s" target="_blank" rel="noopener">영상 08:08에서 보기</a></figcaption>
+</figure>
+<p>그런데 주머니에서 꺼낼 땐 선글라스가 접혀 있다가 착지해서 펴야 해요. 그래서 '꺼낼 때는 접힌 상태로 들고 있다가 착지해서 펼쳐 쓰게 해 줘'라고 한 줄 더 고치고 접힌 선글라스 사진도 넣었어요. 아래 'v8' 화면 아래쪽 흰 테두리 안에 접힌 크기 그대로 줄어든 주황 상자가 보여요.</p>
+<figure>
+  <img src="assets/frame-0830.webp" alt="왼쪽 위 'v8' 라벨. 농구 골대 아래 노랑·보라 덩어리 사이, 흰 테두리 안에 작은 주황 상자">
+  <figcaption>여덟 번째 버전까지 고쳤지만 영상 크레딧은 한 번도 쓰지 않았어요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=510s" target="_blank" rel="noopener">영상 08:30에서 보기</a></figcaption>
+</figure>
+<p>여기서 고치는 건 영상 크레딧이 들지 않아요. 마음에 들 때까지 한 줄씩 고치면 돼요. 영상 크레딧은 마지막 생성 한 번에만 써요.</p>
+
+<h3>완성 프롬프트와 생성</h3>
+<p>최종 확정하면 Astra가 생성할 때 이미지를 몇 번째로 올릴지와 그대로 붙여 넣을 완성 프롬프트를 써 줘요. 아래는 그 프롬프트 일부예요. 'KEEP CONSISTENT' 아래에 얼굴·머리·옷은 @face_model과 @outfit_model을 따르고, 선글라스는 @prod_sunglasses 그대로, 5.05초까지 접혀 있다가 착지 뒤 펴진다는 규칙이 적혀 있어요. 아래쪽 REFERENCES에는 @Image1, @Image2, @Image3이 각각 무엇을 맡는지 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0841.webp" alt="영어 프롬프트 화면. KEEP CONSISTENT 목록(얼굴·옷은 @face_model, @outfit_model, 선글라스는 @prod_sunglasses, 5.05초까지 접힘, 컷 없는 한 장면, 같은 조명, no morphing), '③ 매그니픽판' 제목, REFERENCES의 @Image1~3 설명">
+  <figcaption>이미지마다 '여기서 무엇만 가져가라'를 못 박아요. 나누기를 글로 옮긴 거예요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=521s" target="_blank" rel="noopener">영상 08:41에서 보기</a></figcaption>
+</figure>
+<p>화면에 '③ 매그니픽판'이라는 제목도 보여요. 영상에서 따로 설명하진 않지만 같은 결과를 다른 플랫폼에서 돌릴 때 쓸 버전을 함께 써 주는 것으로 보여요.</p>
+<p>이제 Higgsfield로 와서 고친 프리비즈, 얼굴 시트, 착장 시트, 선글라스 사진 두 장, 농구장 사진을 순서대로 올리고 프롬프트를 붙여요. 아래 화면 위쪽 썸네일 줄이 그 이미지들이고, 모델은 Seedance 2.5예요. 프롬프트 본문에 'deepcyan figures are spectators… the lime lump is the basketball; the orange block is the sunglasses'처럼 색마다 무엇인지 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0903.webp" alt="Higgsfield 생성 화면. 위에 프리비즈, 얼굴 시트, 착장 시트, 선글라스 사진 두 장, 농구장 사진 썸네일. 아래 프롬프트에 청록=관중, 라임=농구공, 주황=선글라스 설명. 모델 Seedance 2.5">
+  <figcaption>노하우 2에서 칠한 색이 여기서 쓰여요. 색이 사진과 프리비즈 속 자리를 이어 줘요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=543s" target="_blank" rel="noopener">영상 09:03에서 보기</a></figcaption>
+</figure>
+<p>프롬프트에 정리된 색의 뜻을 표로 옮기면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>프리비즈 색</th><th>대상</th><th>입힐 자료</th></tr></thead>
+    <tbody>
+      <tr><td>보라</td><td>주인공 여자</td><td>얼굴 시트, 착장 시트</td></tr>
+      <tr><td>노랑</td><td>남자 수비수</td><td>다른 남자로 바꿈</td></tr>
+      <tr><td>청록</td><td>관중, 마지막 통행인</td><td>따로 지정 없음</td></tr>
+      <tr><td>연두(라임)</td><td>농구공</td><td>—</td></tr>
+      <tr><td>주황</td><td>선글라스</td><td>선글라스 사진, 접힌 선글라스 사진</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>카메라와 동선은 '프리비즈를 그대로 따르라'는 한 줄로 끝내고, 손동작처럼 프리비즈가 못 담는 것만 따로 적어요. 이미지 순서가 바뀌어 태그가 어긋났다면 손으로 한 번 점검한 뒤 생성을 눌러요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Higgsfield에는 Seedance 2.5 Draft Mode도 있어요. 480p 미리보기를 먼저 뽑아 고른 뒤 그 테이크만 1080p로 본 생성하는 방식이에요. 영상 08:19 부근 Codex 화면에도 '480p 드래프트로 먼저 확인하고, 본 생성은 한 번만 진행하세요'라는 안내가 지나가요. 본 생성 전에 한 번 더 확인하고 싶을 때 쓸 수 있어요.</p>
+  <p class="cite">출처: <a href="https://higgsfield.ai/creator-hub/changelog#seedance-2-5-draft-mode" target="_blank" rel="noopener">Higgsfield Changelog — Seedance 2.5 Draft Mode</a></p>
+</aside>
+
+<h3>결과</h3>
+<p>아래 세 칸에서 원본의 동선과 카메라 각도는 그대로예요. 가운데 프리비즈의 보라 덩어리 손에 주황 조각이 있고, 오른쪽 결과에서 착장 시트의 옷을 입은 여자가 같은 자리에서 손을 얼굴 쪽으로 가져가요. 발표자는 원본에 없던 선글라스 쓰는 장면이 들어갔고, 주황 상자 자리에 실제 선글라스가 잘 들어갔다고 정리해요.</p>
+<figure>
+  <img src="assets/frame-0936.webp" alt="세 칸 비교. '원본' 남자 수비수 앞에서 점프한 여자, '프리비즈' 노란 덩어리와 손에 주황 조각을 든 보라 덩어리, '결과' 분홍 상의와 갈색 치마의 여자가 골대 아래 착지해 손을 얼굴로 가져가는 장면">
+  <figcaption>움직임은 원본, 동작 변경은 프리비즈, 생김새는 사진이 맡았어요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=576s" target="_blank" rel="noopener">영상 09:36에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=585s" target="_blank" rel="noopener">09:45</a>
+  <h2>블렌더가 아니어도 돼요</h2>
+<p>발표자의 결론은 이래요. 비용은 모델 값이 아니라 재생성 없이 한 번에 뽑을 수 있느냐에 달려 있어요. 프리비즈가 왜 통하는지 알면 꼭 블렌더가 아니어도 돼요. 아래 화면은 같은 원본을 세 가지 방식으로 프리비즈로 만든 거예요. 왼쪽 '영상 AI'는 마네킹 영상, 가운데 'Blender'는 색 덩어리, 오른쪽은 책장 앞에서 폰으로 직접 찍은 장면이에요.</p>
+<figure>
+  <img src="assets/frame-1001.webp" alt="세 칸. '영상 AI' 라벨의 회색 마네킹 농구 장면, 'Blender' 라벨의 노랑·보라·청록 덩어리 장면, 오른쪽은 실내에서 흐리게 찍힌 사진 일부">
+  <figcaption>도구는 달라도 '생김새를 걷어 내고 움직임만 남긴다'는 점은 같아요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=601s" target="_blank" rel="noopener">영상 10:01에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>상황</th><th>프리비즈 만드는 방법</th></tr></thead>
+    <tbody>
+      <tr><td>원본 연출을 그대로 쓸 때</td><td>영상 AI(Wan 3.0 등)로 원본을 바로 프리비즈로 바꿔요</td></tr>
+      <tr><td>카메라나 컷, 동작을 바꾸고 싶을 때</td><td>블렌더로 만들어요 (Astra에게 말로 시켜요)</td></tr>
+      <tr><td>그 밖에</td><td>폰으로 직접 찍어서 만들어도 돼요</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3>이미지에도 같은 원리</h3>
+<p>이 원리는 이미지에도 그대로 통해요. 초안 단계에선 라벨이나 얼굴이 바뀌어도 신경 쓰지 않고 연출만 보고 뽑아요. 마음에 드는 연출이 나오면 그걸 프리비즈 이미지로 바꿔요. 아래 왼쪽 '프리비즈'는 차 보닛에 누운 회색 인물 모형이고, 오른쪽 '최종'은 제품·모델·배경·무드 이미지를 넣어 <span class="term" data-term="실사화" data-desc="모형이나 초안 이미지를 실제 사진처럼 바꾸는 작업이에요. 구도는 그대로 두고 생김새만 넣은 이미지로 채워요." data-g="8">실사화</span>한 결과예요.</p>
+<figure>
+  <img src="assets/frame-1033.webp" alt="두 칸. '프리비즈'는 회색으로 된 차 보닛 위에 누워 선글라스를 만지는 인물 모형, '최종'은 같은 자세로 크림색 자동차 보닛에 누운 분홍 티셔츠와 청록 스타킹 차림 여성">
+  <figcaption>구도와 포즈는 프리비즈가, 생김새는 넣은 이미지가 정했어요. 영상과 같은 나누기예요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=633s" target="_blank" rel="noopener">영상 10:33에서 보기</a></figcaption>
+</figure>
+
+<h3>프리비즈로 안 되는 것</h3>
+<p>한계도 분명히 말해요. 생김새는 결국 넣는 이미지가 정해요. 아래 화면처럼 프리비즈 옆에 들어갈 얼굴·착장 이미지가 좋아야 결과도 좋아요. 무료 스킬은 어떤 이미지를 준비할지까지는 정리해 주지만, 제품·모델·배경 이미지를 컷마다 똑같이 나오게 만드는 건 직접 해야 해요.</p>
+<figure>
+  <img src="assets/frame-1041.webp" alt="왼쪽 '프리비즈' 색 덩어리 장면, 가운데 '넣는 이미지'의 얼굴과 착장 사진, 오른쪽 발표자">
+  <figcaption>프리비즈는 자리와 움직임만 정해요. 얼굴과 옷의 품질은 넣는 이미지 몫이에요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=641s" target="_blank" rel="noopener">영상 10:41에서 보기</a></figcaption>
+</figure>
+<p>상황마다 응용할 점도 있어요. 제품이 한 바퀴 도는 영상이면 프리비즈 상자 앞뒤를 다른 색으로 칠해야 회전이 정확히 읽혀요. 아래 상자는 면마다 연두와 분홍으로 나뉘어 있어요. 또 앞모습 사진만 넣으면 Seedance가 본 적 없는 뒷모습을 지어내니 뒷모습 사진도 같이 넣어야 해요.</p>
+<figure>
+  <img src="assets/frame-1105.webp" alt="회색 배경 위 세로로 긴 상자. 한쪽 면은 연두색, 다른 면들은 분홍과 연분홍으로 칠해짐">
+  <figcaption>앞뒤 색이 달라야 '돌아간다'는 게 Seedance에 전달돼요. <a href="https://www.youtube.com/watch?v=lyNzEk8H9AM&amp;t=665s" target="_blank" rel="noopener">영상 11:05에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 도구 이름이 여러 가지로 잘못 받아적혔어요. 화면에 나온 이름으로 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>픽스필드, 핵스필드</td><td>Higgsfield</td><td>AI 영상·이미지 생성 플랫폼</td></tr>
+      <tr><td>실텐스, 시텐스, 시댄스, 실댄스</td><td>Seedance 2.5</td><td>화면의 모델 선택란 표기</td></tr>
+      <tr><td>젠주츠, 젠즈</td><td>Genjutsu</td><td>화면의 &#x27;HIGGSFIELD GENJUTSU&#x27; 표기</td></tr>
+      <tr><td>완짝0</td><td>Wan 3.0</td><td>화면 왼쪽 위 라벨</td></tr>
+      <tr><td>아스트라</td><td>GPT-6 Astra</td><td>Codex 모델 선택란의 &#x27;GPT-6 Astra Ultra&#x27;</td></tr>
+      <tr><td>채 GPT</td><td>ChatGPT</td><td></td></tr>
+      <tr><td>4두 번</td><td>42번</td><td>00:00 블록의 42번 생성</td></tr>
+      <tr><td>남자 수비즈</td><td>남자 수비수</td><td></td></tr>
+      <tr><td>용구장</td><td>농구장</td><td></td></tr>
+      <tr><td>프리비지, 프리뷰즈</td><td>프리비즈</td><td></td></tr>
+      <tr><td>바이러럴</td><td>바이럴</td><td></td></tr>
+      <tr><td>컵마다</td><td>컷마다</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-6"><dt>더미<span class="en">Dummy</span></dt><dd>실제 대상 대신 자리와 크기만 잡아 두는 단순한 덩어리예요. 사람은 머리·상체·하체, 제품은 상자로 만들어요.</dd></div>
+    <div class="g" id="g-5"><dt>스킬<span class="en">Agent Skill</span></dt><dd>Codex나 ChatGPT가 특정 작업에서 꺼내 쓰는 지시문·자료 묶음이에요. 발표자는 프리비즈 노하우를 스킬로 만들어 나눠 줘요.</dd></div>
+    <div class="g" id="g-8"><dt>실사화</dt><dd>모형이나 초안 이미지를 실제 사진처럼 바꾸는 작업이에요. 구도는 그대로 두고 생김새만 넣은 이미지로 채워요.</dd></div>
+    <div class="g" id="g-3"><dt>재생성</dt><dd>원하는 결과가 나올 때까지 같은 장면을 다시 생성하는 것이에요. 영상 AI 비용이 불어나는 가장 큰 원인이에요.</dd></div>
+    <div class="g" id="g-7"><dt>착장 시트</dt><dd>한 인물의 옷차림을 앞뒤 여러 각도로 모아 둔 참고 이미지예요. 생성할 때 옷과 체형이 흔들리지 않게 잡아 줘요.</dd></div>
+    <div class="g" id="g-2"><dt>크레딧<span class="en">Credit</span></dt><dd>Higgsfield 같은 생성 플랫폼에서 생성 한 번마다 차감되는 사용량 단위예요. 다시 뽑을 때마다 그대로 다시 나가요.</dd></div>
+    <div class="g" id="g-4"><dt>토큰<span class="en">Token</span></dt><dd>언어 모델이 글을 읽고 쓰는 단위예요. 블렌더 프리비즈를 고칠 때는 영상 크레딧 대신 Astra의 토큰만 조금 써요.</dd></div>
+    <div class="g" id="g-1"><dt>프리비즈<span class="en">Previs (Previsualization)</span></dt><dd>촬영이나 생성 전에 장면을 미리 시각화해 두는 작업이에요. 이 영상에선 생김새를 걷어 내고 움직임·카메라·컷만 남긴 참고 영상을 말해요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=lyNzEk8H9AM" target="_blank" rel="noopener">원본 영상 — 브랜드 도적단 / 반토막AI</a></li>
+    <li id="src-2"><a href="https://higgsfield.ai/genjutsu" target="_blank" rel="noopener">Higgsfield Genjutsu 공식 페이지</a></li>
+    <li id="src-3"><a href="https://studio.blender.org/blog/charge-previsualization/" target="_blank" rel="noopener">Blender Studio — Charge previsualization</a></li>
+    <li id="src-4"><a href="https://learn.chatgpt.com/docs/build-skills" target="_blank" rel="noopener">OpenAI 문서 — Build skills</a></li>
+    <li id="src-5"><a href="https://higgsfield.ai/creator-hub/changelog#seedance-2-5-draft-mode" target="_blank" rel="noopener">Higgsfield Changelog — Seedance 2.5 Draft Mode</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 30일에 이 영상을 보고 정리했어요. 원본은 브랜드 도적단 / 반토막AI 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

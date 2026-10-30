@@ -1,0 +1,915 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spacetime으로 Next.js 좌석 예약 앱 만들기</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Spacetime으로 Next.js 좌석 예약 앱 만들기</h1>
+  <p class="lede">DB와 서버 로직을 한곳에 두면 동시 예약과 실시간 갱신이 어떻게 풀리는지 봐요</p>
+  <div class="meta">
+    <span>ByteGrad</span><span class="dot">·</span>
+    <span>영상 16:39</span><span class="dot">·</span>
+    <span>읽는 데 약 19분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=YBSJ84norrc" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>Spacetime은 DB(Database), 서버 로직, 인증, 배포, 실시간 동기화를 한 플랫폼에 묶고, 스키마 하나에서 클라이언트·서버·DB 타입을 모두 만들어요.</li>
+    <li>데이터를 바꾸는 로직은 <span class="term" data-term="리듀서" data-en="Reducer" data-desc="Spacetime에서 테이블을 바꾸는 유일한 방법인 서버 함수예요. 클라이언트가 이름과 인자를 보내 부르고, 호출 하나가 트랜잭션 하나로 실행돼요." data-g="1">리듀서</span>로 써요. 리듀서 하나가 <span class="term" data-term="원자적 트랜잭션" data-en="Atomic transaction" data-desc="여러 변경을 하나로 묶어 전부 반영하거나 전부 취소하는 처리 단위예요. 확인과 예약 사이에 다른 요청이 끼어들 틈이 없어서 중복 예약을 막아 줘요." data-g="2">원자적 트랜잭션</span> 하나라서, 좌석 확인과 예약이 쪼개지지 않아요.</li>
+    <li>Next.js에서는 <span class="term" data-term="서버 컴포넌트" data-en="React Server Component" data-desc="서버에서만 실행되는 React 컴포넌트예요. Next.js App Router의 기본값이고, 여기서 처음 데이터를 읽어 HTML로 그려 보내요." data-g="6">서버 컴포넌트</span>가 처음 데이터를 한 번 읽고, 이후에는 브라우저가 직접 붙어 <code>useTable</code>로 <span class="term" data-term="구독" data-en="Subscription" data-desc="특정 테이블이나 쿼리의 행을 받아 두고, 그 행이 바뀔 때마다 서버가 변경을 밀어 주는 방식이에요. 좌석 화면이 새로고침 없이 바뀌는 이유예요." data-g="5">구독</span>하고 <code>useReducer</code>로 리듀서를 불러요.</li>
+    <li>누가 요청했는지는 클라이언트가 보내지 않고 서버의 <code>ctx.sender</code>로 판단해요. 그래서 남의 좌석을 풀 수 없어요.</li>
+    <li>15초 임시 점유는 브라우저 타이머가 아니라 <span class="term" data-term="스케줄 테이블" data-en="Schedule table" data-desc="scheduledId와 scheduledAt 칸을 가진 테이블이에요. 행을 넣으면 그 시각에 연결된 리듀서가 저절로 실행돼요. 예약 만료, 주기 작업에 써요." data-g="8">스케줄 테이블</span>과 스케줄 리듀서로 서버에서 풀어요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">Spacetime이 내세우는 것</a></li>
+    <li><a href="#s2">예제 앱 SeatRush와 전체 구조</a></li>
+    <li><a href="#s3">테이블, 원자적 리듀서, Maincloud 배포</a></li>
+    <li><a href="#s4">타입 바인딩과 서버·클라이언트 연결</a></li>
+    <li><a href="#s5">내 좌석만 풀 수 있게: 소유자 확인과 대시보드</a></li>
+    <li><a href="#s6">15초 임시 점유와 동시 클릭</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>Spacetime이 내세우는 것</h2>
+<p>AI(Artificial Intelligence) 도구 덕분에 앱 코드를 만들기는 쉬워졌어요. 그래도 실제로 돌아가는 앱이 되려면 데이터베이스, 서버 로직, 인증, 배포, 사용자 화면의 데이터가 서로 맞물려야 해요. 발표자는 이 조각들이 처음부터 함께 동작하도록 설계돼 있다면 어떨까라는 질문으로 Spacetime을 소개해요.</p>
+<p>아래는 Spacetime을 만든 Clockwork Labs의 소개 페이지예요. 제목 'The whole backend, in one place' 아래에 Database, Server logic, Auth, Realtime sync 네 가지가 한 상자에 들어 있어요. 오른쪽에는 실시간으로 바뀌는 플레이어 표가 예시로 떠 있어요.</p>
+<figure>
+  <img src="assets/frame-0016.webp" alt="Clockwork Labs 사이트. The whole backend, in one place 제목 아래 Spacetime 소개와 Database, Server logic, Auth, Realtime sync 항목">
+  <figcaption>Spacetime은 따로 조립하던 백엔드 스택을 하나로 대신한다고 소개해요. 모듈은 Rust, C#, TypeScript, C++로 쓸 수 있다고 적혀 있어요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=16s" target="_blank" rel="noopener">영상 00:16에서 보기</a></figcaption>
+</figure>
+<h3>타입 하나가 스택 전체를 잇는다</h3>
+<p>발표자가 가장 힘줘 말하는 건 타입 안전한 API(Application Programming Interface)예요. 스키마에서 클라이언트, 서버, 데이터베이스의 타입이 한꺼번에 만들어져요. AI 에이전트는 코드를 쓸 때 <span class="term" data-term="가드레일" data-en="Guardrail" data-desc="AI가 엉뚱한 결과를 내지 않도록 정해 둔 제약이에요. 이 영상에서는 타입이 그 역할을 해서, 틀린 코드를 컴파일러가 먼저 잡아 줘요." data-g="10">가드레일</span>이 필요한데, 타입이 그 역할을 잘한다는 게 발표자의 생각이에요. 스택 전체가 한 타입 체계로 이어지면 AI로 개발할 때 이득이 크다고 봐요.</p>
+<p>배포도 단순해요. 서버, 컨테이너, 오케스트레이션을 직접 관리하지 않고, Spacetime <span class="term" data-term="모듈" data-en="Module" data-desc="테이블 정의와 리듀서를 담은 Spacetime 서버 코드 묶음이에요. Next.js 폴더에 함께 두지만 퍼블리시하면 Spacetime 안에서 실행돼요." data-g="3">모듈</span>을 쓴 뒤 <code>spacetime publish</code>만 실행하면 돼요. 코드는 GitHub에 공개돼 있어요. 아래 저장소 화면에서 Rust, TypeScript, C# 등 여러 언어 폴더를 볼 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0125.webp" alt="GitHub의 clockworklabs/SpacetimeDB 저장소 첫 화면과 파일 목록">
+  <figcaption>발표자가 직접 열어 보라고 권한 공식 저장소예요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=85s" target="_blank" rel="noopener">영상 01:25에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>제품 이름은 Spacetime과 SpacetimeDB를 함께 써요. 공식 안내는 'Spacetime(또는 SpacetimeDB)'이라고 부르고, Convex·Firebase·Supabase와 비슷한 자리의 리액티브 백엔드라고 설명해요. TypeScript 모듈은 V8에서, Rust·C#·C++ 모듈은 WebAssembly로 컴파일돼 데이터베이스 안에서 돌아가요.</p>
+  <p>저장소 라이선스는 오픈소스 라이선스가 아니라 BSL(Business Source License) 1.1이에요. 몇 년이 지나면 링킹 예외가 붙은 AGPL(GNU Affero General Public License) v3.0으로 바뀐다고 README에 적혀 있어요. 직접 호스팅하거나 상용 서비스에 넣을 계획이라면 먼저 읽어 볼 만해요.</p>
+  <p class="cite">출처: <a href="https://spacetimedb.com/llms.txt" target="_blank" rel="noopener">SpacetimeDB 공식 llms.txt</a> · <a href="https://github.com/clockworklabs/SpacetimeDB" target="_blank" rel="noopener">clockworklabs/SpacetimeDB README</a></p>
+</aside>
+<h3>어디에 쓰면 좋을까</h3>
+<p>공식 사이트의 템플릿 목록이 쓰임새를 잘 보여 줘요. 위쪽 앱 묶음에는 Team Chat, Collaborative Board, Live Polls &amp; Q&amp;A가 있고, 아래 게임 묶음에는 Multiplayer Party Game, Survival Crafting Game, Turn-Based Card Game이 있어요. 모두 여러 사람이 같은 데이터를 동시에 보고 바꾸는 앱이에요.</p>
+<figure>
+  <img src="assets/frame-0152.webp" alt="Get a running start on day one 템플릿 목록. 웹 앱 세 개와 멀티플레이 게임 세 개">
+  <figcaption>채팅 메시지, 칸반 카드, 투표 결과처럼 다른 사람에게 바로 보여야 하는 데이터가 공통점이에요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=112s" target="_blank" rel="noopener">영상 01:52에서 보기</a></figcaption>
+</figure>
+<p>발표자가 특히 흥미롭다고 한 건 AI 에이전트를 겨냥한 설계예요. 공식 사이트에는 각 AI 모델이 Spacetime 코드를 얼마나 잘 쓰는지 잰 LLM(Large Language Model) 벤치마크 표가 있어요. 화면 맨 위 Claude Opus 5.5가 통과율 99.5%로 1위이고, 오른쪽 칸에서 인증, 기본기, 데이터 모델링 같은 영역별 점수를 볼 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0224.webp" alt="Spacetime LLM 벤치마크 Leaderboard 표. 모델별 Eval pass, 비용, 실행 시간, 영역별 점수">
+  <figcaption>예전 프레임워크는 사람 개발자에게 맞췄다면, 이제는 AI 에이전트가 잘 쓰게 만드는 쪽으로 간다는 게 발표자의 해석이에요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=144s" target="_blank" rel="noopener">영상 02:24에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=189s" target="_blank" rel="noopener">03:09</a>
+  <h2>예제 앱 SeatRush와 전체 구조</h2>
+<p>설치와 초기화 방법은 공식 사이트에 나와 있고, 에이전트에 그대로 붙여 넣을 프롬프트도 있어요. 발표자는 대신 간단한 Next.js 앱에 Spacetime을 붙여 보여 줘요. 예제는 공연장이나 영화관 좌석을 고르는 SeatRush 앱이에요.</p>
+<p>브라우저 두 개를 나란히 띄워 서로 다른 두 사용자를 흉내 내요. 왼쪽 Anonymous User 1이 A9를 누르면 초록색 'Yours'가 되고, 오른쪽 User 2 화면에서는 같은 자리가 회색 'Taken'으로 바뀌어요. 위쪽 'seats available' 숫자도 양쪽에서 함께 줄어요.</p>
+<figure>
+  <img src="assets/frame-0357.webp" alt="SeatRush 앱 두 창. 왼쪽은 A9, 오른쪽은 A12를 각자 예약했고 상대 화면에는 Taken으로 보임">
+  <figcaption>한 명이 누르면 다른 사람 화면이 새로고침 없이 바로 바뀌어요. 다시 누르면 좌석이 풀리고 그것도 모두에게 보여요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=237s" target="_blank" rel="noopener">영상 03:57에서 보기</a></figcaption>
+</figure>
+<p>발표자는 여기서 풀어야 할 문제를 둘로 짚어요. 하나는 공유 데이터를 모두에게 실시간으로 보여 주는 일이고, 이건 보통 구현하기 까다로워요. 다른 하나는 둘이 거의 동시에 같은 좌석을 눌렀을 때 한 명만 가져가게 하는 일이에요. 이건 원자적 트랜잭션으로 풀어야 해요.</p>
+<h3>Next.js와 Spacetime은 어떻게 이어질까</h3>
+<p>아래 구조도에서 왼쪽 위 Next.js server는 <code>await fetchVenue()</code>로 오른쪽 SpacetimeDB에서 데이터를 가져와 페이지를 렌더링해요. 왼쪽 아래 Browser는 Spacetime에 직접 붙어서 <code>reserveSeat({ seatId })</code>를 보내고, <code>useTable(tables.seat)</code>로 바뀐 좌석을 받아요. 오른쪽 상자 안에는 퍼블리시된 모듈(<code>reserveSeat()</code>)과 데이터베이스(<code>seat</code> 테이블)가 함께 있어요.</p>
+<figure>
+  <img src="assets/frame-0433.webp" alt="Next.js + SpacetimeDB 구조도. Next.js server, Browser, Maincloud에 호스팅된 SpacetimeDB의 Published module과 Database">
+  <figcaption>DB와 갱신 규칙은 Spacetime 쪽에 있고 Next.js 앱과는 따로 호스팅돼요. Next.js는 서버와 브라우저 양쪽에서 이걸 불러 쓰기만 해요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=273s" target="_blank" rel="noopener">영상 04:33에서 보기</a></figcaption>
+</figure>
+<p><code>fetchVenue</code>는 발표자가 만든 도우미 함수예요. 서버에서 처음 데이터를 읽을 때 쓰고, 좌석 예약 같은 쓰기는 브라우저에서 Spacetime으로 바로 보내요. 이 함수의 속은 4장에서 열어 봐요.</p>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=332s" target="_blank" rel="noopener">05:32</a>
+  <h2>테이블, 원자적 리듀서, Maincloud 배포</h2>
+<p>프로젝트 폴더에는 평범한 Next.js 코드 옆에 <code>spacetimedb</code> 모듈 폴더가 하나 더 있어요. 아직 데이터베이스는 없고, 이 모듈을 퍼블리시하는 순간 만들어져요. 모듈 코드는 데이터베이스가 어떤 모양이어야 하는지 정하는 곳이에요.</p>
+<p>아래 화면의 <code>seat</code> 테이블은 칸이 세 개뿐이에요. <code>id</code>는 기본 키, <code>label</code>은 A12나 B1 같은 좌석 이름, <code>reservedBy</code>는 <code>t.option(t.identity())</code>로 예약한 사람의 <span class="term" data-term="Identity" data-desc="Spacetime이 접속한 사용자마다 붙이는 고유 신원 값이에요. 리듀서 안에서는 ctx.sender로 받고, 클라이언트가 꾸며 보낼 수 없어요." data-g="7">Identity</span>를 담아요. 값이 비어 있으면 아직 아무도 예약하지 않은 좌석이에요.</p>
+<figure>
+  <img src="assets/frame-0604.webp" alt="index.ts 코드. spacetimedb/server에서 table을 가져와 id, label, reservedBy 세 칸의 seat 테이블을 정의하고, 아래에 seatHold 테이블이 이어짐">
+  <figcaption>예약 여부를 따로 불리언으로 두지 않고 <code>reservedBy</code>가 비었는지로 판단해요. 아래쪽 <code>seatHold</code> 테이블은 6장의 임시 점유에서 다시 나와요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=364s" target="_blank" rel="noopener">영상 06:04에서 보기</a></figcaption>
+</figure>
+<h3>예약은 리듀서 하나가 맡아요</h3>
+<p>누군가 좌석을 예약하려 하면 리듀서가 실행돼요. 아래 <code>reserveSeat</code>는 <code>seatId</code>를 받아 <code>ctx.db.seat.id.find</code>로 좌석을 찾아요. 없으면 "Seat not found", <code>reservedBy</code>가 이미 채워져 있으면 "Seat already reserved"를 <code>SenderError</code>로 던지고 끝나요. 두 검사를 통과해야 <code>ctx.db.seat.id.update</code>로 <code>reservedBy</code>를 <code>ctx.sender</code>로 바꿔요.</p>
+<figure>
+  <img src="assets/frame-0652.webp" alt="reserveSeat 리듀서 코드. 좌석 조회, 두 번의 SenderError 검사, ctx.sender로 reservedBy를 갱신하는 update">
+  <figcaption>확인 두 번과 갱신 한 번이 같은 함수 안에 있어요. 이 함수 전체가 하나의 트랜잭션이에요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=412s" target="_blank" rel="noopener">영상 06:52에서 보기</a></figcaption>
+</figure>
+<p>발표자가 강조하는 건 이 리듀서가 하나의 원자적 트랜잭션으로 돈다는 점이에요. 좌석이 비었는지 확인하는 일과 실제로 예약하는 일이 같은 트랜잭션에서 일어나요. 그래서 바꾸려던 내용은 전부 반영되거나 전부 취소돼요. 여러 사람이 같은 좌석을 두고 다툴 때 이게 중요해요.</p>
+<blockquote>
+  <p>checking the availability of the seat and actually booking the seat happen in the same transaction.</p>
+  <p>좌석이 비었는지 확인하는 일과 실제로 예약하는 일이 같은 트랜잭션 안에서 일어나요.</p>
+  <cite>— 영상 06:38</cite>
+</blockquote>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 문서는 모든 리듀서 호출이 트랜잭션 하나라고 설명해요. 리듀서가 정상으로 끝나면 커밋되고, 예외를 던지면 그 리듀서가 한 변경이 모두 롤백돼요. 격리 수준도 적혀 있어요. 각 리듀서는 시작 시점의 일관된 스냅샷을 보고, 다른 리듀서가 실행 중에 바꾼 내용은 보지 않아요. 한 리듀서가 완전히 끝나야 그 변경이 다른 쪽에 보여요. 영상의 '동시에 눌러도 한 명만'은 이 보장 덕분이에요.</p>
+  <p class="cite">출처: <a href="https://spacetimedb.com/docs/databases/transactions-atomicity" target="_blank" rel="noopener">SpacetimeDB 문서 — Transactions and Atomicity</a></p>
+</aside>
+<p>이 모듈 코드는 Next.js 프로젝트 폴더에 함께 두지만 Next.js 앱의 일부로 실행되지 않아요. 실행은 Spacetime 쪽에서 해요.</p>
+<h3>Maincloud에 퍼블리시하기</h3>
+<p>이제 모듈을 퍼블리시해 데이터베이스와 테이블을 만들어요. Maincloud는 Spacetime의 관리형 호스팅이고, 데이터베이스와 서버 로직을 함께 맡아요. 터미널에 보이는 명령은 <code>spacetime publish --no-config --server maincloud --module-path spacetimedb --delete-data=never seatrush-walkthrough</code>예요.</p>
+<figure>
+  <img src="assets/frame-0740.webp" alt="VS Code 터미널에서 spacetime publish 명령으로 seatrush-walkthrough 데이터베이스를 maincloud에 올리는 장면">
+  <figcaption>처음 실행하면 <code>seatrush-walkthrough</code>라는 새 데이터베이스가 생겨요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=460s" target="_blank" rel="noopener">영상 07:40에서 보기</a></figcaption>
+</figure>
+<p>대시보드에서는 테이블별 행 수, 트랜잭션, 사용량, 오류율, 실행 상태를 볼 수 있어요. 아래 Tables 화면 왼쪽에 <code>seat</code>, <code>seat_hold</code> 같은 테이블이 있고, 오른쪽 <code>reserved_by</code> 칸에는 대부분 <code>(some = 0xc200…)</code> 형태의 Identity가 들어 있어요. 발표자가 미리 넣어 둔 데이터라 A9~A12 네 자리만 <code>(none = ())</code>로 비어 있어요.</p>
+<figure>
+  <img src="assets/frame-0814.webp" alt="Spacetime 대시보드 Tables 화면. seat 테이블의 id, label, reserved_by 칸. A1부터 대부분 Identity 값이 채워져 있음">
+  <figcaption>앱에서 '4 seats available'로 보이던 숫자가 이 테이블의 빈 칸 네 개예요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=494s" target="_blank" rel="noopener">영상 08:14에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Maincloud 문서에 따르면 퍼블리시 전에 <code>spacetime login</code>으로 웹 계정과 CLI(Command-Line Interface) 신원을 연결해야 대시보드에 데이터베이스가 보여요. 같은 명령을 다시 실행하면 클라이언트 연결을 끊지 않고 모듈 코드를 바꿔 끼우고, 데이터를 모두 지우고 새로 시작하려면 <code>--delete-data</code>를 붙여요. 이 옵션은 <code>always</code>, <code>on-conflict</code>(스키마가 호환되지 않게 바뀔 때만), <code>never</code> 중에서 고르고, 영상의 <code>--delete-data=never</code>는 기존 데이터를 절대 지우지 않겠다는 뜻이에요. Maincloud는 쓰지 않을 때 0으로 줄어드는 서버리스 방식이에요.</p>
+  <p class="cite">출처: <a href="https://spacetimedb.com/docs/how-to/deploy/maincloud" target="_blank" rel="noopener">SpacetimeDB 문서 — Maincloud</a> · <a href="https://spacetimedb.com/docs/cli-reference" target="_blank" rel="noopener">CLI Reference</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=508s" target="_blank" rel="noopener">08:28</a>
+  <h2>타입 바인딩과 서버·클라이언트 연결</h2>
+<p>Next.js 앱을 이 데이터베이스에 붙이려면 먼저 환경 변수가 필요해요. <code>.env.local</code>에는 Maincloud 주소(<code>wss://maincloud.spacetimedb.com</code>)와 데이터베이스 이름(<code>seatrush-walkthrough</code>)이 들어가요.</p>
+<figure>
+  <img src="assets/frame-0828.webp" alt=".env.local 파일. NEXT_PUBLIC_SPACETIMEDB_HOST, NEXT_PUBLIC_SPACETIMEDB_DB_NAME, NEXT_PUBLIC_SPACETIMEAUTH_CLIENT_ID 세 줄">
+  <figcaption>주소가 <code>wss://</code>로 시작해요. 클라이언트는 WebSocket으로 붙어 변경을 계속 받아요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=508s" target="_blank" rel="noopener">영상 08:28에서 보기</a></figcaption>
+</figure>
+<h3>클라이언트 바인딩 만들기</h3>
+<p>다음은 <span class="term" data-term="클라이언트 바인딩" data-en="Client bindings" data-desc="spacetime generate가 모듈을 읽고 만들어 주는 클라이언트용 코드예요. 테이블 타입과 리듀서 호출 함수가 들어 있어서 이름이나 인자가 틀리면 컴파일 단계에서 걸려요." data-g="4">클라이언트 바인딩</span>을 만드는 단계예요. 발표자는 NPM(Node Package Manager) 스크립트 <code>spacetime:generate</code>를 만들어 뒀어요. 이 스크립트는 <code>spacetime generate --lang typescript --out-dir src/module_bindings</code>를 실행해 로컬 모듈의 테이블과 리듀서를 읽고, Next.js가 쓸 TypeScript 코드를 만들어요.</p>
+<figure>
+  <img src="assets/frame-0856.webp" alt="터미널에서 npm run spacetime:generate 실행 결과. Generating TypeScript module bindings, Build finished successfully, src/module_bindings 폴더 생성">
+  <figcaption>이제 테이블을 타입이 붙은 채로 다룰 수 있어요. 발표자는 이걸 AI 에이전트가 받는 컴파일 시점 검사라고 불러요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=536s" target="_blank" rel="noopener">영상 08:56에서 보기</a></figcaption>
+</figure>
+<h3>서버 컴포넌트에서 처음 한 번 읽기</h3>
+<p>데이터를 읽는 건 보통 서버 컴포넌트에서 해요. 아래 <code>page.tsx</code>의 <code>SeatsPage</code>는 <code>await fetchVenue()</code>로 좌석을 받아 <code>SeatRushClient</code>에 <code>initialSeats</code>로 넘겨요. 여기까지는 전부 서버에서 일어나요.</p>
+<figure>
+  <img src="assets/frame-0914.webp" alt="app/seats/page.tsx 코드. SeatsPage 서버 컴포넌트가 fetchVenue로 seats를 받아 SpacetimeProvider 안의 SeatRushClient에 넘김">
+  <figcaption>첫 화면은 서버에서 그린 데이터로 바로 보여 주고, 이후 상호작용은 클라이언트가 이어받아요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=554s" target="_blank" rel="noopener">영상 09:14에서 보기</a></figcaption>
+</figure>
+<p><code>fetchVenue</code>의 속을 보면 반복 코드가 좀 있지만 요점은 짧아요. <code>DbConnection.builder()</code>에 환경 변수의 호스트와 DB 이름을 넣어 연결하고, <code>subscriptionBuilder()</code>로 <code>seat</code> 테이블을 구독해요. 구독하면 처음 데이터와 이후 변경을 모두 받아요. 하지만 서버에서 한 번 읽을 때는 처음 데이터만 있으면 돼요.</p>
+<figure>
+  <img src="assets/frame-0950.webp" alt="spacetimedb-server.ts 코드. subscriptionBuilder().onApplied 안에서 conn.db.seat.iter()를 정렬하고 id, label, reservedBy 객체 배열로 바꿈">
+  <figcaption><code>onApplied</code>는 처음 데이터가 도착했을 때 한 번 실행돼요. 여기서 좌석을 평범한 객체 배열로 바꿔 돌려주고 연결을 끊어요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=590s" target="_blank" rel="noopener">영상 09:50에서 보기</a></figcaption>
+</figure>
+<p>그래서 페이지를 열 때마다 연결이 계속 남는 구조가 아니에요. 페이지는 좌석 배열만 받아 클라이언트로 넘겨요.</p>
+<h3>브라우저에서 직접 붙어 구독하기</h3>
+<p>클라이언트 쪽 연결도 비슷하게 생겼어요. 다른 점은 토큰이에요. 아래 <code>providers.tsx</code>는 저장해 둔 토큰을 <code>.withToken(token)</code>으로 넘기고, 연결되면 서버가 돌려준 토큰을 다시 저장해요. 그래야 새로고침할 때마다 다른 사용자가 되지 않아요.</p>
+<figure>
+  <img src="assets/frame-1026.webp" alt="providers.tsx 코드. sessionStorage에서 토큰을 읽어 DbConnection.builder().withUri().withDatabaseName().withToken()으로 연결하고 onConnect에서 받은 토큰을 저장">
+  <figcaption>발표자는 말로는 local storage라고 했지만, 화면 코드는 <code>sessionStorage</code>를 써요. 탭을 닫으면 사라지는 저장소라, 두 탭이 서로 다른 사용자로 보이는 데모에는 이쪽이 맞아요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=626s" target="_blank" rel="noopener">영상 10:26에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>토큰 없이 접속하면 Spacetime이 새 Identity를 만들고 서버가 발급한 토큰을 돌려줘요. 다음 접속에서도 같은 Identity를 쓰려면 그 토큰을 저장했다가 다시 넘겨야 해요. 영상 코드가 하는 일이 바로 이거예요. 실제 로그인이 필요하면 Auth0, Clerk 같은 OIDC(OpenID Connect) 공급자의 토큰을 넘길 수 있고, Spacetime의 자체 인증인 SpacetimeAuth도 있어요(문서 기준 베타).</p>
+  <p class="cite">출처: <a href="https://spacetimedb.com/docs/core-concepts/authentication" target="_blank" rel="noopener">SpacetimeDB 문서 — Authentication</a></p>
+</aside>
+<p>연결이 생기면 React 컴포넌트 트리 아래의 컴포넌트들이 Spacetime의 React 훅을 쓸 수 있어요. Next.js에서는 처음 데이터는 서버에서 가져오는 게 유리하고, 그 뒤의 상호작용은 클라이언트 연결로 처리하는 식이에요.</p>
+<p>아래 <code>SeatRush.tsx</code>에서 <code>useTable(tables.seat)</code>가 좌석 행을 구독해요. 테이블이 바뀌면 SDK(Software Development Kit)가 새 데이터를 주고 컴포넌트가 다시 그려져요. 그 아래 <code>useReducer(reducers.reserveSeat)</code>는 3장의 리듀서를 부를 함수를 돌려줘요.</p>
+<figure>
+  <img src="assets/frame-1044.webp" alt="SeatRush.tsx 코드. useTable(tables.seat), useTable(tables.seatHold), useReducer(reducers.reserveSeat), holdSeat, releaseSeat 훅이 나란히 있음">
+  <figcaption>읽기는 <code>useTable</code>, 쓰기는 <code>useReducer</code>로 나뉘어요. 둘 다 생성된 바인딩에서 나와서 이름과 인자 타입이 맞는지 컴파일러가 확인해요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=644s" target="_blank" rel="noopener">영상 10:44에서 보기</a></figcaption>
+</figure>
+<p>사용자가 좌석을 누르면 그 함수에 좌석 ID(Identifier)만 넘기면 돼요. 사용자 신원은 넘기지 않는다는 점이 중요해요. 서버가 들어온 요청을 보고 누가 보냈는지 알아내요. Spacetime이 DB를 바꾸면 실시간 구독으로 새 좌석 데이터가 오고, 좌석을 그리는 부분이 새 데이터로 다시 그려져요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=725s" target="_blank" rel="noopener">12:05</a>
+  <h2>내 좌석만 풀 수 있게: 소유자 확인과 대시보드</h2>
+<p>사용자는 자기가 잡은 좌석을 다시 풀 수 있어요. 이건 <code>releaseSeat</code> 리듀서가 맡아요. 좌석을 못 찾으면 거기서 끝나고, 찾았으면 한 번 더 확인해요. 좌석을 실제로 예약한 사람만 풀 수 있어야 하거든요. 그러지 않으면 누군가 다른 ID를 꾸며 보내 남의 좌석을 풀 수 있어요.</p>
+<p>아래 코드의 54번째 줄이 그 확인이에요. <code>selectedSeat.reservedBy?.equals(ctx.sender)</code>가 아니면 "Only the owner can release this seat"를 던져요. 통과하면 <code>seatHold</code>에서 예약 기록을 지우고, <code>reservedBy</code>를 <code>undefined</code>로 돌려놔요.</p>
+<figure>
+  <img src="assets/frame-1219.webp" alt="releaseSeat 리듀서 코드. Seat not found 검사, reservedBy와 ctx.sender를 비교하는 소유자 검사, seatHold 삭제와 reservedBy를 undefined로 갱신">
+  <figcaption>비교 대상인 <code>ctx.sender</code>는 클라이언트가 보낸 값이 아니라 서버가 아는 요청자예요. 그래서 꾸밀 수가 없어요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=739s" target="_blank" rel="noopener">영상 12:19에서 보기</a></figcaption>
+</figure>
+<h3>대시보드에서 변화 확인하기</h3>
+<p>대시보드 테이블에서 9번 행 A9의 <code>reserved_by</code>는 <code>(none = ())</code>로 비어 있어요. 앱을 새로고침해도 A9는 빈 좌석으로 보여요.</p>
+<figure>
+  <img src="assets/frame-1249.webp" alt="대시보드 seat 테이블. A4부터 A8은 Identity 값이 있고, A9, A10, A11은 none으로 비어 있으며 A12는 다시 채워져 있음">
+  <figcaption>앱에서 A9를 누른 뒤 이 화면으로 돌아오면 같은 칸에 Identity가 채워져 있어요. 앱과 테이블이 같은 데이터를 보고 있다는 확인이에요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=769s" target="_blank" rel="noopener">영상 12:49에서 보기</a></figcaption>
+</figure>
+<p>대시보드는 배포할 때 만들어진 함수도 보여 줘요. 왼쪽 Functions 목록에 <code>reserve_seat</code>, <code>release_seat</code>, <code>hold_seat</code>, <code>expire_seat_hold</code> 같은 리듀서가 함수로 올라와 있어요. Next.js 앱이 부르는 게 바로 이 함수들이에요.</p>
+<figure>
+  <img src="assets/frame-1313.webp" alt="대시보드 Functions 화면. init, expire_seat_hold, hold_seat, prepare_demo, release_seat, reserve_seat 목록">
+  <figcaption>코드에서 camelCase로 쓴 리듀서가 대시보드에서는 snake_case 이름으로 보여요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=793s" target="_blank" rel="noopener">영상 13:13에서 보기</a></figcaption>
+</figure>
+<p>함수 하나를 고르면 지난 한 시간의 호출 수 그래프와 오류, 실행 시간 같은 정보가 나와요. 아래 화면은 <code>reserve_seat</code>의 CPU(Central Processing Unit) 사용 그래프와 Rows processed 칸이에요. 발표자는 이런 관측 기능이 따로 붙이지 않아도 Spacetime에 들어 있다는 점을 짚어요.</p>
+<figure>
+  <img src="assets/frame-1329.webp" alt="reserve_seat 함수 상세. 최근 한 시간 그래프에 호출이 몰린 구간이 솟아 있고 아래에 Rows processed 칸">
+  <figcaption>데모 중에 누른 예약이 그래프의 솟은 부분으로 남아 있어요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=809s" target="_blank" rel="noopener">영상 13:29에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=816s" target="_blank" rel="noopener">13:36</a>
+  <h2>15초 임시 점유와 동시 클릭</h2>
+<p>여기까지가 예약하고 푸는 기본 동작이에요. 실제 예매에서는 좌석을 누른 뒤 결제하는 동안 잠시 붙잡아 두고, 그 안에 끝내지 못하면 다시 풀어 줘요. 데모 화면 위쪽의 '15-second holds'를 켜면 이 모드가 돼요.</p>
+<p>아래 화면에서 왼쪽 User 1이 A9를 눌렀어요. 아래 문구가 'A9 · 15-second hold started.'로 바뀌었고, 오른쪽 User 2에게는 A9를 바로 고를 수 없어요. 15초가 지나면 A9는 모두에게 다시 열려요.</p>
+<figure>
+  <img src="assets/frame-1408.webp" alt="15-second holds를 켠 SeatRush 두 창. 왼쪽 아래에 A9 · 15-second hold started 문구">
+  <figcaption>발표자는 이 카운트다운이 브라우저 타이머가 아니라 서버에서 돈다는 점을 강조해요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=848s" target="_blank" rel="noopener">영상 14:08에서 보기</a></figcaption>
+</figure>
+<h3>서버가 정하는 기한</h3>
+<p>점유는 <code>holdSeat</code> 리듀서가 시작해요. 좌석 검사는 <code>reserveSeat</code>와 같고, 다른 건 72번째 줄부터예요. <code>ctx.timestamp.microsSinceUnixEpoch + 15_000_000n</code>으로 지금부터 15초(마이크로초 단위) 뒤를 기한으로 잡아요. 주석대로 기한은 서버가 정하고, 클라이언트는 값을 넘기거나 늘릴 수 없어요.</p>
+<figure>
+  <img src="assets/frame-1424.webp" alt="holdSeat 리듀서 코드. deadline 계산, seatHold.insert에 scheduledId, scheduledAt: ScheduleAt.time(deadline), seatId, owner, expiresAt을 넣고 seat의 reservedBy를 ctx.sender로 갱신">
+  <figcaption><code>seatHold</code> 행의 <code>scheduledAt</code>이 '언제 무엇을 실행할지'를 정해요. 같은 리듀서 안에서 좌석의 <code>reservedBy</code>도 채워서, 다른 사람에게는 점유 기간 동안만 막혀 보여요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=864s" target="_blank" rel="noopener">영상 14:24에서 보기</a></figcaption>
+</figure>
+<p>점유 기록은 <code>seatHold</code>라는 별도 테이블에 쌓여요. <code>scheduledId</code>와 <code>scheduledAt</code> 칸이 있는 테이블은 스케줄 기능을 쓰는 테이블이에요. 기한이 지나면 연결된 리듀서가 저절로 불려요. 전체 흐름을 시간 순서로 그리면 이래요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 660 230" role="img" aria-label="holdSeat 실행 시점부터 15초 뒤 expireSeatHold가 실행될 때까지 좌석 상태 변화">
+    <defs><marker id="arrow-hold" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <line class="line" x1="40" y1="120" x2="620" y2="120" marker-end="url(#arrow-hold)"/>
+    <text x="70" y="145" text-anchor="middle" class="sub">0초</text>
+    <text x="570" y="145" text-anchor="middle" class="sub">15초</text>
+    <rect class="c1 cell" x="10" y="20" width="160" height="78" rx="10"/>
+    <text x="90" y="46" text-anchor="middle">holdSeat</text>
+    <text x="90" y="68" text-anchor="middle" class="sub">reservedBy = 나</text>
+    <text x="90" y="86" text-anchor="middle" class="sub">seatHold 행 추가</text>
+    <path class="line" d="M70 98 V114" marker-end="url(#arrow-hold)"/>
+    <rect class="box" x="190" y="34" width="300" height="50" rx="10"/>
+    <text x="340" y="56" text-anchor="middle">다른 사용자에게 Taken</text>
+    <text x="340" y="74" text-anchor="middle" class="sub">클라이언트는 기한을 바꿀 수 없음</text>
+    <rect class="c2 cell" x="500" y="20" width="150" height="78" rx="10"/>
+    <text x="575" y="46" text-anchor="middle">expireSeatHold</text>
+    <text x="575" y="68" text-anchor="middle" class="sub">스케줄러가 호출</text>
+    <text x="575" y="86" text-anchor="middle" class="sub">reservedBy = 없음</text>
+    <path class="line" d="M570 98 V114" marker-end="url(#arrow-hold)"/>
+    <rect class="accent" x="40" y="165" width="580" height="50" rx="10"/>
+    <text x="330" y="187" text-anchor="middle">scheduledAt = 지금 + 15,000,000마이크로초</text>
+    <text x="330" y="205" text-anchor="middle" class="sub">이 값이 서버에 저장돼 있어서 브라우저를 닫아도 제때 풀려요</text>
+  </svg>
+  <figcaption>기한을 기억하는 건 브라우저가 아니라 <code>seatHold</code> 테이블의 한 행이에요. 그래서 사용자가 창을 닫거나 새로고침해도 15초 뒤 좌석은 풀려요.</figcaption>
+</figure>
+<p>만료를 맡는 <code>expireSeatHold</code>도 리듀서일 뿐이에요. 다른 점은 <code>{ onSchedule: seatHold }</code> 옵션으로 <code>seatHold</code> 테이블에 묶여 있다는 것뿐이에요. 코드에는 몇 겹의 안전장치가 있어요. 호출자가 데이터베이스 자신(<code>ctx.databaseIdentity</code>)이 아니면 "Only the scheduler can expire holds"로 거절해요. 점유 기록의 <code>scheduledId</code>가 다르면 그냥 돌아가요. 좌석 주인이 점유 당시의 <code>owner</code>와 같을 때만 <code>reservedBy</code>를 비워요.</p>
+<figure>
+  <img src="assets/frame-1456.webp" alt="expireSeatHold 리듀서 코드. onSchedule seatHold, ctx.sender와 ctx.databaseIdentity 비교, scheduledId 비교, owner가 같을 때만 reservedBy를 undefined로 바꾸고 console.info로 Hold expired 로그">
+  <figcaption>96번째 줄 주석처럼, 오래된 만료가 그 뒤에 새로 한 예약을 지우면 안 되기 때문에 <code>owner</code>를 한 번 더 비교해요. 101번째 줄 주석대로 한 번만 도는 스케줄 행은 실행 뒤 저절로 지워져요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=896s" target="_blank" rel="noopener">영상 14:56에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>SpacetimeDB 2.x 문서는 스케줄된 리듀서가 기본적으로 비공개라서 일반 클라이언트가 직접 부를 수 없다고 설명해요. 스케줄러, 데이터베이스 소유자, 팀 협업자만 실행할 수 있어요. 그래서 영상 코드의 <code>ctx.sender.equals(ctx.databaseIdentity)</code> 검사는 꼭 필요한 건 아니고, 코드 주석에 적힌 대로 한 겹 더 두는 <span class="term" data-term="심층 방어" data-en="Defense in depth" data-desc="한 겹의 보호가 뚫려도 다음 겹이 막도록 검사를 여러 번 두는 보안 원칙이에요. 플랫폼이 이미 막아 주는 경우에도 코드에서 한 번 더 확인하는 식이에요." data-g="9">심층 방어</span>예요. 스케줄은 <code>ScheduleAt.time</code>(한 번)과 <code>ScheduleAt.interval</code>(반복) 두 가지로 걸 수 있어요.</p>
+  <p class="cite">출처: <a href="https://spacetimedb.com/docs/functions/reducers/reducer-context" target="_blank" rel="noopener">SpacetimeDB 문서 — Reducer Context</a> · <a href="https://spacetimedb.com/docs/tables/schedule-tables" target="_blank" rel="noopener">Schedule Tables</a></p>
+</aside>
+<p>만료 리듀서는 <code>console.info</code>로 'Hold expired for A9' 같은 로그를 남겨요. 이 로그는 대시보드 로그 화면에 그대로 나와요. 아래는 A9로 검색한 결과예요. <code>hold_seat</code>의 'Hold started for A9 (15s)'와 <code>expire_seat_hold</code>의 'Hold expired for A9'가 짝을 이뤄요.</p>
+<figure>
+  <img src="assets/frame-1528.webp" alt="Spacetime 대시보드 All Logs 화면. A9로 검색한 결과에 hold_seat의 Hold started for A9 (15s)와 expire_seat_hold의 Hold expired for A9가 번갈아 있음">
+  <figcaption>시작 로그(18:07:13)와 만료 로그(18:07:28)의 간격이 정확히 15초예요. 데모 중에 일어난 일이 서버 로그로 남아 있어요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=928s" target="_blank" rel="noopener">영상 15:28에서 보기</a></figcaption>
+</figure>
+<h3>두 사람이 동시에 같은 좌석을 누르면</h3>
+<p>실제로는 두 사람이 같은 좌석을 동시에 노리는 일도 생겨요. 데모 앱의 'Request A12 in both tabs' 버튼은 두 탭에서 A12 예약을 동시에 보내요. 결과는 한 명만 성공이에요. 아래 화면에서 오른쪽 User 2는 'A12 reserved'를 받았고, 왼쪽 User 1의 데모 기록에는 'reserve · rejected: Seat already reserved'가 찍혔어요.</p>
+<figure>
+  <img src="assets/frame-1544.webp" alt="두 탭에 동시 요청한 결과. 왼쪽 User 1은 A12 was just taken by someone else와 rejected: Seat already reserved, 오른쪽 User 2는 A12 reserved">
+  <figcaption>패배한 쪽은 3장의 "Seat already reserved" 검사에 걸렸어요. 확인과 갱신이 한 트랜잭션이라 둘 다 성공하는 일은 생기지 않아요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=944s" target="_blank" rel="noopener">영상 15:44에서 보기</a></figcaption>
+</figure>
+<p>두 요청이 서버에서 어떻게 처리되는지 순서대로 그리면 이래요. 둘 다 같은 리듀서를 부르지만, 한 리듀서가 끝나야 그 변경이 다음 리듀서에 보여요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  participant U2 as User 2
+  participant U1 as User 1
+  participant S as Spacetime (reserveSeat)
+  U2->>S: reserveSeat(A12)
+  U1->>S: reserveSeat(A12)
+  Note over S: 첫 트랜잭션: A12 비어 있음 확인
+  S-->>U2: reservedBy = User 2, 커밋
+  Note over S: 둘째 트랜잭션: A12 이미 예약됨
+  S-->>U1: Seat already reserved, 롤백
+  S-->>U1: 구독으로 A12 Taken 표시
+</pre>
+  <figcaption>어느 쪽이 먼저 처리될지는 정해져 있지 않지만, 성공하는 쪽은 언제나 하나예요. 진 쪽 화면도 구독 덕분에 곧바로 Taken으로 바뀌어요.</figcaption>
+</figure>
+<h3>마무리</h3>
+<p>영상에 나온 리듀서 네 개를 한 표로 모으면 이래요. 모두 같은 틀이에요. 먼저 서버에서 검사하고, 통과해야 테이블을 바꿔요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>리듀서</th><th>누가 부르나요</th><th>검사</th><th>바꾸는 것</th></tr></thead>
+    <tbody>
+      <tr><td><code>reserveSeat</code></td><td>사용자</td><td>좌석이 있나, 이미 예약됐나</td><td><code>reservedBy</code> = 요청자</td></tr>
+      <tr><td><code>releaseSeat</code></td><td>사용자</td><td>좌석이 있나, 요청자가 주인인가</td><td><code>seatHold</code> 삭제, <code>reservedBy</code> 비움</td></tr>
+      <tr><td><code>holdSeat</code></td><td>사용자</td><td>좌석이 있나, 이미 예약됐나</td><td><code>seatHold</code>에 15초 뒤 기한 추가, <code>reservedBy</code> = 요청자</td></tr>
+      <tr><td><code>expireSeatHold</code></td><td>스케줄러</td><td>스케줄러가 불렀나, 같은 점유인가, 주인이 그대로인가</td><td><code>reservedBy</code> 비움, 로그 남김</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>발표자는 정리하면서 Next.js 말고 Rust, C# 등 다른 언어용 클라이언트 SDK도 있다고 덧붙여요. 아래는 공식 문서의 Rust 클라이언트 레퍼런스 페이지예요. 왼쪽 메뉴의 Clients 아래에 Rust, C#, TypeScript, Unreal 레퍼런스가 나란히 있어요.</p>
+<figure>
+  <img src="assets/frame-1616.webp" alt="SpacetimeDB 문서의 Rust Reference 페이지. 왼쪽 메뉴에 Clients 아래 C# Reference, TypeScript Reference, Unreal Reference">
+  <figcaption>영상이 보여 준 공유 관계형 데이터, 백엔드 로직, 실시간 구독, 예약 실행, 생성 타입은 다른 언어 클라이언트에서도 같은 방식으로 써요. <a href="https://www.youtube.com/watch?v=YBSJ84norrc&amp;t=976s" target="_blank" rel="noopener">영상 16:16에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 코드 이름과 제품 이름이 소리 나는 대로 적힌 곳이 있어요. 화면의 코드와 대시보드를 보고 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>space time / Spacetime to be</td><td>Spacetime / SpacetimeDB</td><td></td></tr>
+      <tr><td>main cloud</td><td>Maincloud</td><td>Spacetime의 관리형 호스팅</td></tr>
+      <tr><td>Seat Rush Walk Through</td><td>seatrush-walkthrough</td><td>데이터베이스 이름</td></tr>
+      <tr><td>client buildings</td><td>client bindings</td><td></td></tr>
+      <tr><td>reserved to buy</td><td>reservedBy</td><td>seat 테이블의 칸 이름</td></tr>
+      <tr><td>fetch venue</td><td>fetchVenue()</td><td></td></tr>
+      <tr><td>Seat Rush client</td><td>SeatRushClient</td><td></td></tr>
+      <tr><td>use table / use reducer</td><td>useTable / useReducer</td><td></td></tr>
+      <tr><td>scheduled ID and scheduled at</td><td>scheduledId / scheduledAt</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-10"><dt>가드레일<span class="en">Guardrail</span></dt><dd>AI가 엉뚱한 결과를 내지 않도록 정해 둔 제약이에요. 이 영상에서는 타입이 그 역할을 해서, 틀린 코드를 컴파일러가 먼저 잡아 줘요.</dd></div>
+    <div class="g" id="g-5"><dt>구독<span class="en">Subscription</span></dt><dd>특정 테이블이나 쿼리의 행을 받아 두고, 그 행이 바뀔 때마다 서버가 변경을 밀어 주는 방식이에요. 좌석 화면이 새로고침 없이 바뀌는 이유예요.</dd></div>
+    <div class="g" id="g-1"><dt>리듀서<span class="en">Reducer</span></dt><dd>Spacetime에서 테이블을 바꾸는 유일한 방법인 서버 함수예요. 클라이언트가 이름과 인자를 보내 부르고, 호출 하나가 트랜잭션 하나로 실행돼요.</dd></div>
+    <div class="g" id="g-3"><dt>모듈<span class="en">Module</span></dt><dd>테이블 정의와 리듀서를 담은 Spacetime 서버 코드 묶음이에요. Next.js 폴더에 함께 두지만 퍼블리시하면 Spacetime 안에서 실행돼요.</dd></div>
+    <div class="g" id="g-6"><dt>서버 컴포넌트<span class="en">React Server Component</span></dt><dd>서버에서만 실행되는 React 컴포넌트예요. Next.js App Router의 기본값이고, 여기서 처음 데이터를 읽어 HTML로 그려 보내요.</dd></div>
+    <div class="g" id="g-8"><dt>스케줄 테이블<span class="en">Schedule table</span></dt><dd>scheduledId와 scheduledAt 칸을 가진 테이블이에요. 행을 넣으면 그 시각에 연결된 리듀서가 저절로 실행돼요. 예약 만료, 주기 작업에 써요.</dd></div>
+    <div class="g" id="g-9"><dt>심층 방어<span class="en">Defense in depth</span></dt><dd>한 겹의 보호가 뚫려도 다음 겹이 막도록 검사를 여러 번 두는 보안 원칙이에요. 플랫폼이 이미 막아 주는 경우에도 코드에서 한 번 더 확인하는 식이에요.</dd></div>
+    <div class="g" id="g-2"><dt>원자적 트랜잭션<span class="en">Atomic transaction</span></dt><dd>여러 변경을 하나로 묶어 전부 반영하거나 전부 취소하는 처리 단위예요. 확인과 예약 사이에 다른 요청이 끼어들 틈이 없어서 중복 예약을 막아 줘요.</dd></div>
+    <div class="g" id="g-4"><dt>클라이언트 바인딩<span class="en">Client bindings</span></dt><dd>spacetime generate가 모듈을 읽고 만들어 주는 클라이언트용 코드예요. 테이블 타입과 리듀서 호출 함수가 들어 있어서 이름이나 인자가 틀리면 컴파일 단계에서 걸려요.</dd></div>
+    <div class="g"><dt>AGPL</dt><dd>GNU Affero General Public License</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>BSL</dt><dd>Business Source License</dd></div>
+    <div class="g"><dt>CLI</dt><dd>Command-Line Interface</dd></div>
+    <div class="g"><dt>CPU</dt><dd>Central Processing Unit</dd></div>
+    <div class="g"><dt>DB</dt><dd>Database</dd></div>
+    <div class="g"><dt>ID</dt><dd>Identifier</dd></div>
+    <div class="g" id="g-7"><dt>Identity</dt><dd>Spacetime이 접속한 사용자마다 붙이는 고유 신원 값이에요. 리듀서 안에서는 ctx.sender로 받고, 클라이언트가 꾸며 보낼 수 없어요.</dd></div>
+    <div class="g"><dt>LLM</dt><dd>Large Language Model</dd></div>
+    <div class="g"><dt>NPM</dt><dd>Node Package Manager</dd></div>
+    <div class="g"><dt>OIDC</dt><dd>OpenID Connect</dd></div>
+    <div class="g"><dt>SDK</dt><dd>Software Development Kit</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=YBSJ84norrc" target="_blank" rel="noopener">원본 영상 — ByteGrad, Spacetime: The Backend Framework Exploding On GitHub</a></li>
+    <li id="src-2"><a href="https://github.com/clockworklabs/SpacetimeDB" target="_blank" rel="noopener">clockworklabs/SpacetimeDB — GitHub 저장소</a></li>
+    <li id="src-3"><a href="https://spacetimedb.com/llms.txt" target="_blank" rel="noopener">SpacetimeDB 공식 llms.txt</a></li>
+    <li id="src-4"><a href="https://spacetimedb.com/docs/databases/transactions-atomicity" target="_blank" rel="noopener">SpacetimeDB 문서 — Transactions and Atomicity</a></li>
+    <li id="src-5"><a href="https://spacetimedb.com/docs/how-to/deploy/maincloud" target="_blank" rel="noopener">SpacetimeDB 문서 — Maincloud</a></li>
+    <li id="src-6"><a href="https://spacetimedb.com/docs/cli-reference" target="_blank" rel="noopener">SpacetimeDB 문서 — CLI Reference</a></li>
+    <li id="src-7"><a href="https://spacetimedb.com/docs/clients/codegen" target="_blank" rel="noopener">SpacetimeDB 문서 — Generating Client Bindings</a></li>
+    <li id="src-8"><a href="https://spacetimedb.com/docs/core-concepts/authentication" target="_blank" rel="noopener">SpacetimeDB 문서 — Authentication</a></li>
+    <li id="src-9"><a href="https://spacetimedb.com/docs/functions/reducers/reducer-context" target="_blank" rel="noopener">SpacetimeDB 문서 — Reducer Context</a></li>
+    <li id="src-10"><a href="https://spacetimedb.com/docs/tables/schedule-tables" target="_blank" rel="noopener">SpacetimeDB 문서 — Schedule Tables</a></li>
+    <li id="src-11"><a href="https://spacetimedb.com/llm-benchmarks" target="_blank" rel="noopener">Spacetime LLM 벤치마크</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 30일에 이 영상을 보고 정리했어요. 원본은 ByteGrad 채널에 있어요. 보충 설명은 SpacetimeDB 2.0 문서 기준이에요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
