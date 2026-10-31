@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI가 코딩을 시작하자 인프라가 Rust로 갈아타는 이유</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>AI가 코딩을 시작하자 인프라가 Rust로 갈아타는 이유</h1>
+  <p class="lede">Rust로 옮기는 이유와, 두 AI 에이전트로 직접 옮겨 본 결과를 짚어요</p>
+  <div class="meta">
+    <span>커리어해커 알렉스</span><span class="dot">·</span>
+    <span>영상 11:53</span><span class="dot">·</span>
+    <span>읽는 데 약 16분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=RvWRPwbs5H0" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>Rust는 Python을 몰아내는 게 아니라, Python 밑에서 무거운 계산을 맡던 C·C++ 자리를 넘겨받고 있어요.</li>
+    <li>Rust는 C·C++만큼 빠르면서, <span class="term" data-term="소유권" data-en="Ownership" data-desc="Rust에서 값마다 주인 변수가 딱 하나라는 규칙이에요. 주인이 범위를 벗어나는 순간 메모리를 치우기 때문에, 언제 해제할지 컴파일러가 미리 알아요." data-g="1">소유권</span> 규칙으로 메모리 실수를 컴파일 단계에서 막아요.</li>
+    <li>지금 옮기는 이유는 세 갈래예요. 메모리 실수가 보안 버그의 큰 몫이고, GIL(Global Interpreter Lock) 때문에 Python은 병렬 처리에 약하고, AI(Artificial Intelligence)가 다시 짜는 비용을 낮췄어요.</li>
+    <li>두 에이전트 모두 테스트 33개를 통과했지만, 한쪽은 12스레드가 함께 쓰자 Python보다 느려졌어요. 테스트는 결과만 보고 속도는 보지 않아요.</li>
+    <li>순수 Python 반복문이 CPU(Central Processing Unit)를 붙잡는 곳부터 옮기고, 출력 비교 테스트와 다시 재는 측정을 함께 붙여요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">Rust는 어떤 언어인가요</a></li>
+    <li><a href="#s2">Python은 운전대, Rust는 엔진 쪽</a></li>
+    <li><a href="#s3">왜 지금 Rust일까요: 보안, GIL, AI</a></li>
+    <li><a href="#s4">두 에이전트로 직접 옮겨 봤어요</a></li>
+    <li><a href="#s5">우리도 갈아타야 할까요?</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>Rust는 어떤 언어인가요</h2>
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>이 영상은 Byte Without Bite 채널의 영어 영상 'Why AI Infrastructure Is Moving to Rust'를 여러 번 번역해 인용하고, 그 위에 채널이 직접 한 실험을 더했어요. 화면에 '원본 영상' 표시가 붙은 장면이 그 영상이에요. 인용한 말은 원래 영상과 대조했어요.</p>
+</aside>
+<p>영상은 '이미 많은 곳이 옮기고 있다'는 장면으로 시작해요. 카드 여섯 장에 리눅스 커널, 마이크로소프트, 안드로이드, GitHub Copilot, X, Hugging Face가 있어요. 밝게 켜진 두 장이 특히 눈여겨볼 곳이에요. 리눅스 커널은 2025년 12월 실험 단계를 끝내고 C 옆에 Rust를 정식으로 들였어요. 마이크로소프트는 한 엔지니어가 2030년까지 C·C++를 Rust로 옮기겠다는 연구 목표를 걸었어요.</p>
+<figure>
+  <img src="assets/frame-0016.webp" alt="리눅스 커널, 마이크로소프트, 안드로이드, GitHub Copilot, X, Hugging Face 여섯 곳이 Rust로 옮기는 내용을 카드로 정리한 슬라이드">
+  <figcaption>회사마다 옮기는 범위는 달라요. 커널은 정식 언어 채택, 나머지는 핵심 라이브러리나 런타임 교체예요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=16s" target="_blank" rel="noopener">영상 00:16에서 보기</a></figcaption>
+</figure>
+<h3>빠른 이유: 미리 번역해 둔 책</h3>
+<p>Rust는 Mozilla에서 시작해 2015년에 첫 정식 버전이 나온 언어예요. 영상은 'C·C++만큼 빠르면서 메모리 실수를 컴파일러가 미리 막아 주는 언어'라고 한 줄로 정리해요. 아래 슬라이드 위 칸의 Python은 코드가 통역사를 거쳐 CPU에 닿아요. 아래 칸의 Rust는 실행 전에 기계어로 미리 번역해 두고 그걸 바로 읽어요. 노란 띠에 적힌 'C·C++도 이쪽'이라는 말이 다음 이야기로 이어져요.</p>
+<figure>
+  <img src="assets/frame-0113.webp" alt="Python은 코드가 통역사를 거쳐 CPU로 가고, Rust는 미리 번역한 기계어를 CPU가 바로 읽는다는 두 줄짜리 비교 슬라이드">
+  <figcaption>속도 차이는 언어의 문법이 아니라 '언제 번역하느냐'에서 나와요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=73s" target="_blank" rel="noopener">영상 01:13에서 보기</a></figcaption>
+</figure>
+<p>C·C++도 미리 번역하니 빠르지만, 메모리 실수를 다 막아 주지는 않아요. 원래 영상은 이 차이를 이렇게 말해요.</p>
+<blockquote>
+  <p>Instead of letting these mistakes slip through and blow up while the program is running, it turns them into compile errors.</p>
+  <p>실수가 빠져나가 실행 중에 터지게 두는 대신, Rust는 그걸 컴파일 에러로 바꿔요.</p>
+  <cite>— 원래 영상 (이 영상 01:09 부근)</cite>
+</blockquote>
+<h3>출고 전 검사관과 소유권</h3>
+<p>그래서 영상은 Rust 컴파일러를 '출고 전 검사관'에 비유해요. 규칙을 어긴 코드는 실행 파일 자체가 만들어지지 않아요. 그 규칙의 핵심이 소유권이에요. 슬라이드의 중괄호가 주인의 범위이고, 노란 칸이 '값 · 주인 1명'이에요. 범위가 닫히는 순간 값도 함께 치워져요.</p>
+<figure>
+  <img src="assets/frame-0152.webp" alt="중괄호로 표시한 주인의 범위 안에 '값 · 주인 1명'이라는 노란 칸이 있는 소유권 설명 슬라이드">
+  <figcaption>값마다 주인이 하나라서, 언제 메모리를 치울지 컴파일러가 미리 알아요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=112s" target="_blank" rel="noopener">영상 01:52에서 보기</a></figcaption>
+</figure>
+<p>치울 시점을 미리 알면 따로 청소할 필요가 없어요. 아래 슬라이드의 Python 막대에는 중간에 빨간 구간 '모아서 치우는 정리(GC)'가 끼어 있어요. Rust 막대는 끊김 없이 이어지고, 아래에 '추적 GC의 일괄 정리 없음 · 끝나는 지점마다 치움'이라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0206.webp" alt="Python 막대 중간에 빨간 가비지 컬렉션 구간이 있고 Rust 막대는 끊김 없이 이어지는 비교 슬라이드">
+  <figcaption><span class="term" data-term="가비지 컬렉터" data-en="Garbage collector" data-desc="프로그램이 안 쓰는 메모리를 주기적으로 찾아 모아서 치우는 장치예요. 편하지만 치우는 동안 잠깐 멈출 수 있어서 응답 시간이 들쭉날쭉해져요." data-g="2">가비지 컬렉터</span>가 없다는 게 곧 '중간에 멈추지 않는다'는 뜻이에요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=126s" target="_blank" rel="noopener">영상 02:06에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=124s" target="_blank" rel="noopener">02:04</a>
+  <h2>Python은 운전대, Rust는 엔진 쪽</h2>
+<p>그럼 Python은 밀려날까요? 영상은 Python과 그 밑의 관계부터 그려요. 원래 영상의 예시는 <code>torch.matmul(a, b)</code> 한 줄이에요. Python은 이 일을 PyTorch의 C++ 라이브러리(ATen)에 넘기고, 그 라이브러리가 다시 GPU(Graphics Processing Unit)의 CUDA(Compute Unified Device Architecture) 커널에 넘겨요. 아래 슬라이드 왼쪽 운전대가 Python 코드, 톱니바퀴가 그 아래 두 층이에요. 노란 'Rust' 딱지가 C++ 라이브러리 칸에 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-0240.webp" alt="Python 코드, C++ 라이브러리, CUDA 커널 세 층 가운데 C++ 라이브러리 칸에 Rust 딱지가 붙고 왼쪽에 운전대와 엔진 아이콘이 있는 슬라이드">
+  <figcaption>Rust가 노리는 자리는 운전대가 아니라 엔진이에요. Python 코드는 그대로 남아요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=160s" target="_blank" rel="noopener">영상 02:40에서 보기</a></figcaption>
+</figure>
+<p>엔진을 바꿔도 운전대는 그대로 쓸 수 있는 건 다리 역할을 하는 도구 덕분이에요. 슬라이드 가운데 PyO3가 Rust와 Python을 잇고, 아래 maturin이 그걸 패키지로 묶어요. 이렇게 만든 Rust 라이브러리는 Python에서 다른 모듈처럼 import해요.</p>
+<figure>
+  <img src="assets/frame-0247.webp" alt="왼쪽 Rust 로고와 오른쪽 Python 로고 사이를 PyO3가 화살표로 잇고 아래에 maturin이 적힌 원래 영상 장면">
+  <figcaption>Python 사용자는 빨라진 속도만 느끼고, 안에 Rust가 들어간 줄 모르는 경우가 많아요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=167s" target="_blank" rel="noopener">영상 02:47에서 보기</a></figcaption>
+</figure>
+<p>실제로 이미 많이 쓰는 도구 안에 Rust가 들어 있어요. 아래 여섯 칸이 영상이 든 예예요. OpenAI <span class="term" data-term="토크나이저" data-en="Tokenizer" data-desc="LLM에 넣을 글을 모델이 아는 토큰 번호 목록으로 바꾸는 부품이에요. 모든 요청이 거쳐 가서 속도가 서비스 전체에 영향을 줘요." data-g="5">토크나이저</span> tiktoken은 핵심이 Rust예요. Pydantic은 Rust로 다시 쓴 뒤 빨라졌어요. Polars는 큰 데이터에서 pandas를 앞서요. Ruff는 코드 검사기, uv는 패키지 관리자예요. Hugging Face tokenizers도 핵심이 Rust예요.</p>
+<figure>
+  <img src="assets/frame-0253.webp" alt="tiktoken, Pydantic, Polars, Ruff, uv, tokenizers 여섯 도구를 카드로 나열한 '이미 쓰고 있을지 모르는 Rust가 들어간 Python 도구' 슬라이드">
+  <figcaption>영상은 쓰고 있는 패키지 목록에서 이 이름들이 있는지 찾아보라고 권해요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=173s" target="_blank" rel="noopener">영상 02:53에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=202s" target="_blank" rel="noopener">03:22</a>
+  <h2>왜 지금 Rust일까요: 보안, GIL, AI</h2>
+<p>영상은 '왜 하필 지금'에 세 가지 답을 내놔요. 보안, AI 서비스의 요구, 그리고 AI가 코드를 쓰기 시작했다는 점이에요.</p>
+<h3>① 보안: 버그의 큰 몫이 메모리 실수예요</h3>
+<p>원래 영상은 마이크로소프트가 매년 고치는 보안 버그의 약 70%가 <span class="term" data-term="메모리 안전성" data-en="Memory safety" data-desc="이미 해제한 메모리를 다시 읽거나 범위 밖을 건드리는 실수가 없는 성질이에요. 이런 실수는 해킹에 쓰이기 쉬워서 보안 버그의 큰 몫을 차지해요." data-g="3">메모리 안전성</span> 문제라고 짚어요. 구글 Chromium 팀도 비슷한 숫자를 냈어요. 여기에 영상은 구글 안드로이드 사례를 더해요. 새 코드를 메모리 안전한 언어로 쓰는 전략을 편 끝에, 2025년 메모리 안전 취약점이 처음으로 전체의 20% 아래로 내려갔어요. 아래 슬라이드는 같은 양의 코드에서 나온 취약점을 점으로 찍었어요. 왼쪽 빨간 점 덩어리가 C·C++ 코드의 1000, 오른쪽 노란 점 하나가 Rust 코드의 1이에요.</p>
+<figure>
+  <img src="assets/frame-0403.webp" alt="같은 양의 코드에서 C·C++ 코드는 빨간 점 1000개, Rust 코드는 노란 점 1개로 취약점 밀도를 비교한 슬라이드">
+  <figcaption>점 하나와 천 개. 구글이 밝힌 <span class="term" data-term="취약점 밀도" data-en="Vulnerability density" data-desc="같은 양의 코드(보통 100만 줄)에서 취약점이 몇 개 나왔는지 센 값이에요. 코드 양이 다른 언어끼리 비교할 때 써요." data-g="4">취약점 밀도</span> 차이를 그대로 그린 장면이에요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=243s" target="_blank" rel="noopener">영상 04:03에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>구글 글의 실제 숫자는 이래요. Rust 코드는 100만 줄당 약 0.2개, 안드로이드의 C·C++ 코드는 100만 줄당 1,000개 가까운 메모리 안전 취약점이 나왔어요. 구글은 이를 '1000배 넘게 줄었다'고 표현해요. 같은 글은 비슷한 크기의 변경에서 Rust 코드가 C++보다 리뷰 수정 횟수가 약 20% 적었다고도 적었어요. 보안만이 아니라 개발 속도에도 도움이 됐다는 이야기예요.</p>
+  <p class="cite">출처: <a href="https://security.googleblog.com/2025/11/rust-in-android-move-fast-fix-things.html" target="_blank" rel="noopener">Google Security Blog — Rust in Android: move fast and fix things (2025-11)</a></p>
+</aside>
+<p>그래서 큰 곳들이 핵심 코드를 옮기고 있어요. xAI 코드는 대부분 Rust이고, X는 옛 트위터의 Scala 코드를 Rust로 바꾸는 중이에요. GitHub는 Copilot 런타임을 Node.js의 TypeScript에서 Rust로 옮긴다고 했어요. 커널 쪽 변화는 아래 슬라이드에 있어요. 'Rust 실험 단계'가 '정식 구성 요소'로 바뀌었고, Rust for Linux의 Miguel Ojeda가 남긴 말이 인용돼 있어요.</p>
+<figure>
+  <img src="assets/frame-0443.webp" alt="리눅스 커널 카드에 'Rust 실험 단계'에서 '정식 구성 요소'로 바뀐 표시와 Miguel Ojeda의 'the experiment is done, i.e. Rust is here to stay' 인용이 있는 슬라이드">
+  <figcaption>2025년 12월, 커널에서 Rust는 더 이상 실험이 아니게 됐어요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=283s" target="_blank" rel="noopener">영상 04:43에서 보기</a></figcaption>
+</figure>
+<h3>② AI 서비스와 GIL: 계산대가 하나뿐인 마트</h3>
+<p>두 번째 이유는 AI 서비스가 많은 요청을 동시에 처리해야 한다는 점이에요. 여기서 걸리는 게 Python의 GIL이에요. Python 전체에 자물쇠가 하나 걸려 있어서, 스레드를 늘려도 한 번에 한 스레드만 Python 코드를 실행해요. 영상의 비유로는 계산대가 하나뿐인 마트예요. 줄을 늘려도 계산은 한 명씩만 해요.</p>
+<p>이 채널은 그걸 직접 재 봤어요. 아래 그래프의 가로축이 스레드 수(1~12), 세로축이 초당 <span class="term" data-term="처리량" data-en="Throughput" data-desc="정해진 시간에 처리하는 일의 양이에요. 이 영상에서는 1초에 몇 MB의 글을 토큰으로 바꾸는지로 쟀어요." data-g="7">처리량</span>(MB(Megabyte))이에요. 스레드마다 자기 토크나이저를 따로 쓰게 했는데도, Python 선은 바닥에 거의 평평하게 깔려 있고 끝에 'Python 3.14 19.0'이 찍혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0515.webp" alt="가로축 스레드 수 1~12, 세로축 초당 MB인 그래프에서 Python 선이 약 19에서 평평하게 이어지는 슬라이드">
+  <figcaption>스레드를 12배로 늘려도 처리량은 초당 약 19~21MB에 머물렀어요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=315s" target="_blank" rel="noopener">영상 05:15에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상이 말한 'GIL을 선택 사항으로 바꾸는 중'은 PEP(Python Enhancement Proposal) 703과 PEP 779의 이야기예요. 계획은 세 단계예요. 3.13에서는 GIL 없는 빌드(<span class="term" data-term="free-threaded build" data-en="Free-threaded build" data-desc="GIL을 끈 CPython 빌드예요. 여러 스레드가 진짜로 동시에 Python 코드를 돌릴 수 있지만, 그만큼 동시 접근 실수도 그대로 드러나요." data-g="8">free-threaded build</span>)를 실험용으로 냈어요. 3.14부터는 정식 지원하지만 여전히 선택 사항이에요. 기본값으로 만드는 건 마지막 단계예요. 실험에 나오는 'Python 3.14t'의 t가 이 GIL 없는 빌드를 뜻해요. 공식 문서는 일부 서드파티 패키지, 특히 C 확장 모듈이 아직 준비되지 않았을 수 있다고 적고 있어요.</p>
+  <p class="cite">출처: <a href="https://peps.python.org/pep-0779/" target="_blank" rel="noopener">PEP 779 — Criteria for supported status for free-threaded Python</a> · <a href="https://docs.python.org/3/howto/free-threading-python.html" target="_blank" rel="noopener">Python 공식 문서 — Python support for free threading</a></p>
+</aside>
+<h3>③ AI가 코드를 쓰기 시작했어요</h3>
+<p>세 번째가 가장 새로운 이유예요. 예전엔 수백만 줄을 다른 언어로 다시 짜는 비용이 너무 커서 엄두를 못 냈어요. 이제 그 번역을 AI에게 맡기려는 시도가 나왔어요. DARPA(Defense Advanced Research Projects Agency)는 2024년 C 코드를 Rust로 자동 번역하는 TRACTOR(Translating All C to Rust) 프로그램을 시작하며 대형 언어 모델을 쓰는 방법을 공모했어요. 아래 슬라이드는 앞에서 본 마이크로소프트 엔지니어의 목표예요. 엔지니어 1명, 기간 1달, 코드 100만 줄이에요. AI와 알고리즘을 섞어서요. 본인은 이게 연구 프로젝트라고 덧붙였어요.</p>
+<figure>
+  <img src="assets/frame-0547.webp" alt="엔지니어 1명, 기간 1달, 코드 100만 줄 세 칸과 '1 engineer, 1 month, 1 million lines of code' 문구가 있는 슬라이드">
+  <figcaption>숫자는 목표예요. 실제로 해냈다는 발표가 아니라는 점을 영상도 짚어요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=347s" target="_blank" rel="noopener">영상 05:47에서 보기</a></figcaption>
+</figure>
+<p>옮기는 비용이 내려가면 남는 질문은 'AI가 쓴 코드를 어떻게 믿느냐'예요. 사람이 수천 줄을 다 읽을 수는 없어요. 그래서 규칙 위반을 미리 걸러 주는 컴파일러가 있는 언어가 유리하다는 설명이 나와요. 슬라이드 오른쪽 아래 노란 딱지 '정말 그런지 → 03 실험'처럼, 영상은 이 설명을 그대로 믿지 않고 다음 장에서 직접 확인해요.</p>
+<figure>
+  <img src="assets/frame-0611.webp" alt="AI가 쓴 수천 줄 코드 그림에서 컴파일러 상자로 화살표가 가고 '정말 그런지 → 03 실험' 딱지가 붙은 슬라이드">
+  <figcaption>영상은 AI에게 맡기기 전에 결과를 사람 대신 검사할 장치부터 정해 두라고 권해요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=371s" target="_blank" rel="noopener">영상 06:11에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=380s" target="_blank" rel="noopener">06:20</a>
+  <h2>두 에이전트로 직접 옮겨 봤어요</h2>
+<p>실험 대상은 토크나이저예요. LLM(Large Language Model)에 넣을 글을 토큰 번호로 바꾸는 부품이에요. Claude Code와 Codex 두 에이전트에게 같은 Python 토크나이저를 Rust로 옮기게 했어요. 합격 기준은 미리 정했어요. 원본 Python과 출력이 하나도 다르지 않은지 보는 테스트 33개예요.</p>
+<p>아래 기록 카드가 결과예요. 왼쪽 Claude Code는 188초, 오른쪽 Codex는 397초가 걸렸어요. 둘 다 컴파일 에러 없이 첫 빌드에 성공했고 33개를 모두 통과했어요. 아래 노란 칸 '바깥 재실행: 33 passed'는 에이전트 말만 믿지 않고, 끝난 뒤 바깥에서 테스트를 다시 돌려 확인했다는 표시예요.</p>
+<figure>
+  <img src="assets/frame-0653.webp" alt="Claude Code와 Codex 각각의 조건, 걸린 시간 188초와 397초, 사용량, '33개 모두 통과' 판정을 적은 두 기록 카드">
+  <figcaption>통과 여부를 에이전트 밖에서 다시 확인한 게 이 실험의 기본 태도예요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=413s" target="_blank" rel="noopener">영상 06:53에서 보기</a></figcaption>
+</figure>
+<h3>얼마나 빨라졌나요</h3>
+<p>속도는 같은 글 1.75MB를 토큰으로 바꾸는 시간으로 쟀어요. 캐시가 빈 첫 실행에서 Python은 초당 7.55MB, Claude가 옮긴 Rust는 28.5MB, Codex가 옮긴 Rust는 57.6MB였어요. 그런데 '몇 배'는 조건마다 달라요. 아래 표의 세 칸이 조건이에요. 캐시가 빈 첫 실행, 캐시를 끈 순수 계산, 캐시를 다 채운 뒤예요.</p>
+<figure>
+  <img src="assets/frame-0725.webp" alt="캐시 빈 첫 실행, 캐시 끔·순수 계산, 캐시 다 채운 뒤 세 조건에서 Claude와 Codex 버전이 Python보다 몇 배 빠른지 적은 표">
+  <figcaption>같은 코드인데 Claude 버전은 2.8배에서 18.4배까지 오가요. '몇 배 빨라졌다'는 말은 조건과 함께 읽어야 해요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=445s" target="_blank" rel="noopener">영상 07:25에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>조건</th><th>Claude 버전</th><th>Codex 버전</th></tr></thead>
+    <tbody>
+      <tr><td>캐시 빈 첫 실행</td><td>3.8배</td><td>7.6배</td></tr>
+      <tr><td>캐시 끔 · 순수 계산</td><td>18.4배</td><td>14.6배</td></tr>
+      <tr><td>캐시 다 채운 뒤</td><td>2.8배</td><td>4.2배</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>테스트를 다 통과하고도 Python보다 느려진 코드</h3>
+<p>이번엔 토크나이저 하나를 스레드 12개가 함께 쓰게 했어요. 아래 그래프에서 흰 선이 Claude 버전, 빨간 선이 Codex 버전이에요. 흰 선은 스레드가 늘수록 올라가 초당 189.1MB에 닿아요. 빨간 선은 거꾸로 내려가 10.7MB에서 끝나요. 바닥의 회색 선이 같은 조건의 Python(20.2MB)이에요. Codex 버전이 Python보다도 느려진 거예요.</p>
+<figure>
+  <img src="assets/frame-0741.webp" alt="토크나이저 1개를 공유할 때 스레드 수에 따른 처리량 그래프. Claude Rust는 189.1까지 오르고 Codex Rust는 10.7로 떨어지며 Python은 바닥에 평평하게 있음">
+  <figcaption>혼자 돌 때 가장 빨랐던 Codex 버전이, 여럿이 쓰자 가장 느려졌어요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=461s" target="_blank" rel="noopener">영상 07:41에서 보기</a></figcaption>
+</figure>
+<p>영상에 나온 숫자를 한 그림에 모으면 이 뒤집힘이 더 잘 보여요. 파란 막대가 혼자 돌 때(1스레드, 캐시 빈 첫 실행), 주황 막대가 토크나이저 하나를 12스레드가 함께 쓸 때예요. 두 조건은 측정 방식이 달라서, 막대끼리 몇 배인지 비교하기보다 순위가 어떻게 바뀌는지 보면 돼요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 290" role="img" aria-label="Python, Claude Rust, Codex Rust 1차, Codex Rust 2차의 1스레드와 12스레드 공유 처리량 막대">
+    <rect class="bar" x="150" y="12" width="14" height="12"/><text x="170" y="22" class="sub">혼자 돌 때 (1스레드)</text>
+    <rect class="bar alt" x="330" y="12" width="14" height="12"/><text x="350" y="22" class="sub">12스레드가 함께 쓸 때</text>
+    <text x="140" y="62" text-anchor="end">Python</text>
+    <rect class="bar" x="150" y="46" width="14" height="16"/><text x="170" y="59" class="mono">7.55</text>
+    <rect class="bar alt" x="150" y="66" width="36" height="16"/><text x="192" y="79" class="mono">20.2</text>
+    <text x="140" y="122" text-anchor="end">Claude Rust</text>
+    <rect class="bar" x="150" y="106" width="51" height="16"/><text x="207" y="119" class="mono">28.5</text>
+    <rect class="bar alt" x="150" y="126" width="340" height="16"/><text x="496" y="139" class="mono">189.1</text>
+    <text x="140" y="182" text-anchor="end">Codex Rust 1차</text>
+    <rect class="bar" x="150" y="166" width="104" height="16"/><text x="260" y="179" class="mono">57.6</text>
+    <rect class="bar alt bad" x="150" y="186" width="19" height="16"/><text x="175" y="199" class="mono">10.7  Python보다 느림</text>
+    <text x="140" y="242" text-anchor="end">Codex Rust 2차</text>
+    <text x="158" y="239" class="sub">1스레드 값은 영상에 없어요</text>
+    <rect class="bar alt" x="150" y="246" width="263" height="16"/><text x="419" y="259" class="mono">146</text>
+    <line class="axis" x1="150" y1="40" x2="150" y2="270"/>
+    <text x="150" y="285" class="sub">초당 처리량 (MB) · 막대 길이는 같은 눈금</text>
+  </svg>
+  <figcaption>혼자 돌 때 1등이던 Codex 버전이 함께 쓸 때는 꼴찌가 됐다가, 숫자를 돌려받고 고친 뒤 146MB로 올라왔어요. 영상 07:00~08:21의 숫자만 그렸어요.</figcaption>
+</figure>
+<p>원인은 코드에 있었어요. 단어 조각 하나를 찾을 때마다 캐시에 자물쇠를 걸었다 풀었거든요. 영상의 비유로는 사전 한 권을 여럿이 같이 보는데, 단어 하나 찾을 때마다 자물쇠를 열고 닫는 셈이에요. 그런데 테스트는 이걸 잡지 못했어요. 아래 슬라이드가 그 이유를 두 줄로 보여 줘요. 체크 표시는 '결과가 원본과 같은가', X 표시는 '여럿이 함께 쓸 때 빠른가 — 보지 않음'이에요.</p>
+<figure>
+  <img src="assets/frame-0757.webp" alt="점 세 개가 자물쇠 달린 '사전' 상자 하나를 함께 쓰는 그림과 '사전 한 권을 여럿이 같이 본다' 제목의 슬라이드">
+  <figcaption>찾을 때마다 자물쇠를 여닫으니, 스레드가 늘수록 서로 기다리는 시간이 늘어요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=477s" target="_blank" rel="noopener">영상 07:57에서 보기</a></figcaption>
+</figure>
+<figure>
+  <img src="assets/frame-0801.webp" alt="'테스트 33개가 보는 것' 제목 아래 '결과가 원본과 같은가'에는 체크, '여럿이 함께 쓸 때 빠른가 — 보지 않음'에는 X가 붙은 슬라이드">
+  <figcaption>테스트를 다 통과했다는 건 '결과가 같다'까지만 보증해요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=481s" target="_blank" rel="noopener">영상 08:01에서 보기</a></figcaption>
+</figure>
+<p>고치는 방법은 단순했어요. 이 숫자와 다시 재는 명령을 Codex에게 그대로 돌려줬어요. Codex는 7분 10초 만에 읽기 자물쇠를 문서당 한 번으로 모으는 등 코드를 고쳤어요. 아래 막대에서 빨간 10.7이 노란 145.9로, 'Rust 안 병렬 함수'도 11.8에서 179.6으로 올라갔어요.</p>
+<figure>
+  <img src="assets/frame-0821.webp" alt="Codex 1차에서 2차로 공유 12스레드 처리량이 10.7에서 145.9로, Rust 안 병렬 함수가 11.8에서 179.6으로 오른 막대 슬라이드">
+  <figcaption>사람이 코드를 고친 게 아니라, 나쁜 숫자를 그대로 돌려준 것만으로 열 배 넘게 좋아졌어요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=501s" target="_blank" rel="noopener">영상 08:21에서 보기</a></figcaption>
+</figure>
+<h3>컴파일러가 막은 것, 막지 못한 것</h3>
+<p>그럼 '잘못 쓰는 순간 컴파일러가 막아 준다'는 설명은 맞을까요? 영상은 작은 실험을 따로 해요. 스레드 8개가 카운터 하나에 100만 번씩 더하는 코드예요. 정답은 800만이에요. GIL을 끈 Python 3.14t에서 세 번 돌린 결과가 아래 화면이에요. 빨간 숫자 1,401,069, 2,008,935, 1,099,535가 보이고, 그 위 딱지는 '에러 메시지 없음 · 틀린 숫자가 그냥 나옴'이에요.</p>
+<figure>
+  <img src="assets/frame-0901.webp" alt="python3.14t race.py를 세 번 실행해 기대값 8,000,000 대신 1,401,069, 2,008,935, 1,099,535가 나온 터미널과 '에러 메시지 없음' 딱지">
+  <figcaption>GIL이 없어지면 Python도 이런 실수를 그대로 실행해요. 에러가 없어서 더 위험해요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=541s" target="_blank" rel="noopener">영상 09:01에서 보기</a></figcaption>
+</figure>
+<p>같은 실수를 Rust로 쓰면 빌드 단계에서 멈춰요. 아래 화면 노란 테두리 줄이 핵심이에요. <code>Rc&lt;RefCell&lt;u64&gt;&gt;</code> cannot be sent between threads safely. 이 값은 스레드 사이로 안전하게 보낼 수 없다는 E0277 에러예요. 안전한 타입으로 바꾸면 빌드가 되고, 매번 정확히 800만이 나와요.</p>
+<figure>
+  <img src="assets/frame-0909.webp" alt="Rust 컴파일러가 'Rc&lt;RefCell&lt;u64&gt;&gt; cannot be sent between threads safely' E0277 에러로 빌드를 거부한 터미널 화면">
+  <figcaption>실행해 보기도 전에 막혀요. 영상이 말하는 '출고 전 검사관'이 실제로 일하는 장면이에요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=549s" target="_blank" rel="noopener">영상 09:09에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Rust 공식 입문서(The Rust Programming Language) 16장이 거의 같은 예제를 다뤄요. 여러 스레드가 카운터를 함께 고칠 때, 참조 카운트를 스레드 안전하지 않게 세는 <code>Rc&lt;T&gt;</code>를 쓰면 E0277이 나요. 해결책은 원자적으로 세는 <code>Arc&lt;T&gt;</code>와 자물쇠 <code>Mutex&lt;T&gt;</code>를 함께 쓰는 거예요. 컴파일러가 보는 기준은 그 타입이 Send(스레드 사이로 보내도 안전한가)를 갖췄는지예요.</p>
+  <p class="cite">출처: <a href="https://doc.rust-lang.org/book/ch16-03-shared-state.html" target="_blank" rel="noopener">The Rust Programming Language — Shared-State Concurrency</a></p>
+</aside>
+<p>다만 영상은 선을 분명히 그어요. 컴파일러가 막은 건 안전하지 않은 데이터 공유까지예요. 앞의 Codex 버전처럼 '안전하지만 느린' 코드는 그대로 통과해요. 결과가 맞는지는 테스트가, 빠른지는 측정이 따로 봐야 했어요. 그래서 영상의 권고는 이래요. 에이전트가 옮긴 코드는 테스트를 통과한 뒤에도, 같은 입력으로 여러 스레드에서 한 번 더 재 보세요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=570s" target="_blank" rel="noopener">09:30</a>
+  <h2>우리도 갈아타야 할까요?</h2>
+<p>원래 영상의 결론은 이래요.</p>
+<blockquote>
+  <p>Rust is not replacing Python in AI. It's quietly replacing the C++ underneath it.</p>
+  <p>Rust는 AI에서 Python을 대체하는 게 아니에요. 그 밑의 C++를 조용히 대체하고 있어요.</p>
+  <cite>— 원래 영상 (이 영상 09:30 부근)</cite>
+</blockquote>
+<p>Python으로 일하는 쪽에서 보면 실제로 바뀐 게 거의 없었어요. 이 실험에서 호출하는 코드는 import 한 줄만 바꿨어요. 아래 두 터미널은 <code>from bpe import Tokenizer</code>로 돌린 왼쪽과 <code>from rustbpe import Tokenizer</code>로 돌린 오른쪽이에요. 노란 테두리 줄을 보면 둘 다 토큰 629,740개, 해시값까지 같아요. 실행 시간만 0.8초에서 0.3초로 줄었어요.</p>
+<figure>
+  <img src="assets/frame-1001.webp" alt="from bpe와 from rustbpe로 각각 실행한 두 터미널이 모두 629,740 tokens와 같은 sha256 해시를 출력하고 '같은 토큰 629,740개 · 같은 해시' 딱지가 붙은 화면">
+  <figcaption>해시까지 같으니 출력이 한 글자도 다르지 않다는 뜻이에요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=601s" target="_blank" rel="noopener">영상 10:01에서 보기</a></figcaption>
+</figure>
+<h3>옮길 곳과 재 보고 정할 곳</h3>
+<p>그렇다고 다 옮길 필요는 없어요. 아래 슬라이드는 세 칸으로 나눠요. 왼쪽 '옮길 곳'은 순수 Python 반복문이 CPU를 붙잡는 곳이에요. 이번 토크나이저가 그런 경우라 3.8~7.6배가 나왔어요. 오른쪽 '재 보고 정할 곳'은 이미 NumPy나 C 라이브러리로 도는 계산이에요. 아래 칸은 C·C++ 시스템이 있는 팀의 경우예요.</p>
+<figure>
+  <img src="assets/frame-1037.webp" alt="'옮길 곳'(순수 Python 반복문, 토크나이저 3.8~7.6배), '재 보고 정할 곳'(NumPy·C 라이브러리, 검색 1.42ms→2.17ms→1.05ms), 'C·C++ 시스템이 있는 팀'(새 코드부터 메모리 안전한 언어) 세 칸 슬라이드">
+  <figcaption>이미 C로 빠르게 도는 곳은 Rust로 옮겨도 얻을 게 적고, 오히려 느려질 수도 있어요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=637s" target="_blank" rel="noopener">영상 10:37에서 보기</a></figcaption>
+</figure>
+<p>오른쪽 칸의 숫자가 그 근거예요. NumPy 검색을 Rust로 처음 다시 짠 코드는 1.42ms에서 2.17ms로 오히려 느려졌어요. 두 번째로 최적화한 뒤에야 1.05ms로 앞섰어요. C·C++ 팀에게는 구글 안드로이드가 택한 방식을 소개해요. 기존 코드를 한꺼번에 옮기지 않고, 새로 쓰는 코드부터 메모리 안전한 언어로 쓰는 거예요.</p>
+<h3>기준 세 가지와 프롬프트</h3>
+<p>영상은 이걸 기준 세 가지로 정리해요. 아래 슬라이드 오른쪽 세 칸이 그대로 그 순서예요.</p>
+<figure>
+  <img src="assets/frame-1101.webp" alt="'옮길 곳, 옮기지 말 곳 · 기준 3가지' 제목 옆에 1 순수 Python 반복문부터, 2 출력 비교 테스트부터, 3 다시 재고 나쁜 숫자는 돌려준다 세 칸이 있는 슬라이드">
+  <figcaption>1번이 '무엇을', 2·3번이 '어떻게 믿을지'예요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=661s" target="_blank" rel="noopener">영상 11:01에서 보기</a></figcaption>
+</figure>
+<ol class="steps">
+  <li><b>순수 Python 반복문이 CPU를 잡아먹는 곳부터 옮겨요</b> — 이미 C로 도는 곳은 재 봐서 이득이 있을 때만 손대요.</li>
+  <li><b>에이전트에게 맡기기 전에 원본과 출력을 비교하는 테스트부터 만들어요</b> — 실험의 테스트 33개가 이 역할이었어요.</li>
+  <li><b>테스트를 통과해도 같은 입력으로 다시 재요</b> — 숫자가 나쁘면 그 숫자를 그대로 에이전트에게 돌려줘요.
+    <span class="done">Codex 버전이 10.7MB에서 146MB로 올라온 게 이 단계였어요</span></li>
+</ol>
+<p>이 순서를 프롬프트로 정리한 화면도 나와요. 화면을 캡처해 Claude에 붙여 넣고, 동그라미(○○) 자리만 옮기려는 파일과 함수 이름으로 바꾸면 된다고 해요. 3번 줄의 'GIL을 풀어서'는 Rust 쪽에서 무거운 계산을 하는 동안 GIL을 놓아, 다른 Python 스레드가 동시에 부를 수 있게 하라는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-1107.webp" alt="'프롬프트 · 캡처해서 Claude에 붙여 넣기' 제목의 상자에 PyO3와 maturin으로 Rust 모듈로 옮기는 4단계 지시와 완료 조건이 적힌 슬라이드">
+  <figcaption>4)번의 '1스레드, 여러 스레드, 하나를 공유할 때'가 바로 앞 실험에서 Codex 버전의 문제를 드러낸 세 조건이에요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=667s" target="_blank" rel="noopener">영상 11:07에서 보기</a></figcaption>
+</figure>
+<p>화면의 글자를 그대로 옮기면 이래요.</p>
+<pre><code class="language-text">○○ 파일의 ○○ 함수를 PyO3와 maturin을 쓰는 Rust 모듈로 옮겨 줘.
+1) 먼저 원본 함수와 새 함수의 출력이 같은지 비교하는 테스트를 만들고, 원본으로 실행해 통과하는지 확인해.
+2) 같은 입력에는 같은 출력이 나와야 해. 결과가 달라지는 방식으로 알고리즘을 바꾸지 마.
+3) 무거운 계산 중에는 GIL을 풀어서 여러 스레드가 동시에 부를 수 있게 해.
+4) 끝나면 같은 입력으로 원본과 새 모듈의 속도를 1스레드, 여러 스레드, 하나를 공유할 때로 재서 표로 보여 줘.
+완료 조건: 테스트가 모두 통과하고 속도표가 나오면 끝.
+원본 코드와 테스트는 고치지 말고, 푸시·배포·삭제는 하지 마.</code></pre>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>프롬프트에 나오는 두 도구의 공식 문서예요. PyO3는 Rust로 Python 확장 모듈을 만드는 <span class="term" data-term="바인딩" data-en="Binding" data-desc="한 언어로 만든 라이브러리를 다른 언어에서 부를 수 있게 이어 주는 연결 코드예요. Rust 라이브러리에 Python 바인딩을 붙이면 Python에서 import해서 써요." data-g="6">바인딩</span>이고, 지금 문서 기준으로 Rust 1.85 이상과 CPython 3.9 이상을 지원해요. maturin은 그걸 Python 패키지(wheel)로 빌드하는 도구예요. <code>uv tool install maturin</code>이나 <code>pipx install maturin</code>으로 설치하고, <code>maturin new</code>로 프로젝트를 만든 뒤 <code>maturin develop</code>으로 현재 가상환경에 바로 설치해 import해 볼 수 있어요.</p>
+  <p class="cite">출처: <a href="https://pyo3.rs/" target="_blank" rel="noopener">PyO3 user guide</a> · <a href="https://www.maturin.rs/" target="_blank" rel="noopener">Maturin User Guide</a></p>
+</aside>
+<p>마지막 정리 화면은 이 영상 전체를 세 칸으로 줄여요. 컴파일러는 위험한 공유를 차단하고, 테스트는 결과가 같은지, 측정은 실제로 빠른지를 봐요. AI가 코드를 쓰는 시대에 Rust가 주목받는 이유는 빠르고 컴파일러가 메모리 실수를 미리 걸러 주기 때문이에요. 하지만 이 실험에서 결과와 속도까지 지킨 건 세 칸 모두였어요.</p>
+<figure>
+  <img src="assets/frame-1131.webp" alt="'AI가 코드를 쓰는 시대, Rust가 주목받는 이유' 제목 아래 빠르다, 컴파일러가 메모리 실수를 미리 거른다, 그리고 컴파일러·테스트·측정 세 칸이 있는 정리 슬라이드">
+  <figcaption>시작은 하나면 돼요. 가장 오래 도는 순수 Python 함수 하나를 골라 출력 비교 테스트부터 만들어요. <a href="https://www.youtube.com/watch?v=RvWRPwbs5H0&amp;t=691s" target="_blank" rel="noopener">영상 11:31에서 보기</a></figcaption>
+</figure>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-2"><dt>가비지 컬렉터<span class="en">Garbage collector</span></dt><dd>프로그램이 안 쓰는 메모리를 주기적으로 찾아 모아서 치우는 장치예요. 편하지만 치우는 동안 잠깐 멈출 수 있어서 응답 시간이 들쭉날쭉해져요.</dd></div>
+    <div class="g" id="g-3"><dt>메모리 안전성<span class="en">Memory safety</span></dt><dd>이미 해제한 메모리를 다시 읽거나 범위 밖을 건드리는 실수가 없는 성질이에요. 이런 실수는 해킹에 쓰이기 쉬워서 보안 버그의 큰 몫을 차지해요.</dd></div>
+    <div class="g" id="g-6"><dt>바인딩<span class="en">Binding</span></dt><dd>한 언어로 만든 라이브러리를 다른 언어에서 부를 수 있게 이어 주는 연결 코드예요. Rust 라이브러리에 Python 바인딩을 붙이면 Python에서 import해서 써요.</dd></div>
+    <div class="g" id="g-1"><dt>소유권<span class="en">Ownership</span></dt><dd>Rust에서 값마다 주인 변수가 딱 하나라는 규칙이에요. 주인이 범위를 벗어나는 순간 메모리를 치우기 때문에, 언제 해제할지 컴파일러가 미리 알아요.</dd></div>
+    <div class="g" id="g-7"><dt>처리량<span class="en">Throughput</span></dt><dd>정해진 시간에 처리하는 일의 양이에요. 이 영상에서는 1초에 몇 MB의 글을 토큰으로 바꾸는지로 쟀어요.</dd></div>
+    <div class="g" id="g-4"><dt>취약점 밀도<span class="en">Vulnerability density</span></dt><dd>같은 양의 코드(보통 100만 줄)에서 취약점이 몇 개 나왔는지 센 값이에요. 코드 양이 다른 언어끼리 비교할 때 써요.</dd></div>
+    <div class="g" id="g-5"><dt>토크나이저<span class="en">Tokenizer</span></dt><dd>LLM에 넣을 글을 모델이 아는 토큰 번호 목록으로 바꾸는 부품이에요. 모든 요청이 거쳐 가서 속도가 서비스 전체에 영향을 줘요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>CPU</dt><dd>Central Processing Unit</dd></div>
+    <div class="g"><dt>CUDA</dt><dd>Compute Unified Device Architecture</dd></div>
+    <div class="g"><dt>DARPA</dt><dd>Defense Advanced Research Projects Agency</dd></div>
+    <div class="g" id="g-8"><dt>free-threaded build<span class="en">Free-threaded build</span></dt><dd>GIL을 끈 CPython 빌드예요. 여러 스레드가 진짜로 동시에 Python 코드를 돌릴 수 있지만, 그만큼 동시 접근 실수도 그대로 드러나요.</dd></div>
+    <div class="g"><dt>GIL</dt><dd>Global Interpreter Lock</dd></div>
+    <div class="g"><dt>GPU</dt><dd>Graphics Processing Unit</dd></div>
+    <div class="g"><dt>LLM</dt><dd>Large Language Model</dd></div>
+    <div class="g"><dt>MB</dt><dd>Megabyte</dd></div>
+    <div class="g"><dt>PEP</dt><dd>Python Enhancement Proposal</dd></div>
+    <div class="g"><dt>TRACTOR</dt><dd>Translating All C to Rust</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=RvWRPwbs5H0" target="_blank" rel="noopener">원본 영상 — 커리어해커 알렉스</a></li>
+    <li id="src-2"><a href="https://www.youtube.com/watch?v=2j4_iPG5Aqk" target="_blank" rel="noopener">영상이 인용한 원래 영상 — Byte Without Bite, Why AI Infrastructure Is Moving to Rust</a></li>
+    <li id="src-3"><a href="https://security.googleblog.com/2025/11/rust-in-android-move-fast-fix-things.html" target="_blank" rel="noopener">Google Security Blog — Rust in Android: move fast and fix things (2025-11)</a></li>
+    <li id="src-4"><a href="https://peps.python.org/pep-0779/" target="_blank" rel="noopener">PEP 779 — Criteria for supported status for free-threaded Python</a></li>
+    <li id="src-5"><a href="https://docs.python.org/3/howto/free-threading-python.html" target="_blank" rel="noopener">Python 공식 문서 — Python support for free threading</a></li>
+    <li id="src-6"><a href="https://doc.rust-lang.org/book/ch16-03-shared-state.html" target="_blank" rel="noopener">The Rust Programming Language — Shared-State Concurrency</a></li>
+    <li id="src-7"><a href="https://pyo3.rs/" target="_blank" rel="noopener">PyO3 user guide</a></li>
+    <li id="src-8"><a href="https://www.maturin.rs/" target="_blank" rel="noopener">Maturin User Guide</a></li>
+    <li id="src-9"><a href="https://www.darpa.mil/research/programs/translating-all-c-to-rust" target="_blank" rel="noopener">DARPA — TRACTOR (Translating All C to Rust)</a></li>
+  </ol>
+</div>
+
+<footer>2026년 10월 31일에 이 영상을 보고 정리했어요. 원본은 커리어해커 알렉스 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
