@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Reach로 에이전트에게 인터넷 읽히기</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Agent Reach로 에이전트에게 인터넷 읽히기</h1>
+  <p class="lede">X, 유튜브, 깃허브 데모로 본 설치와 실제 동작</p>
+  <div class="meta">
+    <span>바이브랩스</span><span class="dot">·</span>
+    <span>영상 13:33</span><span class="dot">·</span>
+    <span>읽는 데 약 13분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=WL_qu7l3fgQ" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>Agent Reach는 에이전트가 X, 유튜브, 깃허브, 레딧 같은 채널을 채널별 API(Application Programming Interface) 키 없이 읽게 해 주는 파이썬 패키지예요.</li>
+    <li>설치는 명령어로 직접 하거나 저장소 주소를 클로드 코드에 맡기는 두 길이 있어요. 지금 저장소는 PyPI의 <code>agent-reach</code>가 자기 것이 아니라고 경고하니 <code>pip install agent-reach</code>는 따라 하지 마세요.</li>
+    <li>데모에서 처음엔 13개 중 6개 채널이 켜졌고 전체 설치 뒤 9개가 됐어요. 나머지는 로그인, 확장, 키처럼 사람이 할 일이 남아요.</li>
+    <li>X 검색은 404로 막힌 뒤 재시도 체인을 타고 OpenCLI로 풀렸어요. 다만 이때 사람이 '설치 완료'라고 한 줄 알려 줘야 했어요.</li>
+    <li>유튜브는 yt-dlp, 깃허브는 gh CLI(Command Line Interface)로 돌아가고, 쓰임은 에러 해결, 문서 대신 이슈 읽기, 번역, 트렌드 조사예요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">에이전트가 못 읽는 이유와 Agent Reach</a></li>
+    <li><a href="#s2">설치와 인증: 한 줄 뒤에 남는 일</a></li>
+    <li><a href="#s3">X에서 반응 모으기: 막혔다 뚫리는 과정</a></li>
+    <li><a href="#s4">유튜브 자막과 깃허브 레포 읽기</a></li>
+    <li><a href="#s5">어디에 쓸까, 왜 통로가 여러 개일까</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>에이전트가 못 읽는 이유와 Agent Reach</h2>
+<p>영상은 흔한 실패 장면으로 시작해요. 클로드 코드에 X 링크를 주고 분석하라고 해도 읽지 못하는 경우가 많아요. 화자는 일부러 그러는 게 아니라 원래 할 수 없는 일이라고 짚어요.</p>
+<p>한 가지 우회로는 실행할 때 파라미터를 하나 붙이는 거예요. 아래 슬라이드의 <code>claude --chrome</code>이 그 모습이에요. 오른쪽 스위치처럼 브라우저 도구가 켜지면 X 글을 직접 볼 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0018.webp" alt="터미널 입력창의 claude --chrome 명령과 오른쪽의 Browser ON 스위치를 잇는 슬라이드">
+  <figcaption>플래그 하나로 브라우저 도구가 켜진다는 걸 보여 줘요. 다만 이건 한 사이트를 직접 찾아가는 방식이에요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=18s" target="_blank" rel="noopener">영상 00:18에서 보기</a></figcaption>
+</figure>
+<p>'모든 글을 학습했으니 아는 거 아니야?'라는 생각에 화자는 직접 물어보라고 해요. 입력창의 <code>what's trending on X right now?</code>가 그 시험이에요. 대부분 정보에 접근할 수 없다고 답하는데, 학습이 끝난 시점에서 시간이 멈춰 있기 때문이에요.</p>
+<figure>
+  <img src="assets/frame-0036.webp" alt="AGENT 입력창에 what's trending on X right now? 를 적고 TRY IT 스티커를 붙인 슬라이드">
+  <figcaption>이 질문 하나로 지식의 끝과 접근 능력의 끝을 함께 확인할 수 있어요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=36s" target="_blank" rel="noopener">영상 00:36에서 보기</a></figcaption>
+</figure>
+<h3>심부름은 결국 사람 몫이에요</h3>
+<p>아이디어를 조사시키면 레딧이나 X에 갈 수 없으니 사람이 브라우저를 열고 검색하고 복사해서 다시 붙여요. 슬라이드 왼쪽에서 쉬는 뇌와 오른쪽에서 짐을 나르는 사람이 이 역전을 그려요.</p>
+<figure>
+  <img src="assets/frame-0112.webp" alt="왼쪽에 받침대 위 뇌 아이콘, 오른쪽에 상자를 든 사람 아이콘을 둔 '심부름은 사람 몫' 슬라이드">
+  <figcaption>제일 똑똑한 쪽이 앉아 있고 사람이 뛰어다니는 그림이에요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=72s" target="_blank" rel="noopener">영상 01:12에서 보기</a></figcaption>
+</figure>
+<p>제대로 연결하는 보통 방법은 채널마다 API 키를 받는 거예요. 카드를 등록해 결제하고, 사용량 제한을 맞고, 플랫폼마다 다른 사용법을 익혀야 해요. 아래 카드 세 장의 빨간 막대가 채널별 사용량 제한이고, 사이의 X 표시는 서로 이어지지 않는다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0130.webp" alt="X, YouTube, Reddit 카드 세 장에 사용량 막대 88%, LIMIT, 71%가 있고 카드 사이가 X 표시로 끊긴 슬라이드">
+  <figcaption>화자는 이 설정을 하다가 정작 무엇을 조사하려 했는지 잊게 된다고 말해요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=90s" target="_blank" rel="noopener">영상 01:30에서 보기</a></figcaption>
+</figure>
+<h3>Agent Reach가 푸는 방식</h3>
+<p>Agent Reach는 파이썬 패키지 하나로 이 문제를 묶어요. 가운데 <code>agent-reach</code> 허브에서 뻗어 나간 아이콘들이 X, 유튜브, 레딧, 깃허브, 일반 웹 같은 채널이고, 왼쪽 위 숫자 '14+'가 화자가 말한 채널 수예요.</p>
+<figure>
+  <img src="assets/frame-0152.webp" alt="가운데 agent-reach 허브에서 X, YouTube, GitHub 등 아이콘으로 선이 뻗는 그림과 왼쪽 위의 14+ 숫자">
+  <figcaption>채널 수는 슬라이드와 제목이 14개, 뒤의 데모 진단은 13개예요. 숫자는 설치한 버전에 따라 달라져요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=112s" target="_blank" rel="noopener">영상 01:52에서 보기</a></figcaption>
+</figure>
+<p>화자가 재미있다고 꼽는 개념은 <span class="term" data-term="셀프 힐링 라우터" data-en="Self-healing router" data-desc="한 통로가 막히면 다음 통로로 알아서 넘어가는 구조를 화자가 부르는 말이에요. 플랫폼이 자동 접근을 자주 막을 때 쓸모가 있어요." data-g="1">셀프 힐링 라우터</span>예요. 슬라이드의 'RE-ROUTE()'처럼 통로 1이 막히면 신호가 갈라져 통로 2로 가요. X가 막으면 다른 길로 간다는 얘기예요.</p>
+<figure>
+  <img src="assets/frame-0205.webp" alt="RE-ROUTE() 제목 아래 SPLIT 지점에서 갈라져 통로 1은 BLOCKED, 통로 2는 LINKED로 표시된 그림">
+  <figcaption>말은 간단해요. 실제로 어떻게 돌아갔는지는 X 데모에서 확인할 수 있어요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=125s" target="_blank" rel="noopener">영상 02:05에서 보기</a></figcaption>
+</figure>
+<p>화자는 처음에 '별 4만 개를 받았다, 5만 개 찍기 전에 북마크하라'는 문구를 보고 한 발 물러났다고 해요. 그런데 깔아 보고 생각이 바뀌었대요.</p>
+<blockquote>
+  <p>마케팅은 거품이어도 물건은 진짜더라고요.</p>
+  <cite>— 영상 02:15</cite>
+</blockquote>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>지금 저장소의 README는 '셀프 힐링 라우터'라는 이름 대신 '플랫폼마다 첫 도구와 대체 도구를 순서대로 둔 목록'으로 설명해요. 예를 들어 웹페이지는 Jina Reader를 먼저 쓰고 그다음 Exa를 써요. README 표의 채널은 14개이고, 스타는 2026년 11월 2일 기준 약 10만 7천 개예요.</p>
+  <p>채널 구성은 바뀌었어요. 1.6.0부터 RSS(Really Simple Syndication)와 Exa 검색은 '웹' 채널로 합쳐졌고, 표에 Facebook, Instagram, 채용 사이트 <code>boss</code>가 들어 있어요. 또 Twitter는 '실험' 등급이라 언제든 안 될 수 있다고 적혀 있어요.</p>
+  <p class="cite">출처: <a href="https://github.com/Panniantong/Agent-Reach" target="_blank" rel="noopener">Agent Reach 공식 저장소 README</a> · <a href="https://github.com/Panniantong/Agent-Reach/blob/main/CHANGELOG.md" target="_blank" rel="noopener">CHANGELOG</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=158s" target="_blank" rel="noopener">02:38</a>
+  <h2>설치와 인증: 한 줄 뒤에 남는 일</h2>
+<p>설치에는 두 길이 있어요. 하나는 명령어를 직접 치는 길이고, 다른 하나는 설치 안내 문서 주소를 클로드 코드에 던지는 길이에요. 화자는 둘 다 해 봤고 다 잘 됐다고 해요. 아래 화면 맨 위 줄과 자막의 <code>pip install agent-reach</code>가 첫째 길이에요.</p>
+<figure>
+  <img src="assets/frame-0257.webp" alt="터미널 맨 위 프롬프트에 pip install agent-reach가 입력돼 있고 같은 문구가 자막으로 나오는 화면">
+  <figcaption>지금은 이 명령을 그대로 따라 하면 안 돼요. 바로 아래 보충 상자를 먼저 보세요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=177s" target="_blank" rel="noopener">영상 02:57에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>저장소의 README와 설치 문서는 PyPI의 <code>agent-reach</code>가 이 프로젝트가 아니니 거기서 설치하지 말라고 경고해요. 실제로 지금 PyPI의 이 이름은 Jean Galea가 만든 다른 프로젝트(0.1.0, 2026-08-02 업로드)를 가리켜요.</p>
+  <p>지금 공식 설치 방법은 <code>uv</code>로 GitHub 릴리스를 받는 거예요. 아니면 설치 문서 주소를 에이전트에게 주면 돼요.</p>
+  <pre><code class="language-bash">uv tool install https://github.com/Panniantong/Agent-Reach/releases/latest/download/agent-reach.zip
+agent-reach setup</code></pre>
+  <p>영상의 데모는 v1.5.0이고, 현재는 1.6.1이에요. CHANGELOG는 1.6을 다시 만든 버전이라고 적어요. X처럼 로그인이 필요한 플랫폼은 이제 사용자 브라우저가 아니라 Agent Reach 전용 브라우저를 뒤에서 써요. 그래서 아래 화면의 명령, 파일 위치, Chrome 확장 단계는 지금과 다를 수 있어요.</p>
+  <p class="cite">출처: <a href="https://github.com/Panniantong/Agent-Reach/blob/main/docs/install.md" target="_blank" rel="noopener">Agent Reach 설치 문서</a> · <a href="https://pypi.org/project/agent-reach/" target="_blank" rel="noopener">PyPI agent-reach</a> · <a href="https://github.com/Panniantong/Agent-Reach/blob/main/CHANGELOG.md" target="_blank" rel="noopener">CHANGELOG</a></p>
+</aside>
+<h3>클로드 코드에 맡기는 길</h3>
+<p>데모는 둘째 길로 가요. 터미널 맨 위 줄을 보면 <code>claude</code> 뒤에 플래그가 두 개 붙어 있어요. 화자가 설명하는 건 크롬을 쓰기 위한 <code>--chrome</code>이에요. 그 앞의 <code>--dangerously-skip-permissions</code>는 영상에서 따로 언급하지 않아요.</p>
+<figure>
+  <img src="assets/frame-0323.webp" alt="터미널에 claude --dangerously-skip-permissions --chrome 명령이 입력된 화면">
+  <figcaption>화면 하단의 상태 줄에도 이후 내내 'bypass permissions on'이 떠 있어요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=203s" target="_blank" rel="noopener">영상 03:23에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Claude Code 공식 문서는 <code>bypassPermissions</code> 모드를 컨테이너나 VM(Virtual Machine) 같은 격리 환경에서만 쓰라고 해요. <code>--chrome</code>은 브라우저의 로그인 상태를 공유해서 이미 로그인한 사이트에 접근할 수 있고요.</p>
+  <p>Agent Reach README도 로그인을 복사해 쓰는 플랫폼은 평소 주 계정일 가능성이 높고, 자동 접근한 계정이 제한될 수 있다며 부계정을 권해요. 'API 키가 없다'는 말이 위험과 설정이 없다는 뜻은 아닌 거예요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/permission-modes" target="_blank" rel="noopener">Claude Code 문서 — Permission modes</a> · <a href="https://code.claude.com/docs/en/chrome" target="_blank" rel="noopener">Claude Code 문서 — Chrome</a> · <a href="https://github.com/Panniantong/Agent-Reach" target="_blank" rel="noopener">Agent Reach README</a></p>
+</aside>
+<p>실행하고 나면 저장소 주소와 함께 한 문장을 보내요. 아래쪽 입력창의 <code>이 레포를 클론하고 설치까지 해줘.</code>가 전부예요.</p>
+<figure>
+  <img src="assets/frame-0336.webp" alt="Claude Code 환영 화면 아래 입력창에 github.com/Panniantong/agent-reach 주소와 클론 후 설치 요청을 적은 화면">
+  <figcaption>명령어를 몰라도 주소와 한 문장이면 시작할 수 있어요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=216s" target="_blank" rel="noopener">영상 03:36에서 보기</a></figcaption>
+</figure>
+<p>그다음은 클로드 코드가 알아서 진행해요. 화면 위에서 아래로 읽으면 클론, <code>CLAUDE.md</code> 읽기, README 확인, 파이썬 환경 확인 순서예요.</p>
+<figure>
+  <img src="assets/frame-0349.webp" alt="클론 완료, CLAUDE.md 로드, README 확인, python3 버전 확인 명령이 차례로 나온 Claude Code 화면">
+  <figcaption>저장소의 안내 파일을 읽고 방법을 정하는 게 포인트예요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=229s" target="_blank" rel="noopener">영상 03:49에서 보기</a></figcaption>
+</figure>
+<p>Homebrew Python 3.14는 <span class="term" data-term="externally-managed" data-en="Externally managed environment" data-desc="파이썬을 Homebrew 같은 패키지 관리자가 관리하니 전역 pip 설치를 막아 두는 환경이에요. 그래서 가상 환경을 따로 만들어 설치했어요." data-g="3">externally-managed</span> 환경이라 프로젝트 안에 <code>.venv</code>를 만들고 <span class="term" data-term="editable 설치" data-en="Editable install" data-desc="소스 폴더를 복사하지 않고 연결해 두는 설치 방식이에요. pip install -e . 로 하고, 소스를 고치면 바로 반영돼요." data-g="4">editable 설치</span>를 했어요. 아래 화면 윗부분의 <code>현재 6/13 채널 즉시 사용 가능</code> 줄이 진단 결과예요. 스킬도 <code>~/.claude/skills/agent-reach</code>를 포함해 두 곳에 저절로 등록됐어요.</p>
+<figure>
+  <img src="assets/frame-0415.webp" alt="agent-reach v1.5.0 설치 완료 안내, 6/13 채널 즉시 사용 가능, 스킬 등록 경로, 나머지 6개 채널이 선택 설치라는 안내가 있는 화면">
+  <figcaption>맨 아래 참고 문단이 다음 할 일을 알려 줘요. 나머지 6개 채널과 <span class="term" data-term="시맨틱 검색" data-en="Semantic search" data-desc="글자가 같은지보다 의미가 비슷한지로 찾는 검색이에요. 데모에서는 Exa를 선택 설치해야 켜졌어요." data-g="5">시맨틱 검색</span>은 선택 설치예요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=255s" target="_blank" rel="noopener">영상 04:15에서 보기</a></figcaption>
+</figure>
+<h3>전체 설치 뒤에도 남는 일</h3>
+<p>화자는 '전체 모두 설치해 줘'라고 입력해요. 중간에 운영 체제 암호를 물을 수 있으니 그때는 직접 넣으라고 해요. 끝나면 표가 나와요. 왼쪽 열이 설정 없이 쓰는 6개, 오른쪽 열이 도구 설치로 추가된 3개라 합쳐서 9/13이에요.</p>
+<figure>
+  <img src="assets/frame-0511.webp" alt="설치 완료 9/13 활성 표. 즉시 사용은 GitHub, YouTube, V2EX, RSS/Atom, Exa, Jina Reader, 선택 채널은 Twitter/X, B站, LinkedIn">
+  <figcaption>Twitter/X 칸에 '쿠키 자동 가져옴'이 있어요. API 키 대신 브라우저 로그인을 쓴다는 뜻이에요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=311s" target="_blank" rel="noopener">영상 05:11에서 보기</a></figcaption>
+</figure>
+<p>남은 4개는 사람이 해야 하는 일로 정리돼요. 아래 화면의 번호 목록을 표로 옮기면 이렇게 돼요.</p>
+<figure>
+  <img src="assets/frame-0519.webp" alt="남은 4개는 작가님 동작 필요라는 안내와 Reddit, 샤오훙수의 Chrome 확장, 샤오위저우의 Groq 키, 쉐추의 쿠키 가져오기를 적은 번호 목록">
+  <figcaption>도구 설치와 인증은 별개예요. 도구가 다 깔려도 이 단계는 남아요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=319s" target="_blank" rel="noopener">영상 05:19에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>채널</th><th>필요한 일</th><th>영상에서 한 일</th></tr></thead>
+    <tbody>
+      <tr><td>Reddit, 샤오훙수</td><td>OpenCLI Chrome 확장을 수동 설치하고, 사이트에 로그인해 두기</td><td>확장만 추가</td></tr>
+      <tr><td>샤오위저우</td><td>팟캐스트 전사용 Groq API 키 발급</td><td>건너뜀</td></tr>
+      <tr><td>쉐추</td><td>Chrome에서 로그인 후 <span class="term" data-term="쿠키" data-en="Cookie" data-desc="브라우저가 저장한 로그인 정보예요. API 키 대신 이걸 가져와서 로그인된 사용자처럼 읽기 때문에, 계정 관리에 신경 써야 해요." data-g="6">쿠키</span> 가져오기</td><td>건너뜀</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>화자는 이 가운데 OpenCLI 확장만 설치해요. 터미널 위에 뜬 크롬 웹 스토어 창의 OpenCLI 페이지에서 추가하고, 나머지 옵션은 넘어가요.</p>
+<figure>
+  <img src="assets/frame-0527.webp" alt="터미널 위에 Chrome 웹 스토어의 OpenCLI 확장 페이지 창이 떠 있는 화면">
+  <figcaption>보안상 이 한 번의 클릭은 사람이 해야 한다고 화면에 적혀 있어요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=327s" target="_blank" rel="noopener">영상 05:27에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=348s" target="_blank" rel="noopener">05:48</a>
+  <h2>X에서 반응 모으기: 막혔다 뚫리는 과정</h2>
+<p>첫 시험은 <code>X에서 요즘 루프 엔지니어링의 반응 모아줘</code>예요. 화면에는 클로드 코드가 <code>Skill(agent-reach)</code>를 불러온 뒤, 규칙에 따라 Twitter <span class="term" data-term="백엔드" data-en="Backend" data-desc="여기서는 채널 뒤에서 실제 일을 하는 도구를 말해요. X는 OpenCLI, 유튜브는 yt-dlp, 깃허브는 gh CLI가 맡았어요." data-g="2">백엔드</span> 상태와 <code>social.md</code>의 재시도 체인을 읽겠다는 줄이 보여요. 화자는 공식 API는 비싸고, 크롬으로 한 사이트에 들어가는 방식만으로는 전체 플랫폼을 뒤지기 어렵다고 설명해요.</p>
+<figure>
+  <img src="assets/frame-0603.webp" alt="X에서 루프 엔지니어링 반응을 모아 달라는 요청과 agent-reach 스킬 로드, Twitter 백엔드 상태 확인 문구가 나온 화면">
+  <figcaption>프롬프트에 도구 이름을 적지 않아도 스킬이 알아서 불려 나와요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=363s" target="_blank" rel="noopener">영상 06:03에서 보기</a></figcaption>
+</figure>
+<h3>막혔다가 뚫리기까지</h3>
+<p>여기가 이 영상에서 가장 배울 게 많은 구간이에요. 검색은 한 번에 되지 않았어요. 아래 화면 맨 위 줄이 <code>404</code>를 받은 순간이고, 이유로 Twitter가 <span class="term" data-term="GraphQL" data-desc="한 엔드포인트에서 필요한 필드만 골라 받는 API 방식이에요. 화면은 Twitter가 이 엔드포인트를 자주 바꿔서 search가 404로 깨졌다고 설명해요." data-g="7">GraphQL</span> 엔드포인트를 자주 바꾼다는 점을 들어요. 그 아래로 재시도 체인 단계가 차례로 나와요. 화면 맨 아래 입력창에서는 화자가 <code>OpenCLI</code>를 입력하고 있어요.</p>
+<figure>
+  <img src="assets/frame-0633.webp" alt="검색 404, 재시도 실패, 체인 2단계 twitter-cli 업그레이드, 3단계는 확장 미설치로 불가, 4단계 Exa 우회가 차례로 적힌 화면과 입력창의 OpenCLI 글자">
+  <figcaption>화면 속 3단계 줄을 보면 클로드 코드는 확장이 없다고 판단해요. 사실은 방금 설치한 상태였어요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=393s" target="_blank" rel="noopener">영상 06:33에서 보기</a></figcaption>
+</figure>
+<p>전체 흐름을 그림 한 장으로 옮기면 이렇게 돼요. 위 줄이 자동으로 간 길이고, 오른쪽 아래에서 사람이 끼어들어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="X 검색 404 뒤 재시도, 업그레이드, OpenCLI 불가, Exa 우회를 거쳐 사람이 설치 완료를 알린 뒤 OpenCLI 검색에 성공하기까지의 순서">
+    <defs><marker id="arrow-chain" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-chain"></g>
+  </svg>
+  <figcaption>통로를 갈아타는 구조는 실제로 돌아갔지만, 조용히 끝나지는 않았어요. 빨간 칸 두 번과 확장 판단 착오 한 번이 있었고, 사람이 한 줄 알려 주자 풀렸어요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=369s" target="_blank" rel="noopener">영상 06:09에서 보기</a></figcaption>
+</figure>
+<p>화자는 이런 경우 프롬프트로 사실을 전달해 주면 된다고 말해요. <code>OpenCLI 설치완료됐어</code>를 보내자 클로드 코드가 브라우저를 열어요. 왼쪽이 로그인된 X 홈, 오른쪽의 빈 창은 탭 그룹 이름이 'OpenCLI Browser'예요.</p>
+<figure>
+  <img src="assets/frame-0703.webp" alt="터미널 위로 로그인된 X 홈 화면 창과 about:blank 상태의 OpenCLI Browser 탭 창이 나란히 뜬 화면">
+  <figcaption>왼쪽 창처럼 X에 로그인돼 있어야 이 경로가 동작해요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=423s" target="_blank" rel="noopener">영상 07:03에서 보기</a></figcaption>
+</figure>
+<p><span class="term" data-term="데몬" data-en="Daemon" data-desc="뒤에서 계속 돌며 요청을 기다리는 프로세스예요. 여기서는 OpenCLI 명령과 Chrome 확장을 이어 주는 역할이라, 재시작하니 연결이 확인됐어요." data-g="8">데몬</span>을 재시작한 뒤 연결이 확인돼요. 화면의 <code>Daemon OK, Extension connected, Connectivity OK</code>가 그 표시이고, 아래 회색 글자의 <code>opencli twitter search</code>가 실제로 실행한 명령이에요. 결과를 JSON(JavaScript Object Notation) 파일로 저장하고 핵심 트윗의 리플라이까지 읽으러 가요.</p>
+<figure>
+  <img src="assets/frame-0733.webp" alt="데몬과 확장 연결 확인 문구, opencli twitter search loop engineering -f json 명령과 파이썬 처리 코드가 보이는 화면">
+  <figcaption>검색하는 동안 브라우저를 계속 열어 둬야 한다고 화자가 짚어요. 확장을 거쳐서 읽기 때문이에요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=453s" target="_blank" rel="noopener">영상 07:33에서 보기</a></figcaption>
+</figure>
+<h3>무엇을 가져왔나요</h3>
+<p>결과 첫 문단에 작업량이 적혀 있어요. 검색 15건과 핵심 스레드 5개의 리플라이 240여 건을 분석했어요. '무엇이 불을 붙였나' 항목에는 Peter Steinberger의 6월 8일 트윗, Boris Cherny의 의견, 이 말을 용어로 정리한 Addy Osmani가 나와요.</p>
+<figure>
+  <img src="assets/frame-0808.webp" alt="검색 15건과 리플라이 240여 건 분석 안내, Peter Steinberger, Boris Cherny, Addy Osmani를 적은 '무엇이 불을 붙였나' 목록">
+  <figcaption>결과가 어떤 백엔드로 우회했는지까지 스스로 적어 줘요. 다음에 막혔을 때 실마리가 돼요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=488s" target="_blank" rel="noopener">영상 08:08에서 보기</a></figcaption>
+</figure>
+<p>그 아래 표는 화제가 된 계정 6개를 좋아요와 조회수로 정리해요. 눈 아이콘 열의 <code>11.1M</code>이 가장 높아요. 그래서 @AnatoliKopadze 줄의 요지가 '최대 도달'이에요.</p>
+<figure>
+  <img src="assets/frame-0818.webp" alt="계정, 날짜, 좋아요, 조회수, 요지 열로 된 표. @addyosmani 7,950과 2.3M부터 @jasonzhou1993 2,412와 381K까지 6줄">
+  <figcaption>맨 위의 @addyosmani가 조회수로는 3위라는 점이 눈에 띄어요. 표는 참여순으로 정렬돼 있어요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=498s" target="_blank" rel="noopener">영상 08:18에서 보기</a></figcaption>
+</figure>
+<p>반응의 결은 번호를 붙여 나뉘어요. ① 열광, ② 핵심은 검증(verification)이라는 의견, ③ 비용·토큰 폭탄이라는 회의가 아래 화면에 보여요.</p>
+<figure>
+  <img src="assets/frame-0833.webp" alt="반응의 결 항목. ①열광 추상화의 다음 단계, ②핵심 하위 주제 검증, ③회의 비용 토큰 폭탄과 계정별 인용">
+  <figcaption>찬성만 모으지 않고 '가장 빈번한 반박'까지 함께 묶었어요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=513s" target="_blank" rel="noopener">영상 08:33에서 보기</a></figcaption>
+</figure>
+<p>스크롤을 내리면 ④ 새로울 게 없다, ⑤ 무엇을 만들지는 누가 정하나가 이어져요. 화자가 말로 건너뛴 ⑥ 가짜 정보 경고도 보여요. '11페이지 Loop Engineering PDF를 Anthropic 시니어 엔지니어가 공개했다'는 트윗이 가짜라는 지적이에요.</p>
+<figure>
+  <img src="assets/frame-0848.webp" alt="④새로울 게 없다, ⑤무엇을 만들지는 누가 정하나, ⑥가짜 정보 경고, 공유된 실전 자료 목록이 보이는 화면">
+  <figcaption>SNS(Social Networking Service)를 재료로 쓰면 이런 가짜도 함께 딸려 와요. 경고는 있어도 사실 확인은 사람 몫이에요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=528s" target="_blank" rel="noopener">영상 08:48에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Addy Osmani의 글은 <span class="term" data-term="루프 엔지니어링" data-en="Loop engineering" data-desc="에이전트에게 직접 프롬프트를 주는 대신, 프롬프트를 주는 반복 구조를 설계하는 일을 뜻해요. 데모의 검색 주제예요." data-g="9">루프 엔지니어링</span>을 에이전트에게 프롬프트를 주는 사람의 자리를 시스템으로 대신하는 일로 설명해요. 그리고 Automations, Worktrees, Skills를 포함한 다섯 조각과 기억해 둘 곳 하나가 필요하다고 해요. 화면의 '5개 빌딩블록'이 이걸 가리켜요.</p>
+  <p class="cite">출처: <a href="https://addyosmani.com/blog/loop-engineering/" target="_blank" rel="noopener">Addy Osmani — Loop Engineering</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=537s" target="_blank" rel="noopener">08:57</a>
+  <h2>유튜브 자막과 깃허브 레포 읽기</h2>
+<p>다음 두 데모는 훨씬 순조로워요. 앞의 X 데모까지 묶어서 보면 구조는 같아요. 평범한 문장으로 요청하면 스킬이 채널을 고르고, 채널마다 정해진 도구가 실제 일을 해요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 186" role="img" aria-label="세 데모의 요청, 채널, 백엔드, 결과를 나란히 비교한 표 모양 그림">
+    <defs><marker id="arrow-map" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-map"></g>
+  </svg>
+  <figcaption>세 데모를 나란히 놓으면 요청은 평범한 문장이고, 도구 선택은 스킬 쪽에 있어요. 그래서 어느 프롬프트에도 백엔드 이름이 없어요.</figcaption>
+</figure>
+<h3>유튜브 영상을 자막으로 읽기</h3>
+<p>유튜브 링크와 함께 <code>이 영상 자막 뽑아서 핵심 세 가지로 정리해줘</code>를 보내요. 화면에는 <code>YouTube 플랫폼 · yt-dlp 백엔드</code>라는 줄과 함께 자막을 추출하는 명령이 돌아가요.</p>
+<figure>
+  <img src="assets/frame-0921.webp" alt="유튜브 링크와 자막 정리 요청, agent-reach의 YouTube 플랫폼 yt-dlp 백엔드 사용 안내와 추출 명령이 보이는 화면">
+  <figcaption>화자는 몇십 분짜리 영상을 처음부터 볼 필요가 없다고 말해요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=561s" target="_blank" rel="noopener">영상 09:21에서 보기</a></figcaption>
+</figure>
+<p>결과 맨 위에 <code>자막(8,838단어, 42분)</code>이 나오고, 영상 정보에 'BZCF' 채널의 앤트로픽 풀다큐 번역이라고 적혀 있어요. 화자 설명대로라면 영어 자막을 받아 정리한 거예요. 그 아래가 첫째 요점 '안전을 외치는 회사의 역설'이에요.</p>
+<figure>
+  <img src="assets/frame-0937.webp" alt="자막 8,838단어 42분 추출 안내, 영상 정보, 핵심 세 가지 중 첫째 항목인 '안전을 외치는 회사가 1조 달러 거물이 된 역설'">
+  <figcaption>화자는 '1조 달러를 벌어들인'이라고 말하지만, 화면 요약은 '1조 달러 가까운 기업'이에요. 번 돈과 기업 가치는 달라요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=577s" target="_blank" rel="noopener">영상 09:37에서 보기</a></figcaption>
+</figure>
+<p>둘째, 셋째 요점도 같은 식이에요. 숫자가 박힌 ②번 첫 줄의 사무직 신입 일자리 경고와, ③번의 펜타곤 충돌과 Mythos가 화자가 짚은 부분이에요. 다만 이건 Agent Reach의 시연 결과물이에요. 이 문서에서는 내용을 따로 검증하지 않았어요.</p>
+<figure>
+  <img src="assets/frame-1001.webp" alt="일자리 충격 경고와 AI 군비경쟁 항목. 1~5년 내 사무직 신입 일자리의 절반, 펜타곤 충돌, Mythos 내용이 나온 화면">
+  <figcaption>이어서 전체 자막은 파일로 저장했다고 알려 주고, 군사 이용이나 일자리 해법처럼 더 파 볼 주제도 제안해요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=601s" target="_blank" rel="noopener">영상 10:01에서 보기</a></figcaption>
+</figure>
+<h3>깃허브 레포 파악하기</h3>
+<p>이번엔 <code>이 레포 뭐 하는 건지, 최근 변경점만 정리해줘</code>예요. 화면의 <code>GitHub 플랫폼 · gh CLI 백엔드</code> 줄 아래에 최근 커밋과 릴리스, 이슈를 한 번에 조회하는 명령이 보여요.</p>
+<figure>
+  <img src="assets/frame-1047.webp" alt="agent-reach의 GitHub 플랫폼 gh CLI 백엔드 안내와 최근 커밋, 릴리스, 이슈를 조회하는 명령이 보이는 화면">
+  <figcaption>대상은 화자가 관심 있어 던진 TencentARC/Pixal3D 저장소예요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=647s" target="_blank" rel="noopener">영상 10:47에서 보기</a></figcaption>
+</figure>
+<p>'무엇을 하는 레포인가' 답은 첫 줄로 끝나요. 이미지 한 장에서 고품질 3D 에셋을 만드는 모델이고 SIGGRAPH(Special Interest Group on Computer Graphics and Interactive Techniques) 2026 논문의 공식 구현체예요. 그 아래 소속, 핵심 차별점, 라이선스, 스타 수, 브랜치 2개까지 정리돼 있어요.</p>
+<figure>
+  <img src="assets/frame-1105.webp" alt="Pixal3D 정리 화면. 소속, 핵심 차별점 back-projection, MIT 라이선스와 별 1,845, Hugging Face 데모, main과 paper 브랜치">
+  <figcaption>화자는 궁금한 건 스타 수보다 코드가 어디까지 개발됐는지라고 말해요. 그래서 다음 화면이 더 중요해요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=665s" target="_blank" rel="noopener">영상 11:05에서 보기</a></figcaption>
+</figure>
+<p>최근 변경점은 feat, fix, docs로 묶여 있어요. 5월 17일의 학습 파이프라인 공개에 '가장 큰 변화'라고 표시돼 있고, 맨 아래에는 멀티뷰 체크포인트 요청처럼 커뮤니티가 겪는 이슈가 번호와 함께 나와요.</p>
+<figure>
+  <img src="assets/frame-1123.webp" alt="생성 2026-05-10, 마지막 push 2026-06-23인 Pixal3D의 최근 변경점. feat, fix, docs 분류와 커뮤니티 이슈 #9, #27, #30, #32">
+  <figcaption>레포를 파악할 때 README 다음으로 보는 변경 이력과 이슈를 한 번에 받아 볼 수 있어요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=683s" target="_blank" rel="noopener">영상 11:23에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=690s" target="_blank" rel="noopener">11:30</a>
+  <h2>어디에 쓸까, 왜 통로가 여러 개일까</h2>
+<p>화자는 네 가지 쓰임을 예로 들어요. 프롬프트는 영상에서 말한 문장을 조금 다듬어 옮겼어요. 슬라이드의 빨간 에러 창이 첫째 상황이에요. <code>Cannot read properties of undefined</code> 같은 메시지를 사람이 복사해 찾던 일을 맡기는 거예요.</p>
+<figure>
+  <img src="assets/frame-1141.webp" alt="터미널 창에 Error: Cannot read properties of undefined와 TypeError 스택트레이스가 빨갛게 표시된 '빨간 줄의 벽' 슬라이드">
+  <figcaption>남이 먼저 밟은 지뢰를 찾아오게 하는 예시예요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=701s" target="_blank" rel="noopener">영상 11:41에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>상황</th><th>맡기는 말</th><th>읽는 곳</th></tr></thead>
+    <tbody>
+      <tr><td>코딩 중 에러</td><td>이 에러 메시지, 같은 사례를 찾아 해결책을 정리해 줘</td><td>레딧, 깃허브 이슈</td></tr>
+      <tr><td>문서가 부실한 라이브러리</td><td>최근 이슈를 검색하고 PR(Pull Request)을 읽고 이 기능의 사용법을 정리해 줘</td><td>깃허브</td></tr>
+      <tr><td>영어 공식 문서</td><td>이 페이지에서 중요한 부분만 한국어로 번역해 줘</td><td>일반 웹페이지</td></tr>
+      <tr><td>콘텐츠 기획</td><td>이 주제가 요즘 어떻게 회자되는지 찾아 줘</td><td>X, 유튜브</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>화자가 네 가지에서 뽑은 공통점은 에이전트가 세상을 재료로 쓰기 시작했다는 거예요. 머릿속 작년치 지식만 우려먹지 않는다는 뜻이죠.</p>
+<h3>왜 통로가 여러 개여야 할까요</h3>
+<p>마지막으로 셀프 힐링 라우터를 다시 꺼내요. 아래 슬라이드처럼 플랫폼마다 벽이 있고, 자물쇠에 막힌 신호가 오른쪽으로 계속 부딪혀요. 플랫폼은 자동 접근을 자주 막아서, 오늘 되던 게 내일 안 될 수 있어요. 보통 도구면 거기서 멈추지만 Agent Reach는 여러 통로로 갈아탄다는 설명이에요.</p>
+<figure>
+  <img src="assets/frame-1236.webp" alt="왼쪽 에이전트 아이콘에서 나온 점선이 X, YouTube, Reddit 앞의 자물쇠 달린 벽에 막혀 있는 '닫힌 채널들' 슬라이드">
+  <figcaption>화자는 '우리가 알아챌 새도 없이' 갈아탄다고 말해요. X 데모에서 본 것처럼 항상 그렇게 매끄럽지는 않아요. <a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ&amp;t=756s" target="_blank" rel="noopener">영상 12:36에서 보기</a></figcaption>
+</figure>
+<p>끝맺음은 비유예요.</p>
+<blockquote>
+  <p>똑똑하지만 책상 앞에만 앉아 있던 녀석에게 밖에 나가서 직접 보고 오라고 문을 하나 달아준 셈이죠.</p>
+  <cite>— 영상 12:50</cite>
+</blockquote>
+<p>화자 자신은 에이전트에게 자기 채널 댓글부터 읽어 오게 시켜 보겠다며, 조금 무섭긴 하다고 덧붙여요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 이름이 잘못 받아적힌 곳이 많아요. 화면에 나온 표기를 기준으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>PP 인스톨</td><td>pip install</td><td></td></tr>
+      <tr><td>레퍼</td><td>repo(저장소)</td><td></td></tr>
+      <tr><td>클로드 MD</td><td>CLAUDE.md</td><td></td></tr>
+      <tr><td>VMV</td><td>venv(.venv)</td><td></td></tr>
+      <tr><td>의전성</td><td>의존성</td><td></td></tr>
+      <tr><td>기타브, 기터브</td><td>GitHub</td><td></td></tr>
+      <tr><td>레디, 레디스</td><td>Reddit</td><td></td></tr>
+      <tr><td>샤옹스, 샤우스, 샤오</td><td>샤오훙수(小红书)</td><td></td></tr>
+      <tr><td>위조우</td><td>샤오위저우(小宇宙)</td><td></td></tr>
+      <tr><td>슈츠</td><td>쉐추(雪球)</td><td>화면 표기 기준</td></tr>
+      <tr><td>윙크드인, 링크딘</td><td>LinkedIn</td><td></td></tr>
+      <tr><td>시멘틱</td><td>시맨틱</td><td></td></tr>
+      <tr><td>V2, EX</td><td>V2EX</td><td></td></tr>
+      <tr><td>오픈 CL</td><td>OpenCLI</td><td></td></tr>
+      <tr><td>제시도</td><td>재시도</td><td></td></tr>
+      <tr><td>피터 스타임벌거</td><td>Peter Steinberger</td><td></td></tr>
+      <tr><td>보리스천</td><td>Boris Cherny</td><td></td></tr>
+      <tr><td>YT DLP</td><td>yt-dlp</td><td></td></tr>
+      <tr><td>비지 카페</td><td>BZCF(비즈까페)</td><td></td></tr>
+      <tr><td>미토스</td><td>Mythos</td><td></td></tr>
+      <tr><td>GHCLI</td><td>gh CLI</td><td></td></tr>
+      <tr><td>C그라프</td><td>SIGGRAPH</td><td></td></tr>
+      <tr><td>리듬이</td><td>README</td><td></td></tr>
+      <tr><td>픽셀 3D</td><td>Pixal3D</td><td></td></tr>
+      <tr><td>10c센트 ARC</td><td>Tencent ARC</td><td></td></tr>
+      <tr><td>3D SS</td><td>3D 에셋</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-8"><dt>데몬<span class="en">Daemon</span></dt><dd>뒤에서 계속 돌며 요청을 기다리는 프로세스예요. 여기서는 OpenCLI 명령과 Chrome 확장을 이어 주는 역할이라, 재시작하니 연결이 확인됐어요.</dd></div>
+    <div class="g" id="g-9"><dt>루프 엔지니어링<span class="en">Loop engineering</span></dt><dd>에이전트에게 직접 프롬프트를 주는 대신, 프롬프트를 주는 반복 구조를 설계하는 일을 뜻해요. 데모의 검색 주제예요.</dd></div>
+    <div class="g" id="g-2"><dt>백엔드<span class="en">Backend</span></dt><dd>여기서는 채널 뒤에서 실제 일을 하는 도구를 말해요. X는 OpenCLI, 유튜브는 yt-dlp, 깃허브는 gh CLI가 맡았어요.</dd></div>
+    <div class="g" id="g-1"><dt>셀프 힐링 라우터<span class="en">Self-healing router</span></dt><dd>한 통로가 막히면 다음 통로로 알아서 넘어가는 구조를 화자가 부르는 말이에요. 플랫폼이 자동 접근을 자주 막을 때 쓸모가 있어요.</dd></div>
+    <div class="g" id="g-5"><dt>시맨틱 검색<span class="en">Semantic search</span></dt><dd>글자가 같은지보다 의미가 비슷한지로 찾는 검색이에요. 데모에서는 Exa를 선택 설치해야 켜졌어요.</dd></div>
+    <div class="g" id="g-6"><dt>쿠키<span class="en">Cookie</span></dt><dd>브라우저가 저장한 로그인 정보예요. API 키 대신 이걸 가져와서 로그인된 사용자처럼 읽기 때문에, 계정 관리에 신경 써야 해요.</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>CLI</dt><dd>Command Line Interface</dd></div>
+    <div class="g" id="g-4"><dt>editable 설치<span class="en">Editable install</span></dt><dd>소스 폴더를 복사하지 않고 연결해 두는 설치 방식이에요. pip install -e . 로 하고, 소스를 고치면 바로 반영돼요.</dd></div>
+    <div class="g" id="g-3"><dt>externally-managed<span class="en">Externally managed environment</span></dt><dd>파이썬을 Homebrew 같은 패키지 관리자가 관리하니 전역 pip 설치를 막아 두는 환경이에요. 그래서 가상 환경을 따로 만들어 설치했어요.</dd></div>
+    <div class="g" id="g-7"><dt>GraphQL</dt><dd>한 엔드포인트에서 필요한 필드만 골라 받는 API 방식이에요. 화면은 Twitter가 이 엔드포인트를 자주 바꿔서 search가 404로 깨졌다고 설명해요.</dd></div>
+    <div class="g"><dt>JSON</dt><dd>JavaScript Object Notation</dd></div>
+    <div class="g"><dt>PR</dt><dd>Pull Request</dd></div>
+    <div class="g"><dt>RSS</dt><dd>Really Simple Syndication</dd></div>
+    <div class="g"><dt>SIGGRAPH</dt><dd>Special Interest Group on Computer Graphics and Interactive Techniques</dd></div>
+    <div class="g"><dt>SNS</dt><dd>Social Networking Service</dd></div>
+    <div class="g"><dt>VM</dt><dd>Virtual Machine</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=WL_qu7l3fgQ" target="_blank" rel="noopener">원본 영상 — 바이브랩스</a></li>
+    <li id="src-2"><a href="https://github.com/Panniantong/Agent-Reach" target="_blank" rel="noopener">Agent Reach 공식 저장소</a></li>
+    <li id="src-3"><a href="https://github.com/Panniantong/Agent-Reach/blob/main/docs/install.md" target="_blank" rel="noopener">Agent Reach 설치 문서</a></li>
+    <li id="src-4"><a href="https://github.com/Panniantong/Agent-Reach/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Agent Reach CHANGELOG</a></li>
+    <li id="src-5"><a href="https://pypi.org/project/agent-reach/" target="_blank" rel="noopener">PyPI — agent-reach</a></li>
+    <li id="src-6"><a href="https://code.claude.com/docs/en/permission-modes" target="_blank" rel="noopener">Claude Code 문서 — Permission modes</a></li>
+    <li id="src-7"><a href="https://code.claude.com/docs/en/chrome" target="_blank" rel="noopener">Claude Code 문서 — Chrome</a></li>
+    <li id="src-8"><a href="https://addyosmani.com/blog/loop-engineering/" target="_blank" rel="noopener">Addy Osmani — Loop Engineering</a></li>
+    <li id="src-9"><a href="https://github.com/jackwener/OpenCLI" target="_blank" rel="noopener">OpenCLI 공식 저장소</a></li>
+    <li id="src-10"><a href="https://github.com/TencentARC/Pixal3D" target="_blank" rel="noopener">TencentARC/Pixal3D 공식 저장소</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 2일에 이 영상을 보고 정리했어요. 원본은 바이브랩스 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+(() => {
+  const g = document.getElementById('fig-chain');
+  if (!g) return;
+  const W = 140, H = 78, GAP = 18;
+  const top = [
+    ['1회 재시도', 'search 404 반복', 'bad'],
+    ['2단계', 'twitter-cli 업그레이드', 'bad'],
+    ['3단계 OpenCLI', '확장 없다고 판단', 'box'],
+    ['4단계 Exa', '우회 탐색 시작', 'accent'],
+  ];
+  const bottom = [
+    ['사람의 한 줄', 'OpenCLI 설치완료됐어', 'accent'],
+    ['3단계로 복귀', '데몬 재시작, 확장 연결', 'accent'],
+    ['OpenCLI 검색', 'search 정상 작동', 'ok'],
+    ['리플라이 수집', '15건 + 240여 건', 'ok'],
+  ];
+  const yTop = 16, yBot = 136;
+  const box = (item, x, y) => {
+    g.append(el('rect', { x, y, width: W, height: H, rx: 10, class: item[2] }));
+    g.append(el('text', { x: x + W / 2, y: y + 33, 'text-anchor': 'middle' }, item[0]));
+    g.append(el('text', { x: x + W / 2, y: y + 55, 'text-anchor': 'middle', class: 'sub', 'font-size': '10.5' }, item[1]));
+  };
+  top.forEach((item, i) => {
+    const x = 10 + i * (W + GAP);
+    box(item, x, yTop);
+    if (i < top.length - 1)
+      g.append(el('path', { d: `M${x + W + 2} ${yTop + H / 2} h${GAP - 4}`, class: 'line', 'marker-end': 'url(#arrow-chain)' }));
+  });
+  const lastX = 10 + 3 * (W + GAP);
+  g.append(el('path', { d: `M${lastX + W / 2} ${yTop + H + 2} V${yBot - 2}`, class: 'line', 'marker-end': 'url(#arrow-chain)' }));
+  bottom.forEach((item, i) => {
+    const x = lastX - i * (W + GAP);
+    box(item, x, yBot);
+    if (i < bottom.length - 1)
+      g.append(el('path', { d: `M${x - 2} ${yBot + H / 2} h-${GAP - 4}`, class: 'line', 'marker-end': 'url(#arrow-chain)' }));
+  });
+})();
+(() => {
+  const g = document.getElementById('fig-map');
+  if (!g) return;
+  const cols = [
+    { x: 10, w: 170, label: '요청' },
+    { x: 200, w: 100, label: '채널' },
+    { x: 320, w: 100, label: '백엔드' },
+    { x: 440, w: 190, label: '결과' },
+  ];
+  const rows = [
+    ['X 반응 모아 줘', 'Twitter/X', 'OpenCLI', '검색 15건, 리플라이 240여 건'],
+    ['자막 뽑고 핵심 3가지', 'YouTube', 'yt-dlp', '8,838단어에서 핵심 3가지'],
+    ['레포 뭐 하는 건지', 'GitHub', 'gh CLI', '기능, 변경점, 이슈 정리'],
+  ];
+  cols.forEach((c) => g.append(el('text', { x: c.x + c.w / 2, y: 16, 'text-anchor': 'middle', class: 'sub' }, c.label)));
+  rows.forEach((row, r) => {
+    const y = 28 + r * 52;
+    row.forEach((t, i) => {
+      const c = cols[i];
+      g.append(el('rect', { x: c.x, y, width: c.w, height: 42, rx: 8, class: i === 0 || i === 3 ? 'box' : `c${r + 1} cell` }));
+      g.append(el('text', { x: c.x + c.w / 2, y: y + 26, 'text-anchor': 'middle', 'font-size': i === 3 ? '11.5' : '12.5' }, t));
+      if (i < 3)
+        g.append(el('path', { d: `M${c.x + c.w + 2} ${y + 21} H${cols[i + 1].x - 2}`, class: 'line', 'marker-end': 'url(#arrow-map)' }));
+    });
+  });
+})();
+</script>
+</body>
+</html>
