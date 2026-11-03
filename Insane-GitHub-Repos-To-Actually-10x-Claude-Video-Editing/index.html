@@ -1,0 +1,1179 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude로 영상을 만드는 GitHub 저장소 8개</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Claude로 영상을 만드는 GitHub 저장소 8개</h1>
+  <p class="lede">출시 영상부터 소리 맞추기까지, 무엇을 쓸지 일별로 골라요</p>
+  <div class="meta">
+    <span>AI LABS</span><span class="dot">·</span>
+    <span>영상 14:56</span><span class="dot">·</span>
+    <span>읽는 데 약 18분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=oTWUyW_bR-g" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>여덟 개는 일이 겹치지 않아요. 만들 결과물을 먼저 정하면 고를 저장소가 좁혀져요.</li>
+    <li>출시 영상은 사이트를 옮기는 Huashu Motion과 이야기로 연기하는 Take One으로 갈려요.</li>
+    <li>Reanimate와 Argo, Explainroo는 눈대중 대신 프레임, 클릭, 낱말 단위로 타이밍을 맞춰요.</li>
+    <li>Video Director와 Earshot은 에이전트가 못 보고 못 듣는 부분을 숫자와 글로 바꿔요. Video Director의 <span class="term" data-term="독립 리뷰어" data-en="Fresh-context reviewer" data-desc="작업 과정을 전혀 보지 않은 새 세션에서 결과만 평가하는 에이전트예요. 만든 쪽의 맥락에 끌려가지 않고 평가할 수 있어요." data-g="3">독립 리뷰어</span>는 과한 주장까지 고치게 했어요.</li>
+    <li>영상은 프로젝트 단위 설치를 권하지만, Take One과 Earshot의 화면 설치는 전역에 가까워요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">여덟 개는 어떤 일을 나눠 맡나요</a></li>
+    <li><a href="#s2">출시 영상: Huashu Motion과 Take One</a></li>
+    <li><a href="#s3">사이트 움직임: rossark-motion과 Reanimate</a></li>
+    <li><a href="#s4">앱 데모와 설명 영상: Argo와 Explainroo</a></li>
+    <li><a href="#s5">재서 확인하기: Video Director와 Earshot</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>여덟 개는 어떤 일을 나눠 맡나요</h2>
+<p>영상은 영상 제작 스킬을 많이 써 본 뒤 여덟 개만 남겼어요. 기준은 서로 일이 겹치지 않는 것이에요. 그래서 무엇을 만들려는지부터 정하면 고를 게 금방 좁혀져요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>이름</th><th>맡는 일</th><th>넣는 것</th><th>영상 위치</th></tr></thead>
+    <tbody>
+      <tr><td>Huashu Motion</td><td>사이트 내용으로 만드는 출시 영상</td><td>사이트나 제품</td><td>00:45</td></tr>
+      <tr><td>rossark-motion</td><td>그림과 캐릭터에 움직임 넣기</td><td>그림, 마스코트, 아이콘</td><td>03:50</td></tr>
+      <tr><td>Take One</td><td>이야기로 푸는 출시 영상·광고·뮤직비디오</td><td>한 줄 요청</td><td>05:00</td></tr>
+      <tr><td>Reanimate</td><td>남의 애니메이션을 내 프로젝트로 복제</td><td>사이트, 영상, GIF(Graphics Interchange Format)</td><td>06:56</td></tr>
+      <tr><td>Argo</td><td>앱을 직접 눌러 녹화한 데모 영상</td><td>실행 중인 앱</td><td>08:58</td></tr>
+      <tr><td>Explainroo</td><td>말과 화면이 맞물리는 설명 영상</td><td>주제</td><td>09:49</td></tr>
+      <tr><td>Video Director</td><td>규칙과 검사 도구로 영상 만들기</td><td>영상 요청</td><td>11:21</td></tr>
+      <tr><td>Earshot</td><td>에이전트가 소리를 읽고 맞추게 하기</td><td>영상 클립</td><td>12:57</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>설치는 대부분 같은 순서예요</h3>
+<p>방법은 둘이에요. 에이전트에게 저장소 주소를 주고 설치해 달라고 하거나, 명령을 터미널에서 직접 돌려요. 아래 README 화면에 두 방법이 나란히 있어요. 위가 에이전트에게 보낼 문장, 아래가 <code>npx</code> 명령이에요.</p>
+<figure>
+  <img src="assets/frame-0155.webp" alt="huashu-motion README의 Install 절. Ask your agent 문장과 npx skills add 명령, Node 22 요구 사항이 보이는 화면">
+  <figcaption>
+    스킬 하나당 설치 경로가 둘이에요. <span class="term" data-term="Agent Skills" data-en="Agent Skills" data-desc="스킬 폴더와 SKILL.md 형식을 정한 공개 표준이에요. 이 표준을 따르면 Claude Code 말고 다른 에이전트에도 같은 스킬을 설치할 수 있어요." data-g="1">Agent Skills</span> 표준을 따른다는 문장도 여기 있어요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=115s" target="_blank" rel="noopener">영상 01:55에서 보기</a>
+  </figcaption>
+</figure>
+<p>명령을 돌리면 먼저 어느 에이전트에 설치할지 물어요. 맨 아래 <code>Selected</code> 줄처럼 여러 개를 함께 고를 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0205.webp" alt="Which agents do you want to install to 질문과 에이전트 목록, 맨 아래 Selected: Claude Code, Codex, Cursor가 표시된 터미널">
+  <figcaption>
+    화면에서는 Claude Code, Codex, Cursor 세 개를 골랐어요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=125s" target="_blank" rel="noopener">영상 02:05에서 보기</a>
+  </figcaption>
+</figure>
+<p>다음은 범위예요. 영상은 왼쪽의 현재 프로젝트를 권해요. 스킬의 이름과 설명은 켜 둔 동안 컨텍스트를 차지하는데, 프로젝트에만 깔면 다른 작업에서는 읽히지 않기 때문이에요.</p>
+<figure>
+  <img src="assets/frame-0215.webp" alt="Install for 카드. 왼쪽 Current project에 Recommended 표시, 오른쪽 All projects">
+  <figcaption>
+    두 쪽 다 동작해요. 차이는 컨텍스트에 늘 올라와 있느냐예요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=135s" target="_blank" rel="noopener">영상 02:15에서 보기</a>
+  </figcaption>
+</figure>
+<p>화면에 나온 명령은 이렇게 모을 수 있어요. Argo, Explainroo, Video Director는 영상이 명령을 보여 주지 않고 저장소 안내를 따르라고만 해요.</p>
+<pre><code class="language-bash">npx skills add alchaincyf/huashu-motion
+npx skills@latest add rossark0/rossark-motion-skill
+npx skills add talsiach/take-one -g -a claude-code
+npx skills add NiazMorshed2007/reanimate -g</code></pre>
+<p>데모 터미널 맨 위에는 <code>claude --dangerously-skip-permissions</code>가 계속 보여요. 권한 확인을 건너뛰는 실행 방식이에요. 처음 받은 스킬을 따라 돌릴 때 이 방식까지 그대로 쓸지는 따로 판단하는 게 좋아요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상이 주소를 보여 주지 않은 세 곳을 포함해 여덟 저장소를 찾아 열어 봤어요. <a href="https://github.com/alchaincyf/huashu-motion" target="_blank" rel="noopener">huashu-motion</a>, <a href="https://github.com/rossark0/rossark-motion-skill" target="_blank" rel="noopener">rossark-motion-skill</a>, <a href="https://github.com/talsiach/take-one" target="_blank" rel="noopener">take-one</a>, <a href="https://github.com/NiazMorshed2007/reanimate" target="_blank" rel="noopener">reanimate</a>, <a href="https://github.com/shreyaskarnik/argo" target="_blank" rel="noopener">argo</a>, <a href="https://github.com/vincentsch/explainroo" target="_blank" rel="noopener">explainroo</a>, <a href="https://github.com/win4r/video-director" target="_blank" rel="noopener">video-director</a>, <a href="https://github.com/Leonxlnx/earshot" target="_blank" rel="noopener">earshot</a>이에요.</p>
+  <p>Argo는 화면의 패키지 이름 <code>@argo-video/cli</code>로, Video Director는 README에 적힌 두 검사 스크립트로 맞는 저장소임을 확인했어요. Take One은 코드로만 만들면 무료이고, 사진·음성·음악 서비스는 내 계정으로 쓰며 가격을 먼저 읽고 묻는다고 README에 적혀 있어요.</p>
+  <p class="cite">출처: <a href="https://www.npmjs.com/package/@argo-video/cli" target="_blank" rel="noopener">npm @argo-video/cli</a> · <a href="https://github.com/win4r/video-director" target="_blank" rel="noopener">video-director README</a> · <a href="https://github.com/talsiach/take-one" target="_blank" rel="noopener">take-one README</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=45s" target="_blank" rel="noopener">00:45</a>
+  <h2>출시 영상: Huashu Motion과 Take One</h2>
+<p>출시 영상을 만드는 스킬은 둘이에요. 재료를 다루는 방식이 달라요. Huashu Motion은 사이트의 말과 모습을 영상으로 옮기고, Take One은 제품을 쓰는 사람의 짧은 이야기로 연기해요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 700 290" role="img" aria-label="Huashu Motion과 Take One의 작업 순서 비교">
+    <defs><marker id="arrow-films" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-films"></g>
+  </svg>
+  <figcaption>Huashu Motion은 음악이 화면보다 먼저예요. Take One은 다 만든 뒤 작업을 못 본 리뷰어가 점수를 매겨요.</figcaption>
+</figure>
+<h3>Huashu Motion: 박자에 맞춰 자르는 출시 영상</h3>
+<p>이 저장소는 Anthropic의 Claude Motion을 따라 만든 공개 버전이에요. 오른쪽의 잠긴 창과 <code>48,194 waiting</code>은 영상이 말하는 '대부분은 아직 못 쓰는 도구'를 그린 그래픽이에요.</p>
+<figure>
+  <img src="assets/frame-0025.webp" alt="왼쪽은 타임라인이 있는 영상 편집 화면, 오른쪽은 자물쇠와 48,194 waiting, Request access 버튼이 있는 잠긴 창">
+  <figcaption>
+    오른쪽 대기 숫자가 실제 대기자 수인지는 영상이 말하지 않아요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=25s" target="_blank" rel="noopener">영상 00:25에서 보기</a>
+  </figcaption>
+</figure>
+<p>요금제 그래픽을 보면 Free, Pro, Max에는 없고 Team과 Enterprise 칸에만 <code>Claude Motion</code> 표시가 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-0055.webp" alt="Free, Pro, Max, Team, Enterprise 다섯 요금제 카드 중 Team과 Enterprise에만 Claude Motion 배지가 있는 그래픽">
+  <figcaption>
+    개인 요금제에서는 Huashu Motion이 대안이 된다는 맥락이에요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=55s" target="_blank" rel="noopener">영상 00:55에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Anthropic 도움말에도 Claude Motion은 Team과 Enterprise에서 베타로 제공한다고 적혀 있어요. Team은 기본으로 켜져 있고, Enterprise는 소유자가 켜기 전까지 꺼져 있어요. Huashu Motion README는 이 도구의 능력을 재현하려고 만들었다고 밝혀요. 코드는 <code>MIT</code> 라이선스이지만 함께 든 애니메이션 라이브러리 GSAP(GreenSock Animation Platform)은 자체 라이선스를 따라요.</p>
+  <p class="cite">출처: <a href="https://support.claude.com/en/articles/17454997" target="_blank" rel="noopener">Anthropic 도움말 — Get started with Claude Motion</a> · <a href="https://github.com/alchaincyf/huashu-motion" target="_blank" rel="noopener">huashu-motion README</a></p>
+</aside>
+<p>사이트를 주면 먼저 재료를 모아요. 오른쪽 패널의 <code>Colours</code> 세 칸, <code>Fonts</code>의 Georgia, <code>Wording</code>이 사이트에서 뽑아낸 값이에요.</p>
+<figure>
+  <img src="assets/frame-0125.webp" alt="yoursite.com 화면 옆에 Colours 세 색, Fonts Georgia, Wording 칸이 있는 huashu-motion 패널">
+  <figcaption>
+    영상의 색과 글꼴이 임의로 정해지지 않고 제품에서 나와요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=85s" target="_blank" rel="noopener">영상 01:25에서 보기</a>
+  </figcaption>
+</figure>
+<p>순서가 특이한 건 음악이에요. 화면을 만들기 전에 음악을 먼저 쓰고, 그 박자에 맞춰 전체를 잘라요. 타임라인 오른쪽의 <code>Peak</code> 깃발이 음악의 정점 자리예요. 그래서 화면에 뭔가 나타나는 순간 소리도 함께 떨어져요.</p>
+<figure>
+  <img src="assets/frame-0145.webp" alt="huashu-motion 타임라인 위에 곡선이 그려지기 시작하고 오른쪽에 Peak 깃발이 꽂힌 그래픽">
+  <figcaption>
+    화면이 소리를 따라가게 만드는 구조예요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=105s" target="_blank" rel="noopener">영상 01:45에서 보기</a>
+  </figcaption>
+</figure>
+<p>여기에 실제 출시 영상을 연구해 만든 감독 규칙이 붙어요. 첫 3초 안에 <span class="term" data-term="훅" data-en="Hook" data-desc="영상 첫머리에서 시청자를 붙잡는 장면이나 문구예요. 짧은 영상은 여기서 이탈이 갈려서 규칙으로 정해 둬요." data-g="2">훅</span>이 있어야 하고, 중간에 강한 움직임이 있어야 하며, 가장 큰 순간 직전에는 멈춤이 있어야 해요. 보여 주기 전에 자기 결과물을 이 규칙으로 먼저 검사해요.</p>
+<p>설치된 폴더를 열면 구성이 보여요. <code>SKILL.md</code> 옆의 <code>references</code>에 <code>colour.md</code>, <code>director.md</code> 같은 분야별 문서가 있어요. 영상은 소리, 음악, 연출 문서와 영상 유형별 문서가 따로 있다고 설명해요.</p>
+<figure>
+  <img src="assets/frame-0235.webp" alt="에디터 왼쪽 파일 트리에 references 폴더가 펼쳐져 colour.md, contract.md, craft.md, depth.md, director.md가 보이고 오른쪽에 SKILL.md가 열린 화면">
+  <figcaption>
+    필요한 문서만 그때그때 읽는 구조예요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=155s" target="_blank" rel="noopener">영상 02:35에서 보기</a>
+  </figcaption>
+</figure>
+<p>쓸 때는 슬래시 명령에 요청을 붙여요. 영상은 예전에 만든 랜딩 페이지를 애니메이션으로 만들어 달라고 했어요. 계획을 검토하고 나면 시안 세 개를 <code>directions.md</code>로 내놓아요. 화면의 A안 <code>Telemetry trailer</code>에는 아이디어, 구성, 느낌, 약점까지 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0305.webp" alt="터미널에 30초 출시 영상 시안 세 개를 만들었다는 글과 A안 Telemetry trailer의 Idea, Arc, Feel, Trade-off 항목이 보이는 화면">
+  <figcaption>
+    시안마다 약점(Trade-off)까지 함께 적어서 고르기 쉬워요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=185s" target="_blank" rel="noopener">영상 03:05에서 보기</a>
+  </figcaption>
+</figure>
+<p>한 안을 고르면 혼자 빌드하고 대시보드를 열어요. 원하는 프레임을 눌러 댓글을 달면 그 위치와 함께 에이전트에게 전달돼요. 상단의 <code>Version 11</code>은 수정이 여러 번 돌았다는 표시이고, 최종본은 33.2초예요.</p>
+<figure>
+  <img src="assets/frame-0325.webp" alt="huashu-motion 대시보드. 화성 표면 프레임에 댓글 입력창과 Send to Agent 버튼이 떠 있고 상단에 33.2s, Version 11이 표시된 화면">
+  <figcaption>
+    말로 위치를 설명하지 않고 화면을 짚어서 고쳐요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=205s" target="_blank" rel="noopener">영상 03:25에서 보기</a>
+  </figcaption>
+</figure>
+<h3>Take One: 한 줄에서 완성 영상까지</h3>
+<p>왼쪽 Huashu Motion은 사이트를 바로 영상으로 옮기고, 오른쪽 Take One은 번호 붙은 장면으로 이야기를 짜요. 영상 비교의 핵심이 이 그림 한 장에 있어요.</p>
+<figure>
+  <img src="assets/frame-0510.webp" alt="왼쪽 huashu-motion은 사이트 패널과 재생 화면, 오른쪽 take-one은 1, 2, 3 번호가 붙은 빈 장면 칸">
+  <figcaption>
+    사이트의 재현이냐, 사용 장면의 연기냐의 차이예요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=310s" target="_blank" rel="noopener">영상 05:10에서 보기</a>
+  </figcaption>
+</figure>
+<p>스킬 하나가 모든 단계를 맡아요. 화면의 네 칸 <code>Brand</code>, <code>Idea</code>, <code>Music</code>, <code>Edit</code>가 그 흐름이고, 영상이 끝나면 함께 올릴 게시글까지 써 줘요. 출시 영상 말고 광고나 뮤직비디오도 만들 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0530.webp" alt="take-one 창에 Brand, Idea, Music, Edit 네 칸이 있고 Brand에 완료 표시가 붙은 그래픽">
+  <figcaption>
+    음악과 편집까지 한 스킬 안에서 끝나요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=330s" target="_blank" rel="noopener">영상 05:30에서 보기</a>
+  </figcaption>
+</figure>
+<p>설치 안내에서 눈여겨볼 곳은 터미널 명령의 두 번째 줄 <code>doctor.sh</code>예요. 무엇이 빠졌는지, 조각마다 어디에 쓰는지 알려 줘요.</p>
+<figure>
+  <img src="assets/frame-0540.webp" alt="take-one README의 Install (once) 절. 에이전트에게 보낼 문장과 npx skills add 명령, doctor.sh 명령이 보이는 화면">
+  <figcaption>
+    이 명령은 <code>-g</code>라 모든 세션에서 스킬을 읽어요. 영상이 앞서 권한 프로젝트 단위 설치와는 달라요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=340s" target="_blank" rel="noopener">영상 05:40에서 보기</a>
+  </figcaption>
+</figure>
+<p>요청을 받으면 질문으로 의도를 먼저 굳혀요. 그다음 전략가, 크리에이티브 디렉터, 스토리보드 작가 역할로 나눠 기획해요. 스토리보드 표는 장면마다 시간, 일어나는 일, 화면 문구를 적어요.</p>
+<figure>
+  <img src="assets/frame-0610.webp" alt="Storyboard artist 표. 1번 0:00-0:05 Pale Blue Dot 프레임부터 4번 0:14-0:17 가가린 사진까지 시간, 내용, 화면 문구가 적힌 터미널">
+  <figcaption>
+    빌드 전에 이 표를 보고 고칠 수 있어요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=370s" target="_blank" rel="noopener">영상 06:10에서 보기</a>
+  </figcaption>
+</figure>
+<p>빌드는 정말 오래 걸린다고 영상이 먼저 경고해요. 그래픽에는 <code>1:47:20</code>이 찍혀 있지만, 이 값이 측정치인지는 영상이 말하지 않아요. 넉넉히 시간을 잡아 두는 정도로 받아들이면 돼요.</p>
+<figure>
+  <img src="assets/frame-0620.webp" alt="완료 표시와 1:47:20이 떠 있는 타임라인 그래픽. 선 위아래로 작업 카드가 이어지고 끝에 완성 영상 썸네일이 있는 화면">
+  <figcaption>
+    영상은 오래 걸리지만 결과가 그만한 값을 한다고 평가해요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=380s" target="_blank" rel="noopener">영상 06:20에서 보기</a>
+  </figcaption>
+</figure>
+<p>끝나면 Review room이 열려요. 오른쪽에서 이 프레임에 메모를 남기거나 영상 전체에 메모를 남길 수 있고, <code>Send notes to Claude</code>를 누르면 빌드 중인 세션이 받아 가요. 상단 <code>Compare with</code>로 버전끼리 비교도 돼요.</p>
+<figure>
+  <img src="assets/frame-0630.webp" alt="Take One Review room. SPUTNIK 1 1957 프레임 옆에 Save note, Note on the whole film 버튼과 위쪽 Send notes to Claude 버튼이 있는 화면">
+  <figcaption>
+    최종본 길이는 화면에서 0:48이에요. 프레임 단위로 넘겨 보며 메모할 수 있어요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=390s" target="_blank" rel="noopener">영상 06:30에서 보기</a>
+  </figcaption>
+</figure>
+<p>버전이 나올 때마다 별도의 리뷰어가 점수를 매겨요. 오른쪽 <code>Fresh context</code> 표시가 작업 과정을 보지 않았다는 뜻이고, 막대의 <code>Pass mark</code>가 합격선이에요. 아래면 다시 돌아가는데, 위쪽 <code>Round 1/3</code>처럼 세 번까지예요.</p>
+<figure>
+  <img src="assets/frame-0650.webp" alt="Round 1/3 표시 아래 왼쪽 Build 패널, 오른쪽 Reviewer 패널의 Fresh context와 Pass mark 막대">
+  <figcaption>
+    만든 쪽과 보는 쪽을 나눠서 자기 채점의 관대함을 피해요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=410s" target="_blank" rel="noopener">영상 06:50에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=230s" target="_blank" rel="noopener">03:50</a>
+  <h2>사이트 움직임: rossark-motion과 Reanimate</h2>
+<p>이번 두 개는 영상 파일보다 사이트 안의 움직임을 다뤄요. rossark-motion은 움직이는 법을 규칙으로 가르치고, Reanimate는 이미 있는 움직임을 재서 베껴요.</p>
+<h3>rossark-motion: 그림이 자연스럽게 움직이는 규칙</h3>
+<p>제작자가 자기 앱의 일러스트를 살리려고 만든 스킬이에요. 화면의 화분, 로켓, 구름처럼 그려진 것이면 캐릭터, 마스코트, 아이콘, 로고까지 대부분 돼요.</p>
+<figure>
+  <img src="assets/frame-0402.webp" alt="앱 화면의 화분, 로켓, 구름 일러스트 카드 세 장과 오른쪽 rossark-motion 저장소 카드">
+  <figcaption>
+    사진이 아니라 그려진 것이 대상이에요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=242s" target="_blank" rel="noopener">영상 04:02에서 보기</a>
+  </figcaption>
+</figure>
+<p>핵심 규칙 하나는 몸 전체가 같은 타이밍으로 움직여야 한다는 것이에요. 한 부분만 먼저 튀어 나가지 않게요. 또 그림 옆에 <code>MOTION.md</code> 노트를 두고, 이 캐릭터가 할 수 있는 동작과 없는 동작을 적어요. 화면 왼쪽의 체크와 엑스 표시가 그 목록이에요. <code>wave</code> 같은 요청이 올 때마다 이 파일을 다시 읽어요.</p>
+<figure>
+  <img src="assets/frame-0432.webp" alt="왼쪽 MOTION.md 목록에 체크 두 개와 엑스 두 개, 가운데 Claude Code의 wave 요청, 오른쪽 파란 캐릭터가 이어진 그래픽">
+  <figcaption>
+    캐릭터 설정이 세션을 넘어 파일로 남아요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=272s" target="_blank" rel="noopener">영상 04:32에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>저장소 설명과 README의 엔진 템플릿은 React Native와 SwiftUI용이에요. 영상의 데모는 웹 앱이니 규칙은 웹에서도 먹혔다는 사례예요. 다만 웹용 템플릿까지 있다고 기대하면 안 돼요. README는 에이전트의 흔한 실수를 고치는 방법으로 장면 전체에 시계 하나 두기, 실제 축을 중심으로 돌리기, 끊기지 않는 대기 동작을 꼽아요.</p>
+  <p class="cite">출처: <a href="https://github.com/rossark0/rossark-motion-skill" target="_blank" rel="noopener">rossark-motion-skill README</a></p>
+</aside>
+<p>요청은 스킬 이름 없이 말로 해도 돼요. 화면의 문장은 플래시 카드 학습 앱을 만들되, 맞고 틀릴 때 반응하는 작은 마스코트를 넣어 달라는 내용이에요. 바로 아래 줄에서 <code>rossark-motion-skill</code>이 불려요.</p>
+<figure>
+  <img src="assets/frame-0444.webp" alt="학습 앱과 정오답에 반응하는 마스코트를 요청하는 프롬프트와 그 아래 Skill(rossark-motion-skill) 로드 표시">
+  <figcaption>
+    요청 내용으로 스킬이 스스로 불렸어요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=284s" target="_blank" rel="noopener">영상 04:44에서 보기</a>
+  </figcaption>
+</figure>
+<p>만들어진 Sprout 앱의 오른쪽 새싹 마스코트를 보세요. 문제를 푸는 동안에는 웃고 있어요.</p>
+<figure>
+  <img src="assets/frame-0456.webp" alt="Sprout 플래시 카드 앱. 스위스 수도 문제와 네 보기, 오른쪽에 눈을 감고 웃는 초록 새싹 마스코트">
+  <figcaption>
+    정답을 기다리는 표정이에요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=296s" target="_blank" rel="noopener">영상 04:56에서 보기</a>
+  </figcaption>
+</figure>
+<p>틀리면 표정이 처지고 말풍선이 <code>Hmm, tricky!</code>로 바뀌어요. 영상은 맞출 때와 틀릴 때 반응이 달랐다고 전해요.</p>
+<figure>
+  <img src="assets/frame-0500.webp" alt="오답 화면. NOT QUITE 표시와 Tokyo 정답 카드, 빨간 Osaka 선택지, 울상인 새싹 마스코트와 Hmm, tricky 말풍선">
+  <figcaption>
+    앞 장면과 비교하면 표정과 말풍선이 함께 바뀌었어요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=300s" target="_blank" rel="noopener">영상 05:00에서 보기</a>
+  </figcaption>
+</figure>
+<h3>Reanimate: 재고, 베끼고, 비교하기</h3>
+<p>남의 사이트에서 본 애니메이션을 내 프로젝트에 넣고 싶을 때 써요. 사이트, 영상, GIF를 주면 눈대중 대신 한 프레임씩 재요. 아래 그림이 그 순환이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 700 165" role="img" aria-label="Reanimate가 원본을 기록하고 복제본과 비교하며 고치는 순환">
+    <defs><marker id="arrow-re" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-reanimate"></g>
+  </svg>
+  <figcaption>복제본도 원본과 같은 방식으로 기록해서 맞대 봐요. 끝까지 못 맞춘 부분은 이유와 함께 보고서에 남겨요.</figcaption>
+</figure>
+<p>비교 화면에서 왼쪽 <code>original</code>과 오른쪽 <code>copy</code>의 프레임 띠를 맞대요. 아래 막대의 <code>furthest off: timing</code>이 지금 가장 어긋난 항목이에요. 이걸 먼저 고치고 다시 재요.</p>
+<figure>
+  <img src="assets/frame-0720.webp" alt="original과 copy 창이 나란히 있고 아래 프레임 띠와 furthest off timing 막대가 있는 그래픽">
+  <figcaption>
+    한 번에 다 고치지 않고 가장 먼 것부터 줄여요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=440s" target="_blank" rel="noopener">영상 07:20에서 보기</a>
+  </figcaption>
+</figure>
+<p>기본값은 움직임만 복사하는 것이에요. 오른쪽 복제본 카드가 회색인 이유예요. 위쪽 토글을 <code>Exact</code>로 바꾸듯 정확히 맞춰 달라고 하면 모습까지 복사해요.</p>
+<figure>
+  <img src="assets/frame-0732.webp" alt="Motion only와 Exact 토글 아래 왼쪽 Original의 색 있는 카드 세 장, 오른쪽 reanimate의 회색 카드 세 장">
+  <figcaption>
+    기본값이 움직임만이라서 디자인이 통째로 복제되지 않아요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=452s" target="_blank" rel="noopener">영상 07:32에서 보기</a>
+  </figcaption>
+</figure>
+<p>README의 사용 예시를 보면 쓰임이 잘 드러나요. 사이트의 히어로 등장, 영상의 특정 구간, GIF의 카드 호버, 내 로고로 바꾼 마키까지 요청 형태가 달라요.</p>
+<figure>
+  <img src="assets/frame-0744.webp" alt="Reanimate README Install 절. npx skills add 명령과 /reanimate 사용 예시 네 줄">
+  <figcaption>
+    <code>0:03 to 0:05</code>처럼 구간을 지정할 수도 있어요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=464s" target="_blank" rel="noopener">영상 07:44에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상의 시험은 복제보다 응용에 가까웠어요. <code>/reanimate</code>에 <code>lusion.co</code>를 주고, 이 사이트에서 영감을 받아 피트니스 앱 랜딩 페이지를 만들어 달라고 했어요.</p>
+<figure>
+  <img src="assets/frame-0756.webp" alt="/reanimate https://lusion.co/ 와 피트니스 앱 랜딩 페이지를 요청하는 프롬프트, 그 아래 스킬 파일을 읽는 Bash 명령">
+  <figcaption>
+    주소를 그대로 재현하지 않고 영감으로 쓰라고 지시했어요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=476s" target="_blank" rel="noopener">영상 07:56에서 보기</a>
+  </figcaption>
+</figure>
+<p>결과물에는 원본 사이트처럼 큰 제목과 곡선 띠가 있어요. 영상은 애니메이션이 원본과 꽤 비슷하면서 요청한 사이트 성격에도 맞았다고 평가해요.</p>
+<figure>
+  <img src="assets/frame-0802.webp" alt="VOLT 사이트의 Train smarter, Grow stronger 제목과 형광 곡선 띠가 있는 랜딩 페이지">
+  <figcaption>
+    영상은 3D 시각 스토리텔링 사이트로 소개했고, 프롬프트의 주소는 lusion.co예요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=482s" target="_blank" rel="noopener">영상 08:02에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=538s" target="_blank" rel="noopener">08:58</a>
+  <h2>앱 데모와 설명 영상: Argo와 Explainroo</h2>
+<p>둘 다 내레이션이 있는 영상을 만들어요. 다만 Argo는 실제 앱을 녹화하는 쪽이고, Explainroo는 주제만 받아 화면까지 만드는 쪽이에요.</p>
+<h3>Argo: 앱을 눌러 보며 찍는 데모</h3>
+<p>가입 전에 앱이 돌아가는 모습을 보여 주고 싶을 때 써요. 브라우저로 앱을 열어 클릭하며 녹화하고, 각 장면을 대사 길이만큼 머물러요. 화면의 <code>Book</code>, <code>10:00</code>, <code>Confirm</code>, <code>Done</code>이 차례로 누를 동작이고, 첫 줄의 막대가 그 동작에 붙은 대사예요.</p>
+<figure>
+  <img src="assets/frame-0913.webp" alt="demo script 창에 Book, 10:00, Confirm, Done 네 동작이 번호와 함께 있고 첫 줄에 마이크와 대사 막대가 있는 그래픽">
+  <figcaption>
+    클릭과 대사가 한 줄씩 짝을 이뤄요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=553s" target="_blank" rel="noopener">영상 09:13에서 보기</a>
+  </figcaption>
+</figure>
+<p>README의 <code>Writing a demo</code>를 보면 데모는 스크립트와 장면 목록 두 파일이에요. 코드의 <code>narration.mark</code>와 <code>narration.durationFor</code>가 대사 길이에 맞춰 화면을 기다리게 해요. 녹화 도구는 <span class="term" data-term="Playwright" data-en="Playwright" data-desc="브라우저를 코드로 조작하는 도구예요. 원래 테스트용인데, Argo는 이걸로 클릭 과정을 녹화해요." data-g="5">Playwright</span>예요.</p>
+<figure>
+  <img src="assets/frame-0923.webp" alt="Argo README의 Writing a demo 절. demos/my-feature.demo.ts 코드에 narration.mark, showOverlay, withOverlay가 보이는 화면">
+  <figcaption>
+    에이전트가 쓰는 결과물도 이런 평범한 테스트 코드예요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=563s" target="_blank" rel="noopener">영상 09:23에서 보기</a>
+  </figcaption>
+</figure>
+<p>예약 앱으로 시험한 결과에서는 <code>You're booked at Loft Living</code> 줄만 밝고 나머지가 어두워요. 오른쪽 위의 <code>Confirmation email sent instantly</code>가 대사를 받쳐 주는 라벨이고요.</p>
+<figure>
+  <img src="assets/frame-0938.webp" alt="예약 앱 My visits 화면에서 예약 완료 줄만 밝게 강조되고 오른쪽 위에 Confirmation email sent instantly 라벨이 떠 있는 데모">
+  <figcaption>
+    그림자와 강조로 지금 말하는 곳에 눈이 가게 해요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=578s" target="_blank" rel="noopener">영상 09:38에서 보기</a>
+  </figcaption>
+</figure>
+<h3>Explainroo: 낱말에 맞춰 움직이는 설명 영상</h3>
+<p>주제만 주면 대본, <span class="term" data-term="보이스오버" data-en="Voice-over" data-desc="화면에 사람이 나오지 않고 목소리만 덧입히는 설명이에요. 말 길이가 영상 길이를 좌우해서 타이밍 맞추기가 중요해요." data-g="6">보이스오버</span>, 자막, 썸네일까지 받아요. 화면에서 <code>app</code>, <code>files</code>, <code>cloud</code>, <code>synced</code>가 파형의 해당 위치에 하나씩 묶여 있어요. 말이 나오는 순간 그 그림이 움직인다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0957.webp" alt="explainroo 재생 화면의 앱, 파일, 구름 그림이 아래 파형의 app, files, cloud, synced 라벨과 선으로 이어진 그래픽">
+  <figcaption>
+    화면 전환을 시간이 아니라 낱말에 묶어요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=597s" target="_blank" rel="noopener">영상 09:57에서 보기</a>
+  </figcaption>
+</figure>
+<p>설치는 Claude Code에게 저장소에서 설치해 달라고 하면 돼요. 이때 모델 둘을 받아요. 왼쪽 <code>Voice</code>가 목소리를 만들고, 오른쪽 <code>Listener</code>가 그 목소리를 다시 들어요.</p>
+<figure>
+  <img src="assets/frame-1021.webp" alt="explainroo 폴더 창에 Voice 카드와 Listener 카드가 나란히 있고 Listener는 내려받는 중인 그래픽">
+  <figcaption>
+    말하는 모델과 듣는 모델을 따로 둬요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=621s" target="_blank" rel="noopener">영상 10:21에서 보기</a>
+  </figcaption>
+</figure>
+<p>들어 보면 낱말마다 시각이 나와요. <code>Skills 0.42s</code>, <code>live 0.96s</code>, <code>menu 2.08s</code> 같은 값이에요. 이 표에 장면과 강조를 얹어요. 넘기기 전에는 레이아웃, <span class="term" data-term="라우드니스" data-en="Loudness" data-desc="사람이 느끼는 소리 크기를 잰 값이에요. 플랫폼마다 기준이 달라서 너무 작거나 크면 보정되거나 듣기 불편해져요." data-g="7">라우드니스</span>, 음성을 알아들을 수 있는지까지 확인해요.</p>
+<figure>
+  <img src="assets/frame-1037.webp" alt="Word timings 표에 Skills 0.42s, live 0.96s, in 1.18s, the 1.36s, slash 1.62s, menu 2.08s가 적혀 있고 옆에 파형이 있는 화면">
+  <figcaption>
+    타이밍을 추정하지 않고 실제 음성에서 측정해요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=637s" target="_blank" rel="noopener">영상 10:37에서 보기</a>
+  </figcaption>
+</figure>
+<p>첫 결과는 빛나는 상자와 카드, 마지막 프레임의 슬로건이 있는 템플릿 같은 모습이었어요. 화면의 카드 세 장과 아래 알약 모양 버튼이 그 인상을 보여 줘요. 그래서 실제 Claude Code 세션 기준으로 다시 만들어 달라고 했어요.</p>
+<figure>
+  <img src="assets/frame-1053.webp" alt="오른쪽 위 rebuild 표시와 카드 세 장, 아래 알약 모양 슬로건이 있는 설명 영상 첫 버전 그래픽">
+  <figcaption>
+    첫 결과가 평범하면 재료를 바꾸라고 요청하는 게 효과적이었어요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=653s" target="_blank" rel="noopener">영상 10:53에서 보기</a>
+  </figcaption>
+</figure>
+<p>두 번째에는 진짜 스킬이 든 작은 데모 프로젝트를 만들고, 숨은 터미널에서 Claude Code를 돌려 단계마다 화면을 저장했어요. 맨 위 네 칸 <code>claude</code>, 시작 화면, <code>Pondering</code>, <code>accept edits on</code>이 그 기록이에요. 아래가 이를 다시 그려 넣은 영상이고요. 최종본은 28초예요.</p>
+<figure>
+  <img src="assets/frame-1109.webp" alt="real session 네 화면과 아래 같은 네 화면이 타임라인으로 이어진 그래픽">
+  <figcaption>
+    터미널 화면을 지어내지 않고 실제 세션에서 가져왔어요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=669s" target="_blank" rel="noopener">영상 11:09에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=681s" target="_blank" rel="noopener">11:21</a>
+  <h2>재서 확인하기: Video Director와 Earshot</h2>
+<p>에이전트는 영상을 보지도 듣지도 못해요. 그래서 마지막 두 도구는 숫자와 글로 잴 수 있게 만들어요. 앞의 도구들에도 검사가 있어서 한눈에 모아 봤어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>도구</th><th>언제</th><th>무엇을 확인하나요</th></tr></thead>
+    <tbody>
+      <tr><td>Huashu Motion</td><td>보여 주기 전</td><td>첫 3초 훅, 중간 움직임, 정점 전 멈춤</td></tr>
+      <tr><td>Take One</td><td>버전마다</td><td>독립 리뷰어의 점수, 미달이면 최대 3번 재작업</td></tr>
+      <tr><td>Reanimate</td><td>라운드마다</td><td>원본과 복제본의 프레임 비교, 보통 2~5번</td></tr>
+      <tr><td>Explainroo</td><td>넘기기 전</td><td>레이아웃, 라우드니스, 음성 명료도</td></tr>
+      <tr><td>Video Director</td><td>계획 뒤와 완성 뒤</td><td>글자 크기와 가독성, 깜빡임, 라우드니스, 리뷰어</td></tr>
+      <tr><td>Earshot</td><td>소리를 넣은 뒤</td><td>소리와 화면의 싱크</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>Video Director: 규칙과 두 검사 도구</h3>
+<p>Claude를 감독으로 세우는 스킬이에요. 규칙 묶음과 검사 도구 둘로 돼 있어요. 왼쪽 <code>Hook</code> 패널의 <code>0:01.4</code>는 훅이 3초 안에 들어왔는지, 휴대폰 화면 아래 표시는 글자가 폰에서 읽히는 크기인지를 보는 규칙이에요.</p>
+<figure>
+  <img src="assets/frame-1137.webp" alt="왼쪽 Hook 패널 0:01.4와 0초~3초 눈금, 오른쪽 휴대폰 화면 아래쪽 글자를 표시한 모서리 틀">
+  <figcaption>
+    첫 몇 초와 글자 크기처럼 잴 수 있는 규칙이에요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=697s" target="_blank" rel="noopener">영상 11:37에서 보기</a>
+  </figcaption>
+</figure>
+<p>시험 소재는 <span class="term" data-term="idle compaction" data-en="Idle compaction" data-desc="자리를 비운 사이 긴 대화를 요약해 두는 Claude Code 기능이에요. 돌아와서 보내는 토큰은 줄지만 다음 메시지부터 요약본을 기준으로 이어져요." data-g="8">idle compaction</span> 팁 릴스였어요. 왜 해로운지 말하고 3초 안에 훅을 걸라고 요청했어요. 먼저 <code>On screen</code>과 <code>Music</code> 두 줄로 순간마다의 계획을 짜고, 초록 체크처럼 계획을 통과해야 <code>Build</code>로 넘어가요.</p>
+<figure>
+  <img src="assets/frame-1217.webp" alt="Plan 패널의 On screen과 Music 두 줄 위에 초록 체크가 찍히고 오른쪽 Build 패널이 시작되는 그래픽">
+  <figcaption>
+    코드를 쓰기 전에 계획부터 검사해서 되돌리는 비용을 줄여요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=737s" target="_blank" rel="noopener">영상 12:17에서 보기</a>
+  </figcaption>
+</figure>
+<p>완성 뒤에는 글자마다 크기를 재요. <code>72px</code>, <code>104px</code>, <code>80px</code>이 그 값이에요. 오른쪽 <code>Checks</code>의 <code>Text</code>와 <code>Flashing</code>, 아래 밝기 그래프가 깜빡임 확인이에요. 소리 크기도 함께 재요.</p>
+<figure>
+  <img src="assets/frame-1225.webp" alt="릴스 화면의 글자별 72px, 104px, 80px 표시와 Checks 목록의 Text, Flashing 항목, 아래 밝기 그래프">
+  <figcaption>
+    눈으로 보지 못하는 대신 숫자로 판단해요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=745s" target="_blank" rel="noopener">영상 12:25에서 보기</a>
+  </figcaption>
+</figure>
+<p>자체 검사를 다 통과해도 끝이 아니에요. 왼쪽 <code>Plan</code>, <code>Build</code>, <code>Check</code>가 초록이어도, 오른쪽 <code>No history</code> 리뷰어가 처음 보는 눈으로 영상을 다시 봐요.</p>
+<figure>
+  <img src="assets/frame-1233.webp" alt="왼쪽 Plan, Build, Check 모두 초록 체크, 오른쪽 Reviewer 패널에 No history와 영상 카드">
+  <figcaption>
+    이 리뷰어는 한 번 더 고치라고 요구했어요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=753s" target="_blank" rel="noopener">영상 12:33에서 보기</a>
+  </figcaption>
+</figure>
+<p>리뷰어의 요구로 바뀐 게 화면에 보여요. 지나치게 단정한 문장 둘을 <code>Can lose context</code>, <code>Use it with care</code>로 누그러뜨렸어요. 오른쪽의 <code>0.3s → 0.6s</code>는 늦춘 애니메이션이에요. 작은 라벨도 키웠어요.</p>
+<figure>
+  <img src="assets/frame-1241.webp" alt="휴대폰 화면의 Can lose context, Use it with care 경고 두 줄과 대화가 요약으로 바뀌는 그림, 오른쪽 0.3s에서 0.6s로 바뀐 표시">
+  <figcaption>
+    요청은 해롭다고 말하라는 것이었는데, 사실 확인 뒤 표현이 약해졌어요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=761s" target="_blank" rel="noopener">영상 12:41에서 보기</a>
+  </figcaption>
+</figure>
+<p>설치된 Claude Code 버전과 공식 문서로 주장도 하나하나 대조했어요. 최종 릴스는 28초이고, 해결책이 처음 2초 안에 화면에 나와요.</p>
+<figure>
+  <img src="assets/frame-1249.webp" alt="Stop idle compaction in Claude Code 제목과 긴 세션을 요약으로 바꾼다는 설명이 있는 세로 릴스 프레임">
+  <figcaption>
+    결국 내용 검증까지가 영상 품질에 들어간다는 예시예요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=769s" target="_blank" rel="noopener">영상 12:49에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 문서로 보면 idle compaction은 긴 대화에서 자리를 비웠을 때 대화를 압축해요. 다음 메시지는 전체 대화 대신 요약을 보내요. 기본값은 켜짐이고, 조건은 컨텍스트 20만 토큰(기본 임계값)과 약 한 시간의 유휴 시간 등이에요. 끄려면 <code>settings.json</code>에 <code>"idleCompaction": false</code>를 넣거나 <code>/config</code>에서 바꿔요. 영상의 해롭다는 말은 제작자의 요청 문구예요. 문서는 해롭다고 평가하지 않아요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/settings-reference" target="_blank" rel="noopener">Claude Code 공식 문서 — settings reference</a> · <a href="https://code.claude.com/docs/en/costs" target="_blank" rel="noopener">Claude Code 공식 문서 — costs</a></p>
+</aside>
+<h3>Earshot: 들을 수 없는 에이전트에게 귀를</h3>
+<p>영상이 마지막에 둔 이유는 이 한 문장에 있어요. 소리가 그림에 맞아야 하는데 Claude는 맞는지 들어 볼 방법이 없다는 거예요.</p>
+<blockquote>
+  <p>the sound in a video has to land on the picture and Claude has no way of hearing whether it does.</p>
+  <p>영상의 소리는 그림에 맞아떨어져야 하는데, Claude는 맞는지 들어 볼 방법이 없어요.</p>
+  <cite>— 영상 13:45</cite>
+</blockquote>
+<p>소리를 Claude가 읽을 수 있는 글로 바꾸는 도구 모음이에요. 화면의 <code>Notes</code>에 <code>0:02</code>, <code>0:05</code>처럼 시각별 설명이 쌓이고, 그걸 오른쪽 Claude가 읽어요. 각 소리가 무엇인지 쉬운 말로 적고, 그림 어디에 떨어지는지도 찾아 줘요.</p>
+<figure>
+  <img src="assets/frame-1313.webp" alt="earshot 도구 카드에서 Notes 목록 0:02, 0:05, 0:09, 0:14로 이어지고 오른쪽에 Claude 아이콘이 있는 그래픽">
+  <figcaption>
+    오디오가 Claude가 읽는 글이 돼요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=793s" target="_blank" rel="noopener">영상 13:13에서 보기</a>
+  </figcaption>
+</figure>
+<p>이 결과는 시트 한 장에 모여요. 위쪽 <code>0:00</code>부터 <code>0:05</code>까지의 눈금에 영상 프레임을 늘어놓고, 소리를 같은 시간축에 맞춰 싱크를 볼 수 있게 해요.</p>
+<figure>
+  <img src="assets/frame-1321.webp" alt="earshot 창의 0:00부터 0:05까지 눈금 위에 영상 프레임이 줄지어 있는 시트 그래픽">
+  <figcaption>
+    눈금 하나에 프레임과 소리가 함께 놓여요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=801s" target="_blank" rel="noopener">영상 13:21에서 보기</a>
+  </figcaption>
+</figure>
+<p>두 번째 스킬은 녹음한 음악과 효과음으로 사운드트랙 전체를 만들어요. 왼쪽 음원과 <code>whoosh</code>가 재료이고, 오른쪽 <code>soundtrack</code> 트랙에 배치돼요.</p>
+<figure>
+  <img src="assets/frame-1329.webp" alt="earshot에서 폴더로 이어지고 왼쪽 음원 두 개와 whoosh, 오른쪽 soundtrack 트랙이 놓인 그래픽">
+  <figcaption>
+    음악과 효과음을 따로 고른 뒤 트랙에 놓아요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=809s" target="_blank" rel="noopener">영상 13:29에서 보기</a>
+  </figcaption>
+</figure>
+<p>이 스킬은 음악의 정점을 영상의 가장 중요한 순간에 맞춘 뒤 Earshot으로 확인해요. 위아래 별 두 개가 프레임과 파형의 정점이 같은 자리에 있다는 표시예요.</p>
+<figure>
+  <img src="assets/frame-1337.webp" alt="프레임 줄과 파형 줄 사이로 세로선이 지나고 위아래 별이 가장 밝은 프레임과 파형 정점을 가리키는 그래픽">
+  <figcaption>
+    큰 순간을 눈과 귀 양쪽에서 같은 시각에 맞춰요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=817s" target="_blank" rel="noopener">영상 13:37에서 보기</a>
+  </figcaption>
+</figure>
+<p>설치는 저장소 안내를 따라요. 소리 모델을 로컬에서 돌려서 용량을 꽤 차지한다고 영상이 먼저 짚어요. README에는 CPU(Central Processing Unit)만으로 돌아가며 Python 3.10 이상이 필요하고, 모델이 약 1.1GB라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-1353.webp" alt="earshot README Install 절. Python 3.10+, CPU only, git clone과 venv 명령, 두 모델 약 1.1 GB 안내가 보이는 화면">
+  <figcaption>
+    첫 사용 때 모델을 내려받으니 용량을 미리 확인해요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=833s" target="_blank" rel="noopener">영상 13:53에서 보기</a>
+  </figcaption>
+</figure>
+<p>설치 결과를 보면 스킬 둘과 <span class="term" data-term="MCP" data-desc="에이전트가 외부 도구를 불러 쓰게 하는 공통 규약이에요. Earshot은 소리 분석 도구를 이 방식으로 Claude Code에 붙여요." data-g="4">MCP(Model Context Protocol)</span>를 함께 깔았어요. <code>MCP server</code> 줄에 사용자 수준 설정이라 모든 프로젝트에서 쓸 수 있다고 적혀 있고, 스킬도 <code>~/.claude/skills/</code>에 연결했어요. 영상이 앞서 권한 프로젝트 단위 설치와는 달라요.</p>
+<figure>
+  <img src="assets/frame-1401.webp" alt="설치 보고 터미널. earshot doctor 정상, Python 환경, 모델 1.1 GB, MCP server 사용자 수준 추가, Skills를 ~/.claude/skills에 링크했다는 목록">
+  <figcaption>
+    Earshot은 사실상 전역 설치에 가까워요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=841s" target="_blank" rel="noopener">영상 14:01에서 보기</a>
+  </figcaption>
+</figure>
+<p>쓰임 하나는 음악 없는 클립에 음악 넣기예요. 프롬프트는 <code>blow-my-mind.mp4</code>에 Earshot을 돌려 어울리는 소리를 넣어 달라는 내용이에요. 영상은 여러 단계를 거친 뒤 장면마다 맞는 음악이 들어갔다고 전해요.</p>
+<figure>
+  <img src="assets/frame-1417.webp" alt="earshot을 blow-my-mind.mp4에 돌려 소리를 넣어 달라는 프롬프트와 Skill(earshot) 로드, Bash 명령이 보이는 터미널">
+  <figcaption>
+    문서는 소리를 담지 못하니 결과는 영상 14:17 뒤에서 직접 들어 보는 게 좋아요.
+    <a href="https://www.youtube.com/watch?v=oTWUyW_bR-g&amp;t=857s" target="_blank" rel="noopener">영상 14:17에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>두 번째 스킬의 이름은 <code>real-sound</code>예요. README에 따르면 효과음 뱅크 252개는 코드로 들어 있어 모델 없이 렌더링돼요. 반면 <code>real-sound</code>는 라이선스 있는 실제 녹음을 찾아 쓰는 과정이어서 라이선스 확인이 포함돼요. 코드는 <code>MIT</code> 라이선스이고 모델 CLAP(Contrastive Language-Audio Pretraining)과 AST(Audio Spectrogram Transformer)는 각자의 라이선스를 따라요.</p>
+  <p class="cite">출처: <a href="https://github.com/Leonxlnx/earshot" target="_blank" rel="noopener">earshot README</a></p>
+</aside>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 이름이 잘못 받아적힌 곳이 있어요. 화면과 저장소로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>Hashu Motion</td><td>Huashu Motion (huashu-motion)</td><td></td></tr>
+      <tr><td>Ross Arc Motion</td><td>rossark-motion</td><td></td></tr>
+      <tr><td>Explain Roo, explain rule</td><td>Explainroo (explainroo)</td><td></td></tr>
+      <tr><td>cloud code, clawed code</td><td>Claude Code</td><td></td></tr>
+      <tr><td>/ash command</td><td>슬래시 명령</td><td></td></tr>
+      <tr><td>hours passed every check</td><td>ours passed every check</td><td>문맥으로 본 표기예요 (추정)</td></tr>
+      <tr><td>made by Claude 2</td><td>made by Claude too</td><td>문맥으로 본 표기예요 (추정)</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-3"><dt>독립 리뷰어<span class="en">Fresh-context reviewer</span></dt><dd>작업 과정을 전혀 보지 않은 새 세션에서 결과만 평가하는 에이전트예요. 만든 쪽의 맥락에 끌려가지 않고 평가할 수 있어요.</dd></div>
+    <div class="g" id="g-7"><dt>라우드니스<span class="en">Loudness</span></dt><dd>사람이 느끼는 소리 크기를 잰 값이에요. 플랫폼마다 기준이 달라서 너무 작거나 크면 보정되거나 듣기 불편해져요.</dd></div>
+    <div class="g" id="g-6"><dt>보이스오버<span class="en">Voice-over</span></dt><dd>화면에 사람이 나오지 않고 목소리만 덧입히는 설명이에요. 말 길이가 영상 길이를 좌우해서 타이밍 맞추기가 중요해요.</dd></div>
+    <div class="g" id="g-2"><dt>훅<span class="en">Hook</span></dt><dd>영상 첫머리에서 시청자를 붙잡는 장면이나 문구예요. 짧은 영상은 여기서 이탈이 갈려서 규칙으로 정해 둬요.</dd></div>
+    <div class="g" id="g-1"><dt>Agent Skills<span class="en">Agent Skills</span></dt><dd>스킬 폴더와 SKILL.md 형식을 정한 공개 표준이에요. 이 표준을 따르면 Claude Code 말고 다른 에이전트에도 같은 스킬을 설치할 수 있어요.</dd></div>
+    <div class="g"><dt>AST</dt><dd>Audio Spectrogram Transformer</dd></div>
+    <div class="g"><dt>CLAP</dt><dd>Contrastive Language-Audio Pretraining</dd></div>
+    <div class="g"><dt>CPU</dt><dd>Central Processing Unit</dd></div>
+    <div class="g"><dt>GIF</dt><dd>Graphics Interchange Format</dd></div>
+    <div class="g"><dt>GSAP</dt><dd>GreenSock Animation Platform</dd></div>
+    <div class="g" id="g-8"><dt>idle compaction<span class="en">Idle compaction</span></dt><dd>자리를 비운 사이 긴 대화를 요약해 두는 Claude Code 기능이에요. 돌아와서 보내는 토큰은 줄지만 다음 메시지부터 요약본을 기준으로 이어져요.</dd></div>
+    <div class="g" id="g-4"><dt>MCP<span class="en">Model Context Protocol</span></dt><dd>에이전트가 외부 도구를 불러 쓰게 하는 공통 규약이에요. Earshot은 소리 분석 도구를 이 방식으로 Claude Code에 붙여요.</dd></div>
+    <div class="g" id="g-5"><dt>Playwright<span class="en">Playwright</span></dt><dd>브라우저를 코드로 조작하는 도구예요. 원래 테스트용인데, Argo는 이걸로 클릭 과정을 녹화해요.</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=oTWUyW_bR-g" target="_blank" rel="noopener">원본 영상 — AI LABS</a></li>
+    <li id="src-2"><a href="https://github.com/alchaincyf/huashu-motion" target="_blank" rel="noopener">huashu-motion 저장소</a></li>
+    <li id="src-3"><a href="https://github.com/rossark0/rossark-motion-skill" target="_blank" rel="noopener">rossark-motion-skill 저장소</a></li>
+    <li id="src-4"><a href="https://github.com/talsiach/take-one" target="_blank" rel="noopener">take-one 저장소</a></li>
+    <li id="src-5"><a href="https://github.com/NiazMorshed2007/reanimate" target="_blank" rel="noopener">reanimate 저장소</a></li>
+    <li id="src-6"><a href="https://github.com/shreyaskarnik/argo" target="_blank" rel="noopener">argo 저장소</a></li>
+    <li id="src-7"><a href="https://github.com/vincentsch/explainroo" target="_blank" rel="noopener">explainroo 저장소</a></li>
+    <li id="src-8"><a href="https://github.com/win4r/video-director" target="_blank" rel="noopener">video-director 저장소</a></li>
+    <li id="src-9"><a href="https://github.com/Leonxlnx/earshot" target="_blank" rel="noopener">earshot 저장소</a></li>
+    <li id="src-10"><a href="https://www.npmjs.com/package/@argo-video/cli" target="_blank" rel="noopener">npm — @argo-video/cli</a></li>
+    <li id="src-11"><a href="https://support.claude.com/en/articles/17454997" target="_blank" rel="noopener">Anthropic 도움말 — Get started with Claude Motion</a></li>
+    <li id="src-12"><a href="https://code.claude.com/docs/en/settings-reference" target="_blank" rel="noopener">Claude Code 공식 문서 — settings reference</a></li>
+    <li id="src-13"><a href="https://code.claude.com/docs/en/costs" target="_blank" rel="noopener">Claude Code 공식 문서 — costs</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 3일에 이 영상을 보고 정리했어요. 원본은 AI LABS 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+const row = (g, y, cls, items, marker) => {
+  const w = 124, gap = 16, h = 70;
+  items.forEach(([a, b], i) => {
+    const x = 8 + i * (w + gap);
+    g.append(el('rect', { x, y, width: w, height: h, rx: 9, class: `${cls} cell` }));
+    g.append(el('text', { x: x + w / 2, y: y + 30, 'text-anchor': 'middle', 'font-size': 13 }, a));
+    g.append(el('text', { x: x + w / 2, y: y + 50, 'text-anchor': 'middle', class: 'sub', 'font-size': 11.5 }, b));
+    if (i < items.length - 1)
+      g.append(el('path', { d: `M${x + w + 1} ${y + h / 2} h${gap - 2}`, class: 'line', 'marker-end': `url(#${marker})` }));
+  });
+};
+const back = (g, y, from, to, label, marker) => {
+  const cx = (i) => 8 + i * 140 + 62;
+  g.append(el('path', { d: `M${cx(from)} ${y} v22 H${cx(to)} v-20`, class: 'line', fill: 'none', 'marker-end': `url(#${marker})` }));
+  g.append(el('text', { x: (cx(from) + cx(to)) / 2, y: y + 40, 'text-anchor': 'middle', class: 'sub', 'font-size': 12 }, label));
+};
+(() => {
+  const g = document.getElementById('fig-films');
+  if (!g) return;
+  g.append(el('text', { x: 8, y: 18, 'font-size': 13 }, 'Huashu Motion · 사이트를 영상으로'));
+  row(g, 28, 'c1', [['사이트 읽기', '색·폰트·문구'], ['음악 먼저 쓰기', '화면을 만들기 전'], ['박자에 맞춰', '전체를 컷'], ['감독 규칙', '스스로 검사'], ['대시보드', '댓글로 수정']], 'arrow-films');
+  g.append(el('text', { x: 8, y: 134, 'font-size': 13 }, 'Take One · 사용 장면을 이야기로'));
+  row(g, 144, 'c2', [['한 줄 요청', '질문으로 확인'], ['역할별 기획', '전략·연출·콘티'], ['직접 빌드', '오래 걸려요'], ['뷰어에서', '메모로 수정'], ['독립 리뷰어', '버전마다 채점']], 'arrow-films');
+  back(g, 214, 4, 2, '합격선 아래면 다시 · 최대 3번', 'arrow-films');
+})();
+(() => {
+  const g = document.getElementById('fig-reanimate');
+  if (!g) return;
+  row(g, 14, 'c3', [['원본 기록', '한 프레임씩'], ['타이밍 적기', '시작 시각·속도'], ['복제본 빌드', '내 프로젝트 스택'], ['복제본 기록', '같은 방식으로'], ['나란히 비교', '가장 먼 곳 찾기']], 'arrow-re');
+  back(g, 84, 4, 2, '가장 어긋난 곳부터 고쳐요 · 보통 2~5번', 'arrow-re');
+})();
+</script>
+</body>
+</html>
