@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCP 서버를 처음부터 만들고 세 가지 클라이언트로 써 보기</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>MCP 서버를 처음부터 만들고 세 가지 클라이언트로 써 보기</h1>
+  <p class="lede">SQLite 할 일 앱에 FastMCP 서버를 세우고 LangChain·Codex로 불러 봐요</p>
+  <div class="meta">
+    <span>AI Career Lab</span><span class="dot">·</span>
+    <span>영상 1:24:06</span><span class="dot">·</span>
+    <span>읽는 데 약 21분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>구조는 세 층이에요. <code>database.py</code>(SQLite 함수) → <code>server.py</code>(<span class="term" data-term="FastMCP" data-desc="Python으로 MCP 서버와 클라이언트를 짧게 만들 수 있게 해 주는 프레임워크예요. 데코레이터 하나로 함수를 도구로 등록해요." data-g="2">FastMCP</span> 도구 3개) → 클라이언트(FastMCP Client · LangChain <span class="term" data-term="에이전트" data-en="Agent" data-desc="언어 모델이 주어진 도구 중 무엇을 언제 쓸지 스스로 골라 가며 일을 처리하는 프로그램이에요." data-g="12">에이전트</span> · Codex)예요.</li>
+    <li>도구의 이름·설명과 <span class="term" data-term="독스트링" data-en="Docstring" data-desc="함수 맨 앞에 큰따옴표 세 개로 적는 설명 문자열이에요. MCP 도구에서는 에이전트가 이 글을 읽고 도구를 고르는 데 써요." data-g="3">독스트링</span>은 에이전트가 어떤 도구를 쓸지 고르는 근거라서 분명하게 써야 해요.</li>
+    <li>서버는 <code>mcp.run(transport="http", port=8000)</code>으로 띄우고, 세 클라이언트 모두 <code>http://127.0.0.1:8000/mcp</code> 한 주소에 붙어요.</li>
+    <li>LangChain 에이전트에는 서버에서 받은 도구 목록만 넘기면 돼요. 도구마다 함수를 감쌀 필요가 없어요.</li>
+    <li>설명을 바꾸는 도구가 없으니 에이전트도 설명을 못 바꿔요. 도구 목록이 곧 에이전트 권한의 경계예요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">무엇을 만드나요</a></li>
+    <li><a href="#s2">MCP는 AI 앱의 USB-C</a></li>
+    <li><a href="#s3">프로젝트 준비</a></li>
+    <li><a href="#s4">database.py: 할 일 테이블과 함수 네 개</a></li>
+    <li><a href="#s5">server.py: FastMCP로 첫 도구 만들기</a></li>
+    <li><a href="#s6">client.py: 도구를 코드로 불러 보기</a></li>
+    <li><a href="#s7">LangChain 에이전트로 말로 시키기</a></li>
+    <li><a href="#s8">Codex에 같은 서버 붙이기</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>무엇을 만드나요</h2>
+<p>이 영상은 할 일(task)을 저장하는 작은 앱 하나를 만들고, 그 앞에 <span class="term" data-term="MCP 서버" data-en="MCP server" data-desc="앱의 기능을 MCP 규격에 맞춘 도구로 열어 주는 프로그램이에요. 클라이언트는 이 서버만 알면 앱 내부를 몰라도 기능을 쓸 수 있어요." data-g="1">MCP(Model Context Protocol) 서버</span>를 세운 뒤 세 종류의 클라이언트로 써 보는 실습이에요. 발표자는 먼저 완성된 모습을 그린 아키텍처 보드부터 보여 줘요.</p>
+<p>보드는 세 칸이에요. 왼쪽 <b>Clients and MCP</b>에는 Python FastMCP 클라이언트(<code>client.py</code>), Codex, LangChain 에이전트(<code>langchain_client.py</code>)가 있어요. 가운데 <b>FastMCP server · server.py</b>에는 <code>127.0.0.1:8000/mcp</code> 엔드포인트와 등록된 도구 세 개(<code>create_task</code>, <code>list_tasks</code>, <code>update_task_status</code>)가 있어요. 오른쪽 <b>Persistence</b>는 <code>database.py</code>와 SQLite 파일 <code>data/tasks.db</code>예요. 맨 아래 한 줄이 흐름을 요약해요. 클라이언트 요청 → MCP 도구 → DB(Database) 함수 → SQLite이고, 결과는 같은 MCP 엔드포인트로 돌아와요.</p>
+<figure>
+  <img src="assets/frame-0234.webp" alt="MCP Server Blueprint 아키텍처 보드. 왼쪽 클라이언트 세 개, 가운데 FastMCP 서버와 도구 세 개, 오른쪽 database.py와 SQLite 데이터베이스">
+  <figcaption>세 클라이언트가 모두 가운데 엔드포인트 하나로만 앱에 닿아요. 이 영상 전체가 이 그림을 왼쪽부터 채워 가는 과정이에요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=154s" target="_blank" rel="noopener">영상 02:34에서 보기</a></figcaption>
+</figure>
+<p>진행 순서는 로드맵 보드에 색깔별 여섯 줄로 정리돼 있어요. 보라색 프로젝트 준비(Python, <code>uv</code>, VS Code, FastMCP 설치), 분홍색 MCP 서버와 첫 도구, 파란색 별도 클라이언트와 <code>list_task</code>·<code>update_task_status</code>, 초록색 SQLite 저장, 노란색 LangChain 에이전트, 빨간색 Codex 연결이에요.</p>
+<figure>
+  <img src="assets/frame-0340.webp" alt="여섯 줄짜리 로드맵 보드. Project Setup, Build our MCP server, MCP communication and tools, Add SQLite persistence, Langchain AI agent, Connecting to codex">
+  <figcaption>실제 코딩 순서는 보드와 조금 달라요. 영상에서는 SQLite 함수를 먼저 만들고 서버를 그 위에 올려요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=220s" target="_blank" rel="noopener">영상 03:40에서 보기</a></figcaption>
+</figure>
+<p>시작 전에 발표자가 당부하는 게 있어요. AI(Artificial Intelligence) 도구에 프로젝트를 맡기지 말고 직접 한 줄씩 써 보라는 거예요. 한 번에 다 하지 않고 하루 한 시간씩 나눠도 된다고 해요. 그래서 Codex에 MCP를 붙이는 마지막 장면을 빼면 영상 내내 코드는 손으로 쳐요.</p>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=263s" target="_blank" rel="noopener">04:23</a>
+  <h2>MCP는 AI 앱의 USB-C</h2>
+<p>발표자는 MCP를 깊게 파고 싶으면 공식 사이트와 GitHub 저장소를 읽으라고 하고, 핵심은 한 문장으로 정리해요. MCP는 AI 앱을 위한 USB-C 포트라는 거예요. 화면에 띄운 공식 문서에도 그 문장이 그대로 있어요. 가운데 MCP 상자를 두고 왼쪽에 채팅 앱·IDE(Integrated Development Environment) 같은 AI 앱, 오른쪽에 데이터·개발 도구·생산성 도구가 이어진 그림이 함께 있어요.</p>
+<figure>
+  <img src="assets/frame-0505.webp" alt="Model Context Protocol 공식 문서 'What is MCP?' 페이지. USB-C 비유 문단과 MCP를 가운데 둔 연결 그림">
+  <figcaption>USB-C가 기기마다 따로 선을 만들 필요를 없앴듯, MCP를 한 번 만들어 두면 클라이언트마다 연동을 새로 짜지 않아도 돼요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=305s" target="_blank" rel="noopener">영상 05:05에서 보기</a></figcaption>
+</figure>
+<p>발표자의 설명은 이래요. 여러 일을 할 수 있는 앱이 있다고 해 볼게요. 에이전트나 다른 클라이언트가 이 앱을 정해진 방식으로만 쓰게 하고 싶다면, 앱 앞에 MCP를 꽂아 두면 돼요. 그러면 연결은 플러그를 꽂듯 끝나요. 이 영상에서는 그 '앱'이 할 일 DB이고, 마지막에는 에이전트에게 말로 시키기만 해도 MCP를 거쳐 DB가 바뀌는 걸 보여 줘요.</p>
+<p>완성 코드는 발표자의 GitHub 저장소 <code>MCP_Server_BluePrint</code>에 올라가 있어요. 화면에는 <code>data</code>, <code>src/mcp_server_blueprint</code>, <code>.mcp.json</code>, <code>pyproject.toml</code>, <code>uv.lock</code> 같은 파일이 보여요.</p>
+<figure>
+  <img src="assets/frame-0657.webp" alt="GitHub 저장소 Mohamad-Hachem/MCP_Server_BluePrint 첫 화면. 폴더와 파일 목록, MIT 라이선스, Python 100%">
+  <figcaption>영상에서 만드는 폴더는 <code>src/mcp_server</code>인데, 저장소에서는 <code>src/mcp_server_blueprint</code>예요. 따라 칠 때 경로를 헷갈리지 않게 보세요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=417s" target="_blank" rel="noopener">영상 06:57에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 소개 페이지는 MCP를 Claude나 ChatGPT 같은 AI 앱이 로컬 파일·데이터베이스 같은 데이터, 검색 엔진 같은 도구, 특화 프롬프트 같은 워크플로에 연결하는 오픈소스 표준이라고 정의해요. 영상에서 읽어 준 '구글 캘린더에 접근하는 에이전트', 'Figma 디자인으로 웹 앱을 만드는 Claude Code' 같은 예시도 같은 페이지의 'What can MCP enable?' 목록이에요.</p>
+  <p class="cite">출처: <a href="https://modelcontextprotocol.io/docs/getting-started/intro" target="_blank" rel="noopener">Model Context Protocol — What is MCP?</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=430s" target="_blank" rel="noopener">07:10</a>
+  <h2>프로젝트 준비</h2>
+<p>VS Code에서 작업 폴더를 열고 터미널에서 Python과 패키지 관리자 <code>uv</code>가 있는지부터 확인해요. 그다음 <code>uv venv --python 3.12</code>로 가상환경을 만들고 <code>uv init</code>으로 프로젝트를 초기화해요. 발표자는 3.12를 쓰지만 3.11~3.13이면 된다고 해요.</p>
+<ol class="steps">
+  <li><b><code>.env</code>와 <code>.env.example</code>을 만들어요</b> — 둘 다 <code>OPENAI_API_KEY=""</code> 한 줄이에요. <code>.env.example</code>은 저장소를 받은 사람이 복사해 쓰라고 두는 견본이에요.</li>
+  <li><b><code>.gitignore</code>에 <code>.env</code>를 넣어요</b> — 키가 저장소에 올라가지 않게 해요.</li>
+  <li><b>OpenAI 대시보드에서 API(Application Programming Interface) 키를 새로 만들어요</b> — 발표자는 만료 1일짜리 키를 만들고 영상 공개 전에 폐기하겠다고 해요.</li>
+  <li><b>필요한 패키지를 한 번에 설치해요</b> — 하나씩 필요할 때 깔아도 되지만 발표자는 처음에 다 깔아 둬요.
+    <span class="done"><code>uv sync</code>와 <code>uv lock</code>이 'Resolved 97 packages'로 끝나요</span></li>
+</ol>
+<p>아래 터미널 첫 줄이 설치 명령이에요. <code>dotenv</code>, <code>langchain</code>, <code>langchain-openai</code>, <code>langchain[mcp]</code>, <code>uuid</code>, <code>asyncio</code>, <code>fastmcp</code> 일곱 개를 한 줄로 넣었어요. 왼쪽 탐색기에는 <code>src/mcp_server/__init__.py</code>와 <code>.env</code>, <code>pyproject.toml</code>, <code>uv.lock</code>이 생겼어요.</p>
+<figure>
+  <img src="assets/frame-1028.webp" alt="VS Code 터미널에서 uv add로 패키지를 설치한 뒤 uv sync, uv lock을 실행한 화면">
+  <figcaption>설치가 끝나면 <code>uv sync</code>, <code>uv lock</code>으로 잠금 파일까지 맞춰 둬요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=628s" target="_blank" rel="noopener">영상 10:28에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p><code>uuid</code>와 <code>asyncio</code>는 Python 표준 라이브러리 모듈이라 따로 설치하지 않아도 <code>import</code>할 수 있어요. 영상의 <code>uv add</code> 줄에 들어간 두 이름은 PyPI에 있는 같은 이름의 별도 패키지를 받아요. 빼도 코드는 그대로 돌아요.</p>
+  <p class="cite">출처: <a href="https://docs.python.org/3/library/uuid.html" target="_blank" rel="noopener">Python 문서 — uuid</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=641s" target="_blank" rel="noopener">10:41</a>
+  <h2>database.py: 할 일 테이블과 함수 네 개</h2>
+<p>MCP 서버는 '앱과 클라이언트 사이'에 서는 층이라, 먼저 그 뒤에 있을 앱이 필요해요. 여기서는 <code>src/mcp_server/database.py</code> 하나가 앱 역할을 해요. SQLite를 고른 이유는 가볍고 바로 쓸 수 있어서라고 해요.</p>
+<h3>할 일 테이블</h3>
+<p>할 일 하나는 다섯 칸으로 이뤄져요. 아래 화면의 <code>CREATE TABLE IF NOT EXISTS tasks</code> 안을 보면 <code>task_id</code>가 기본 키이고, <code>priority</code>는 기본값 <code>'medium'</code>, <code>status</code>는 기본값 <code>'todo'</code>예요. 파일 위쪽에서는 <code>Path(__file__).resolve().parents[2]</code>로 프로젝트 루트를 잡고 <code>data/tasks.db</code>를 DB 경로로 정해요.</p>
+<figure>
+  <img src="assets/frame-1641.webp" alt="database.py의 init_db 함수 안에서 tasks 테이블을 만드는 CREATE TABLE 문. task_id, title, description, priority, status 다섯 칸">
+  <figcaption>상태는 <code>todo</code>·<code>in progress</code>·<code>done</code> 셋만 쓰기로 엄격하게 정하고, 우선순위(low~high)는 느슨하게 둬요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=1001s" target="_blank" rel="noopener">영상 16:41에서 보기</a></figcaption>
+</figure>
+<h3>함수 네 개</h3>
+<p>이후 MCP 도구는 모두 이 함수들을 부르기만 해요. 그래서 이 표가 곧 앱이 할 수 있는 일의 전부예요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>함수</th><th>받는 것</th><th>하는 일</th><th>돌려주는 것</th></tr></thead>
+    <tbody>
+      <tr><td><code>init_db()</code></td><td>없음</td><td><code>data/</code> 폴더를 만들고 테이블이 없으면 만들어요</td><td><code>None</code></td></tr>
+      <tr><td><code>save_task(task)</code></td><td>다섯 키를 가진 딕셔너리</td><td><code>INSERT INTO tasks … VALUES (?, ?, ?, ?, ?)</code></td><td><code>None</code></td></tr>
+      <tr><td><code>update_task_status_in_db(task_id, status)</code></td><td>ID(Identifier)와 새 상태</td><td><code>UPDATE</code> 후 같은 행을 다시 <code>SELECT</code></td><td>바뀐 행 딕셔너리, 없으면 에러 딕셔너리</td></tr>
+      <tr><td><code>get_all_tasks()</code></td><td>없음</td><td><code>SELECT * FROM tasks</code></td><td>딕셔너리 리스트</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>갱신 함수에서 발표자가 짚는 두 가지가 아래 화면에 다 있어요. 하나는 위쪽에서 건 <code>conn.row_factory = sqlite3.Row</code>예요. 이 <span class="term" data-term="row_factory" data-desc="sqlite3 연결이 조회 결과 한 줄을 어떤 모양으로 돌려줄지 정하는 설정이에요. sqlite3.Row로 두면 열 이름으로 꺼낼 수 있어 딕셔너리로 바꾸기 쉬워요." data-g="6">row_factory</span> 설정을 걸어야 조회 결과를 튜플이 아닌 딕셔너리로 바꿀 수 있어요. 다른 하나는 71번 줄 <code>(task_id,)</code>의 쉼표예요. 쉼표가 없으면 괄호가 튜플로 인식되지 않아요. 결과를 <code>fetchone()</code>으로 받고, 연결을 닫은 뒤 <code>record</code>가 <code>None</code>이면 존재하지 않는 ID라는 에러를 돌려줘요.</p>
+<figure>
+  <img src="assets/frame-2341.webp" alt="update_task_status_in_db 함수에서 SELECT * FROM tasks where task_id = ? 를 (task_id,) 튜플로 실행하고 fetchone으로 받는 코드">
+  <figcaption>모든 함수가 <code>try</code> 안에서 실행하고 <code>finally</code>에서 연결을 닫는 같은 모양이에요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=1421s" target="_blank" rel="noopener">영상 23:41에서 보기</a></figcaption>
+</figure>
+<h3>직접 돌려 보며 고치기</h3>
+<p>서버를 만들기 전에 <code>if __name__ == "__main__":</code> 블록에서 함수를 직접 불러 봐요. 테스트용 할 일의 ID는 일단 <code>"1"</code>로 넣고, 진짜 고유 ID는 나중에 서버에서 만든다고 해요. 오류도 몇 번 나요. <code>INSERT</code> 문의 <code>VALUES</code> 철자 오류, 들여쓰기 오류, 그리고 갱신 함수에 딕셔너리를 통째로 넘겨서 생긴 오류예요.</p>
+<p>아래 터미널 위쪽이 마지막 오류인 <code>missing 1 required positional argument: 'status'</code>예요. 코드를 <code>task_id="1", status="done"</code> 키워드 인자로 바꾸자, 아래 두 줄처럼 같은 할 일의 <code>status</code>가 <code>'to do'</code>에서 <code>'done'</code>으로 바뀌어 찍혀요.</p>
+<figure>
+  <img src="assets/frame-3220.webp" alt="database.py 실행 결과. TypeError 뒤에 get_all_tasks 출력이 두 번 찍히며 status가 to do에서 done으로 바뀜">
+  <figcaption>이 단계에서 할 일 만들기·상태 바꾸기·전체 보기가 다 돌아가요. VS Code의 SQLite 확장으로 <code>tasks.db</code>를 열어 표로도 확인해요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=1940s" target="_blank" rel="noopener">영상 32:20에서 보기</a></figcaption>
+</figure>
+<p>참고로 이 테스트 행의 상태는 띄어 쓴 <code>'to do'</code>로 들어갔어요. 테이블 기본값 <code>'todo'</code>와 다른 철자예요. 이 차이는 서버를 만들 때 다시 나와요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=1952s" target="_blank" rel="noopener">32:32</a>
+  <h2>server.py: FastMCP로 첫 도구 만들기</h2>
+<p>이제 앱 앞에 MCP 서버를 세워요. <code>server.py</code>에서 <code>FastMCP("MCP SERVER ACL")</code>로 서버를 만들고, <code>database.py</code>의 함수들을 가져와요. ID 생성용으로 <code>uuid4</code>를, 나중에 상태 값을 묶을 <code>Literal</code>도 미리 가져와 둬요.</p>
+<h3>도구의 이름과 설명이 중요한 이유</h3>
+<p>함수 위에 <code>@mcp.tool(name=…, description=…)</code>을 붙이면 그 함수가 MCP 도구가 돼요. 발표자는 여기서 가장 길게 멈춰요. 에이전트는 도구의 이름과 설명을 읽고 '이 일에 이 도구가 맞나'를 판단해요. 그러니 이름과 설명, 함수 안의 독스트링을 분명하게 써야 한다는 거예요. 설명과 독스트링이 겹쳐도 괜찮다고 해요. 문서화 습관을 들이는 게 낫다고요.</p>
+<p>이 지점이 MCP의 핵심이라고도 말해요. 앱 주인이 어떤 기능을 어떤 모양으로 열지 직접 정해요. 그러면 다른 사람은 연동 코드를 새로 짜지 않고 도구만 보고 앱을 쓸 수 있어요.</p>
+<h3>첫 도구 create_task</h3>
+<p>아래 화면이 완성된 첫 도구예요. 인자는 <code>title</code>, 기본값 <code>"medium"</code>인 <code>priority</code>, 빈 문자열이 기본인 <code>description</code>이에요. 18번 줄에서 <code>str(uuid4())</code>로 ID를 만들고, 19번 줄에서 상태를 고정해요. 사용자가 ID를 정하게 두면 겹칠 수 있어서 서버가 만드는 거예요. 상태를 고정하는 이유는 막 만든 일이 곧바로 진행 중일 수는 없어서예요. 딕셔너리를 만들어 <code>save_task(task)</code>로 저장하고, 확인하기 좋게 <code>task</code>를 돌려줘요.</p>
+<figure>
+  <img src="assets/frame-4002.webp" alt="server.py의 create_task 함수. 독스트링, task_id = str(uuid4()), status = 'to do', save_task 호출과 return task">
+  <figcaption>19번 줄이 아직 <code>"to do"</code>예요. 발표자는 53분쯤 이걸 <code>"todo"</code>로 고쳐요. 테이블 기본값과 철자를 맞추려는 거예요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=2402s" target="_blank" rel="noopener">영상 40:02에서 보기</a></figcaption>
+</figure>
+<h3>HTTP로 서버 띄우기</h3>
+<p>파일 끝에 <code>mcp.run(transport="http", port=8000)</code>을 두고 <code>uv run python .\src\mcp_server\server.py</code>로 실행해요. 처음엔 포트가 이미 쓰이고 있어서 몇 번 다시 띄워요. 아래 화면의 터미널에는 <code>Starting MCP server 'MCP SERVER ACL' with transport 'http' on http://127.0.0.1:8000/mcp</code>가 찍혀 있어요. 위쪽 브라우저 탭에서 그 주소를 열자 <code>Bad Request: Missing session ID</code>가 떠요.</p>
+<figure>
+  <img src="assets/frame-4320.webp" alt="브라우저로 127.0.0.1:8000/mcp를 연 결과 JSON-RPC 에러 'Bad Request: Missing session ID'와 서버 로그의 400 Bad Request">
+  <figcaption>발표자는 이 400 응답이 정상이라고 해요. 서버는 잘 떠 있고, 브라우저가 MCP 클라이언트처럼 말을 걸지 않았을 뿐이에요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=2600s" target="_blank" rel="noopener">영상 43:20에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>왜 정상인지는 MCP 사양에 나와요. Streamable HTTP(Hypertext Transfer Protocol) 서버는 초기화 응답에 <code>Mcp-Session-Id</code> 헤더로 <span class="term" data-term="세션 ID" data-en="Session ID" data-desc="Streamable HTTP 서버가 연결 초기화 때 클라이언트에게 주는 식별자예요. 이후 요청마다 헤더로 붙여야 해서, 없으면 400 오류가 나요." data-g="11">세션 ID</span>를 줄 수 있어요. 받은 클라이언트는 이후 모든 요청에 그 헤더를 붙여야 해요. 세션 ID가 필요한 서버는 초기화가 아닌 요청에 이 헤더가 없으면 <code>400 Bad Request</code>로 답해야 해요. 브라우저는 초기화 없이 바로 GET을 보냈으니 이 응답을 받은 거예요.</p>
+  <p class="cite">출처: <a href="https://modelcontextprotocol.io/specification/2025-06-18/basic/transports" target="_blank" rel="noopener">MCP 사양 2025-06-18 — Transports</a></p>
+</aside>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>FastMCP의 <code>run()</code>은 기본이 STDIO(Standard Input/Output) 트랜스포트예요. 영상처럼 <code>transport="http"</code>를 주면 Streamable HTTP로 떠서 여러 클라이언트가 주소 하나로 붙을 수 있어요. 마지막에 Codex 설정에서 'Streamable HTTP'를 고르는 것도 이 때문이에요.</p>
+  <p class="cite">출처: <a href="https://gofastmcp.com/deployment/running-server" target="_blank" rel="noopener">FastMCP 문서 — Running Your Server</a></p>
+</aside>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=2613s" target="_blank" rel="noopener">43:33</a>
+  <h2>client.py: 도구를 코드로 불러 보기</h2>
+<p>서버를 다 만들기 전에, 발표자는 클라이언트부터 하나 만들어 서버가 실제로 도는 걸 보여 주기로 해요. <code>client.py</code>는 FastMCP의 <code>Client</code>로 서버 주소에 붙는 파일이에요.</p>
+<h3>코드로 도구 부르기</h3>
+<p>아래 화면 5번 줄에서 <code>Client("http://127.0.0.1:8000/mcp")</code>로 클라이언트를 만들어요. 7번 줄부터는 <code>async def create_task_using_mcp()</code> 안에서 <code>async with client:</code>로 연결을 열어요. 그 안에서 <code>await client.call_tool("create_task", {...})</code>를 불러요. 두 번째 인자 딕셔너리가 도구가 요구하는 값이에요. 여기서는 <code>title</code> <code>"task2"</code>, <code>priority</code> <code>"high"</code>, 그리고 설명 한 줄을 넣어요.</p>
+<figure>
+  <img src="assets/frame-4833.webp" alt="client.py에서 Client로 127.0.0.1:8000/mcp에 붙고 call_tool로 create_task를 title task2, priority high로 부르는 코드">
+  <figcaption>서버 쪽 함수 이름이 아니라 도구 이름 <code>"create_task"</code>로 불러요. 클라이언트는 서버 내부를 몰라도 돼요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=2913s" target="_blank" rel="noopener">영상 48:33에서 보기</a></figcaption>
+</figure>
+<p>비동기로 쓰는 이유도 설명해요. 서버에 여러 가지를 동시에 물어볼 수 있고, 응답을 기다리는 동안 Python이 다른 일을 할 수 있어요. 사용자가 여럿일 때 특히 중요하다고 해요. 처음 실행하면 아무 일도 안 일어나는데, <code>__main__</code>에서 <code>asyncio.run()</code>으로 함수를 돌리지 않았기 때문이에요.</p>
+<p>다시 돌리면 서버 로그에 <code>POST /mcp</code>가 <code>200 OK</code>로 세 줄 찍혀요. DB 뷰어의 두 번째 행에는 UUID(Universally Unique Identifier) ID를 단 <code>task2</code>가 생겨요. 첫 행의 ID <code>1</code>과 비교하면 서버가 만든 진짜 고유 ID가 어떻게 생겼는지 보여요.</p>
+<figure>
+  <img src="assets/frame-5000.webp" alt="SQLite 뷰어의 tasks 테이블. 1번 행 ID 1 new task, 2번 행 ID cd8e2dab-로 시작하는 UUID task2 high to do. 아래 서버 로그 POST /mcp 200 OK">
+  <figcaption>클라이언트 → MCP 도구 → <code>save_task</code> → SQLite로 한 바퀴가 처음 돈 순간이에요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=3000s" target="_blank" rel="noopener">영상 50:00에서 보기</a></figcaption>
+</figure>
+<h3>도구 두 개 더 붙이기</h3>
+<p>서버로 돌아가 나머지 도구를 붙여요. 아래 화면 28번 줄 <code>list_tasks</code>는 독스트링 하나와 <code>return get_all_tasks()</code>뿐이에요. 35번 줄 <code>update_task_status</code>는 <code>task_id</code>와 <code>status</code>를 받는데, <code>status</code> 타입을 <code>Literal["todo", "in progress", "done"]</code>으로 정했어요. 아무 문자열이나 받지 않으려는 거예요.</p>
+<figure>
+  <img src="assets/frame-5433.webp" alt="server.py의 list_tasks와 update_task_status 도구. status 인자가 Literal todo, in progress, done">
+  <figcaption>도구는 DB 함수를 감싼 얇은 껍데기예요. 앱이 할 일은 <code>database.py</code>가 하고, 서버는 어떤 기능을 어떤 이름으로 열지만 정해요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=3273s" target="_blank" rel="noopener">영상 54:33에서 보기</a></figcaption>
+</figure>
+<p>이 무렵 발표자는 <code>create_task</code>의 상태 값을 <code>"todo"</code>로 고쳐요. 그러면서 실무에서는 Pydantic 같은 도구로 스키마를 제대로 검증하는 게 낫다고 덧붙여요. 이번엔 MCP 자체를 이해하는 게 목적이라 단순하게 간다고요.</p>
+<p>세 도구를 서버에 나란히 놓으면 이렇게 정리돼요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>MCP 도구</th><th>인자</th><th>부르는 DB 함수</th><th>영상에서 쓴 설명(description)</th></tr></thead>
+    <tbody>
+      <tr><td><code>create_task</code></td><td><code>title</code>, <code>priority="medium"</code>, <code>description=""</code></td><td><code>save_task</code></td><td>this tool is created to create new tasks</td></tr>
+      <tr><td><code>list_tasks</code></td><td>없음</td><td><code>get_all_tasks</code></td><td>this tool provide all the list of tasks in our database</td></tr>
+      <tr><td><code>update_task_status</code></td><td><code>task_id</code>, <code>status</code>(<span class="term" data-term="Literal" data-desc="Python 타입 힌트에서 허용할 값을 몇 개로 못 박는 방법이에요. MCP 도구의 인자에 쓰면 에이전트가 볼 스키마에도 그 값들만 나와요." data-g="8">Literal</span> 세 값)</td><td><code>update_task_status_in_db</code></td><td>this tool will update a task status based on its ID</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>서버에서 도구 목록 받기</h3>
+<p>다음으로 <code>get_tools_from_server()</code>를 만들어요. <code>await client.list_tools()</code>로 서버의 도구 목록을 받아 이름을 찍어요. 서버를 다시 띄우고 실행하면 아래 터미널 마지막 세 줄처럼 <code>create_task</code>, <code>list_tasks</code>, <code>update_task_status</code>가 나와요. 그 위 줄은 바로 전에 <code>create_task</code>를 불러 받은 딕셔너리예요.</p>
+<figure>
+  <img src="assets/frame-5725.webp" alt="client.py 실행 결과. create_task 반환 딕셔너리와 list_tools로 받은 도구 이름 create_task, list_tasks, update_task_status">
+  <figcaption>발표자는 이 목록이 나중에 LangChain 에이전트에게 넘길 재료라고 미리 짚어 둬요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=3445s" target="_blank" rel="noopener">영상 57:25에서 보기</a></figcaption>
+</figure>
+<h3>'never awaited' 경고와 해결</h3>
+<p>이어서 <code>update_task_status_from_mcp()</code>(task2를 <code>"in progress"</code>로)와 <code>list_tasks_using_mcp()</code>를 만들어요. 목록 → 갱신 → 목록 순으로 부르는데 <code>RuntimeWarning: coroutine '…' was never awaited</code>가 나요. 발표자도 한동안 헤매다 원인을 찾아요. 비동기 함수를 그냥 호출하면 <span class="term" data-term="코루틴" data-en="Coroutine" data-desc="async def로 만든 함수를 부르면 나오는, 아직 실행되지 않은 작업 객체예요. await하거나 asyncio.run()에 넘겨야 실제로 돌아요." data-g="7">코루틴</span> 객체만 생기고 실행되지 않아요. 각 호출을 <code>asyncio.run()</code>으로 감싸야 해요.</p>
+<figure>
+  <img src="assets/frame-010503.webp" alt="client.py의 __main__ 블록. 네 비동기 함수를 각각 asyncio.run으로 감싼 줄들, 일부는 주석 처리. 아래 터미널에 RuntimeWarning 경고">
+  <figcaption>한 줄에 하나씩 <code>asyncio.run(…)</code>으로 감싸고, 필요한 것만 주석을 풀어 돌리는 방식이에요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=3903s" target="_blank" rel="noopener">영상 01:05:03에서 보기</a></figcaption>
+</figure>
+<p>고친 뒤 실행하면 DB에서 <code>task2</code>의 상태가 <code>in progress</code>로 바뀌어 있어요. 이것으로 클라이언트 코드만으로 도구 세 개를 모두 써 봤어요.</p>
+<figure>
+  <img src="assets/frame-010423.webp" alt="SQLite 뷰어. task2의 status가 in progress, ID 1인 new task는 done">
+  <figcaption>지금까지는 어떤 도구를 언제 부를지 사람이 코드로 정했어요. 다음 절에서는 이 판단을 에이전트에게 넘겨요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=3863s" target="_blank" rel="noopener">영상 01:04:23에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Python 공식 문서도 같은 상황을 설명해요. 코루틴 함수를 부르기만 하고 <code>await</code>하거나 <code>asyncio.create_task()</code>로 예약하지 않으면, asyncio가 <code>RuntimeWarning: coroutine … was never awaited</code>를 내요. 고치는 법은 그 코루틴을 await하거나 태스크로 예약하는 거예요. 최상위 스크립트에서는 영상처럼 <code>asyncio.run()</code>에 넘기면 돼요.</p>
+  <p class="cite">출처: <a href="https://docs.python.org/3/library/asyncio-dev.html" target="_blank" rel="noopener">Python 문서 — Developing with asyncio</a></p>
+</aside>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=3863s" target="_blank" rel="noopener">01:04:23</a>
+  <h2>LangChain 에이전트로 말로 시키기</h2>
+<p>이제 같은 서버를 전혀 다른 클라이언트에서 써 봐요. <code>langchain_client.py</code>는 OpenAI 모델을 쓰는 LangChain 에이전트예요. 이번엔 도구를 부르는 함수를 하나도 짜지 않아요.</p>
+<h3>MCPAdapter로 도구 받기</h3>
+<p>아래 화면이 가져오는 모듈들이에요. 6번 줄 <code>from langchain.mcp import MCPAdapter</code>가 MCP 서버와 LangChain을 잇는 부분이에요. 그 밖에 <code>create_agent</code>, <code>HumanMessage</code>, <code>InMemorySaver</code>를 가져오고, <code>load_dotenv()</code>로 <code>.env</code>의 OpenAI 키를 읽어요. 12번 줄에서 <span class="term" data-term="MCPAdapter" data-desc="LangChain이 MCP 서버의 도구를 찾아 LangChain 도구로 바꿔 주는 클래스예요. 결과를 create_agent에 바로 넘길 수 있어요." data-g="9">MCPAdapter</span>에 넣을 주소는 <code>client.py</code>와 같은 <code>http://127.0.0.1:8000/mcp</code>예요.</p>
+<figure>
+  <img src="assets/frame-010655.webp" alt="langchain_client.py 첫 부분. asyncio, uuid4, load_dotenv, create_agent, MCPAdapter, HumanMessage, InMemorySaver를 가져오고 MCPAdapter를 만드는 줄">
+  <figcaption>클라이언트가 바뀌어도 서버 주소는 그대로예요. 서버 쪽은 한 줄도 고치지 않아요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=4015s" target="_blank" rel="noopener">영상 01:06:55에서 보기</a></figcaption>
+</figure>
+<p><code>main()</code> 안에서는 <code>async with mcp_adapter:</code>로 연결을 열고 <code>tools = await mcp_adapter.list_tools()</code>로 도구를 받아요. 그걸 그대로 <code>create_agent</code>에 넘겨요. 발표자는 앞의 <code>client.py</code>와 비교해요. 거기서는 도구마다 함수를 만들었지만, 여기서는 도구 목록만 넘기면 에이전트가 알아서 고른다는 거예요.</p>
+<p>아래 화면이 에이전트 설정과 대화 루프예요. 모델은 <code>"gpt-6-luna"</code>인데, 발표자는 저렴해서 권한다고 해요. 시스템 프롬프트는 'helpful task management assistant'예요. <code>checkpointer=InMemorySaver()</code>와 25번 줄 <code>thread_id</code> 설정은 대화를 기억하게 하려고 둬요. 앞에서 말한 할 일을 뒤에서 '이거'라고 불러도 알아듣게 하려는 거예요. 28번 줄부터는 <code>q</code>를 칠 때까지 질문을 받아 <code>agent.ainvoke</code>로 보내고 마지막 메시지를 찍어요.</p>
+<figure>
+  <img src="assets/frame-011143.webp" alt="create_agent에 model gpt-6-luna, tools, system_prompt, checkpointer InMemorySaver를 넣고 thread_id config를 만든 뒤 while 루프에서 agent.ainvoke를 부르는 코드">
+  <figcaption><code>thread_id</code>가 없으면 <span class="term" data-term="체크포인터" data-en="Checkpointer" data-desc="에이전트의 대화 상태를 저장해 두는 장치예요. thread_id별로 저장해서 같은 대화 안에서 앞의 말을 기억하게 해요." data-g="10">체크포인터</span>가 대화를 저장할 곳이 없어요. 발표자도 '이게 없으면 동작하지 않는다'고 강조해요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=4303s" target="_blank" rel="noopener">영상 01:11:43에서 보기</a></figcaption>
+</figure>
+<p>질문 한 번이 처리되는 길을 그려 보면 이래요. 발표자가 말로 설명한 흐름을 순서대로 옮겼어요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  participant U as 사용자
+  participant A as LangChain 에이전트
+  participant M as MCP 서버 (server.py)
+  participant D as SQLite (tasks.db)
+  Note over A,M: 시작할 때 list_tools()로 도구 3개를 받아 둠
+  U->>A: "cooking이라는 할 일 추가해 줘"
+  A->>A: 도구 이름·설명을 보고 create_task 선택
+  A->>M: create_task(title="cooking", description=…)
+  M->>D: save_task → INSERT
+  D-->>M: 저장 완료
+  M-->>A: 만든 task 딕셔너리
+  A-->>U: "cooking을 medium·todo로 추가했어요"
+</pre>
+  <figcaption>사람은 말만 하고, 어떤 도구를 쓸지는 에이전트가 도구 설명을 읽고 정해요. 앞에서 이름과 설명을 강조한 이유가 여기서 드러나요.</figcaption>
+</figure>
+<h3>말로 시켜 보기</h3>
+<p>실행하면 <code>langchain.mcp</code>가 베타라는 경고가 한 번 뜨고 대화가 시작돼요. "모든 할 일을 보여 줘"라고 하자 에이전트가 <code>list_tasks</code>로 두 개를 가져와요. "표로 다시 보여 줘"라고 하자 아래 화면처럼 ID·Task·Description·Priority·Status 다섯 칸짜리 마크다운 표로 바꿔 보여 줘요.</p>
+<figure>
+  <img src="assets/frame-011543.webp" alt="langchain_client 터미널. 에이전트가 할 일 두 개를 목록으로 보여 주고, 표로 다시 요청하자 ID, Task, Description, Priority, Status 표로 응답">
+  <figcaption>같은 도구 결과를 어떻게 보여 줄지는 에이전트가 정해요. 도구는 데이터만 돌려줘요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=4543s" target="_blank" rel="noopener">영상 01:15:43에서 보기</a></figcaption>
+</figure>
+<p>이어서 "cooking이라는 할 일을 추가하고 설명은 '오늘 밤 요리해야 해'로 넣어 줘"라고 하자 DB에 세 번째 행이 생겨요. 우선순위는 기본값 medium, 상태는 todo예요. "이 할 일을 진행 중으로 바꿔 줘"도 그대로 처리돼요. 발표자는 이렇게 강조해요. 이 에이전트는 DB와 아무 관계가 없는데도 MCP를 거쳐 DB를 다뤄요. 서버를 공개된 곳에 올리면 누구나 같은 방식으로 쓸 수 있다고요.</p>
+<h3>열어 주지 않은 일은 못 해요</h3>
+<p>마지막 시험이 이 절의 핵심이에요. "cooking의 설명을 'don't forget about the chicken'으로 바꿔 줘"라고 하자 에이전트가 거절해요. 아래 터미널 마지막 응답처럼, 쓸 수 있는 도구로는 설명을 바꿀 수 없다고 답해요. 위쪽 DB에는 cooking이 <code>in progress</code>로 바뀌어 있고 설명은 그대로예요.</p>
+<figure>
+  <img src="assets/frame-011743.webp" alt="DB에 cooking 행이 in progress로 바뀌어 있고, 터미널에서 설명 변경 요청에 에이전트가 'I can't change task descriptions with the tools available to me'라고 답함">
+  <figcaption>설명을 바꾸는 도구를 만들지 않았으니 에이전트도 설명을 못 바꿔요. 권한의 경계가 곧 도구 목록이에요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=4663s" target="_blank" rel="noopener">영상 01:17:43에서 보기</a></figcaption>
+</figure>
+<blockquote>
+  <p>I'm not giving my agent full control. I'm giving my agent exactly the control the agent need.</p>
+  <p>에이전트에게 전권을 주는 게 아니에요. 에이전트에게 필요한 만큼의 권한만 정확히 주는 거예요.</p>
+  <cite>— 영상 01:17:09</cite>
+</blockquote>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>LangChain 공식 문서에 따르면 <code>MCPAdapter</code>는 서버의 도구를 찾아 LangChain 도구로 바꿔 주고, 그 결과를 <code>create_agent</code>에 바로 넘길 수 있어요. 내부는 FastMCP 위에 만들어져 있어요. <code>langchain.mcp</code> 네임스페이스는 <code>langchain[mcp]&gt;=1.4.0</code>이 필요하고 베타라서, 가져올 때 <code>LangChainBetaWarning</code>이 한 번 떠요. 영상 실행 화면의 경고가 이거예요. 그 전에는 별도 패키지 <code>langchain-mcp-adapters</code>를 썼고, 문서에 옮겨 가는 안내가 따로 있어요.</p>
+  <p class="cite">출처: <a href="https://docs.langchain.com/oss/python/langchain/mcp" target="_blank" rel="noopener">LangChain 문서 — Model Context Protocol (MCP)</a></p>
+</aside>
+</section>
+
+<section id="s8">
+  <a class="stamp" href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=4670s" target="_blank" rel="noopener">01:17:50</a>
+  <h2>Codex에 같은 서버 붙이기</h2>
+<p>보너스로 같은 서버를 Codex에도 붙여요. 이번 영상에서 코드를 쓸 때는 Codex를 쓰지 않았고, 완성된 MCP를 Codex 에이전트가 쓰게 하는 장면만 보여 줘요.</p>
+<h3>서버 등록</h3>
+<p>먼저 프로젝트 루트에 <code>.mcp.json</code>을 만들어요. 아래 화면처럼 <code>mcpServers</code> 안에 <code>mcp_server_acl</code>을 두고, <code>"type": "http"</code>(<span class="term" data-term="트랜스포트" data-en="Transport" data-desc="MCP 메시지를 실어 나르는 통로예요. 로컬 프로세스끼리 쓰는 STDIO와 주소로 붙는 Streamable HTTP가 있어요." data-g="4">트랜스포트</span>)와 <code>"url": "http://127.0.0.1:8000/mcp"</code>를 적어요. 아래 터미널에는 서버가 같은 주소로 떠 있어요.</p>
+<figure>
+  <img src="assets/frame-011916.webp" alt=".mcp.json 파일. mcpServers 아래 mcp_server_acl에 type http와 url http://127.0.0.1:8000/mcp">
+  <figcaption>서버 이름과 주소, 트랜스포트 종류만 있으면 돼요. 다른 클라이언트에 붙일 때도 이 세 가지가 필요해요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=4756s" target="_blank" rel="noopener">영상 01:19:16에서 보기</a></figcaption>
+</figure>
+<p>그다음 VS Code의 Codex 설정에서 <b>MCP servers</b>로 가서 서버를 하나 추가해요. 발표자는 원래 쓰던 서버를 끄고 새 서버를 켜요. 아래 화면처럼 Type은 STDIO가 아닌 <b><span class="term" data-term="Streamable HTTP" data-desc="MCP의 HTTP 트랜스포트예요. 서버가 주소 하나로 떠 있어서 여러 클라이언트가 동시에 붙을 수 있어요." data-g="5">Streamable HTTP</span></b>를 고르고, URL(Uniform Resource Locator)에 같은 주소를 넣고 저장해요.</p>
+<figure>
+  <img src="assets/frame-011958.webp" alt="Codex Settings의 MCP servers 화면. Type Streamable HTTP, URL http://127.0.0.1:8000/mcp, Bearer token env var 칸">
+  <figcaption>Bearer 토큰 칸은 비워 둬요. 로컬에서만 도는 서버라 인증을 붙이지 않았어요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=4798s" target="_blank" rel="noopener">영상 01:19:58에서 보기</a></figcaption>
+</figure>
+<h3>Codex와 LangChain 에이전트를 번갈아 쓰기</h3>
+<p>Codex 채팅에 "MCP 서버에 연결해서 DB의 할 일을 모두 보여 줘"라고 하자, 아래 화면 오른쪽처럼 할 일 세 개가 표로 나와요. 왼쪽 DB 뷰어의 세 행과 같은 내용이에요.</p>
+<figure>
+  <img src="assets/frame-012134.webp" alt="왼쪽 SQLite 뷰어에 할 일 세 개, 오른쪽 Codex 패널에 'Here are the 3 tasks in your database' 표">
+  <figcaption>Codex 쪽에서 모델은 GPT-6 Luna Extra High로 돌고 있어요. 클라이언트와 모델이 달라도 같은 도구를 같은 방식으로 불러요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=4894s" target="_blank" rel="noopener">영상 01:21:34에서 보기</a></figcaption>
+</figure>
+<p>이번엔 LangChain 에이전트에게 <code>MCP_tutorial</code>이라는 할 일을 추가하게 해요. 터미널에 '연결이 원격 호스트에 의해 강제로 끊겼다'는 오류가 찍히지만 할 일은 추가돼요. 발표자는 연결을 다루는 방식에서 생기는 오류라며 넘어가요.</p>
+<p>마지막으로 Codex에 "MCP_tutorial의 상태를 done으로 바꿔 줘"라고 하자 바로 처리돼요. 아래 화면 왼쪽 DB의 4번 행 상태가 <code>done</code>이 됐어요. 오른쪽 Codex는 <code>Updated MCP_tutorial to done.</code>이라고 답해요.</p>
+<figure>
+  <img src="assets/frame-012342.webp" alt="왼쪽 SQLite 뷰어의 4번 행 status가 done, 오른쪽 Codex 패널에 'Updated MCP_tutorial to done'">
+  <figcaption>한 클라이언트가 만든 할 일을 다른 클라이언트가 고쳐요. 두 에이전트는 서로를 모르고, 같은 MCP 서버만 알아요.
+    <a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw&amp;t=5022s" target="_blank" rel="noopener">영상 01:23:42에서 보기</a></figcaption>
+</figure>
+<p>발표자의 마무리도 이 장면에 맞춰져 있어요. 앱을 만들고 맞는 MCP를 만들어 친구·동료·회사와 나누면, 모두가 그 도구로 앱을 쓸 수 있다는 거예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>OpenAI 문서에 따르면 Codex IDE 확장에서는 톱니 메뉴 → MCP servers → Add server로 이름을 넣고 STDIO나 Streamable HTTP를 골라 명령이나 URL을 넣어요. 저장한 뒤에는 확장을 다시 시작해야 해요.</p>
+  <p>Codex는 이 설정을 <code>config.toml</code>에 저장해요. 기본 위치는 <code>~/.codex/config.toml</code>이고, 신뢰한 프로젝트라면 <code>.codex/config.toml</code>로 범위를 좁힐 수 있어요. ChatGPT 데스크톱 앱, Codex CLI(Command Line Interface), IDE 확장이 이 설정을 함께 써요. 같은 문서에서 <code>.mcp.json</code>은 플러그인이 HTTP MCP 서버를 선언하는 파일로 나와요. 영상에서도 Codex가 서버를 잡은 건 설정 화면에서 등록한 뒤예요.</p>
+  <p class="cite">출처: <a href="https://developers.openai.com/codex/mcp" target="_blank" rel="noopener">OpenAI 문서 — Codex MCP</a></p>
+</aside>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 영어 자막이라 라이브러리 이름과 코드가 잘못 받아적힌 곳이 많아요. 화면의 코드를 기준으로 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>lench chain / lang chain / length chain / line chain / link chain</td><td>LangChain</td><td></td></tr>
+      <tr><td>Codeex / Condex / codec</td><td>Codex</td><td></td></tr>
+      <tr><td>fast MCP</td><td>FastMCP</td><td></td></tr>
+      <tr><td>SQ light 3 / SQL 3</td><td>sqlite3</td><td></td></tr>
+      <tr><td>path li</td><td>pathlib</td><td></td></tr>
+      <tr><td>connection throw factory</td><td>conn.row_factory</td><td></td></tr>
+      <tr><td>tle / topple</td><td>tuple</td><td></td></tr>
+      <tr><td>UID / UI ID / UID4</td><td>uuid / uuid4</td><td></td></tr>
+      <tr><td>duct string / dock string</td><td>docstring</td><td>함수 설명 문자열</td></tr>
+      <tr><td>ACL AI carrier lab</td><td>MCP SERVER ACL</td><td>FastMCP 서버 이름</td></tr>
+      <tr><td>port eco 800</td><td>port=8000</td><td></td></tr>
+      <tr><td>pi dantic</td><td>Pydantic</td><td></td></tr>
+      <tr><td>load.n</td><td>load_dotenv</td><td></td></tr>
+      <tr><td>lang graph dot checkpoints domemory import inmemory server saver</td><td>langgraph.checkpoint.memory import InMemorySaver</td><td></td></tr>
+      <tr><td>GPT 6 L</td><td>gpt-6-luna</td><td>화면의 모델 이름</td></tr>
+      <tr><td>single patron</td><td>asyncio.run(main())</td><td>(추정)</td></tr>
+      <tr><td>MTP server ACL</td><td>mcp_server_acl</td><td>Codex에 등록한 서버 이름</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-3"><dt>독스트링<span class="en">Docstring</span></dt><dd>함수 맨 앞에 큰따옴표 세 개로 적는 설명 문자열이에요. MCP 도구에서는 에이전트가 이 글을 읽고 도구를 고르는 데 써요.</dd></div>
+    <div class="g" id="g-11"><dt>세션 ID<span class="en">Session ID</span></dt><dd>Streamable HTTP 서버가 연결 초기화 때 클라이언트에게 주는 식별자예요. 이후 요청마다 헤더로 붙여야 해서, 없으면 400 오류가 나요.</dd></div>
+    <div class="g" id="g-12"><dt>에이전트<span class="en">Agent</span></dt><dd>언어 모델이 주어진 도구 중 무엇을 언제 쓸지 스스로 골라 가며 일을 처리하는 프로그램이에요.</dd></div>
+    <div class="g" id="g-10"><dt>체크포인터<span class="en">Checkpointer</span></dt><dd>에이전트의 대화 상태를 저장해 두는 장치예요. thread_id별로 저장해서 같은 대화 안에서 앞의 말을 기억하게 해요.</dd></div>
+    <div class="g" id="g-7"><dt>코루틴<span class="en">Coroutine</span></dt><dd>async def로 만든 함수를 부르면 나오는, 아직 실행되지 않은 작업 객체예요. await하거나 asyncio.run()에 넘겨야 실제로 돌아요.</dd></div>
+    <div class="g" id="g-4"><dt>트랜스포트<span class="en">Transport</span></dt><dd>MCP 메시지를 실어 나르는 통로예요. 로컬 프로세스끼리 쓰는 STDIO와 주소로 붙는 Streamable HTTP가 있어요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>CLI</dt><dd>Command Line Interface</dd></div>
+    <div class="g"><dt>DB</dt><dd>Database</dd></div>
+    <div class="g" id="g-2"><dt>FastMCP</dt><dd>Python으로 MCP 서버와 클라이언트를 짧게 만들 수 있게 해 주는 프레임워크예요. 데코레이터 하나로 함수를 도구로 등록해요.</dd></div>
+    <div class="g"><dt>HTTP</dt><dd>Hypertext Transfer Protocol</dd></div>
+    <div class="g"><dt>ID</dt><dd>Identifier</dd></div>
+    <div class="g"><dt>IDE</dt><dd>Integrated Development Environment</dd></div>
+    <div class="g" id="g-8"><dt>Literal</dt><dd>Python 타입 힌트에서 허용할 값을 몇 개로 못 박는 방법이에요. MCP 도구의 인자에 쓰면 에이전트가 볼 스키마에도 그 값들만 나와요.</dd></div>
+    <div class="g"><dt>MCP</dt><dd>Model Context Protocol</dd></div>
+    <div class="g" id="g-1"><dt>MCP 서버<span class="en">MCP server</span></dt><dd>앱의 기능을 MCP 규격에 맞춘 도구로 열어 주는 프로그램이에요. 클라이언트는 이 서버만 알면 앱 내부를 몰라도 기능을 쓸 수 있어요.</dd></div>
+    <div class="g" id="g-9"><dt>MCPAdapter</dt><dd>LangChain이 MCP 서버의 도구를 찾아 LangChain 도구로 바꿔 주는 클래스예요. 결과를 create_agent에 바로 넘길 수 있어요.</dd></div>
+    <div class="g" id="g-6"><dt>row_factory</dt><dd>sqlite3 연결이 조회 결과 한 줄을 어떤 모양으로 돌려줄지 정하는 설정이에요. sqlite3.Row로 두면 열 이름으로 꺼낼 수 있어 딕셔너리로 바꾸기 쉬워요.</dd></div>
+    <div class="g"><dt>STDIO</dt><dd>Standard Input/Output</dd></div>
+    <div class="g" id="g-5"><dt>Streamable HTTP</dt><dd>MCP의 HTTP 트랜스포트예요. 서버가 주소 하나로 떠 있어서 여러 클라이언트가 동시에 붙을 수 있어요.</dd></div>
+    <div class="g"><dt>URL</dt><dd>Uniform Resource Locator</dd></div>
+    <div class="g"><dt>UUID</dt><dd>Universally Unique Identifier</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=hZ-Pb8JkPEw" target="_blank" rel="noopener">원본 영상 — AI Career Lab</a></li>
+    <li id="src-2"><a href="https://github.com/Mohamad-Hachem/MCP_Server_BluePrint" target="_blank" rel="noopener">발표자 GitHub — MCP_Server_BluePrint</a></li>
+    <li id="src-3"><a href="https://modelcontextprotocol.io/docs/getting-started/intro" target="_blank" rel="noopener">Model Context Protocol — What is MCP?</a></li>
+    <li id="src-4"><a href="https://modelcontextprotocol.io/specification/2025-06-18/basic/transports" target="_blank" rel="noopener">MCP 사양 2025-06-18 — Transports</a></li>
+    <li id="src-5"><a href="https://gofastmcp.com/deployment/running-server" target="_blank" rel="noopener">FastMCP 문서 — Running Your Server</a></li>
+    <li id="src-6"><a href="https://docs.langchain.com/oss/python/langchain/mcp" target="_blank" rel="noopener">LangChain 문서 — Model Context Protocol (MCP)</a></li>
+    <li id="src-7"><a href="https://developers.openai.com/codex/mcp" target="_blank" rel="noopener">OpenAI 문서 — Codex MCP</a></li>
+    <li id="src-8"><a href="https://docs.python.org/3/library/uuid.html" target="_blank" rel="noopener">Python 문서 — uuid</a></li>
+    <li id="src-9"><a href="https://docs.python.org/3/library/asyncio-dev.html" target="_blank" rel="noopener">Python 문서 — Developing with asyncio</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 4일에 이 영상을 보고 정리했어요. 원본은 AI Career Lab 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

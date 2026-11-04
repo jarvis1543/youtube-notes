@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>어떤 웹사이트든 AI 에이전트용 API로 바꾸는 API Anything</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>어떤 웹사이트든 AI 에이전트용 API로 바꾸는 API Anything</h1>
+  <p class="lede">클릭하는 에이전트 대신 사이트의 요청을 배워 쓰는 방법이에요</p>
+  <div class="meta">
+    <span>Pure Tech Lens</span><span class="dot">·</span>
+    <span>영상 02:40</span><span class="dot">·</span>
+    <span>읽는 데 약 8분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=RYqPb9e0RXg" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>API(Application Programming Interface) Anything은 웹사이트가 검색할 때 몰래 보내는 요청을 복사해 두고, 검색어만 바꿔 다시 보내요.</li>
+    <li><span class="term" data-term="브라우저 에이전트" data-en="Browser agent" data-desc="브라우저를 직접 열고 사람처럼 입력하고 클릭하며 웹사이트를 쓰는 AI 에이전트예요. 어떤 사이트든 쓸 수 있지만 단계마다 화면을 읽어야 해서 느리고 비싸요." data-g="1">브라우저 에이전트</span>와 겨루니 정답은 둘 다 맞혔고, 시간은 절반, 읽은 <span class="term" data-term="토큰" data-en="Token" data-desc="AI 모델이 글을 읽고 쓰는 단위예요. 모델 사용료는 읽고 쓴 토큰 수로 매겨져서, 읽을 거리가 줄면 비용도 줄어요." data-g="2">토큰</span>은 절반 이하였어요.</li>
+    <li>하루치 항공권 검색 비용은 17센트 대 7센트였고, API Anything 쪽은 다섯 번 돌려도 거의 변하지 않았어요.</li>
+    <li>배운 사이트는 MCP(Model Context Protocol) 도구가 돼서 Claude Code, Codex, Cursor 같은 여러 에이전트가 함께 써요.</li>
+    <li>사이트가 바뀌면 스스로 고치고, 로그인 정보는 내 컴퓨터에 남고, 주문은 켜 둬야만 보내요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">브라우저 대신 사이트의 요청을 복사해요</a></li>
+    <li><a href="#s2">브라우저 에이전트와 겨뤄 보니</a></li>
+    <li><a href="#s3">한 번 배우면 모든 에이전트가 써요</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>브라우저 대신 사이트의 요청을 복사해요</h2>
+<p>영상은 첫 화면부터 결론을 보여 줘요. 가운데 API Anything 아이콘 둘레로 Goodreads, Pinterest, Instagram, Rightmove, YouTube 같은 사이트 카드가 붙어 있어요. 어떤 사이트든 이 도구를 거치면 에이전트가 부를 수 있는 API가 된다는 그림이에요.</p>
+<figure>
+  <img src="assets/frame-0001.webp" alt="가운데 API Anything 아이콘을 여러 웹사이트 카드가 둘러싼 첫 화면">
+  <figcaption>사이트마다 따로 연동을 만들지 않고, 한 도구가 여러 사이트를 API로 바꿔요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=1s" target="_blank" rel="noopener">영상 00:01에서 보기</a></figcaption>
+</figure>
+<p>에이전트는 이미 웹사이트를 쓸 수 있어요. 브라우저를 열고 사람처럼 칸을 채우고 버튼을 누르는 방식이에요. 영상은 이게 느리고 비싸다고 짚어요. 화면 아래에 Search, Next, Book, Accept 버튼이 줄지어 있고, 'NOT CLICK ANY BUTTONS'라는 문구가 이 도구의 차이를 말해 줘요.</p>
+<figure>
+  <img src="assets/frame-0021.webp" alt="API Anything 깃허브 README 카드 아래에 Search, Next, Book, Accept 버튼과 NOT CLICK ANY BUTTONS 문구">
+  <figcaption>API Anything은 버튼을 누르지 않고 페이지를 건너뛰어 곧장 데이터로 가요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=21s" target="_blank" rel="noopener">영상 00:21에서 보기</a></figcaption>
+</figure>
+<h3>API는 페이지를 거치지 않는 뒷문이에요</h3>
+<p>영상은 API를 '뒷문'에 비유해요. 왼쪽 브라우저 창에는 'NOT LOADED' 표시가 붙어 있고, 오른쪽에 파란 문이 열려 있어요. 페이지를 띄우지 않고도 소프트웨어가 사이트에 데이터를 달라고 할 수 있다는 뜻이에요. 다만 대부분의 사이트는 이런 문을 따로 열어 두지 않아요.</p>
+<figure>
+  <img src="assets/frame-0037.webp" alt="API = BACK DOOR 문구와 NOT LOADED 표시가 붙은 브라우저 창, 옆에 열린 파란 문">
+  <figcaption>페이지가 뜨지 않아도 데이터는 받을 수 있어요. 공개 API가 없는 사이트가 문제예요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=37s" target="_blank" rel="noopener">영상 00:37에서 보기</a></figcaption>
+</figure>
+<h3>페이지가 몰래 보내는 요청을 복사해요</h3>
+<p>공개 API가 없어도, 검색할 때마다 페이지는 결과를 받으려고 자기 요청을 보내요. 영상은 Goodreads 검색창에 'piranesi'를 넣은 장면 아래에 네트워크 목록을 펼쳐 보여 줘요. 스크립트, 이미지, 폰트, 광고 요청 사이에서 파랗게 칠한 <code>GET /book/auto_complete?q=piranesi</code> 한 줄만 json을 돌려줘요. 이게 실제 검색 결과를 가져오는 요청이에요.</p>
+<figure>
+  <img src="assets/frame-0043.webp" alt="Goodreads 검색창에 piranesi를 넣고, 아래 네트워크 목록에서 GET /book/auto_complete?q=piranesi 요청이 강조된 화면">
+  <figcaption>여러 요청 중 데이터를 돌려주는 건 하나뿐이에요. 이걸 찾아내는 게 핵심이에요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=43s" target="_blank" rel="noopener">영상 00:43에서 보기</a></figcaption>
+</figure>
+<p>API Anything은 그 요청을 복사해 두고, 검색어 자리만 바꿔 다시 보내요. 화면 위쪽에서 <code>q=piranesi</code>가 <code>q=hamnet</code>으로 바뀌었고, 아래에는 dune, circe, hamnet을 넣은 세 요청이 모두 200(성공)으로 돌아왔어요.</p>
+<figure>
+  <img src="assets/frame-0047.webp" alt="복사한 요청의 q 값을 hamnet으로 바꾸고, dune·circe·hamnet 세 요청이 200으로 응답한 화면">
+  <figcaption>검색어만 갈아 끼우면 같은 요청을 몇 번이든 쓸 수 있어요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=47s" target="_blank" rel="noopener">영상 00:47에서 보기</a></figcaption>
+</figure>
+<p>두 방식의 차이를 한 장으로 옮기면 이래요. 위쪽 브라우저 에이전트는 단계마다 화면을 다시 읽어요. 아래쪽 API Anything은 복사해 둔 요청 하나로 끝나요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 660 230" role="img" aria-label="브라우저 에이전트는 페이지 열기, 칸 채우고 클릭, 페이지 전체 읽기, 가격 찾기의 네 단계를 거치고, API Anything은 복사한 요청을 보내 깔끔한 목록을 받는 두 단계로 끝나요">
+    <defs><marker id="arrow-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="10" y="24" class="sub">브라우저 에이전트</text>
+    <rect x="10" y="36" width="140" height="56" rx="10" class="box"/><text x="80" y="69" text-anchor="middle">페이지 열기</text>
+    <rect x="176" y="36" width="140" height="56" rx="10" class="box"/><text x="246" y="69" text-anchor="middle">칸 채우고 클릭</text>
+    <rect x="342" y="36" width="140" height="56" rx="10" class="bad"/><text x="412" y="69" text-anchor="middle">페이지 전체 읽기</text>
+    <rect x="508" y="36" width="140" height="56" rx="10" class="box"/><text x="578" y="69" text-anchor="middle">가격 하나 찾기</text>
+    <path d="M152 64 h22" class="line" marker-end="url(#arrow-flow)"/>
+    <path d="M318 64 h22" class="line" marker-end="url(#arrow-flow)"/>
+    <path d="M484 64 h22" class="line" marker-end="url(#arrow-flow)"/>
+    <text x="10" y="138" class="sub">API Anything</text>
+    <rect x="10" y="150" width="306" height="56" rx="10" class="box accent"/><text x="163" y="183" text-anchor="middle">복사한 요청에 새 검색어</text>
+    <rect x="342" y="150" width="306" height="56" rx="10" class="ok"/><text x="495" y="183" text-anchor="middle">깔끔한 목록(JSON)</text>
+    <path d="M318 178 h22" class="line" marker-end="url(#arrow-flow)"/>
+  </svg>
+  <figcaption>빨간 칸이 시간과 토큰을 가장 많이 잡아먹는 단계예요. API Anything에는 이 단계가 없어요.</figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=50s" target="_blank" rel="noopener">00:50</a>
+  <h2>브라우저 에이전트와 겨뤄 보니</h2>
+<p>만든 사람은 두 방식을 직접 겨뤘어요. 같은 AI(Claude Opus 5.5)에 Google Flights 항공권 검색이라는 같은 일을 맡기고, 한쪽은 browser agent, 다른 쪽은 API Anything을 쓰게 했어요. 화면 위 'THE RACE' 창이 두 칸으로 나뉘어 각자 작업하는 모습을 보여 줘요.</p>
+<figure>
+  <img src="assets/frame-0055.webp" alt="browser agent와 API Anything이 같은 Google Flights 과제를 나란히 수행하는 THE RACE 화면, 아래 Claude Opus 5.5와 Google Flights 표시">
+  <figcaption>모델과 과제를 똑같이 맞췄고, 둘 다 모든 답을 맞혔어요. 차이는 과정에서 나요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=55s" target="_blank" rel="noopener">영상 00:55에서 보기</a></figcaption>
+</figure>
+<h3>첫째, 속도</h3>
+<p>10월 20일부터 24일까지 다섯 날짜를 찾는 과제예요. 주황 막대('BROWSER')는 41.6초, 파란 막대('API ANYTHING')는 21.1초에서 멈췄어요. 내레이션은 반올림해 42초 대 21초라고 말해요.</p>
+<figure>
+  <img src="assets/frame-0104.webp" alt="DIFFERENCE ONE SPEED, 날짜 다섯 개 아래 BROWSER 41.6초와 API ANYTHING 21.1초 막대">
+  <figcaption>같은 일을 절반 시간에 끝냈어요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=64s" target="_blank" rel="noopener">영상 01:04에서 보기</a></figcaption>
+</figure>
+<p>Goodreads에서 책 다섯 권을 찾을 때는 차이가 더 컸어요. 책 다섯 권 그림 아래에 browser agent 3 min, API Anything 30 s가 적혀 있어요. 맨 아래 벤치마크 표에서도 5권 기준 182.5초 대 30.5초로 나와요.</p>
+<figure>
+  <img src="assets/frame-0110.webp" alt="FIVE BOOKS ON GOODREADS, 브라우저 에이전트 3분과 API Anything 30초, 아래 5회 실행 벤치마크 표">
+  <figcaption>단계가 많을수록 클릭하는 쪽이 더 크게 밀려요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=70s" target="_blank" rel="noopener">영상 01:10에서 보기</a></figcaption>
+</figure>
+<h3>둘째, 읽는 양</h3>
+<p>브라우저 에이전트는 가격 하나를 찾으려고 페이지를 통째로 읽어요. 화면에는 Delta, United, Alaska 같은 항공편이 줄줄이 늘어선 긴 목록이 나와요. 이 목록 전체가 AI가 읽고 돈을 내는 토큰이 돼요.</p>
+<figure>
+  <img src="assets/frame-0113.webp" alt="DIFFERENCE TWO READING, 항공사·출발 시각·가격이 줄줄이 적힌 긴 항공편 목록">
+  <figcaption>필요한 건 한 줄인데, 브라우저 에이전트는 목록 전체를 읽어요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=73s" target="_blank" rel="noopener">영상 01:13에서 보기</a></figcaption>
+</figure>
+<p>API Anything이 받는 건 날짜, 항공사, 출발 시각, 가격만 담긴 짧은 목록이에요. 아래 막대를 보면 browser는 46.7k 토큰, API Anything은 21.3k 토큰이에요. 절반이 안 돼요.</p>
+<figure>
+  <img src="assets/frame-0125.webp" alt="A CLEAN LIST, 날짜·항공사·출발·가격 열만 있는 JSON 결과와 그 아래 browser 46.7k, API Anything 21.3k 토큰 막대">
+  <figcaption>깔끔한 목록을 받으니 읽을 거리가 절반 아래로 줄었어요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=85s" target="_blank" rel="noopener">영상 01:25에서 보기</a></figcaption>
+</figure>
+<h3>셋째, 비용</h3>
+<p>하루치 항공권 검색을 영수증처럼 보여 줘요. 왼쪽 브라우저 영수증은 46.7k 토큰, 12.9초에 합계 0.166달러, 5회 중앙값으로 17센트예요. 오른쪽 API Anything 영수증은 21.3k 토큰, 8.4초예요. 내레이션은 API Anything 쪽이 7센트였다고 말해요.</p>
+<figure>
+  <img src="assets/frame-0134.webp" alt="THE BILL SINGLE DAY, 브라우저 영수증 합계 0.166달러와 17센트, 옆에 API Anything 영수증">
+  <figcaption>같은 답을 얻는 데 드는 돈이 두 배 넘게 차이 나요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=94s" target="_blank" rel="noopener">영상 01:34에서 보기</a></figcaption>
+</figure>
+<p>다섯 번 돌린 결과는 들쭉날쭉함의 차이를 보여 줘요. 주황 구간은 브라우저 에이전트가 10센트에서 24센트 사이를 오간 범위예요. API Anything은 7.3센트에서 7.7센트 사이에 머물렀어요. 화면 문구대로 'NEVER MOVED'예요.</p>
+<figure>
+  <img src="assets/frame-0141.webp" alt="RUN IT FIVE TIMES, 0~25센트 눈금 위에 브라우저 10~24센트 구간과 API Anything 7.3~7.7센트 구간">
+  <figcaption>비용이 낮을 뿐 아니라 예측할 수 있다는 게 더 커요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=101s" target="_blank" rel="noopener">영상 01:41에서 보기</a></figcaption>
+</figure>
+<p>영상이 보여 준 숫자를 한 표로 모으면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>비교 항목</th><th>브라우저 에이전트</th><th>API Anything</th></tr></thead>
+    <tbody>
+      <tr><td>항공권 다섯 날짜 검색 시간</td><td>약 42초</td><td>약 21초</td></tr>
+      <tr><td>Goodreads 책 다섯 권 검색 시간</td><td>약 3분</td><td>약 30초</td></tr>
+      <tr><td>하루치 검색에 읽은 토큰</td><td>약 4만 7천</td><td>약 2만 1천</td></tr>
+      <tr><td>하루치 검색 비용(평균)</td><td>17센트</td><td>7센트</td></tr>
+      <tr><td>5회 실행 비용 범위</td><td>10~24센트</td><td>0.5센트 안쪽 변동</td></tr>
+      <tr><td>정답</td><td>모두 맞힘</td><td>모두 맞힘</td></tr>
+    </tbody>
+  </table>
+</div>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상의 비용 비교는 하루치 검색 기준이에요. 저장소의 벤치마크 문서를 보면 다섯 날짜 검색에서는 비용이 거의 같았어요(브라우저 0.154달러, API Anything 0.152달러). 브라우저 에이전트가 다섯 날짜를 한 번에 도는 스크립트를 짠 반면, API Anything 쪽은 작은 호출을 열 번 했기 때문이라고 설명해요.</p>
+  <p>문서는 한계도 밝혀요. 사이트 하나, 모델 하나로 하루 동안 수십 번 돌린 결과이고, 비용은 모델 사용료만 셌어요. 그래서 '시간과 토큰은 확실히 줄고, 비용은 같거나 더 적다' 정도로 읽는 게 맞아요.</p>
+  <p class="cite">출처: <a href="https://github.com/goodnight000/api-anything/blob/main/bench/README.md" target="_blank" rel="noopener">API Anything 저장소 — bench/README.md</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=100s" target="_blank" rel="noopener">01:40</a>
+  <h2>한 번 배우면 모든 에이전트가 써요</h2>
+<p>영상은 여기서 '많은 사람이 놓치는 부분'을 꺼내요. API Anything이 배운 사이트는 하나하나 MCP 도구가 돼요. 화면에는 Claude, OpenAI, Cursor, 터미널 아이콘이 MCP라고 적힌 멀티탭에 꽂혀 있고, 그 아래 flights.search, goodreads.getBook, youtube.search 같은 도구 이름이 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-0153.webp" alt="Claude, OpenAI, Cursor, 터미널 아이콘이 MCP 멀티탭에 꽂힌 그림과 flights.search, goodreads.getBook, youtube.search 도구 이름, A UNIVERSAL PLUG 문구">
+  <figcaption>MCP는 멀티탭 같은 공통 규격이라, 한 번 만든 도구를 어떤 에이전트든 꽂아 써요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=113s" target="_blank" rel="noopener">영상 01:53에서 보기</a></figcaption>
+</figure>
+<p>그래서 한 번 배운 사이트는 Claude Code, Codex, Cursor, Claude Desktop이 똑같이 써요. 영상은 이걸 '한 번 배우면 내가 쓰는 모든 에이전트가 갖게 된다'고 정리해요.</p>
+<p>이미 작동하는 사이트는 14개라고 해요. 화면의 <span class="term" data-term="공유 카탈로그" data-en="Shared catalog" data-desc="여러 사용자가 배운 사이트 요청 명세를 모아 두는 곳이에요. 누가 한 번 배우거나 고치면 다른 사람의 에이전트도 그 결과를 바로 써요." data-g="4">공유 카탈로그</span> 목록에 Rightmove, Rotten Tomatoes, Steam, X(Twitter), YouTube가 보이고, 아래 칩에 Google Flights, YouTube, Amazon, Airbnb, LinkedIn이 있어요. 맨 아래 터미널에는 새 사이트를 가르치는 명령 <code>api-anything learn 'https://lobste.rs/domains/{domain}'</code>이 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0208.webp" alt="14 SITES 제목 아래 공유 카탈로그 목록, Google Flights·YouTube·Amazon·Airbnb·LinkedIn 칩, api-anything learn 명령이 적힌 터미널">
+  <figcaption>목록에 없는 사이트는 URL(Uniform Resource Locator) 하나로 직접 가르칠 수 있어요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=128s" target="_blank" rel="noopener">영상 02:08에서 보기</a></figcaption>
+</figure>
+<h3>사이트가 바뀌면 스스로 고쳐요</h3>
+<p>사이트가 업데이트되면 복사해 둔 요청이 안 맞게 될 수 있어요. 화면 위 요청에서 <code>x-build-id</code> 값이 8f2a1c에서 93d0e7로 바뀐 게 그 예예요. 아래 네 단계가 고치는 순서예요. 답이 안 맞기 시작하면(It drifts) 다시 배우고(Re-learn), 다시 보내 본 뒤(Replay), 성공할 때만 저장해요(Save). 고친 결과는 카탈로그를 통해 다른 사용자에게도 나눠요.</p>
+<figure>
+  <img src="assets/frame-0213.webp" alt="SITE CHANGES REPAIRS ITSELF, x-build-id가 바뀐 요청과 It drifts, Re-learn, Replay, Save 네 단계, shared through the catalog 표시">
+  <figcaption>다시 보내 봐서 성공해야만 저장하니, 고친 버전이 틀릴 일이 줄어요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=133s" target="_blank" rel="noopener">영상 02:13에서 보기</a></figcaption>
+</figure>
+<h3>로그인과 주문은 안전하게</h3>
+<p>로그인 정보는 내 컴퓨터를 떠나지 않아요. 화면에서 열쇠, 쿠키, session 표시가 'your computer' 점선 안에 머물러 있고, 아래 'spec · cookie:ref'는 공유되는 명세에 쿠키 값이 아니라 쿠키를 가리키는 이름만 들어간다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0215.webp" alt="LOGINS NEVER 문구, 노트북 화면 안 열쇠·쿠키·session 아이콘에 STAYS HERE 표시, 아래 spec · cookie:ref 라벨">
+  <figcaption>명세를 나눠도 내 세션 쿠키는 함께 나가지 않아요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=135s" target="_blank" rel="noopener">영상 02:15에서 보기</a></figcaption>
+</figure>
+<p>주문 같은 <span class="term" data-term="쓰기 작업" data-en="Write operation" data-desc="주문, 게시, 수정처럼 사이트의 상태를 바꾸는 요청이에요. 읽기와 달리 되돌리기 어려워서 API Anything은 따로 켜 둬야만 보내요." data-g="3">쓰기 작업</span>에는 두 겹의 안전장치가 있어요. 터미널 첫 줄은 그냥 주문을 보냈다가 refused, not_sent로 거부당한 모습이에요. <code>--allow-writes</code>를 붙이면 ok, applied로 처리되고, 같은 주문을 곧바로 다시 보내면 duplicate로 막혀요. 오른쪽 9:59 타이머가 10분 동안 같은 주문을 거부하는 장치예요.</p>
+<figure>
+  <img src="assets/frame-0221.webp" alt="write guard 데모 터미널에서 주문이 refused, applied, duplicate로 차례로 응답하고, 옆에 9:59 duplicate guard 타이머">
+  <figcaption>켜 두지 않으면 주문하지 않고, 켜 둬도 10분 안의 같은 주문은 한 번만 가요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=141s" target="_blank" rel="noopener">영상 02:21에서 보기</a></figcaption>
+</figure>
+<h3>설치는 한 줄이에요</h3>
+<p>설치는 터미널에서 한 줄이면 돼요. 화면 위 터미널에 <code>npx -y api-anything setup</code>을 넣자 MCP 서버에 연결하고 Claude Code 옆에 체크 표시가 떠요.</p>
+<pre><code class="language-bash">npx -y api-anything setup</code></pre>
+<figure>
+  <img src="assets/frame-0225.webp" alt="터미널에 npx -y api-anything setup 실행과 Claude Code 연결 체크, 아래 카탈로그 설치 안내 카드와 ONE LINE 문구">
+  <figcaption>이 한 줄이 내 컴퓨터의 에이전트들에 MCP 서버를 연결해요. <a href="https://www.youtube.com/watch?v=RYqPb9e0RXg&amp;t=145s" target="_blank" rel="noopener">영상 02:25에서 보기</a></figcaption>
+</figure>
+<p>영상은 이 도구가 '더 빠른 브라우저'가 아니라고 못 박아요. 에이전트에게 없던, 효율적이고 비용이 덜 드는 뒷문이라는 거예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>저장소 README를 보면 설치 전에 알아 둘 게 있어요. Node 22.13 이상이 필요하고, 새 사이트를 배울 때만 Chrome 같은 Chromium 계열 브라우저가 필요해요. 이미 공유된 사이트를 부르는 데는 브라우저가 없어도 돼요.</p>
+  <p>setup은 공유 카탈로그 만들기에 참여할지 한 번 묻고, 기본값은 '예'예요. 켜 두면 로그아웃 상태로 배운 공개 읽기 작업, 호출 결과 보고(인자와 데이터는 빼고), 고친 버전이 공유돼요. 로그인이 필요했던 작업은 내가 허락해야만 나가요. 끄려면 <code>api-anything setup --no-share --share-only</code>를 쓰면 돼요.</p>
+  <p class="cite">출처: <a href="https://github.com/goodnight000/api-anything" target="_blank" rel="noopener">API Anything 저장소 README</a></p>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-4"><dt>공유 카탈로그<span class="en">Shared catalog</span></dt><dd>여러 사용자가 배운 사이트 요청 명세를 모아 두는 곳이에요. 누가 한 번 배우거나 고치면 다른 사람의 에이전트도 그 결과를 바로 써요.</dd></div>
+    <div class="g" id="g-1"><dt>브라우저 에이전트<span class="en">Browser agent</span></dt><dd>브라우저를 직접 열고 사람처럼 입력하고 클릭하며 웹사이트를 쓰는 AI 에이전트예요. 어떤 사이트든 쓸 수 있지만 단계마다 화면을 읽어야 해서 느리고 비싸요.</dd></div>
+    <div class="g" id="g-3"><dt>쓰기 작업<span class="en">Write operation</span></dt><dd>주문, 게시, 수정처럼 사이트의 상태를 바꾸는 요청이에요. 읽기와 달리 되돌리기 어려워서 API Anything은 따로 켜 둬야만 보내요.</dd></div>
+    <div class="g" id="g-2"><dt>토큰<span class="en">Token</span></dt><dd>AI 모델이 글을 읽고 쓰는 단위예요. 모델 사용료는 읽고 쓴 토큰 수로 매겨져서, 읽을 거리가 줄면 비용도 줄어요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>MCP</dt><dd>Model Context Protocol</dd></div>
+    <div class="g"><dt>URL</dt><dd>Uniform Resource Locator</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=RYqPb9e0RXg" target="_blank" rel="noopener">원본 영상 — Pure Tech Lens</a></li>
+    <li id="src-2"><a href="https://github.com/goodnight000/api-anything" target="_blank" rel="noopener">API Anything 저장소 README (GitHub)</a></li>
+    <li id="src-3"><a href="https://github.com/goodnight000/api-anything/blob/main/bench/README.md" target="_blank" rel="noopener">API Anything 벤치마크 문서 — bench/README.md</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 4일에 이 영상을 보고 정리했어요. 원본은 Pure Tech Lens 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

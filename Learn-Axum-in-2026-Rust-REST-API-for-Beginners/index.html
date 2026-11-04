@@ -1,0 +1,1229 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Axum으로 Rust REST API 처음 만들기</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Axum으로 Rust REST API 처음 만들기</h1>
+  <p class="lede">빈 프로젝트에서 CRUD API까지, 추출기 하나로 꿰어 봐요</p>
+  <div class="meta">
+    <span>Codynn</span><span class="dot">·</span>
+    <span>영상 1:27:27</span><span class="dot">·</span>
+    <span>읽는 데 약 28분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=iPNEhKMIqNg" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>의존성은 <code>axum</code>, <code>tokio</code>(full), <code>serde</code>(derive) 세 개면 할 일 API(Application Programming Interface)를 끝까지 만들 수 있어요.</li>
+    <li>Rust에는 null도 예외도 없어요. <code>Option</code>과 <code>Result</code>를 <code>match</code>로 모두 처리해야 컴파일돼요.</li>
+    <li>라우터는 메서드 호출로 만든 값이에요. 같은 경로에 <code>get(...).post(...)</code>를 이어 붙이면 메서드마다 다른 함수가 답해요.</li>
+    <li>핸들러 인자의 타입이 곧 입력 검증이에요. 요청이 <code>Path&lt;u32&gt;</code>나 <code>Json&lt;CreateTask&gt;</code> 모양이 아니면 Axum이 거절하고 함수는 실행되지 않아요.</li>
+    <li>서버가 데이터를 기억하려면 시작할 때 <code>Arc&lt;Mutex&lt;…&gt;&gt;</code> 상태를 한 번 만들고 <code>with_state</code>로 라우터에 넘겨야 해요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">프로젝트 준비: RustRover와 Cargo.toml</a></li>
+    <li><a href="#s2">구조체와 소유권</a></li>
+    <li><a href="#s3">Option, Result, async</a></li>
+    <li><a href="#s4">첫 서버와 라우팅</a></li>
+    <li><a href="#s5">추출기로 URL 읽기</a></li>
+    <li><a href="#s6">JSON 주고받기</a></li>
+    <li><a href="#s7">파일 나누기와 공유 상태</a></li>
+    <li><a href="#s8">CRUD 핸들러 다섯 개와 테스트</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>프로젝트 준비: RustRover와 Cargo.toml</h2>
+<p>이 강의는 빈 폴더에서 시작해 할 일 목록 API인 <code>taskr</code>를 끝까지 만들어요. Axum은 Rust로 웹 서버와 API를 만드는 프레임워크예요. 강사는 Rust가 빠르면서도 코드가 돌기 전에 여러 종류의 버그를 잡아 주기 때문에, 부하가 걸려도 믿을 수 있어야 하는 백엔드에 잘 맞는다고 소개해요.</p>
+<h3>설치와 프로젝트 만들기</h3>
+<p>rustup으로 Rust를 깔면 컴파일러 <code>rustc</code>와 프로젝트 관리·패키지 설치 도구 <code>cargo</code>가 함께 들어와요. 편집기는 JetBrains의 Rust 전용 IDE(Integrated Development Environment)인 RustRover를 써요. 새 프로젝트에서 왼쪽 목록의 Rust를 고르고, 템플릿은 바이너리 애플리케이션 그대로 두고 만들어요. 그러면 <code>src/main.rs</code>와 <code>Cargo.toml</code> 두 파일이 생겨요.</p>
+<p>아래 화면이 의존성을 다 넣은 <code>Cargo.toml</code>이에요. <code>[dependencies]</code> 아래 세 줄을 보면 돼요. 회색 숫자 <code>0.8.9</code>, <code>1.53.1</code>, <code>1.0.229</code>는 IDE가 실제로 잡은 버전을 옆에 보여 주는 표시예요.</p>
+<figure>
+  <img src="assets/frame-0300.webp" alt="Cargo.toml 파일. package 이름은 taskr, edition 2024이고 dependencies에 axum 0.8.9, tokio 버전 1 features full, serde 버전 1 features derive가 적혀 있다">
+  <figcaption>
+    이 세 줄이 강의 전체에서 쓰는 의존성의 전부예요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=180s" target="_blank" rel="noopener">영상 03:00에서 보기</a>
+  </figcaption>
+</figure>
+<ul>
+  <li><b><code>axum</code></b> — URL(Uniform Resource Locator)을 코드로 연결하고, 돌려준 값을 HTTP(HyperText Transfer Protocol) 응답으로 바꿔요.</li>
+  <li><b><code>tokio</code></b> — 비동기 코드를 실제로 돌리는 <span class="term" data-term="런타임" data-en="Async runtime" data-desc="멈췄다 이어 가는 async 작업을 실제로 순서를 정해 돌려 주는 실행 엔진이에요. Rust엔 내장돼 있지 않아서 Tokio를 따로 넣어요." data-g="5">런타임</span>이에요. Rust에는 기본으로 들어 있지 않아서 따로 넣어요.</li>
+  <li><b><code>serde</code></b> — Rust 구조체와 JSON(JavaScript Object Notation)을 서로 바꿔요. <code>derive</code> 기능을 켜면 변환 코드를 한 줄 표시로 대신해요.</li>
+</ul>
+<p><code>tokio</code>의 <code>full</code>은 기능을 전부 켜는 옵션이에요. 강사는 배우는 동안엔 고민할 필요 없는 선택이라고 해요. 이 상태로 기본 코드 <code>Hello, world!</code>를 실행해서 컴파일러와 의존성이 다 동작하는지 확인해요.</p>
+<figure>
+  <img src="assets/frame-0320.webp" alt="RustRover 실행 창. Running target\debug\taskr.exe 아래 Hello, world! 가 출력되고 Process finished with exit code 0이 보인다">
+  <figcaption>
+    첫 빌드는 Axum과 Tokio를 처음부터 컴파일하느라 오래 걸려요. 한 번만 그래요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=200s" target="_blank" rel="noopener">영상 03:20에서 보기</a>
+  </figcaption>
+</figure>
+<p><code>cargo</code>를 찾을 수 없다는 오류가 나면, Rust 설치가 끝나기 전에 RustRover를 연 경우예요. IDE는 시작할 때만 <code>PATH</code> 환경 변수를 읽으니 완전히 껐다가 다시 열면 돼요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상이 고른 <code>axum 0.8.9</code>는 이 문서를 만든 시점에도 crates.io의 최신 안정 버전이에요. 버전을 올릴 땐 공식 변경 기록을 먼저 보는 게 좋아요. 0.8에서 경로 파라미터 문법이 <code>/:id</code>에서 <code>/{id}</code>로 바뀌었고, 옛 문법을 쓰면 서버가 시작할 때 패닉이 나요. 옛 블로그 글을 따라 할 때 자주 걸리는 지점이에요.</p>
+  <p class="cite">출처: <a href="https://crates.io/crates/axum" target="_blank" rel="noopener">crates.io — axum</a> · <a href="https://github.com/tokio-rs/axum/blob/main/axum/CHANGELOG.md" target="_blank" rel="noopener">axum CHANGELOG</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=238s" target="_blank" rel="noopener">03:58</a>
+  <h2>구조체와 소유권</h2>
+<p>이 장은 웹과 상관없는 Rust 기초예요. 강사는 구조체, <span class="term" data-term="소유권" data-en="Ownership" data-desc="모든 값에 주인이 딱 하나 있다는 Rust의 규칙이에요. 값을 함수에 그냥 넘기면 주인이 바뀌어서 원래 쪽에서는 더 쓸 수 없어요." data-g="1">소유권</span>, Option과 Result, async 네 가지를 한 파일에서 한 번에 가르치고 나중에 지워요. 뒤에서 쓰는 모든 줄을 읽기 위한 어휘라서 대충 넘기지 말라고 해요. Rust를 이미 안다면 3장(첫 서버)으로 건너뛰어도 된다고 해요.</p>
+<figure>
+  <img src="assets/frame-0358.webp" alt="Chapter 2: Rust Survival Kit 슬라이드. 왼쪽에 Pieces of Rust와 One file, in one go, 오른쪽에 Struct, Ownership, Option &amp; Result, Async 네 버튼">
+  <figcaption>
+    오른쪽 네 칸이 이 장에서 다루는 순서예요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=238s" target="_blank" rel="noopener">영상 03:58에서 보기</a>
+  </figcaption>
+</figure>
+<h3>구조체: 데이터의 모양</h3>
+<p>구조체는 관련 있는 값을 한 이름으로 묶은 사용자 정의 타입이에요. <code>Task</code>는 필드 세 개를 가져요. <code>id: u32</code>는 음수가 될 수 없는 32비트 정수, <code>title: String</code>은 프로그램이 소유해서 늘리거나 바꿀 수 있는 문자열, <code>done: bool</code>은 참·거짓이에요.</p>
+<p>값을 만들 때는 모든 필드를 채워야 해요. 함정이 하나 있어요. <code>title: "Learn Axum"</code>처럼 따옴표만 쓰면 이건 빌린 문자열(<code>&amp;str</code>)이라 <code>String</code> 필드와 타입이 맞지 않아요. 끝에 <code>.to_string()</code>을 붙여 소유한 문자열로 바꿔야 해요. 구조체에 없는 필드를 쓰면 바로 오류가 나요.</p>
+<h3>기본은 불변, 바꾸려면 mut</h3>
+<p>할 일을 끝냈다고 <code>first.done = true</code>를 쓰면 "불변 바인딩의 필드에 새 값을 넣을 수 없다"는 오류가 나요. Rust의 변수는 기본적으로 바꿀 수 없어서, <code>let mut first</code>처럼 <code>mut</code>를 붙여야 해요.</p>
+<p>출력은 <code>println!</code>으로 해요. 끝의 <code>!</code>는 함수가 아니라 <span class="term" data-term="매크로" data-en="Macro" data-desc="컴파일할 때 코드를 대신 펼쳐 주는 도구예요. 이름 끝의 &lt;code&gt;!&lt;/code&gt;가 표시라서 &lt;code&gt;println!&lt;/code&gt;, &lt;code&gt;vec!&lt;/code&gt;, &lt;code&gt;format!&lt;/code&gt;이 모두 매크로예요." data-g="3">매크로</span>라는 표시예요. 문자열 안의 <code>{}</code> 자리에 쉼표 뒤 인자가 순서대로 들어가요. 실행하면 <code>id</code> 필드를 한 번도 읽지 않았다는 경고가 뜨는데, 경고일 뿐 실행은 돼요.</p>
+<h3>소유권과 빌림</h3>
+<p>강사가 "Rust에서 사람들이 겁먹는 부분"이라고 부르는 곳이에요. 규칙은 하나예요. 모든 값에는 주인이 딱 하나 있고, 값을 함수에 그냥 넘기면 소유권이 함수로 옮겨 가요. 옮겨 간 뒤에는 원래 쪽에서 그 값을 다시 쓸 수 없어요. 마지막 주인이 그 데이터를 정리할 책임을 져요. Rust가 가비지 컬렉터 없이 메모리를 관리하는 방법이 이 규칙이에요.</p>
+<p>아래 화면이 그 상황이에요. 18번째 줄 <code>print_title(first)</code> 옆에 <code>Value moved here</code>가 붙어 있고, 19번째 줄 <code>print_title(&amp;first)</code>에는 빨간 밑줄과 함께 아래 팝업에 <code>Value used after being moved [E0382]</code>가 떠 있어요.</p>
+<figure>
+  <img src="assets/frame-1038.webp" alt="main 함수 코드. let mut first로 만든 Task의 done을 true로 바꾸고 println으로 출력한 뒤, print_title(first) 옆에 Value moved here, 다음 줄 print_title(&amp;first)에 Value used after being moved 오류 팝업">
+  <figcaption>
+    첫 호출에서 소유권이 넘어가 버려서, 두 번째 호출은 이미 없는 값을 쓰려는 셈이에요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=638s" target="_blank" rel="noopener">영상 10:38에서 보기</a>
+  </figcaption>
+</figure>
+<p>해결은 값을 넘기지 않고 <span class="term" data-term="빌려주는" data-en="Borrowing" data-desc="&lt;code&gt;&amp;amp;&lt;/code&gt;를 붙여 값을 넘기지 않고 참조만 건네는 방식이에요. 받은 쪽은 들여다보기만 하고, 주인은 그 뒤에도 값을 계속 써요." data-g="2">빌려주는</span> 거예요. 호출할 때 <code>&amp;first</code>, 함수 쪽 매개변수도 <code>task: &amp;Task</code>로 써요. 함수는 값을 들여다보기만 하고, 끝나면 자동으로 돌려줘요. 주인인 <code>main</code>은 그 뒤에도 계속 쓸 수 있어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 660 230" role="img" aria-label="값을 넘기면 소유권이 옮겨 가고, 빌려주면 주인이 계속 쓸 수 있다는 비교 그림">
+    <defs><marker id="arrow-own" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="160" y="22" text-anchor="middle">(a) print_title(first)</text>
+    <rect class="box" x="20" y="40" width="120" height="60" rx="10"/>
+    <text x="80" y="66" text-anchor="middle">main</text>
+    <text x="80" y="86" text-anchor="middle" class="sub">주인이었음</text>
+    <rect class="c1 cell" x="190" y="40" width="120" height="60" rx="10"/>
+    <text x="250" y="66" text-anchor="middle">print_title</text>
+    <text x="250" y="86" text-anchor="middle" class="sub">새 주인</text>
+    <path class="line" d="M142 70 h44" marker-end="url(#arrow-own)"/>
+    <text x="164" y="60" text-anchor="middle" class="sub">이동</text>
+    <rect class="bad" x="20" y="130" width="290" height="50" rx="10"/>
+    <text x="165" y="152" text-anchor="middle">다음 줄에서 first를 쓰면</text>
+    <text x="165" y="170" text-anchor="middle" class="sub">value used after being moved</text>
+    <text x="500" y="22" text-anchor="middle">(b) print_title(&amp;first)</text>
+    <rect class="box" x="360" y="40" width="120" height="60" rx="10"/>
+    <text x="420" y="66" text-anchor="middle">main</text>
+    <text x="420" y="86" text-anchor="middle" class="sub">계속 주인</text>
+    <rect class="c2 cell" x="530" y="40" width="120" height="60" rx="10"/>
+    <text x="590" y="66" text-anchor="middle">print_title</text>
+    <text x="590" y="86" text-anchor="middle" class="sub">&amp;Task로 읽기만</text>
+    <path class="line" d="M482 62 h44" marker-end="url(#arrow-own)"/>
+    <path class="line" d="M528 80 h-44" marker-end="url(#arrow-own)"/>
+    <text x="505" y="114" text-anchor="middle" class="sub">빌려주고 돌려받기</text>
+    <rect class="ok" x="360" y="130" width="290" height="50" rx="10"/>
+    <text x="505" y="152" text-anchor="middle">다음 줄에서도 first를 써요</text>
+    <text x="505" y="170" text-anchor="middle" class="sub">컴파일 통과</text>
+  </svg>
+  <figcaption>차이는 <code>&amp;</code> 한 글자예요. 강사는 뒤에 나오는 <code>&amp;</code>와 <code>Arc</code>가 모두 "넘겨주지 않고 함께 쓰기"를 위한 도구라고 미리 짚어 둬요.</figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=710s" target="_blank" rel="noopener">11:50</a>
+  <h2>Option, Result, async</h2>
+<p>강사가 "Rust에서 피할 수 없는 두 타입"이라고 부르는 <code>Option</code>과 <code>Result</code>, 그리고 서버 코드에 꼭 필요한 async를 다뤄요.</p>
+<h3>Option: null 대신</h3>
+<p>Rust에는 null이 없어요. 값이 없을 수도 있으면 <code>Option</code>으로 감싸요. <code>Option</code>은 정해진 몇 가지 중 정확히 하나인 열거형(enum)이에요. 값이 있으면 <code>Some(...)</code>, 없으면 <code>None</code>이에요. 타입을 <code>Option&lt;String&gt;</code>으로 적어 놓고 그냥 문자열을 넣으면 타입이 맞지 않는다는 오류가 나요.</p>
+<p><code>match</code>는 다른 언어의 switch와 비슷한데, 가능한 경우를 하나라도 빼먹으면 컴파일을 거부해요. 화면의 23~26번째 줄이 <code>maybe_title</code>을 <code>Some(t)</code>와 <code>None</code> 두 갈래로 처리하는 모습이에요.</p>
+<figure>
+  <img src="assets/frame-1510.webp" alt="let maybe_title: Option&lt;String&gt; = Some(Buy milk) 선언과, match maybe_title 안에 Some(t)이면 We have a title, None이면 No title was given을 출력하는 코드. 아래 28번째 줄에 Result 타입 parse 선언">
+  <figcaption>
+    None 갈래를 지우면 컴파일이 안 돼요. Rust 코드가 null 때문에 죽지 않는 이유예요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=910s" target="_blank" rel="noopener">영상 15:10에서 보기</a>
+  </figcaption>
+</figure>
+<h3>Result: 예외 대신</h3>
+<p>실패할 수 있는 작업은 <code>Result</code>로 같은 생각을 표현해요. <code>"42".parse::&lt;u32&gt;()</code>는 문자열을 숫자로 바꾸는데, 결과 타입이 <code>Result&lt;u32, ParseIntError&gt;</code>예요. 성공하면 <code>Ok(n)</code>, 실패하면 <code>Err(e)</code>예요. Rust에는 예외도 없어서, 실패할 수 있는 함수는 그 사실을 반환 타입에 드러내요.</p>
+<figure>
+  <img src="assets/frame-1630.webp" alt="let parse: Result&lt;u32, ParseIntError&gt; = 42.parse::&lt;u32&gt;() 아래에 match parse로 Ok(n)이면 Parsed the number, Err(e)이면 That wasn't a number를 출력하는 코드">
+  <figcaption>
+    Ok와 Err 두 갈래가 이 작업의 가능한 결과 전부예요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=990s" target="_blank" rel="noopener">영상 16:30에서 보기</a>
+  </figcaption>
+</figure>
+<blockquote>
+  <p>they're the reason that your API won't crash at 3:00 a.m. on a missing field.</p>
+  <p>이 두 타입 덕분에 필드 하나가 빠졌다고 새벽 3시에 API가 죽지 않아요.</p>
+  <cite>— 영상 16:09</cite>
+</blockquote>
+<h3>async와 await</h3>
+<p>웹 서버는 대부분의 시간을 네트워크나 데이터베이스를 기다리며 보내요. async 함수는 기다리는 지점에서 멈추고, 그동안 런타임이 다른 일을 하게 해 줘요. 서버 하나가 수천 개 연결을 동시에 감당하는 방법이에요.</p>
+<p>중요한 점은 async 함수를 호출해도 바로 실행되지 않는다는 거예요. 호출은 해야 할 일의 설명서인 <span class="term" data-term="Future" data-en="Future" data-desc="async 함수를 호출했을 때 나오는 &#x27;할 일 설명서&#x27;예요. &lt;code&gt;.await&lt;/code&gt;로 끝까지 돌리기 전에는 아무 일도 일어나지 않아요." data-g="4">Future</span>를 만들 뿐이고, <code>.await</code>를 붙여야 끝까지 실행돼요. 아래 화면은 <code>.await</code> 없이 <code>slow_hello()</code>를 부른 상태예요. 7번째 줄의 타입 힌트가 <code>String</code>이 아니라 <code>impl Future&lt;Output=String&gt;</code>이고, 8번째 줄 <code>println!</code>에는 Future가 Display를 구현하지 않는다는 오류가 떠 있어요.</p>
+<figure>
+  <img src="assets/frame-1910.webp" alt="async fn slow_hello() -&gt; String 함수와 #[tokio::main] async fn main. let greeting의 타입 힌트가 impl Future&lt;Output=String&gt;이고 println 줄에 Display가 구현되지 않았다는 오류 팝업">
+  <figcaption>
+    <code>.await</code>를 붙이면 <code>greeting</code>이 진짜 문자열이 되고 오류가 사라져요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=1150s" target="_blank" rel="noopener">영상 19:10에서 보기</a>
+  </figcaption>
+</figure>
+<p><code>main</code> 위의 <code>#[tokio::main]</code>은 속성(attribute)이에요. <code>main</code>을 다시 써서 Tokio 런타임을 띄우고 그 안에서 async 코드를 돌려요. 이 한 줄이 있어야 <code>main</code>에 <code>async</code>를 붙일 수 있어요.</p>
+<p>강사는 이 장이 가장 길고, 사람들이 가장 많이 포기하는 곳이라고 해요. 지금 다 이해되지 않아도 괜찮다고 해요. 여기 나온 개념은 10분 안에 다시 쓰이기 때문이에요.</p>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=1202s" target="_blank" rel="noopener">20:02</a>
+  <h2>첫 서버와 라우팅</h2>
+<p>이 장의 목표는 내 컴퓨터에서 진짜 HTTP 서버를 띄우고, 브라우저로 Rust 코드가 보낸 응답을 받는 거예요. 강사는 영상에서 가장 짧지만 가장 크게 도약하는 장이라고 해요. 코드는 11줄이에요.</p>
+<h3>서버 11줄</h3>
+<p>맨 위 <code>use axum::{routing::get, Router};</code>는 이름을 가져와서 <code>axum::Router</code> 대신 <code>Router</code>라고 쓰게 해 줘요. <code>Router</code>는 어느 URL이 어느 코드로 가는지 적은 지도이고, <code>get</code>은 그 경로가 HTTP GET 요청에 답한다는 표시예요.</p>
+<p>아래 화면에서 세 부분을 보면 돼요. 9~10번째 줄이 포트를 잡는 <code>TcpListener::bind</code>, 12번째 줄이 성공했을 때만 찍히는 안내 문구, 14번째 줄이 서버를 돌리는 <code>axum::serve</code>예요.</p>
+<figure>
+  <img src="assets/frame-2355.webp" alt="async fn main 안의 코드. let listener = tokio::net::TcpListener::bind(0.0.0.0:3000).await.unwrap(), println으로 taskr running on http://localhost:3000, axum::serve(listener, app).await.unwrap()">
+  <figcaption>
+    포트를 잡고, 알리고, 서빙하는 세 줄이 서버의 뼈대예요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=1435s" target="_blank" rel="noopener">영상 23:55에서 보기</a>
+  </figcaption>
+</figure>
+<ul>
+  <li><b><code>TcpListener::bind("0.0.0.0:3000")</code></b> — 운영체제에 3000번 포트를 달라고 하고 연결을 기다려요. <code>0.0.0.0</code>은 내부든 외부든 어디서 오는 요청이든 받겠다는 뜻이에요. 포트를 잡는 데 시간이 걸릴 수 있어서 <code>.await</code>를 붙여요.</li>
+  <li><b><code>.unwrap()</code></b> — 실패하면 그 자리에서 오류와 함께 죽으라는 뜻이에요. 배울 때만 괜찮고, 나중엔 제대로 된 오류 처리로 바꿔야 해요.</li>
+  <li><b><code>axum::serve(listener, app)</code></b> — 연결을 받고, URL에 맞는 함수를 부르고, 응답을 돌려보내는 일을 계속 반복해요. 서버를 멈추기 전까지 <code>.await</code>가 끝나지 않아요.</li>
+</ul>
+<h3>핸들러는 그냥 async 함수예요</h3>
+<p>라우터가 <code>/</code>에 연결한 <code>root</code>는 평범한 async 함수예요. 처음엔 반환 타입이 없어 타입 불일치 오류가 나고, <code>&amp;'static str</code>을 적어 주면 사라져요. 프로그램에 박혀 있는 빌린 문자열이라는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-2407.webp" alt="async fn root() -&gt; &amp;'static str 함수가 taskr is alive를 돌려준다. 함수 위에 RustRover가 붙인 / [GET] 표시가 있다">
+  <figcaption>
+    함수 위의 <code>/ [GET]</code>은 RustRover가 라우터를 읽고 붙여 준 표시예요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=1447s" target="_blank" rel="noopener">영상 24:07에서 보기</a>
+  </figcaption>
+</figure>
+<p>강사는 특별한 trait 구현도, 매크로도, 등록 단계도 없다는 점을 강조해요. Axum은 문자열을 받으면 <code>200 OK</code>와 일반 텍스트로 바꿔 보내요. 실행해서 네트워크 허용 창이 뜨면 허용하고, 브라우저에서 <code>localhost:3000</code>을 열면 <code>taskr is alive</code>가 보여요. 개발자 도구의 네트워크 탭에서도 200 응답과 일반 텍스트를 확인해요.</p>
+<h3>경로 늘리기: 같은 경로, 다른 메서드</h3>
+<p>URL 하나는 데모일 뿐이고, API는 여러 URL의 지도예요. <code>.route()</code>를 이어 붙여 경로를 늘려요. 아래 화면 9번째 줄이 이 장의 핵심이에요. <code>/tasks</code> 하나에 <code>get(list_tasks).post(create_task)</code>가 함께 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-2832.webp" alt="Router::new()에 .route(/, get(root)), .route(/health, get(health)), .route(/tasks, get(list_tasks).post(create_task))가 이어진 코드">
+  <figcaption>
+    같은 경로라도 GET이면 목록, POST면 생성이에요. 이 짝이 REST(Representational State Transfer) API의 기본 관례예요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=1712s" target="_blank" rel="noopener">영상 28:32에서 보기</a>
+  </figcaption>
+</figure>
+<p><code>/health</code>는 아무렇게나 지은 이름이 아니에요. 배포 플랫폼이 앱이 살아 있는지 확인하려고 두드리는 관례적인 경로라서, 대부분의 실제 API에 있어요. 안에서는 <code>"ok"</code>만 돌려주면 돼요. <code>list_tasks</code>와 <code>create_task</code>도 일단은 안내 문구만 돌려줘요.</p>
+<h3>POST는 브라우저로 못 보내요</h3>
+<p>서버를 다시 띄우면 브라우저로 <code>/health</code>와 <code>/tasks</code>는 확인돼요. 하지만 브라우저 주소창은 GET만 보낼 수 있어요. 그래서 RustRover의 HTTP 클라이언트를 써요. 핸들러 위 표시를 누르고 HTTP 클라이언트에서 요청 만들기를 고르면 POST 요청 파일이 생겨요. 처음엔 포트가 빠져서 실패하고, <code>localhost:3000</code>으로 고치면 응답이 와요.</p>
+<figure>
+  <img src="assets/frame-3145.webp" alt="RustRover HTTP 클라이언트. POST http://localhost:3000/tasks를 보내고 HTTP/1.1 200 OK, content-type text/plain, 본문 a task will be created here, Response code 200 (OK)">
+  <figcaption>
+    같은 URL에 메서드만 바꿨더니 다른 함수가 답했어요. 아직은 본문 없이 보낸 POST예요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=1905s" target="_blank" rel="noopener">영상 31:45에서 보기</a>
+  </figcaption>
+</figure>
+<p>강사는 이 파일에 설정, 데코레이터, 등록 같은 게 하나도 없다는 점을 다시 짚어요. 라우터는 메서드 호출로 만든 값일 뿐이에요. 다만 지금은 모든 요청에 같은 답을 하니, 강사 말로는 "아주 자신만만한 거짓말쟁이"예요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=1964s" target="_blank" rel="noopener">32:44</a>
+  <h2>추출기로 URL 읽기</h2>
+<p>실제 API는 구체적인 질문에 답해야 해요. "4번 할 일", "끝난 할 일만", "할 일 2페이지" 같은 것들이에요. 이 장에서는 URL에서 값을 꺼내 타입이 정해진 Rust 변수로 받아요. 강사가 "Axum이 이해되는 순간"이라고 부르는 <span class="term" data-term="추출기" data-en="Extractor" data-desc="핸들러 인자에 적어 요청의 한 부분(경로, 쿼리, 본문, 공유 상태)을 꺼내 받는 타입이에요. 꺼내기에 실패하면 핸들러를 부르지 않고 Axum이 오류로 답해요." data-g="6">추출기</span>가 여기서 나와요.</p>
+<figure>
+  <img src="assets/frame-3244.webp" alt="Chapter 5: Extractors, Reading the URL 슬라이드. 왼쪽은 Every request gets Same answer, 오른쪽은 API가 respond to specifics하며 Task number four, Tasks that are finished, Page two로 갈라진다">
+  <figcaption>
+    왼쪽이 지금 상태, 오른쪽 세 칸이 이 장에서 만들 구체적인 질문이에요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=1964s" target="_blank" rel="noopener">영상 32:44에서 보기</a>
+  </figcaption>
+</figure>
+<h3>Path와 Query</h3>
+<p><code>axum::extract</code>에서 <code>Path</code>와 <code>Query</code>를 가져와요. 둘은 URL의 다른 부분을 읽어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>추출기</th><th>읽는 곳</th><th>URL 예</th><th>영상에서 받은 타입</th></tr></thead>
+    <tbody>
+      <tr><td><code>Path</code></td><td>경로 조각</td><td><code>/tasks/10</code></td><td><code>Path&lt;u32&gt;</code></td></tr>
+      <tr><td><code>Query</code></td><td><code>?</code> 뒤의 키=값</td><td><code>/tasks?done=true</code></td><td><code>Query&lt;HashMap&lt;String, String&gt;&gt;</code></td></tr>
+    </tbody>
+  </table>
+</div>
+<p>경로 파라미터는 라우터에 중괄호로 자리를 만들어요. 아래 화면 15번째 줄의 <code>.route("/tasks/{id}", get(get_task))</code>가 그 모습이에요. <code>{id}</code> 자리에 1, 2, 3 무엇이 오든 이 경로로 들어와요.</p>
+<figure>
+  <img src="assets/frame-3524.webp" alt="Router 체인의 마지막에 .route(/tasks/{id})를 입력하는 중인 코드. 위에는 /, /health, /tasks 경로가 있다">
+  <figcaption>
+    중괄호 안의 이름이 핸들러에서 꺼낼 변수가 돼요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=2124s" target="_blank" rel="noopener">영상 35:24에서 보기</a>
+  </figcaption>
+</figure>
+<p>핸들러 쪽은 인자를 <code>Path(id): Path&lt;u32&gt;</code>로 적어요. 화면 위쪽에 RustRover가 붙인 <code>/tasks/{id} [GET]</code> 표시도 보여요.</p>
+<figure>
+  <img src="assets/frame-3644.webp" alt="async fn get_task(Path(id): Path&lt;u32&gt;) -&gt; String 함수 선언. 위에 /tasks/{id} [GET] 표시와 create_task 함수가 보인다">
+  <figcaption>
+    인자 하나가 "경로의 id를 u32로 달라"는 요청이에요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=2204s" target="_blank" rel="noopener">영상 36:44에서 보기</a>
+  </figcaption>
+</figure>
+<p>이렇게 핸들러 인자 목록에 "요청의 이 부분을 주세요"라고 적는 타입을 추출기라고 해요. Axum은 그 인자를 보고 요청에서 해당 부분을 꺼내, 이미 파싱한 상태로 넘겨줘요. 왼쪽의 <code>Path(id)</code>는 <span class="term" data-term="구조 분해" data-en="Destructuring" data-desc="&lt;code&gt;Path(id)&lt;/code&gt;처럼 포장 타입을 그 자리에서 벗겨 안쪽 값을 변수로 받는 문법이에요. 함수 안에서 &lt;code&gt;id&lt;/code&gt;는 그냥 숫자가 돼요." data-g="7">구조 분해</span> 문법이에요. <code>Path</code>라는 포장을 그 자리에서 벗겨서, 함수 안에서 <code>id</code>는 그냥 <code>u32</code>가 돼요. 돌려줄 문자열은 <code>format!("you asked for task {}", id)</code>로 만들어요. <code>println!</code>이 화면에 찍는다면 <code>format!</code>은 같은 방식으로 문자열을 만들어 돌려줘요.</p>
+<h3>타입이 곧 검증</h3>
+<p>누군가 <code>/tasks/banana</code>를 요청하면 <code>banana</code>를 <code>u32</code>로 바꿀 수 없어요. 그러면 Axum이 400을 돌려보내고, <code>get_task</code>는 아예 실행되지 않아요. 아래 화면이 그 결과예요. 왼쪽 본문에 <code>Invalid URL: Cannot parse "banana" to a u32</code>, 오른쪽 네트워크 탭의 상태 칸에 400이 찍혀 있어요.</p>
+<figure>
+  <img src="assets/frame-4325.webp" alt="브라우저에서 localhost:3000/tasks/banana를 연 화면. 본문에 Invalid URL: Cannot parse banana to a u32, 개발자 도구 네트워크 탭에 banana 요청의 상태 400">
+  <figcaption>
+    핸들러가 출력한 게 하나도 없어요. 호출되지 않았기 때문이에요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=2605s" target="_blank" rel="noopener">영상 43:25에서 보기</a>
+  </figcaption>
+</figure>
+<p>강사는 이걸 "타입 시그니처가 곧 검증"이라고 표현해요. 잘못된 입력은 함수 안 로직에 닿을 수조차 없어요. 아래 그림은 이 장과 다음 장에서 나오는 추출기 실패를 한데 모은 거예요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 660 250" role="img" aria-label="요청이 추출기를 통과하면 핸들러가 실행되고, 통과하지 못하면 Axum이 핸들러 없이 오류 상태 코드를 돌려준다">
+    <defs><marker id="arrow-ext" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="box" x="10" y="30" width="140" height="60" rx="10"/>
+    <text x="80" y="56" text-anchor="middle">요청</text>
+    <text x="80" y="76" text-anchor="middle" class="mono">/tasks/10</text>
+    <rect class="accent" x="200" y="30" width="170" height="60" rx="10"/>
+    <text x="285" y="56" text-anchor="middle">추출기</text>
+    <text x="285" y="76" text-anchor="middle" class="mono">Path&lt;u32&gt;</text>
+    <rect class="ok" x="430" y="30" width="210" height="60" rx="10"/>
+    <text x="535" y="56" text-anchor="middle">핸들러 실행</text>
+    <text x="535" y="76" text-anchor="middle" class="sub">id는 이미 u32</text>
+    <path class="line" d="M152 60 h44" marker-end="url(#arrow-ext)"/>
+    <path class="line" d="M372 60 h54" marker-end="url(#arrow-ext)"/>
+    <text x="399" y="50" text-anchor="middle" class="sub">통과</text>
+    <rect class="box" x="10" y="150" width="140" height="60" rx="10"/>
+    <text x="80" y="176" text-anchor="middle">요청</text>
+    <text x="80" y="196" text-anchor="middle" class="mono">/tasks/banana</text>
+    <rect class="accent" x="200" y="150" width="170" height="60" rx="10"/>
+    <text x="285" y="176" text-anchor="middle">추출기</text>
+    <text x="285" y="196" text-anchor="middle" class="mono">Path&lt;u32&gt;</text>
+    <rect class="bad" x="430" y="150" width="210" height="60" rx="10"/>
+    <text x="535" y="176" text-anchor="middle">Axum이 400 응답</text>
+    <text x="535" y="196" text-anchor="middle" class="sub">핸들러는 호출 안 됨</text>
+    <path class="line" d="M152 180 h44" marker-end="url(#arrow-ext)"/>
+    <path class="line" d="M372 180 h54" marker-end="url(#arrow-ext)"/>
+    <text x="399" y="170" text-anchor="middle" class="sub">실패</text>
+    <text x="330" y="238" text-anchor="middle" class="sub">다음 장의 Json&lt;CreateTask&gt;도 같은 방식이에요. 본문이 모양에 안 맞으면 함수 전에 거절돼요.</text>
+  </svg>
+  <figcaption>성공한 요청만 함수 안으로 들어와요. 그래서 핸들러 안에서는 입력이 맞는지 다시 확인할 필요가 없어요.</figcaption>
+</figure>
+<h3>쿼리 파라미터 처리</h3>
+<p><code>list_tasks</code>는 <code>Query(params): Query&lt;HashMap&lt;String, String&gt;&gt;</code>로 받아요. HashMap은 키와 값 쌍의 모음이라 쿼리의 자연스러운 모양이에요. 모든 값을 문자열로 받는 가장 느슨한 형태이고, 강사는 나중엔 구조체로 바꾸게 된다고 해요.</p>
+<p>아래 화면의 36~38번째 줄이 쿼리를 읽는 공식이에요. <code>params.get("done")</code>은 키가 없을 수도 있으니 <code>Option</code>을 돌려줘요. 그래서 <code>map_or</code>로 두 경우를 처리해요. 없으면 첫 번째 값 <code>"everything"</code>, 있으면 그 값을 <code>format!("done={}", v)</code>로 바꿔요.</p>
+<figure>
+  <img src="assets/frame-4204.webp" alt="async fn list_tasks(Query(params): Query&lt;HashMap&lt;String, String&gt;&gt;) -&gt; String. let filter = params.get(done).map_or(everything.to_string(), |v| format!(done={}, v)) 다음 줄에 format!(listing tasks, filter: {}, filter)">
+  <figcaption>
+    강사는 쿼리를 받을 때마다 이 형태를 쓰게 된다며 외워 두라고 해요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=2524s" target="_blank" rel="noopener">영상 42:04에서 보기</a>
+  </figcaption>
+</figure>
+<p>브라우저로 확인하면 <code>/tasks</code>는 <code>filter: everything</code>, <code>/tasks?done=true</code>는 <code>filter: done=true</code>가 나와요. 아직 값을 검사하지 않아서 <code>done</code>에 아무 값이나 넣어도 그대로 나와요. 키 이름이 다르면(<code>random=true</code>) <code>get("done")</code>이 실패해서 다시 <code>everything</code>이에요. <code>/tasks/10</code>처럼 슬래시와 경로를 붙이면 이 핸들러가 아니라 <code>/tasks/{id}</code> 쪽으로 가요.</p>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=2640s" target="_blank" rel="noopener">44:00</a>
+  <h2>JSON 주고받기</h2>
+<p>지금까지 <code>taskr</code>는 일반 텍스트로만 답했어요. 실제 클라이언트는 양쪽 모두 JSON으로 말해요. 이 장에서는 할 일의 모양을 정하고, 서버가 처음부터 아는 할 일 몇 개를 넣고, JSON으로 주고받는 엔드포인트를 만들어요. 강사는 지난 장과 같은 추출기 생각을 URL 대신 요청 본문에 쓰고, 나갈 때는 그 반대로 바꾸는 거라고 요약해요.</p>
+<h3>할 일의 모양 정하기</h3>
+<p><code>serde</code>에서 <code>Serialize</code>와 <code>Deserialize</code>를 가져와요. 둘은 trait, 즉 타입이 가질 수 있는 능력 묶음이에요. 직렬화는 구조체를 JSON으로 바꾸는 것, <span class="term" data-term="역직렬화" data-en="Deserialization" data-desc="JSON 같은 바깥 형식의 데이터를 Rust 구조체로 바꾸는 일이에요. 반대 방향인 구조체 → JSON은 직렬화(Serialize)예요." data-g="8">역직렬화</span>는 JSON을 구조체로 바꾸는 거예요. <code>#[derive(...)]</code>로 표시만 하면 serde가 변환 코드를 만들어 줘서, 파싱이나 포맷 코드를 손으로 쓸 일이 없어요.</p>
+<p>아래 화면에 구조체 두 개와 시드 함수가 다 보여요. 위의 <code>Task</code>는 숨겨져 있고, 16번째 줄부터 <code>CreateTask</code>, 21번째 줄부터 <code>seed_tasks()</code>가 있어요.</p>
+<figure>
+  <img src="assets/frame-4915.webp" alt="#[derive(Deserialize)] struct CreateTask { title: String } 아래에 fn seed_tasks() -&gt; Vec&lt;Task&gt;가 vec! 안에 Learn Axum, Write a script, Record a video 세 Task를 done false로 만든다">
+  <figcaption>
+    <code>CreateTask</code>에는 <code>title</code>만 있어요. 사용자가 정할 수 있는 건 제목뿐이에요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=2955s" target="_blank" rel="noopener">영상 49:15에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>구조체</th><th>필드</th><th>derive</th><th>왜</th></tr></thead>
+    <tbody>
+      <tr><td><code>Task</code></td><td><code>id</code>, <code>title</code>, <code>done</code></td><td><code>Serialize</code>, <code>Clone</code></td><td>JSON으로 내보내고, 원본을 넘기지 않고 복사본을 나눠 주려고요</td></tr>
+      <tr><td><code>CreateTask</code></td><td><code>title</code></td><td><code>Deserialize</code></td><td>사용자가 보낸 JSON을 받아요. <code>id</code>는 서버가 정하고 <code>done</code>은 처음엔 항상 <code>false</code>예요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>저장소는 아직 없어요. 대신 <code>seed_tasks()</code>가 <code>vec![...]</code>로 할 일 세 개를 돌려줘요. <code>Vec</code>은 늘어나는 목록이고, <code>vec!</code>은 그 목록을 만드는 매크로예요. 강사는 하드코딩한 시작 데이터를 <span class="term" data-term="시드 데이터" data-en="Seed data" data-desc="개발 중에 쓰려고 코드에 미리 박아 둔 시작 데이터예요. 데이터베이스 없이도 읽기 기능을 먼저 만들고 시험할 수 있어요." data-g="9">시드 데이터</span>라고 부르고, 저장 코드 한 줄 없이 읽기 엔드포인트를 모두 만들고 시험할 수 있는 쓸모 있는 요령이라고 해요. id는 겹치지 않게 넣어요.</p>
+<h3>JSON으로 내보내기</h3>
+<p><code>http::StatusCode</code>와 <code>Json</code>도 가져와요. <code>Json</code>은 추출기이면서 응답 타입이기도 해요. <code>list_tasks</code>의 반환 타입을 <code>Json&lt;Vec&lt;Task&gt;&gt;</code>로 바꾸고 <code>Json(seed_tasks())</code>를 돌려줘요. 감싸면 두 가지가 일어나요. 응답 헤더 <code>Content-Type</code>이 <code>application/json</code>이 되고, 목록이 직렬화돼 JSON 배열이 돼요.</p>
+<p>아래 화면 왼쪽 본문이 세 할 일의 JSON 배열이에요. 오른쪽 헤더에서 <code>Status Code</code> 200 OK와 <code>Content-Type: application/json</code>을 확인할 수 있어요.</p>
+<figure>
+  <img src="assets/frame-5215.webp" alt="브라우저 localhost:3000/tasks. 본문에 id 1 Learn Axum, id 2 Write a script, id 3 Record a video의 JSON 배열, 개발자 도구 헤더에 Status Code 200 OK, Content-Type application/json">
+  <figcaption>
+    변환 코드를 한 줄도 쓰지 않았어요. derive와 <code>Json</code> 감싸기로 끝났어요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=3135s" target="_blank" rel="noopener">영상 52:15에서 보기</a>
+  </figcaption>
+</figure>
+<h3>하나만 찾기: 없으면 404</h3>
+<p><code>get_task</code>는 이제 진짜로 할 일을 찾아요. 아래 화면 66~70번째 줄의 체인 하나가 전부예요.</p>
+<figure>
+  <img src="assets/frame-5345.webp" alt="get_task(Path(id): Path&lt;u32&gt;) -&gt; Result&lt;Json&lt;Task&gt;, StatusCode&gt;. let tasks = seed_tasks(); 다음에 tasks.into_iter().find(|t| t.id == id).map(Json).ok_or(StatusCode::NOT_FOUND)">
+  <figcaption>
+    if 문 없이 "찾으면 JSON, 없으면 404"를 표현했어요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=3225s" target="_blank" rel="noopener">영상 53:45에서 보기</a>
+  </figcaption>
+</figure>
+<ol class="steps">
+  <li><b><code>into_iter()</code></b> — 목록을 하나씩 돌며 소유한 할 일을 꺼내요.</li>
+  <li><b><code>find(|t| t.id == id)</code></b> — id가 같은 할 일을 찾아요. 결과는 <code>Option&lt;Task&gt;</code>예요.</li>
+  <li><b><code>map(Json)</code></b> — <code>Some</code>이면 안쪽 값을 <code>Json</code>으로 감싸요.</li>
+  <li><b><code>ok_or(StatusCode::NOT_FOUND)</code></b> — <code>Option</code>을 <code>Result</code>로 바꿔요. <code>Some</code>은 <code>Ok</code>, <code>None</code>은 404 <code>Err</code>예요.</li>
+</ol>
+<p>반환 타입은 <code>Result&lt;Json&lt;Task&gt;, StatusCode&gt;</code>예요. Axum은 양쪽 모두 응답으로 바꿀 줄 알아서, 어느 쪽도 뒷전이 되지 않아요. 1, 2, 3번은 JSON으로 나오고, 없는 4번을 요청하면 아래처럼 404가 나와요. 너무 큰 숫자를 넣으면 <code>u32</code>에 담을 수 없다는 메시지가 나와요.</p>
+<figure>
+  <img src="assets/frame-5457.webp" alt="브라우저 localhost:3000/tasks/4. This localhost page can't be found 화면과 개발자 도구 헤더의 Status Code 404 Not Found">
+  <figcaption>
+    없는 할 일은 404로 깔끔하게 끝나요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=3297s" target="_blank" rel="noopener">영상 54:57에서 보기</a>
+  </figcaption>
+</figure>
+<h3>JSON 받기: 만들기</h3>
+<p><code>create_task</code>는 <code>Json(payload): Json&lt;CreateTask&gt;</code>로 본문을 받아요. <code>Path</code>와 똑같은 추출기예요. 요청 본문을 읽어 JSON으로 파싱하고 <code>CreateTask</code>를 만들어요. 본문이 올바른 JSON이 아니거나, <code>title</code>이 빠졌거나, 문자열 대신 숫자면 함수가 실행되지 않아요. 강사는 이때 Axum이 422로 거절한다고 설명해요. 함수 안에 들어온 <code>payload</code>는 이미 올바른 모양이라 <code>payload.title</code>을 바로 써도 실패할 일이 없어요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Axum 공식 코드를 보면 <code>Json</code> 추출기가 거절할 때의 상태 코드는 이유마다 달라요. JSON 문법은 맞는데 구조체 모양과 다르면(<code>title</code> 누락, 타입 불일치) 422, JSON 문법 자체가 틀리면 400, <code>Content-Type: application/json</code> 헤더가 없으면 415예요. 영상이 말한 422는 첫 번째 경우예요.</p>
+  <p>또 하나, 본문을 읽는 추출기는 핸들러 인자 중 맨 마지막에 와야 해요. 본문은 한 번만 읽을 수 있기 때문이에요. 뒤에서 나오는 <code>create</code>와 <code>update</code>가 <code>State</code>, <code>Path</code> 다음에 <code>Json</code>을 두는 것도 이 규칙을 따른 거예요.</p>
+  <p class="cite">출처: <a href="https://github.com/tokio-rs/axum/blob/axum-v0.8.9/axum/src/extract/rejection.rs" target="_blank" rel="noopener">axum 0.8.9 소스 — extract/rejection.rs</a> · <a href="https://docs.rs/axum/latest/axum/struct.Json.html" target="_blank" rel="noopener">docs.rs — axum::Json</a></p>
+</aside>
+<p>아직 번호를 셀 곳이 없어서 <code>id</code>는 99로 고정하고, <code>done</code>은 <code>false</code>로 둬요. 돌려줄 땐 <code>(StatusCode::CREATED, Json(task))</code>처럼 상태 코드와 JSON을 짝으로 돌려줘요. 돌려주는 건 <code>CreateTask</code>가 아니라 모든 필드를 가진 <code>Task</code>예요.</p>
+<p>HTTP 클라이언트로 POST할 때 두 가지를 챙겨요. <code>Content-Type: application/json</code> 헤더를 넣고, 헤더와 본문 사이에 빈 줄을 꼭 둬요. 빈 줄이 없으면 본문이 없는 요청으로 읽혀요. 보내면 아래처럼 <code>201 Created</code>가 와요.</p>
+<figure>
+  <img src="assets/frame-5858.webp" alt="RustRover 위쪽에 async fn create_task(Json(payload): Json&lt;CreateTask&gt;) -&gt; (StatusCode, ...) 선언, 아래 Services 패널에 POST http://localhost:3000/tasks 응답 HTTP/1.1 201 Created와 content-type application/json">
+  <figcaption>
+    코드에 적은 <code>StatusCode::CREATED</code>가 그대로 201로 나갔어요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=3538s" target="_blank" rel="noopener">영상 58:58에서 보기</a>
+  </figcaption>
+</figure>
+<p>응답 본문을 열면 보낸 제목에 서버가 정한 <code>id</code> 99와 <code>done: false</code>가 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-5906.webp" alt="응답 JSON 파일. id 99, title Write the script, done false">
+  <figcaption>
+    사용자는 제목만 보냈고, 나머지 두 필드는 서버가 채웠어요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=3546s" target="_blank" rel="noopener">영상 59:06에서 보기</a>
+  </figcaption>
+</figure>
+<p>그런데 방금 만든 할 일은 목록을 다시 불러도 없어요. 요청마다 시드 목록을 새로 만들고 버리기 때문이에요. 타입도, JSON도, 경로도 맞지만 앱에 기억이 없어요. 이게 다음 장에서 고칠 마지막 문제예요.</p>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=3589s" target="_blank" rel="noopener">59:49</a>
+  <h2>파일 나누기와 공유 상태</h2>
+<p>남은 문제는 두 가지예요. 모든 코드가 한 파일에 있다는 것, 그리고 <code>taskr</code>가 아무것도 기억하지 못한다는 거예요. 강사는 지금 <code>main.rs</code>가 타입, 시드 데이터, 핸들러, 라우팅, 시작 코드가 그냥 쌓인 덩어리라서, 다음 기능을 어디에 넣을지부터 막힌다고 해요.</p>
+<h3>실제 Axum 프로젝트처럼 나누기</h3>
+<p>RustRover에서 Rust 파일을 새로 만들면 모듈에 붙일지 물어요. 붙이기를 고르면 <code>main.rs</code>에 <code>mod models;</code> 같은 줄이 자동으로 들어가요. 아래 화면 왼쪽 트리가 다 나눈 결과예요. <code>src</code> 아래 <code>handlers</code> 폴더(<code>mod.rs</code>, <code>tasks.rs</code>)와 <code>main.rs</code>, <code>models.rs</code>, <code>routes.rs</code>, <code>state.rs</code>가 보여요.</p>
+<figure>
+  <img src="assets/frame-010135.webp" alt="RustRover 프로젝트 트리. taskr/src 아래 handlers 폴더에 mod.rs와 tasks.rs, 그리고 main.rs, models.rs, routes.rs, state.rs. 오른쪽 편집기는 새로 만든 빈 tasks.rs">
+  <figcaption>
+    파일마다 맡은 일이 하나라서, 새 코드가 어디로 갈지 고민하지 않아도 돼요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=3695s" target="_blank" rel="noopener">영상 01:01:35에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>파일</th><th>맡은 일</th></tr></thead>
+    <tbody>
+      <tr><td><code>main.rs</code></td><td>상태 만들기, 앱 만들기, 포트 잡기, 서빙하기</td></tr>
+      <tr><td><code>models.rs</code></td><td><code>Task</code>, <code>CreateTask</code>, <code>UpdateTask</code> 구조체</td></tr>
+      <tr><td><code>state.rs</code></td><td>앱 전체가 공유하는 <code>AppState</code></td></tr>
+      <tr><td><code>routes.rs</code></td><td>URL 지도만</td></tr>
+      <tr><td><code>handlers/mod.rs</code></td><td>폴더 안에 무엇이 있는지 선언(<code>pub mod tasks;</code>)</td></tr>
+      <tr><td><code>handlers/tasks.rs</code></td><td>CRUD(Create, Read, Update, Delete) 핸들러 다섯 개</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>models.rs: pub과 UpdateTask</h3>
+<p>구조체를 다른 파일에서 쓰려면 공개해야 해요. 구조체에 <code>pub</code>을 붙여도 필드는 여전히 비공개라서, 필드 하나하나에도 <code>pub</code>을 붙여요. 아래 화면 16~19번째 줄이 새로 추가한 <code>UpdateTask</code>예요.</p>
+<figure>
+  <img src="assets/frame-010309.webp" alt="models.rs. #[derive(Deserialize)] pub struct UpdateTask { pub title: Option&lt;String&gt;, pub done: Option&lt;bool&gt; }">
+  <figcaption>
+    두 필드가 모두 <code>Option</code>이에요. 제목만, 완료 여부만, 둘 다 바꿀 수 있어요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=3789s" target="_blank" rel="noopener">영상 01:03:09에서 보기</a>
+  </figcaption>
+</figure>
+<p>완료 여부만 바꾸고 싶은데 제목까지 보내게 할 수는 없어요. <code>Option</code>이면 "보내지 않음"을 <code>None</code>으로 표현할 수 있어요. 강사는 특별한 경우나 마법 같은 값 없이 정확히 모델링한다고 설명해요.</p>
+<h3>state.rs: Arc와 Mutex</h3>
+<p>강사가 이 프로그램에서 가장 어렵다고 꼽는 파일이에요. <code>use crate::models::Task;</code>의 <code>crate</code>는 이 프로젝트의 뿌리예요. 뿌리에서 <code>models</code> 모듈로 들어가 <code>Task</code>를 꺼낸다는 뜻이에요.</p>
+<p>아래 화면 6~7번째 줄이 공유 상태의 정체예요. <code>tasks</code>는 <code>Arc&lt;Mutex&lt;Vec&lt;Task&gt;&gt;&gt;</code>, <code>next_id</code>는 <code>Arc&lt;Mutex&lt;u32&gt;&gt;</code>이고, 구조체 위에 <code>#[derive(Clone)]</code>이 있어요.</p>
+<figure>
+  <img src="assets/frame-010709.webp" alt="state.rs. use crate::models::Task; use std::sync::{Arc, Mutex}; #[derive(Clone)] pub struct AppState { pub tasks: Arc&lt;Mutex&lt;Vec&lt;Task&gt;&gt;&gt;, pub next_id: Arc&lt;Mutex&lt;u32&gt;&gt; } 그리고 impl AppState의 pub fn new() -&gt; Self">
+  <figcaption>
+    바깥부터 읽으면 "공유되는, 잠긴, 할 일 목록"이에요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=4029s" target="_blank" rel="noopener">영상 01:07:09에서 보기</a>
+  </figcaption>
+</figure>
+<ul>
+  <li><b><span class="term" data-term="Arc" data-en="Atomically Reference Counted" data-desc="여러 곳이 값 하나를 함께 소유하게 해 주는 스마트 포인터예요. 복제하면 데이터는 그대로 두고 참조 카운터만 올라가요." data-g="10">Arc</span></b> — Atomically Reference Counted의 줄임말이에요. 원래 Rust는 값의 주인이 하나뿐인데, Arc는 여러 주인이 값 하나를 안전하게 나눠 갖게 해 줘요. 강사는 "소유권 규칙의 비상구"라고 불러요.</li>
+  <li><b><span class="term" data-term="Mutex" data-en="Mutual exclusion" data-desc="한 번에 한 쪽만 안의 데이터에 손대게 막는 잠금이에요. 동시에 들어오는 요청들이 같은 목록을 고쳐도 서로 엉키지 않아요." data-g="11">Mutex</span></b> — mutual exclusion(상호 배제)이에요. 한 번에 한 쪽만 데이터를 고칠 수 있고, 나머지는 차례를 기다려요.</li>
+  <li><b><code>#[derive(Clone)]</code></b> — Axum이 요청마다 상태를 복제하기 때문에 필요해요. Arc를 복제하면 카운터만 하나 올라가고 실제 데이터는 복사되지 않아서 비용이 거의 없어요.</li>
+</ul>
+<p><code>impl AppState</code> 안의 <code>pub fn new() -&gt; Self</code>가 6장의 시드 데이터를 넣어 상태를 만들어요. 차이는 이게 요청마다가 아니라 서버가 시작할 때 한 번만 만들어진다는 거예요. 그래서 데이터가 남아요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 660 250" role="img" aria-label="시작할 때 AppState를 한 번 만들고, 요청마다 Arc만 복제해 모든 요청이 같은 할 일 목록을 가리킨다">
+    <defs><marker id="arrow-state" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="box" x="10" y="20" width="150" height="56" rx="10"/>
+    <text x="85" y="44" text-anchor="middle">서버 시작</text>
+    <text x="85" y="64" text-anchor="middle" class="mono">AppState::new()</text>
+    <rect class="c1 cell" x="10" y="100" width="150" height="40" rx="8"/>
+    <text x="85" y="125" text-anchor="middle">요청 1 · POST</text>
+    <rect class="c2 cell" x="10" y="150" width="150" height="40" rx="8"/>
+    <text x="85" y="175" text-anchor="middle">요청 2 · GET</text>
+    <rect class="c3 cell" x="10" y="200" width="150" height="40" rx="8"/>
+    <text x="85" y="225" text-anchor="middle">요청 3 · DELETE</text>
+    <rect class="accent" x="230" y="100" width="150" height="140" rx="10"/>
+    <text x="305" y="130" text-anchor="middle">Arc 복제본</text>
+    <text x="305" y="152" text-anchor="middle" class="sub">카운터만 +1</text>
+    <text x="305" y="174" text-anchor="middle" class="sub">데이터 복사 없음</text>
+    <rect class="box ring" x="450" y="80" width="200" height="160" rx="10"/>
+    <text x="550" y="106" text-anchor="middle">Mutex&lt;Vec&lt;Task&gt;&gt;</text>
+    <text x="550" y="126" text-anchor="middle" class="sub">메모리에 하나뿐</text>
+    <rect class="box" x="470" y="140" width="160" height="26" rx="6"/>
+    <text x="550" y="158" text-anchor="middle" class="mono">1 Learn Axum</text>
+    <rect class="box" x="470" y="172" width="160" height="26" rx="6"/>
+    <text x="550" y="190" text-anchor="middle" class="mono">2 Write a script</text>
+    <rect class="box" x="470" y="204" width="160" height="26" rx="6"/>
+    <text x="550" y="222" text-anchor="middle" class="mono">3 Record a video</text>
+    <path class="line" d="M162 120 h64" marker-end="url(#arrow-state)"/>
+    <path class="line" d="M162 170 h64" marker-end="url(#arrow-state)"/>
+    <path class="line" d="M162 220 h64" marker-end="url(#arrow-state)"/>
+    <path class="line" d="M382 170 h64" marker-end="url(#arrow-state)"/>
+    <path class="line" d="M162 48 h400 v28" marker-end="url(#arrow-state)"/>
+    <text x="360" y="40" text-anchor="middle" class="sub">한 번만 만들어요</text>
+  </svg>
+  <figcaption>6장에서는 요청마다 목록을 새로 만들고 버렸어요. 이제는 모든 요청이 같은 목록 하나를 가리켜요. 이 차이가 "기억 상실"을 고쳐요.</figcaption>
+</figure>
+<h3>handlers/mod.rs와 routes.rs</h3>
+<p>폴더는 저절로 모듈이 되지 않아요. <code>handlers/mod.rs</code>에 <code>pub mod tasks;</code> 한 줄을 써서 "여기 공개된 <code>tasks.rs</code>가 있다"고 알려요.</p>
+<p><code>routes.rs</code>에는 URL 지도를 함수 <code>app(state: AppState) -&gt; Router</code> 하나로 옮겨요. 아래 화면 10~13번째 줄을 보면 <code>/tasks/{id}</code> 하나에 GET, DELETE, <span class="term" data-term="PATCH" data-en="HTTP PATCH" data-desc="자원의 일부만 바꾸는 HTTP 메서드예요. 바꿀 필드만 보내면 되니까 받는 구조체 필드를 Option으로 둬요." data-g="12">PATCH</span> 세 메서드가 이어져 있어요.</p>
+<figure>
+  <img src="assets/frame-010909.webp" alt="routes.rs의 fn app(state: AppState) -&gt; Router. Router::new()에 /health get(health), /tasks get(tasks::list).post(tasks::create), /tasks/{id} get(tasks::get_one).delete(tasks::delete).patch(tasks::update)">
+  <figcaption>
+    같은 id 경로에서 읽기, 지우기, 고치기가 메서드로 갈려요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=4149s" target="_blank" rel="noopener">영상 01:09:09에서 보기</a>
+  </figcaption>
+</figure>
+<p>마지막에 <code>.with_state(state)</code>를 붙여요. 아래 화면 14번째 줄이에요. 이걸 부르기 전까지 라우터는 완성되지 않은 상태예요. 상태가 빠졌다는 걸 컴파일러가 알기 때문에 서버를 띄우지 못하게 막아요.</p>
+<figure>
+  <img src="assets/frame-010949.webp" alt="routes.rs 아래쪽. 라우터 체인 끝에 .with_state(state)가 있고, 그 아래 async fn health() -&gt; &amp;'static str가 ok를 돌려준다">
+  <figcaption>
+    <code>with_state</code>를 지우고 실행하면 컴파일 오류가 나요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=4189s" target="_blank" rel="noopener">영상 01:09:49에서 보기</a>
+  </figcaption>
+</figure>
+<h3>main.rs는 네 줄로 읽혀요</h3>
+<p>구조체는 <code>models</code>로, 시드는 <code>state</code>로, 핸들러와 라우팅은 각자 파일로 옮겼어요. <code>main.rs</code>에는 아래 화면처럼 네 단계만 남아요. 11번째 줄에서 상태를 만들고, 13번째 줄에서 앱을 만들고, 15번째 줄에서 포트를 잡고, 20번째 줄에서 서빙해요.</p>
+<figure>
+  <img src="assets/frame-011145.webp" alt="main.rs. #[tokio::main] async fn main() 안에 let state = AppState::new(); let app = routes::app(state); TcpListener::bind(0.0.0.0:3000), println taskr running, axum::serve(listener, app)">
+  <figcaption>
+    강사는 빈칸을 빼면 15줄쯤이고, 한숨에 읽힌다고 해요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=4305s" target="_blank" rel="noopener">영상 01:11:45에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s8">
+  <a class="stamp" href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=4305s" target="_blank" rel="noopener">1:11:45</a>
+  <h2>CRUD 핸들러 다섯 개와 테스트</h2>
+<p>이제 <code>handlers/tasks.rs</code>에 CRUD 핸들러 다섯 개를 써요. 맨 위에서 <code>extract::{Path, State}</code>, <code>http::StatusCode</code>, <code>Json</code>, 그리고 <code>crate::models</code>의 세 구조체와 <code>crate::state::AppState</code>를 가져와요. 모든 핸들러는 첫 인자로 <code>State(state): State&lt;AppState&gt;</code>를 받아요. <code>State</code>는 공유 데이터를 꺼내 주는 추출기예요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>메서드 · 경로</th><th>핸들러</th><th>받는 것</th><th>성공</th><th>실패</th></tr></thead>
+    <tbody>
+      <tr><td>GET <code>/tasks</code></td><td><code>list</code></td><td><code>State</code></td><td>200, 목록 JSON</td><td>—</td></tr>
+      <tr><td>POST <code>/tasks</code></td><td><code>create</code></td><td><code>State</code>, <code>Json&lt;CreateTask&gt;</code></td><td>201, 새 할 일</td><td>—</td></tr>
+      <tr><td>GET <code>/tasks/{id}</code></td><td><code>get_one</code></td><td><code>State</code>, <code>Path&lt;u32&gt;</code></td><td>200, 할 일</td><td>404</td></tr>
+      <tr><td>PATCH <code>/tasks/{id}</code></td><td><code>update</code></td><td><code>State</code>, <code>Path&lt;u32&gt;</code>, <code>Json&lt;UpdateTask&gt;</code></td><td>200, 고친 할 일</td><td>404</td></tr>
+      <tr><td>DELETE <code>/tasks/{id}</code></td><td><code>delete</code></td><td><code>State</code>, <code>Path&lt;u32&gt;</code></td><td>204</td><td>404</td></tr>
+    </tbody>
+  </table>
+</div>
+<h3>create: 잠그고, 번호 매기고, 넣기</h3>
+<p><code>state.tasks.lock().unwrap()</code>으로 잠금을 잡아요. 그 순간부터 잠금이 풀릴 때까지는 이 요청만 데이터를 만져요. <code>next_id</code>도 같은 방식으로 잡아요. 잠금이 돌려주는 건 숫자 자체가 아니라 감싼 가드라서, <code>*next_id</code>처럼 별표를 붙여 안의 <code>u32</code>를 꺼내요.</p>
+<p>아래 화면 24~27번째 줄이 마무리예요. <code>*next_id += 1</code>로 다음 번호를 올리고, 목록에는 <code>task.clone()</code>을 넣고, 원본은 <code>(StatusCode::CREATED, Json(task))</code>로 돌려줘요.</p>
+<figure>
+  <img src="assets/frame-011530.webp" alt="pub async fn create 끝부분. *next_id += 1; (&amp;mut *tasks).push(task.clone()); (StatusCode::CREATED, Json(task))">
+  <figcaption>
+    <code>push(task)</code>로 넣으면 값이 목록으로 옮겨 가서 응답에 쓸 수 없어요. 그래서 복사본을 넣어요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=4530s" target="_blank" rel="noopener">영상 01:15:30에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상 01:13:30 부근에서 강사는 <code>lock()</code>을 두 번 설명해요. 처음엔 "다른 스레드가 잠금을 쥔 채 죽었을 때만 실패한다"고 하고, 이어서 "다른 쪽이 쓰는 중이면 바로 죽는다"고 해요. 공식 문서 기준으로는 첫 설명이 맞아요. 다른 쪽이 쓰는 중이면 <code>lock()</code>은 풀릴 때까지 기다리고, 잠금을 쥔 쪽이 패닉으로 죽어 잠금이 오염됐을 때만 오류를 돌려줘요. <code>unwrap()</code>이 죽는 건 그 경우예요.</p>
+  <p>영상처럼 async 서버에서 표준 라이브러리의 <code>std::sync::Mutex</code>를 쓰는 것도 괜찮아요. Tokio 문서는 잠금을 <code>.await</code> 너머까지 쥐고 있지 않는 한 일반 Mutex가 낫다고 해요. 이 강의의 핸들러는 잠금을 잡은 동안 <code>.await</code>를 하지 않아요.</p>
+  <p class="cite">출처: <a href="https://doc.rust-lang.org/std/sync/struct.Mutex.html" target="_blank" rel="noopener">Rust 표준 라이브러리 — std::sync::Mutex</a> · <a href="https://docs.rs/tokio/latest/tokio/sync/struct.Mutex.html" target="_blank" rel="noopener">Tokio 문서 — Which kind of mutex should you use?</a></p>
+</aside>
+<h3>get_one: 찾아서 복사본 돌려주기</h3>
+<p>6장의 <code>get_task</code>와 거의 같아요. 다른 점은 목록이 공유 상태에 있다는 거예요. 화면 38~42번째 줄처럼 <code>iter().find(...)</code>로 찾고, 공유 목록 속 원본을 내줄 수는 없으니 <code>Json(t.clone())</code>으로 복사본을 감싸요. 새 번호가 필요 없으니 <code>next_id</code>는 잠그지 않아요.</p>
+<figure>
+  <img src="assets/frame-011700.webp" alt="pub async fn get_one. let tasks = state.tasks.lock().unwrap(); tasks.iter().find(|t| t.id == id).map(|t| Json(t.clone())).ok_or(StatusCode::NOT_FOUND)">
+  <figcaption>
+    <code>map(Json)</code>이 <code>map(|t| Json(t.clone()))</code>로 바뀐 게 6장과의 차이예요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=4620s" target="_blank" rel="noopener">영상 01:17:00에서 보기</a>
+  </figcaption>
+</figure>
+<h3>update: 보낸 필드만 덮어쓰기</h3>
+<p>update는 PATCH에 연결해요. PATCH는 데이터의 일부만 바꾸는 방식이라 <code>UpdateTask</code>의 필드가 <code>Option</code>이었어요. 강사는 데이터 전체를 바꾸는 메서드였다면 달랐을 거라고 해요. 인자는 <code>State</code>, <code>Path</code>, <code>Json&lt;UpdateTask&gt;</code> 세 개라서 create와 get_one을 섞은 모양이에요.</p>
+<p>아래 화면 52~55번째 줄에서 두 가지를 봐요. 고칠 거라서 <code>iter()</code> 대신 <code>iter_mut()</code>를 써요. 그리고 <code>ok_or(StatusCode::NOT_FOUND)?</code> 끝의 물음표가 있어요. 57번째 줄부터는 <code>if let Some(title) = payload.title</code>로 제목을 보냈을 때만 바꿔요.</p>
+<figure>
+  <img src="assets/frame-012000.webp" alt="pub async fn update. let mut tasks = state.tasks.lock().unwrap(); let task = tasks.iter_mut().find(|t| t.id == id).ok_or(StatusCode::NOT_FOUND)?; if let Some(title) = payload.title { task.title = title }">
+  <figcaption>
+    <code>?</code> 한 글자가 "못 찾으면 여기서 404로 끝내기"예요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=4800s" target="_blank" rel="noopener">영상 01:20:00에서 보기</a>
+  </figcaption>
+</figure>
+<p><code>?</code> 연산자는 값이 오류면 함수 전체에서 즉시 그 오류를 돌려주고, 정상이면 안을 꺼내 계속 진행해요. 실패 시 일찍 돌아가기를 한 글자로 쓴 셈이에요. 그 아래 <code>done</code>도 같은 방식으로 처리하고, 끝에 <code>Ok(Json(task.clone()))</code>을 돌려줘요.</p>
+<h3>delete: 길이로 성공 판단</h3>
+<p>지우기 전에 <code>let before = tasks.len();</code>로 길이를 재요. 그다음 <code>retain(|t| t.id != id)</code>을 돌려요. <code>retain</code>은 조건이 참인 항목만 남기니까, 요청한 id만 빠져요.</p>
+<figure>
+  <img src="assets/frame-012300.webp" alt="pub async fn delete -&gt; StatusCode. let before = tasks.len(); tasks.retain(|t| t.id != id); if tasks.len() &lt; before { StatusCode::NO_CONTENT } else { StatusCode::NOT_FOUND }">
+  <figcaption>
+    길이가 줄었으면 지운 거라 204, 그대로면 못 찾은 거라 404예요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=4980s" target="_blank" rel="noopener">영상 01:23:00에서 보기</a>
+  </figcaption>
+</figure>
+<p>삭제는 돌려줄 데이터가 없으니 반환 타입이 <code>StatusCode</code> 하나예요. 204 No Content는 실패가 아니라 "성공했고 돌려줄 내용이 없음"이라는 뜻이에요.</p>
+<p>마지막으로 라우터가 <code>list</code>가 없다고 오류를 내서 추가해요. <code>Json(tasks.clone())</code>을 돌려주는 간단한 함수예요. 복사본을 만들고 나면 잠금은 바로 풀려요.</p>
+<h3>요청을 차례로 돌려 보기</h3>
+<p>강사는 미리 만든 HTTP 요청 파일을 위에서부터 하나씩 실행해요. 순서는 이래요.</p>
+<ol class="steps">
+  <li><b>시드 목록 조회</b> — GET <code>/tasks</code>. <span class="done">id 1, 2, 3 세 개와 200 OK</span></li>
+  <li><b>새로 만들기</b> — POST <code>/tasks</code>, 본문 <code>{"title": "ship part two"}</code>. <span class="done">201 Created, id 4</span></li>
+  <li><b>다시 조회</b> — 상태를 공유하니 목록 끝에 4번이 붙어 있어요.</li>
+  <li><b>완료 표시</b> — PATCH <code>/tasks/4</code>, 본문 <code>{"done": true}</code>. <span class="done">제목은 그대로, done만 true</span></li>
+  <li><b>지우기</b> — DELETE <code>/tasks/1</code>. <span class="done">204 No Content</span></li>
+  <li><b>마지막 조회</b> — 1번은 사라지고, 4번은 완료 상태예요.</li>
+</ol>
+<p>아래 화면이 2번 단계의 결과예요. 오른쪽 응답에 <code>HTTP/1.1 201 Created</code>와 <code>"id": 4</code>, <code>"done": false</code>가 보여요. id가 99가 아니라 4인 건 이제 <code>next_id</code>가 번호를 세기 때문이에요.</p>
+<figure>
+  <img src="assets/frame-012445.webp" alt="HTTP 클라이언트. POST http://localhost:3000/tasks, Content-Type application/json 요청의 응답 HTTP/1.1 201 Created, 본문 id 4, title ship part two, done false">
+  <figcaption>
+    시드가 3개였으니 다음 번호 4가 붙었어요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=5085s" target="_blank" rel="noopener">영상 01:24:45에서 보기</a>
+  </figcaption>
+</figure>
+<p>4번 단계의 요청 파일에는 주석이 달려 있어요. PATCH라서 바꿀 필드만 보내고 제목은 건드리지 않는다는 내용이에요. 본문은 <code>"done": true</code> 한 줄뿐이에요.</p>
+<figure>
+  <img src="assets/frame-012512.webp" alt="요청 파일. 주석 PATCH, so we send only the field we're changing. The title is untouched. 아래 PATCH http://localhost:3000/tasks/4, Content-Type application/json, 본문 done true, 그 아래 ### 6. Delete task 1">
+  <figcaption>
+    <code>UpdateTask</code>의 <code>title</code>은 <code>None</code>으로 들어와서 그대로 남아요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=5112s" target="_blank" rel="noopener">영상 01:25:12에서 보기</a>
+  </figcaption>
+</figure>
+<p>그다음 요청이 6번 <code>DELETE /tasks/1</code>과 7번 마지막 조회예요. 아래 응답 칸에는 바로 앞 단계에서 완료로 바뀐 4번 <code>ship part two</code>가 보여요.</p>
+<figure>
+  <img src="assets/frame-012521.webp" alt="요청 파일의 ### 6. Delete task 1 DELETE http://localhost:3000/tasks/1과 ### 7. List one last time GET http://localhost:3000/tasks. 아래 응답 패널에 id 4, title ship part two">
+  <figcaption>
+    요청 사이에 데이터가 남아 있어요. 공유 상태가 제대로 동작한다는 증거예요.
+    <a href="https://www.youtube.com/watch?v=iPNEhKMIqNg&amp;t=5121s" target="_blank" rel="noopener">영상 01:25:21에서 보기</a>
+  </figcaption>
+</figure>
+<h3>무엇을 배웠고, 다음은</h3>
+<p>강사는 정리하며 이렇게 짚어요. 구조체를 만들 줄 알고, 소유권의 기본을 알고, null과 예외 대신 <code>Option</code>과 <code>Result</code>가 있는 이유를 알아요. 라우터는 메서드 호출로 만든 값이고, 핸들러는 그냥 async 함수예요. 원하는 걸 인자 목록에 적으면 되고, 요청이 맞지 않으면 코드는 실행되지 않아요.</p>
+<p>2편에서 다루겠다고 한 주제는 이래요. 상태 코드 대신 제대로 된 에러 타입, 미들웨어와 Tower 생태계, 모든 요청의 구조화된 로깅, 요청 검증, 우아한 종료(graceful shutdown), 메모리 저장소를 실제 데이터베이스로 바꾸기예요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 영어 자막이라 이름이 잘못 받아적힌 곳이 있어요. 화면의 코드와 파일 이름을 기준으로 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>Axom, AXM, XM, Exam</td><td>Axum</td><td></td></tr>
+      <tr><td>Tokyo, io, TOK io</td><td>Tokio</td><td>비동기 런타임</td></tr>
+      <tr><td>sir d, SI, Sergy, S D Z D…</td><td>serde</td><td>직렬화 라이브러리</td></tr>
+      <tr><td>Rust Rover, Rosover</td><td>RustRover</td><td>JetBrains의 Rust IDE</td></tr>
+      <tr><td>rusttop.rs</td><td>rustup.rs</td><td>Rust 설치 도구 rustup의 사이트</td></tr>
+      <tr><td>ROS C</td><td>rustc</td><td>Rust 컴파일러</td></tr>
+      <tr><td>Axom task R, task R, Tasker, Tuscar</td><td>taskr</td><td>강의에서 만드는 프로젝트 이름</td></tr>
+      <tr><td>cargo.l</td><td>Cargo.toml</td><td></td></tr>
+      <tr><td>30,000 (포트)</td><td>3000</td><td></td></tr>
+      <tr><td>print alan, Alan</td><td>println!</td><td></td></tr>
+      <tr><td>map underscore or</td><td>map_or</td><td></td></tr>
+      <tr><td>dot okay_RO</td><td>.ok_or</td><td></td></tr>
+      <tr><td>create models task</td><td>crate::models::Task</td><td>crate는 프로젝트 뿌리 모듈</td></tr>
+      <tr><td>arc mutx</td><td>Arc, Mutex</td><td></td></tr>
+      <tr><td>full CRO route</td><td>full CRUD</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-7"><dt>구조 분해<span class="en">Destructuring</span></dt><dd>&lt;code&gt;Path(id)&lt;/code&gt;처럼 포장 타입을 그 자리에서 벗겨 안쪽 값을 변수로 받는 문법이에요. 함수 안에서 &lt;code&gt;id&lt;/code&gt;는 그냥 숫자가 돼요.</dd></div>
+    <div class="g" id="g-5"><dt>런타임<span class="en">Async runtime</span></dt><dd>멈췄다 이어 가는 async 작업을 실제로 순서를 정해 돌려 주는 실행 엔진이에요. Rust엔 내장돼 있지 않아서 Tokio를 따로 넣어요.</dd></div>
+    <div class="g" id="g-3"><dt>매크로<span class="en">Macro</span></dt><dd>컴파일할 때 코드를 대신 펼쳐 주는 도구예요. 이름 끝의 &lt;code&gt;!&lt;/code&gt;가 표시라서 &lt;code&gt;println!&lt;/code&gt;, &lt;code&gt;vec!&lt;/code&gt;, &lt;code&gt;format!&lt;/code&gt;이 모두 매크로예요.</dd></div>
+    <div class="g" id="g-2"><dt>빌려주는<span class="en">Borrowing</span></dt><dd>&lt;code&gt;&amp;amp;&lt;/code&gt;를 붙여 값을 넘기지 않고 참조만 건네는 방식이에요. 받은 쪽은 들여다보기만 하고, 주인은 그 뒤에도 값을 계속 써요.</dd></div>
+    <div class="g" id="g-1"><dt>소유권<span class="en">Ownership</span></dt><dd>모든 값에 주인이 딱 하나 있다는 Rust의 규칙이에요. 값을 함수에 그냥 넘기면 주인이 바뀌어서 원래 쪽에서는 더 쓸 수 없어요.</dd></div>
+    <div class="g" id="g-9"><dt>시드 데이터<span class="en">Seed data</span></dt><dd>개발 중에 쓰려고 코드에 미리 박아 둔 시작 데이터예요. 데이터베이스 없이도 읽기 기능을 먼저 만들고 시험할 수 있어요.</dd></div>
+    <div class="g" id="g-8"><dt>역직렬화<span class="en">Deserialization</span></dt><dd>JSON 같은 바깥 형식의 데이터를 Rust 구조체로 바꾸는 일이에요. 반대 방향인 구조체 → JSON은 직렬화(Serialize)예요.</dd></div>
+    <div class="g" id="g-6"><dt>추출기<span class="en">Extractor</span></dt><dd>핸들러 인자에 적어 요청의 한 부분(경로, 쿼리, 본문, 공유 상태)을 꺼내 받는 타입이에요. 꺼내기에 실패하면 핸들러를 부르지 않고 Axum이 오류로 답해요.</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g" id="g-10"><dt>Arc<span class="en">Atomically Reference Counted</span></dt><dd>여러 곳이 값 하나를 함께 소유하게 해 주는 스마트 포인터예요. 복제하면 데이터는 그대로 두고 참조 카운터만 올라가요.</dd></div>
+    <div class="g"><dt>CRUD</dt><dd>Create, Read, Update, Delete</dd></div>
+    <div class="g" id="g-4"><dt>Future<span class="en">Future</span></dt><dd>async 함수를 호출했을 때 나오는 &#x27;할 일 설명서&#x27;예요. &lt;code&gt;.await&lt;/code&gt;로 끝까지 돌리기 전에는 아무 일도 일어나지 않아요.</dd></div>
+    <div class="g"><dt>HTTP</dt><dd>HyperText Transfer Protocol</dd></div>
+    <div class="g"><dt>IDE</dt><dd>Integrated Development Environment</dd></div>
+    <div class="g"><dt>JSON</dt><dd>JavaScript Object Notation</dd></div>
+    <div class="g" id="g-11"><dt>Mutex<span class="en">Mutual exclusion</span></dt><dd>한 번에 한 쪽만 안의 데이터에 손대게 막는 잠금이에요. 동시에 들어오는 요청들이 같은 목록을 고쳐도 서로 엉키지 않아요.</dd></div>
+    <div class="g" id="g-12"><dt>PATCH<span class="en">HTTP PATCH</span></dt><dd>자원의 일부만 바꾸는 HTTP 메서드예요. 바꿀 필드만 보내면 되니까 받는 구조체 필드를 Option으로 둬요.</dd></div>
+    <div class="g"><dt>REST</dt><dd>Representational State Transfer</dd></div>
+    <div class="g"><dt>URL</dt><dd>Uniform Resource Locator</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=iPNEhKMIqNg" target="_blank" rel="noopener">원본 영상 — Codynn, Learn Axum in 2026: Rust REST API for Beginners</a></li>
+    <li id="src-2"><a href="https://crates.io/crates/axum" target="_blank" rel="noopener">crates.io — axum</a></li>
+    <li id="src-3"><a href="https://github.com/tokio-rs/axum/blob/main/axum/CHANGELOG.md" target="_blank" rel="noopener">axum CHANGELOG (0.8 경로 문법 변경)</a></li>
+    <li id="src-4"><a href="https://github.com/tokio-rs/axum/blob/axum-v0.8.9/axum/src/extract/rejection.rs" target="_blank" rel="noopener">axum 0.8.9 소스 — extract/rejection.rs</a></li>
+    <li id="src-5"><a href="https://docs.rs/axum/latest/axum/struct.Json.html" target="_blank" rel="noopener">docs.rs — axum::Json</a></li>
+    <li id="src-6"><a href="https://doc.rust-lang.org/std/sync/struct.Mutex.html" target="_blank" rel="noopener">Rust 표준 라이브러리 — std::sync::Mutex</a></li>
+    <li id="src-7"><a href="https://docs.rs/tokio/latest/tokio/sync/struct.Mutex.html" target="_blank" rel="noopener">Tokio 문서 — tokio::sync::Mutex</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 4일에 이 영상을 보고 정리했어요. 원본은 Codynn 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

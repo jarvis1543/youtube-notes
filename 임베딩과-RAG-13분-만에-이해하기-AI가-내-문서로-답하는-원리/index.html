@@ -1,0 +1,925 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>임베딩과 RAG, 13분 만에 이해하기</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>임베딩과 RAG, 13분 만에 이해하기</h1>
+  <p class="lede">AI가 내 문서로 답하는 원리와, 틀릴 때 어디부터 볼지 짚어요</p>
+  <div class="meta">
+    <span>단테</span><span class="dot">·</span>
+    <span>영상 13:10</span><span class="dot">·</span>
+    <span>읽는 데 약 14분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=iI1k9-VzQMY" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>보통 검색은 글자를 맞춰 봐서 '강아지 사료'로 '반려견이 먹을 밥'을 못 찾아요. <span class="term" data-term="임베딩" data-en="Embedding" data-desc="문장을 숫자 목록(벡터)으로 바꿔 숫자 공간의 한 점으로 놓는 방법이에요. 뜻이 비슷한 문장일수록 가까운 점이 돼서, 글자가 달라도 찾을 수 있어요." data-g="1">임베딩</span>은 뜻을 비교하니 찾을 수 있어요.</li>
+    <li>임베딩은 반대말이나 숫자만 다른 문장을 잘 못 가려요. 그래서 현업에서는 글자 검색과 섞는 <span class="term" data-term="하이브리드 검색" data-en="Hybrid search" data-desc="임베딩으로 뜻을 찾는 검색과 글자를 맞춰 보는 검색을 함께 돌려 결과를 합치는 방식이에요. 정확한 이름이나 숫자처럼 임베딩이 약한 부분을 메워요." data-g="4">하이브리드 검색</span>을 써요.</li>
+    <li>RAG(Retrieval-Augmented Generation)는 준비(문서를 <span class="term" data-term="청크" data-en="Chunk" data-desc="RAG에서 문서를 작게 잘라 둔 조각이에요. 조각마다 벡터를 만들어 두고, 질문과 가까운 조각만 골라 LLM에게 넘겨요." data-g="7">청크</span>로 잘라 벡터로 저장)는 한 번, 검색과 생성은 질문마다 해요.</li>
+    <li>쿠버네티스 문서 155개로 돌려 보니, 답이 문서에 있는데도 '모른다'고 했어요. 정답 청크가 12위라 상위 4개에 못 들었어요.</li>
+    <li>그래서 RAG가 틀리면 LLM(Large Language Model)보다 먼저, 정답 청크가 검색에서 몇 위였는지부터 봐요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">글자 검색은 왜 뜻을 못 찾을까요</a></li>
+    <li><a href="#s2">직접 재 본 유사도와 임베딩의 약점</a></li>
+    <li><a href="#s3">RAG = 찾아서, 붙이고, 답하기</a></li>
+    <li><a href="#s4">실제 문서로 돌려 본 RAG와 틀리는 순간</a></li>
+    <li><a href="#s5">고치는 방법과 정리</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>글자 검색은 왜 뜻을 못 찾을까요</h2>
+<p>영상은 두 가지 실패로 시작해요. 쇼핑몰 검색창에 '강아지 사료'를 치면 위의 두 글은 나오지만, 회색으로 처리된 '반려견이 먹을 밥, 이렇게 골라요'는 빠져요. 뜻은 같은데 안 나오는 거예요. 다른 하나는 AI(Artificial Intelligence)에게 회사 휴가 규정을 물으면 모르거나 지어낸다는 문제예요. 앞의 것은 임베딩이, 뒤의 것은 RAG가 풀어요.</p>
+<figure>
+  <img src="assets/frame-0008.webp" alt="'강아지 사료' 검색 결과에 '강아지 사료 추천 TOP 5'와 '사료 고르는 법 총정리'만 나오고 '반려견이 먹을 밥' 글은 흐리게 빠진 화면">
+  <figcaption>
+    아래에 '뜻은 같은데 안 나와요'라고 적혀 있어요. 이 문서 전체가 이 한 줄을 푸는 이야기예요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=8s" target="_blank" rel="noopener">영상 00:08에서 보기</a>
+  </figcaption>
+</figure>
+<p>두 기술은 사내 챗봇, 상품 검색과 추천, 고객센터 AI에 많이 쓰여요. 오른쪽 막대가 애플 뮤직 사례예요. 기존 검색에 임베딩 검색을 더했더니, 검색 결과가 하나도 안 나오는 경우가 86% 줄었어요. 슬라이드 아래에 출처로 arXiv 논문 번호가 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0040.webp" alt="내 문서 챗봇, 상품 검색·추천, 고객센터 AI 카드 세 장 옆에 Apple Music 검색 결과 0건 비율이 전후로 86% 줄어든 막대">
+  <figcaption>
+    '결과 0건'은 사용자가 그대로 떠나는 순간이라, 이 숫자가 줄면 바로 체감돼요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=40s" target="_blank" rel="noopener">영상 00:40에서 보기</a>
+  </figcaption>
+</figure>
+<h3>보통 검색은 글자를 맞춰 봐요</h3>
+<p>왜 못 찾았는지는 노란 강조를 보면 바로 보여요. '강아지 사료 추천 TOP 5'는 검색어의 '강아지'와 '사료' 두 글자가 그대로 들어 있어서 걸려요. '반려견이 먹을 밥 뭐가 좋아?'는 겹치는 글자가 하나도 없어서 못 찾고요.</p>
+<figure>
+  <img src="assets/frame-0112.webp" alt="검색어 '강아지 사료' 아래에 '강아지 사료 추천 TOP 5'는 두 단어가 노랗게 강조되고 '반려견이 먹을 밥 뭐가 좋아?'는 강조 없이 놓인 슬라이드">
+  <figcaption>
+    글자 맞추기 검색은 뜻이 같아도 글자가 다르면 놓쳐요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=72s" target="_blank" rel="noopener">영상 01:12에서 보기</a>
+  </figcaption>
+</figure>
+<h3>임베딩: 문장을 숫자로 바꿔요</h3>
+<p>그럼 글자 말고 뜻을 비교하면 돼요. 컴퓨터가 뜻을 비교할 수 있게 문장을 숫자로 바꾸는 방법이 임베딩이에요. 슬라이드에서 '강아지 사료 추천해 줘'가 임베딩 모델(bge-m3)을 지나면 오른쪽처럼 0.021, -0.113… 같은 숫자 목록이 돼요. 이 모델은 문장마다 숫자 1,024개를 만들고, 이렇게 숫자를 줄지어 놓은 목록을 벡터라고 불러요.</p>
+<figure>
+  <img src="assets/frame-0144.webp" alt="'강아지 사료 추천해 줘' 문장이 bge-m3 임베딩 모델을 거쳐 숫자 목록이 되고, 아래에 '숫자 1024개'와 '벡터' 라벨이 붙은 슬라이드">
+  <figcaption>
+    '임베딩'은 영어 단어를 그대로 읽은 말로, 문장을 숫자 공간 속 한 점으로 끼워 넣는다는 뜻이에요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=104s" target="_blank" rel="noopener">영상 01:44에서 보기</a>
+  </figcaption>
+</figure>
+<p>벡터는 지도 위 좌표로 생각하면 쉬워요. 1,024개 숫자는 그릴 수 없으니, 영상은 두 개로 줄여서 지도에 찍어요(PCA(Principal Component Analysis)로 줄였다고 화면 왼쪽 아래에 적혀 있어요). 왼쪽 점선 원에는 강아지 사료, 반려견 밥, 고양이 간식 문장이, 오른쪽 원에는 기준금리, 예금 상품, 주택담보대출 금리 문장이 모여 있어요. 그림이 아니라 실제로 계산한 위치예요.</p>
+<figure>
+  <img src="assets/frame-0200.webp" alt="문장 여섯 개를 2차원 지도에 찍은 그림. 왼쪽에 반려동물 무리 세 점, 오른쪽에 금리 무리 세 점이 점선 원으로 묶여 있어요">
+  <figcaption>
+    뜻이 비슷하면 가까이, 다르면 멀리. 임베딩이 하는 일은 이게 전부예요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=120s" target="_blank" rel="noopener">영상 02:00에서 보기</a>
+  </figcaption>
+</figure>
+<h3>가까운 정도는 각도로 재요</h3>
+<p>두 문장이 얼마나 가까운지는 원점에서 뻗은 두 화살표 사이 각도로 재요. 이게 <span class="term" data-term="코사인 유사도" data-en="Cosine similarity" data-desc="두 벡터가 가리키는 방향이 얼마나 같은지를 각도로 잰 값이에요. 같은 방향이면 1, 직각이면 0, 반대면 -1이고, 길이를 1로 맞춰 두면 두 벡터를 곱한 값과 같아요." data-g="2">코사인 유사도</span>예요. 오른쪽 막대처럼 같은 방향이면 1(비슷), 직각이면 0(상관없음), 반대 방향이면 -1(반대)이에요. 1에 가까울수록 뜻이 비슷한 문장이에요.</p>
+<figure>
+  <img src="assets/frame-0216.webp" alt="원점에서 뻗은 화살표 두 개와, -1 반대·0 상관없음·1 비슷으로 이어진 코사인 유사도 막대">
+  <figcaption>
+    화살표 길이는 상관없고 방향만 봐요. 그래서 뒤에서 길이를 1로 맞추는 옵션이 나와요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=136s" target="_blank" rel="noopener">영상 02:16에서 보기</a>
+  </figcaption>
+</figure>
+<p>모델이 뜻을 어떻게 알게 됐는지는 이 슬라이드가 보여 줘요. 'Q 강아지 사료 추천?'과 'A 이 사료가 인기예요'처럼 질문과 그 답은 짝이라 가까이 당기고, 짝이 아닌 문장은 멀리 밀어요. 이걸 아주 많은 문장 짝으로 반복하면 뜻이 같은 문장끼리 모이는 지도가 만들어져요. 이 방법을 <span class="term" data-term="대조 학습" data-en="Contrastive learning" data-desc="짝이 맞는 문장은 가까이 당기고 짝이 아닌 문장은 멀리 미는 연습을 반복해서 모델을 가르치는 방법이에요. 임베딩 지도의 거리가 여기서 생겨요." data-g="3">대조 학습</span>이라고 해요.</p>
+<figure>
+  <img src="assets/frame-0237.webp" alt="Q 강아지 사료 추천?과 A 이 사료가 인기예요, Q 금리 올랐어?와 A 기준금리 3% 인상 같은 질문·답 짝이 나란히 놓이고 '짝은 당기고, 짝이 아니면 밀고'라고 적힌 슬라이드">
+  <figcaption>
+    짝이 맞는 문장끼리 붙어 있어요. 지도의 '거리'는 이 연습에서 생겨요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=157s" target="_blank" rel="noopener">영상 02:37에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=158s" target="_blank" rel="noopener">02:38</a>
+  <h2>직접 재 본 유사도와 임베딩의 약점</h2>
+<p>이제 진짜로 재 봐요. 영상은 문장 여섯 개를 숫자로 바꾸고 서로 얼마나 비슷한지 재는 짧은 파이썬 코드(heatmap.py)를 보여 줘요. 코드는 세 부분이에요. 문장 파일을 읽어 한 줄에 한 문장씩 목록을 만들고, bge-m3 모델로 문장마다 숫자 1,024개를 만들고(<code>normalize_embeddings=True</code>로 화살표 길이를 1로 맞춰요), 마지막에 벡터끼리 곱해요. 아래 화면은 그 마지막 부분이에요.</p>
+<figure>
+  <img src="assets/frame-0310.webp" alt="heatmap.py 코드 중 scores = vecs @ vecs.T 와 print(scores[0].round(2)) 줄이 노란 상자로 강조되고, 아래에 '모든 짝의 점수표, 길이가 1이라 곱한 값 = 코사인 유사도 → 6×6 표'라고 적힌 화면">
+  <figcaption>
+    길이를 1로 맞춰 두면 곱셈 한 번이 곧 코사인 유사도예요. 모든 짝을 한 번에 곱해 6×6 표를 만들어요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=190s" target="_blank" rel="noopener">영상 03:10에서 보기</a>
+  </figcaption>
+</figure>
+<p>터미널에서 실행하면 <code>(6, 1024)</code>가 먼저 찍혀요. 문장 6개, 문장마다 숫자 1,024개라는 뜻이에요. 그 아래 노란 줄이 첫 문장 '강아지 사료 추천해 줘'와 나머지의 점수예요. 자기 자신은 1, '반려견이 먹을 밥'은 0.73, 고양이 간식은 0.69, 금리 문장 셋은 0.45, 0.46, 0.4예요.</p>
+<figure>
+  <img src="assets/frame-0334.webp" alt="터미널에 uv run python a3/heatmap.py 실행 결과로 (6, 1024)와 [1. 0.73 0.69 0.45 0.46 0.4 ] 줄이 노랗게 강조된 화면">
+  <figcaption>
+    겹치는 글자가 하나도 없는 '반려견이 먹을 밥'이 가장 가깝다고 나왔어요. 글자 검색이 놓친 글을 이제 찾아요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=214s" target="_blank" rel="noopener">영상 03:34에서 보기</a>
+  </figcaption>
+</figure>
+<p>표 전체를 색 진하기로 칠한 그림이 히트맵이에요. 대각선의 1.00은 자기 자신이에요. 왼쪽 위 3×3(반려동물 문장끼리)은 0.69~0.73으로 붉고, 오른쪽 아래 3×3(금리 문장끼리)은 0.52~0.58로 노란 테두리가 쳐져 있어요. 두 무리 사이 칸은 0.30~0.46으로 옅어요.</p>
+<figure>
+  <img src="assets/frame-0350.webp" alt="문장 여섯 개의 코사인 유사도를 6×6 칸에 색 진하기로 칠한 히트맵. 반려동물 세 문장과 금리 세 문장이 두 덩어리로 갈려 있어요">
+  <figcaption>
+    색만 봐도 두 덩어리로 갈려요. 앞의 지도에서 본 두 무리가 숫자로도 확인돼요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=230s" target="_blank" rel="noopener">영상 03:50에서 보기</a>
+  </figcaption>
+</figure>
+<h3>임베딩도 헷갈려요</h3>
+<p>그럼 임베딩은 늘 믿을 만할까요? 영상은 헷갈리기 쉬운 문장 짝 다섯 개를 재요(probe.py). 위 두 줄이 강조돼 있는데, 뜻이 다른 '배가 아파서…'와 '배를 타고…'가 0.71로, 뜻이 같은 '복통이 심해서…'(0.66)보다 높아요.</p>
+<figure>
+  <img src="assets/frame-0406.webp" alt="probe.py 실행 결과. 같은 단어 다른 뜻 0.71, 다른 단어 같은 뜻 0.66, 한국어·영어 0.87, 반대말 0.75, 숫자만 다름 0.84가 문장 짝과 함께 찍힌 터미널">
+  <figcaption>
+    같은 글자 '배'에 끌렸어요. 임베딩도 글자 모양에서 완전히 자유롭지 않아요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=246s" target="_blank" rel="noopener">영상 04:06에서 보기</a>
+  </figcaption>
+</figure>
+<p>다섯 짝을 표로 옮기면 이래요. 숫자가 높을수록 모델이 '가깝다'고 본 거예요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>짝의 종류</th><th>문장 짝</th><th>점수</th><th>맞게 본 걸까요</th></tr></thead>
+    <tbody>
+      <tr><td>같은 단어, 다른 뜻</td><td>배가 아파서 병원에 갔다 ↔ 배를 타고 섬에 갔다</td><td>0.71</td><td>아니요. 너무 높아요</td></tr>
+      <tr><td>다른 단어, 같은 뜻</td><td>배가 아파서 병원에 갔다 ↔ 복통이 심해서 진료를 받았다</td><td>0.66</td><td>아니요. 위 짝보다 낮아요</td></tr>
+      <tr><td>반대말</td><td>이 영화는 정말 재미있다 ↔ 이 영화는 정말 재미없다</td><td>0.75</td><td>아니요. 반대 뜻인데 높아요</td></tr>
+      <tr><td>숫자만 다름</td><td>기준금리가 3%로 올랐다 ↔ 기준금리가 5%로 올랐다</td><td>0.84</td><td>아니요. 숫자를 못 가려요</td></tr>
+      <tr><td>한국어 · 영어</td><td>강아지에게 줄 사료를 찾고 있어요 ↔ I'm looking for food for my puppy</td><td>0.87</td><td>네. 언어가 달라도 뜻이 같으면 가까워요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>정리하면 임베딩은 문장 모양이 비슷하면 가깝게 봐서 반대말과 숫자를 잘 못 가려요. 대신 언어가 달라도 뜻이 같으면 한 지도에 모여요.</p>
+<h3>그래서 섞어 써요</h3>
+<p>현업에서는 임베딩만 믿지 않아요. 슬라이드처럼 질문('기준금리 3%')을 위쪽 뜻 검색(임베딩, 비슷한 뜻)과 아래쪽 글자 검색(정확한 이름, 숫자)에 동시에 보내고, 오른쪽에서 두 목록의 좋은 점을 합쳐 하나의 결과로 만들어요. 이렇게 섞는 걸 하이브리드 검색이라고 해요.</p>
+<figure>
+  <img src="assets/frame-0444.webp" alt="질문 '기준금리 3%'가 뜻 검색과 글자 검색 두 갈래로 나뉘었다가 '하나로 합친 결과'로 모이는 하이브리드 검색 슬라이드">
+  <figcaption>
+    '3%'와 '5%'를 헷갈리는 임베딩의 약점을 글자 검색이 메워요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=284s" target="_blank" rel="noopener">영상 04:44에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상에서 쓴 bge-m3는 BAAI(Beijing Academy of Artificial Intelligence)가 공개한 모델이에요. 모델 카드에 따르면 벡터 길이는 1,024이고 100개가 넘는 언어를 지원해서, 한국어와 영어 문장이 0.87로 가깝게 나온 것과 맞아떨어져요. 이 모델은 뜻을 담은 벡터(dense)뿐 아니라 단어별 가중치(sparse)도 함께 뽑을 수 있어서, 모델 하나로 하이브리드 검색의 두 갈래를 다 만들 수도 있어요. 입력은 최대 8,192 토큰까지 받아요.</p>
+  <p class="cite">출처: <a href="https://huggingface.co/BAAI/bge-m3" target="_blank" rel="noopener">BAAI/bge-m3 모델 카드 (Hugging Face)</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=296s" target="_blank" rel="noopener">04:56</a>
+  <h2>RAG = 찾아서, 붙이고, 답하기</h2>
+<p>두 번째 문제, AI가 내 문서를 모르는 문제로 넘어가요. 영상은 AI에게 '애플 뮤직 검색 팀이 2026년 논문에서 빈 결과를 얼마나 줄였나'를 묻는 코드(ask.py)를 두 번 돌려요. 터미널 첫 번째 결과는 문서 없이 질문만 보낸 것이라 '확인할 수 없다'고 답해요. 맨 아래 노란 줄은 <code>--doc</code> 옵션으로 문서 한 줄을 같이 보낸 결과인데, 이번엔 86%라고 정확히 답해요.</p>
+<figure>
+  <img src="assets/frame-0536.webp" alt="터미널에 ask.py를 문서 없이 실행해 확인할 수 없다는 답이 나오고, --doc 옵션으로 다시 실행해 '86% 줄였다'는 답이 노랗게 강조된 화면">
+  <figcaption>
+    모델이 똑똑해진 게 아니라, 답이 든 글을 같이 줬기 때문이에요. 보낸 토큰도 58개에서 165개로 늘었어요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=336s" target="_blank" rel="noopener">영상 05:36에서 보기</a>
+  </figcaption>
+</figure>
+<h3>LLM은 왜 내 문서를 모를까요</h3>
+<p>챗GPT나 클로드 같은 AI를 LLM이라고 불러요. 슬라이드 가운데 '공부한 글' 카드에 '공부 마감일' 도장이 찍혀 있어요. LLM은 정해진 날짜까지 모은 글로 공부를 끝낸 모델이라, 오른쪽 두 카드처럼 그 뒤에 생긴 일과 공개된 적 없는 내 문서는 몰라요. 모르는 걸 물으면 모른다고 하거나 그럴듯하게 지어내는데, 이렇게 지어낸 답을 <span class="term" data-term="환각" data-en="Hallucination" data-desc="LLM이 모르는 내용을 그럴듯하게 지어내서 답하는 현상이에요. 학습하지 않은 최신 정보나 내 문서를 물을 때 잘 생겨요." data-g="5">환각</span>이라고 해요.</p>
+<figure>
+  <img src="assets/frame-0600.webp" alt="LLM 카드 옆에 '공부 마감일' 도장이 찍힌 '공부한 글' 카드와, '그 뒤에 생긴 일 ×모름', '공개 안 된 내 문서 ×모름' 카드 두 장">
+  <figcaption>
+    모르는 이유는 두 가지예요. 시간(마감일 뒤)과 공개 여부(내 문서)예요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=360s" target="_blank" rel="noopener">영상 06:00에서 보기</a>
+  </figcaption>
+</figure>
+<h3>찾아서, 붙이고, 답하기</h3>
+<p>그럼 문서를 전부 붙이면 될까요? 몇 장이면 괜찮지만 수천 개면 한 번에 넣을 수 없어요. 넣을 수 있는 양에 한도가 있고, 많이 넣을수록 비용도 늘어요. 그래서 질문에 맞는 부분만 골라 붙여요. 슬라이드의 세 칸이 RAG라는 이름의 세 단어와 그대로 짝지어져 있어요. Retrieval은 찾기, Augmented는 붙이기, Generation은 답하기예요. 우리말로는 검색 증강 생성, 찾은 자료로 보강해서 답을 만든다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0632.webp" alt="'RAG = 검색 증강 생성' 제목 아래 Retrieval 찾기, Augmented 붙이기, Generation 답하기 세 칸이 화살표로 이어진 슬라이드">
+  <figcaption>
+    이름 자체가 순서예요. 이 세 칸만 기억해도 RAG 구조가 머리에 남아요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=392s" target="_blank" rel="noopener">영상 06:32에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상은 오픈북 시험에 비유해요. 왼쪽 '외워서 푸는 시험'은 모르는 문제(문제 7)를 비워 두거나 지어내요. 오른쪽 '오픈북 시험'은 맞는 쪽을 찾아 보고 쓰고, 답 옆에 p.42처럼 본 쪽을 적어요. RAG는 AI가 책을 들고 시험장에 들어가게 해 주고, 몇 쪽을 보고 썼는지 적게 해서 사람이 확인할 수 있게 해요.</p>
+<figure>
+  <img src="assets/frame-0656.webp" alt="'외워서 푸는 시험'은 물음표와 함께 흐리게, '오픈북 시험'은 p.42 책 표시와 함께 밝게 놓인 두 카드와 'RAG = 책을 들고 시험장에' 문구">
+  <figcaption>
+    핵심은 쪽수 표시예요. 출처 번호가 있어야 사람이 답을 검증할 수 있어요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=416s" target="_blank" rel="noopener">영상 06:56에서 보기</a>
+  </figcaption>
+</figure>
+<p>내 문서를 모델에게 다시 공부시키는 <span class="term" data-term="파인튜닝" data-en="Fine-tuning" data-desc="이미 학습된 모델을 내 데이터로 다시 학습시키는 미세 조정이에요. 문서가 바뀔 때마다 다시 해야 해서 자주 바뀌는 문서에는 부담이 커요." data-g="6">파인튜닝</span>도 있어요. 왼쪽 분홍 카드처럼 문서가 바뀌면 다시 공부시켜야 해서, 바뀔 때마다 시간과 비용이 들어요. 오른쪽 초록 카드의 RAG는 자료만 바꿔 끼우면 끝나요. 그래서 자주 바뀌는 문서에는 보통 RAG를 먼저 써요.</p>
+<figure>
+  <img src="assets/frame-0716.webp" alt="'파인튜닝: 문서가 바뀌면 다시 공부, 바뀔 때마다 시간과 비용' 분홍 카드와 'RAG: 자료만 바꿔 끼우면 끝, 자주 바뀌는 문서에 먼저 쓰는 방법' 초록 카드">
+  <figcaption>
+    둘 중 하나만 고르는 문제는 아니에요. 영상은 '자주 바뀌는 문서'라는 조건에서 RAG를 먼저 권해요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=436s" target="_blank" rel="noopener">영상 07:16에서 보기</a>
+  </figcaption>
+</figure>
+<h3>RAG는 이렇게 움직여요</h3>
+<p>영상은 RAG를 두 부분으로 나눠 그려요. 질문이 오기 전에 한 번 해 두는 준비, 그리고 질문이 올 때마다 하는 일이에요. 여러 장의 슬라이드에 걸쳐 나온 흐름을 한 장으로 모으면 이래요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  subgraph P["① 준비 (한 번)"]
+    D["문서 불러오기"] --> C["청크로 자르기"] --> E1["청크마다 임베딩"] --> DB[("벡터 데이터베이스")]
+  end
+  subgraph Q["② 질문마다"]
+    QQ["질문"] --> E2["같은 임베딩으로 벡터"] --> R["가까운 청크 몇 개 꺼내기 (검색)"] --> G["번호 붙여 LLM에 보내기"] --> A["출처 번호 달린 답 (생성)"]
+  end
+  DB -.-> R
+</pre>
+  <figcaption>준비는 한 번, 검색과 생성은 질문마다예요. RAG는 앞에서 본 임베딩 검색 끝에 생성 한 단계를 더한 거예요.</figcaption>
+</figure>
+<p>준비 단계 슬라이드를 보면 '문서 불러오기' 뒤의 가위 표시에서 문서가 여러 장의 카드로 잘리고, 카드마다 0.02, -0.11… 같은 숫자 줄이 붙은 뒤 오른쪽 '벡터 저장'으로 들어가요. 잘라 둔 조각 하나를 청크, 자르는 일을 청킹이라고 해요.</p>
+<figure>
+  <img src="assets/frame-0734.webp" alt="① 준비 단계: 문서 불러오기 → 가위로 잘린 카드 여러 장 → 카드마다 숫자 줄 → 벡터 저장 상자로 이어진 슬라이드. 아래 ② 질문마다 줄은 흐리게 보여요">
+  <figcaption>
+    이 단계는 질문이 오기 전에 한 번만 해 둬요. 아래 흐린 줄이 다음에 볼 '질문마다' 부분이에요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=454s" target="_blank" rel="noopener">영상 07:34에서 보기</a>
+  </figcaption>
+</figure>
+<p>왜 자를까요? 영상은 두꺼운 책을 통째로 들고 다니는 대신 메모 카드에 나눠 적는 것과 같다고 해요. 왼쪽처럼 책 전체를 벡터 하나로 만들면 여러 이야기가 섞여 '흐린 점'이 돼요. 오른쪽처럼 카드 여섯 장으로 나누면 카드마다 점이 하나씩 생기고, 질문에 맞는 카드(여기서는 카드 5)만 골라 붙일 수 있어요. 이 벡터들을 저장해 두고 가까운 것을 빨리 찾아 주는 저장소를 <span class="term" data-term="벡터 데이터베이스" data-en="Vector database" data-desc="벡터를 저장해 두고 주어진 벡터와 가까운 것을 빨리 찾아 주는 저장소예요. RAG의 준비 단계에서 만든 청크 벡터가 여기 들어가요." data-g="8">벡터 데이터베이스</span>라고 해요.</p>
+<figure>
+  <img src="assets/frame-0753.webp" alt="왼쪽에 '두꺼운 책 통째로'와 '여러 이야기가 섞인 흐린 점', 오른쪽에 카드 1~6과 각각의 점, 카드 5만 밝게 표시되고 '질문에 맞는 카드만 골라 붙이기'라고 적힌 슬라이드">
+  <figcaption>
+    문서 하나를 벡터 하나로 만들면 무엇에 대한 문서인지가 흐려져요. 잘게 나눠야 질문과 맞는 부분이 또렷해져요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=473s" target="_blank" rel="noopener">영상 07:53에서 보기</a>
+  </figcaption>
+</figure>
+<p>질문이 오면 질문도 같은 임베딩으로 벡터로 바꾸고, 지도에서 가장 가까운 청크 몇 개를 꺼내요(검색). 슬라이드에서 질문 점 주변의 노란 점 네 개가 [1]~[4] 청크로 뽑혀 LLM에게 가요. LLM에게는 '아래 자료만 보고 답하고 근거 번호를 달라'고 보내고, LLM은 '[1][2]'처럼 출처 번호가 달린 답을 써요(생성).</p>
+<figure>
+  <img src="assets/frame-0828.webp" alt="② 질문마다: 질문 벡터 주변의 가까운 점 네 개가 [1]~[4] 청크로 뽑혀 LLM으로 가고, '답: …를 함께 써요 [1][2]'가 나오는 슬라이드. 아래에 '× 나머지 청크는 LLM이 못 봄'과 '준비 = 한 번 · 검색 + 생성 = 질문마다'">
+  <figcaption>
+    왼쪽 아래 '나머지 청크는 LLM이 못 봄'이 뒤에서 볼 실패의 복선이에요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=508s" target="_blank" rel="noopener">영상 08:28에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=511s" target="_blank" rel="noopener">08:31</a>
+  <h2>실제 문서로 돌려 본 RAG와 틀리는 순간</h2>
+<p>이제 실제 문서로 돌려요. 자료는 쿠버네티스 공식 문서의 한국어 번역이에요. 쿠버네티스는 서버 프로그램을 운영하는 도구인데, 그중 개념 설명 문서 155개, 1,103,975자를 썼어요. 500자 안팎으로 잘라 청크 3,033개를 만들어 뒀고요. 사람이 다 읽고 답하기는 어려운 양이에요.</p>
+<figure>
+  <img src="assets/frame-0851.webp" alt="'실제 자료 · 쿠버네티스 공식 문서' 제목 아래 155 개념 문서, 1,103,975 글자, 3,033 청크(500자 안팎) 세 숫자가 크게 적힌 슬라이드">
+  <figcaption>
+    문서 155개가 청크 3,033개가 됐어요. 문서 하나가 평균 스무 개쯤으로 쪼개진 셈이에요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=531s" target="_blank" rel="noopener">영상 08:51에서 보기</a>
+  </figcaption>
+</figure>
+<p>RAG 코드(rag.py)는 40줄이 안 돼요. 노란 상자의 18~20줄이 검색이에요. 질문을 벡터로 바꾸고(<code>embed.encode</code>), 미리 만든 청크 벡터 3,033개와 한꺼번에 곱해(<code>vecs @ q</code>) 점수가 높은 순서로 <code>k=4</code>개를 꺼내요. 그 아래 25줄은 꺼낸 청크에 1번부터 번호와 문서 제목을 달아 한 글로 이어 붙이고, 26~28줄은 지시문과 함께 LLM에게 보내요.</p>
+<figure>
+  <img src="assets/frame-0911.webp" alt="rag.py 코드에서 def retrieve(question, k=4) 함수 세 줄이 노란 상자로 강조되고, 아래 answer 함수에 청크 번호 붙이기와 프롬프트, LLM 호출이 보이는 화면. 하단에 '① 검색 질문 → 벡터 → 청크 3,033개와 곱해 점수 높은 4개'">
+  <figcaption>
+    프롬프트에는 '아래 자료만 보고 답하세요. 문장 끝에 근거 번호를 붙이세요. 자료에 없으면 모른다고 답하세요'가 들어가요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=551s" target="_blank" rel="noopener">영상 09:11에서 보기</a>
+  </figcaption>
+</figure>
+<p>첫 질문은 '파드 안의 컨테이너들은 무엇을 함께 쓰나요?'예요. 파드는 쿠버네티스에서 프로그램을 묶어 돌리는 단위예요. 답은 네트워크, 공유 네임스페이스, 공유 파일 시스템 볼륨을 함께 쓴다는 내용이고, 문장 끝마다 [4][1], [2], [3] 같은 번호가 붙어요. 아래 [1]~[4] 출처는 전부 파드 문서(<code>k8s/ko/workloads/pods/_index.md</code>)예요.</p>
+<figure>
+  <img src="assets/frame-0941.webp" alt="rag.py 실행 결과. 파드 안의 컨테이너들이 네트워크, 공유 네임스페이스, 공유 파일 시스템 볼륨을 함께 쓴다는 답에 [4][1], [2], [3] 번호가 붙고, 아래에 [1]~[4] 모두 파드 문서 경로가 출처로 찍힌 터미널">
+  <figcaption>
+    잘 된 경우예요. 답의 문장마다 어느 청크를 봤는지 따라갈 수 있어요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=581s" target="_blank" rel="noopener">영상 09:41에서 보기</a>
+  </figcaption>
+</figure>
+<h3>답이 있는데 '모른다'고 해요</h3>
+<p>두 번째 질문은 '디플로이먼트를 이전 버전으로 되돌리려면 어떻게 하나요?'예요. 디플로이먼트는 프로그램을 새 버전으로 바꿔 주는 기능이에요. 답은 '자료에 구체적인 방법이 없다'였어요. 그런데 디플로이먼트 문서에는 되돌리는 명령이 그대로 나와 있어요. 모른다고 하라는 지시는 잘 지켰지만, 문서에 답이 있었으니 사용자에게는 틀린 답이에요.</p>
+<p>영상은 LLM에게 넘긴 청크를 직접 찍어 보는 코드(peek.py)를 돌려요. 노란 네 줄이 넘긴 청크인데, 점수 0.672, 0.665, 0.664, 0.661로 모두 디플로이먼트 문서에서 왔어요. 문서는 제대로 찾은 거예요. 하지만 되돌리는 방법이 적힌 청크는 그 안에 없어요. 마지막 줄을 보면 정답 명령이 든 청크의 순위는 12위, 73위, 147위이고, 가장 높은 것도 점수 0.642예요.</p>
+<figure>
+  <img src="assets/frame-1031.webp" alt="peek.py 실행 결과. 1~4위 청크가 모두 디플로이먼트 문서이고 점수는 0.672, 0.665, 0.664, 0.661, 마지막 줄에 '정답 명령이 든 청크 순위 [12, 73, 147] · 점수 0.642'가 찍힌 터미널">
+  <figcaption>
+    4위 0.661과 12위 0.642의 차이는 0.02도 안 돼요. 이 작은 차이로 정답이 LLM에게 가지 못했어요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=631s" target="_blank" rel="noopener">영상 10:31에서 보기</a>
+  </figcaption>
+</figure>
+<p>상위 12개 점수를 막대로 그리면 이유가 보여요. 초록 막대 1~4위만 LLM에게 가고, 흰 막대 5~11위는 0.651~0.659로 거의 같은 높이예요. 주황색 12위(0.642)가 정답 청크예요. 디플로이먼트 문서 하나가 여러 청크로 나뉘어 있고 질문이 그 청크들과 모두 비슷하니, 점수가 촘촘하게 붙어서 정답이 조금만 밀려도 네 개 안에 못 들어와요.</p>
+<figure>
+  <img src="assets/frame-1057.webp" alt="'점수가 촘촘해요' 제목 아래 '되돌리기' 질문의 상위 12개 청크 점수 막대. 1~4위는 초록, 5~11위는 흰색, 12위 0.642는 주황색으로 표시돼 있어요">
+  <figcaption>
+    막대 높이가 거의 평평해요. 상위 몇 개만 자르는 방식에서는 이런 촘촘함이 바로 오답이 돼요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=657s" target="_blank" rel="noopener">영상 10:57에서 보기</a>
+  </figcaption>
+</figure>
+<p>그래서 영상은 RAG 품질의 절반은 검색이라고 말해요. LLM이 아무리 좋아도 받은 청크 밖의 내용은 몰라요. 답이 틀리면 LLM보다 먼저 검색된 청크를 들여다봐야 해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>RAG가 놓친 정답은 쿠버네티스 한국어 문서의 '이전 수정 버전으로 롤백' 부분에 있어요. 현재 롤아웃을 취소하고 이전 버전으로 되돌리는 명령은 <code>kubectl rollout undo deployment/nginx-deployment</code>이고, 특정 버전으로 가려면 <code>--to-revision=2</code>처럼 수정 버전을 지정해요. 영상의 peek.py가 검색어 'rollout undo'로 정답 청크를 찾은 것도 이 명령 때문이에요.</p>
+  <p class="cite">출처: <a href="https://kubernetes.io/ko/docs/concepts/workloads/controllers/deployment/" target="_blank" rel="noopener">쿠버네티스 공식 문서 — 디플로이먼트</a></p>
+</aside>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=673s" target="_blank" rel="noopener">11:13</a>
+  <h2>고치는 방법과 정리</h2>
+<p>고치는 방법도 여러 가지예요. 슬라이드 왼쪽에 세 가지가 있어요. 앞에서 본 하이브리드 검색(뜻 + 글자), <span class="term" data-term="리랭킹" data-en="Reranking" data-desc="검색으로 후보를 넉넉히 찾은 뒤, 더 꼼꼼한 모델로 순위를 다시 매기는 단계예요. 점수가 촘촘해서 정답이 밀려난 경우를 위로 끌어올려요." data-g="9">리랭킹</span>(후보를 다시 줄 세우기), 청크 자르는 방식 바꾸기(크기, 겹침, 문단)예요. 오른쪽 '예시 그림'이 리랭킹이에요. 처음 검색에서 7번째쯤에 있던 주황색 정답 청크가, 더 꼼꼼한 모델로 다시 순위를 매기자 맨 위로 올라와요.</p>
+<figure>
+  <img src="assets/frame-1129.webp" alt="'고치는 방법' 슬라이드. 왼쪽에 하이브리드 검색, 리랭킹, 청크 자르는 방식 바꾸기 세 버튼, 오른쪽에 주황색 '정답 청크'가 후보 목록 맨 위로 올라온 리랭킹 예시 그림">
+  <figcaption>
+    리랭킹은 후보를 넉넉히 찾은 뒤 순서만 다시 매겨요. 앞의 12위 같은 정답을 위로 끌어올리는 데 맞는 방법이에요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=689s" target="_blank" rel="noopener">영상 11:29에서 보기</a>
+  </figcaption>
+</figure>
+<p>빅테크도 같은 고민을 해요. 왼쪽 막대가 Anthropic의 실험이에요. 청크마다 문서 맥락을 한 줄 붙이고, 글자 검색과 리랭킹까지 더해서 검색이 정답을 놓치는 비율을 5.7%에서 1.9%로 줄였다고 공개했어요. 오른쪽 '성적표'가 영상의 결론이에요. 정답을 아는 질문 묶음을 만들어 두고, 기법을 하나 더할 때마다 점수를 재요.</p>
+<figure>
+  <img src="assets/frame-1153.webp" alt="Anthropic 실험 막대 5.7%와 1.9%, 아래 '청크마다 맥락 한 줄 + 글자 검색 + 리랭킹'과 출처 'Introducing Contextual Retrieval (2024-09-19)', 오른쪽에 '정답을 아는 질문 묶음, + 기법 하나 → 점수 재기'라고 적힌 성적표 카드">
+  <figcaption>
+    어떤 방법이 내 데이터에서 효과가 있는지는 재 봐야 알아요. 남의 숫자보다 내 성적표가 기준이에요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=713s" target="_blank" rel="noopener">영상 11:53에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Anthropic 글을 보면 5.7%에서 1.9%로 가는 길은 두 단계예요. 청크마다 맥락을 붙인 임베딩과 맥락을 붙인 BM25(글자 검색)를 합치자 실패율이 2.9%로 49% 줄었고, 여기에 리랭킹을 더하자 1.9%로 67% 줄었어요. 이 실패율은 상위 20개 청크 안에 정답이 없는 비율이에요. 영상의 데모는 상위 4개만 넘기니, 같은 숫자를 기대하기보다는 영상 말대로 내 질문 묶음으로 재 보는 게 맞아요.</p>
+  <p class="cite">출처: <a href="https://www.anthropic.com/news/contextual-retrieval" target="_blank" rel="noopener">Anthropic — Introducing Contextual Retrieval</a></p>
+</aside>
+<h3>정리</h3>
+<p>영상의 마지막 슬라이드는 세 장의 카드로 끝나요. 임베딩은 문장을 뜻의 지도 위 점으로 바꾸고, 글자가 달라도 뜻이 같으면 가까워요. 다만 반대말과 숫자는 약해요. RAG는 청크를 임베딩으로 찾아 LLM에게 붙여 주고, 출처 번호를 단 답을 쓰게 해요. 그리고 틀리면 검색부터 봐요.</p>
+<figure>
+  <img src="assets/frame-1221.webp" alt="정리 슬라이드의 카드 세 장. 임베딩: 문장 → 뜻의 지도 위 점, RAG: 찾아서 붙여 답하기, 틀리면?: 검색부터 보기, 정답 청크가 몇 위였는지 확인">
+  <figcaption>
+    세 번째 카드가 이 영상만의 메시지예요. 정답 청크가 몇 위였는지 확인하는 것부터가 시작이에요.
+    <a href="https://www.youtube.com/watch?v=iI1k9-VzQMY&amp;t=741s" target="_blank" rel="noopener">영상 12:21에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상이 마지막에 짚은 용어를 한 줄씩 다시 모으면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>용어</th><th>영상의 한 줄 설명</th></tr></thead>
+    <tbody>
+      <tr><td>임베딩</td><td>문장을 벡터(숫자 목록)로 바꾸는 것</td></tr>
+      <tr><td>코사인 유사도</td><td>두 화살표 사이 각도로 잰 가까운 정도</td></tr>
+      <tr><td>RAG</td><td>찾아서 붙여 답하는 검색 증강 생성</td></tr>
+      <tr><td>청크</td><td>잘라 둔 문서 조각</td></tr>
+      <tr><td>하이브리드 검색</td><td>뜻 검색과 글자 검색을 섞는 것</td></tr>
+      <tr><td>리랭킹</td><td>후보를 다시 줄 세우는 것</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-3"><dt>대조 학습<span class="en">Contrastive learning</span></dt><dd>짝이 맞는 문장은 가까이 당기고 짝이 아닌 문장은 멀리 미는 연습을 반복해서 모델을 가르치는 방법이에요. 임베딩 지도의 거리가 여기서 생겨요.</dd></div>
+    <div class="g" id="g-9"><dt>리랭킹<span class="en">Reranking</span></dt><dd>검색으로 후보를 넉넉히 찾은 뒤, 더 꼼꼼한 모델로 순위를 다시 매기는 단계예요. 점수가 촘촘해서 정답이 밀려난 경우를 위로 끌어올려요.</dd></div>
+    <div class="g" id="g-8"><dt>벡터 데이터베이스<span class="en">Vector database</span></dt><dd>벡터를 저장해 두고 주어진 벡터와 가까운 것을 빨리 찾아 주는 저장소예요. RAG의 준비 단계에서 만든 청크 벡터가 여기 들어가요.</dd></div>
+    <div class="g" id="g-1"><dt>임베딩<span class="en">Embedding</span></dt><dd>문장을 숫자 목록(벡터)으로 바꿔 숫자 공간의 한 점으로 놓는 방법이에요. 뜻이 비슷한 문장일수록 가까운 점이 돼서, 글자가 달라도 찾을 수 있어요.</dd></div>
+    <div class="g" id="g-7"><dt>청크<span class="en">Chunk</span></dt><dd>RAG에서 문서를 작게 잘라 둔 조각이에요. 조각마다 벡터를 만들어 두고, 질문과 가까운 조각만 골라 LLM에게 넘겨요.</dd></div>
+    <div class="g" id="g-2"><dt>코사인 유사도<span class="en">Cosine similarity</span></dt><dd>두 벡터가 가리키는 방향이 얼마나 같은지를 각도로 잰 값이에요. 같은 방향이면 1, 직각이면 0, 반대면 -1이고, 길이를 1로 맞춰 두면 두 벡터를 곱한 값과 같아요.</dd></div>
+    <div class="g" id="g-6"><dt>파인튜닝<span class="en">Fine-tuning</span></dt><dd>이미 학습된 모델을 내 데이터로 다시 학습시키는 미세 조정이에요. 문서가 바뀔 때마다 다시 해야 해서 자주 바뀌는 문서에는 부담이 커요.</dd></div>
+    <div class="g" id="g-4"><dt>하이브리드 검색<span class="en">Hybrid search</span></dt><dd>임베딩으로 뜻을 찾는 검색과 글자를 맞춰 보는 검색을 함께 돌려 결과를 합치는 방식이에요. 정확한 이름이나 숫자처럼 임베딩이 약한 부분을 메워요.</dd></div>
+    <div class="g" id="g-5"><dt>환각<span class="en">Hallucination</span></dt><dd>LLM이 모르는 내용을 그럴듯하게 지어내서 답하는 현상이에요. 학습하지 않은 최신 정보나 내 문서를 물을 때 잘 생겨요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>BAAI</dt><dd>Beijing Academy of Artificial Intelligence</dd></div>
+    <div class="g"><dt>BM25</dt><dd>Best Matching 25</dd></div>
+    <div class="g"><dt>LLM</dt><dd>Large Language Model</dd></div>
+    <div class="g"><dt>PCA</dt><dd>Principal Component Analysis</dd></div>
+    <div class="g"><dt>RAG</dt><dd>Retrieval-Augmented Generation</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=iI1k9-VzQMY" target="_blank" rel="noopener">원본 영상 — 단테, 임베딩과 RAG, 13분 만에 이해하기</a></li>
+    <li id="src-2"><a href="https://huggingface.co/BAAI/bge-m3" target="_blank" rel="noopener">BAAI/bge-m3 모델 카드 (Hugging Face)</a></li>
+    <li id="src-3"><a href="https://kubernetes.io/ko/docs/concepts/workloads/controllers/deployment/" target="_blank" rel="noopener">쿠버네티스 공식 문서 — 디플로이먼트 (한국어)</a></li>
+    <li id="src-4"><a href="https://www.anthropic.com/news/contextual-retrieval" target="_blank" rel="noopener">Anthropic — Introducing Contextual Retrieval (2024-09-19)</a></li>
+    <li id="src-5"><a href="https://arxiv.org/abs/2607.10239" target="_blank" rel="noopener">arXiv 2607.10239 — Multilingual Semantic Retrieval for Apple Music Search (영상이 인용한 논문)</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 4일에 이 영상을 보고 정리했어요. 원본은 단테 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

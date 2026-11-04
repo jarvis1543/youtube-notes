@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>홈서버가 뭐죠? 집에 작은 PC 한 대 켜두면 생기는 일</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>홈서버가 뭐죠? 집에 작은 PC 한 대 켜두면 생기는 일</h1>
+  <p class="lede">구독 서비스를 집 PC로 옮기면 무엇을 얻고 무엇을 떠안는지 짚어요</p>
+  <div class="meta">
+    <span>잇츠 매거진</span><span class="dot">·</span>
+    <span>영상 08:52</span><span class="dot">·</span>
+    <span>읽는 데 약 9분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=U_taDL6fIWk" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li><span class="term" data-term="홈서버" data-en="Home server" data-desc="집에 24시간 켜 두고 다른 기기에서 접속해 쓰는 컴퓨터예요. 클라우드 서비스가 하는 일을 우리 집 안에서 돌린다고 보면 돼요." data-g="1">홈서버</span>와 클라우드는 구조가 같아요. 데이터가 남의 회사 서버에 있느냐, 우리 집 PC(Personal Computer)에 있느냐만 달라요.</li>
+    <li>저전력 <span class="term" data-term="미니 PC" data-en="Mini PC" data-desc="손바닥만 한 상자에 든 작은 데스크톱이에요. 전기를 적게 먹고 조용해서 계속 켜 두는 홈서버로 많이 써요." data-g="2">미니 PC</span>가 흔해지고 UmbrelOS·ZimaOS 같은 <span class="term" data-term="홈서버 전용 OS" data-en="Home server OS" data-desc="홈서버로 쓰라고 만든 운영체제예요. 앱스토어처럼 아이콘을 눌러 서비스를 깔 수 있어서 명령어를 몰라도 돼요." data-g="3">홈서버 전용 OS(Operating System)</span>가 나오면서 <span class="term" data-term="터미널" data-en="Terminal" data-desc="글자로 명령어를 쳐서 컴퓨터를 다루는 창이에요. 예전 홈서버 설정은 대부분 여기서 했어요." data-g="4">터미널</span> 없이도 설치할 수 있게 됐어요.</li>
+    <li>영상이 꼽은 쓸모는 다섯 가지예요. 사진(Immich), <span class="term" data-term="미디어 서버" data-en="Media server" data-desc="내 영상·음악 파일을 모아 두고 여러 기기에서 스트리밍으로 꺼내 보게 해 주는 프로그램이에요." data-g="5">미디어 서버</span>(Jellyfin), 파일 공유, <span class="term" data-term="동기화" data-en="Synchronization" data-desc="여러 기기의 같은 폴더를 자동으로 똑같이 맞추는 일이에요. 한쪽에서 바꾸거나 지운 것도 다른 쪽에 그대로 반영돼요." data-g="6">동기화</span>·<span class="term" data-term="백업" data-en="Backup" data-desc="원본이 망가질 때를 대비해 따로 떼어 둔 사본이에요. 동기화와 달리 지난 상태로 되돌릴 수 있어야 의미가 있어요." data-g="7">백업</span>, 스마트홈(Home Assistant).</li>
+    <li>저전력 미니 PC 전기요금은 한 달 2~3천 원 정도예요. PC는 메모리 8GB짜리 중고 노트북(10만 원 안쪽)이나 안 쓰는 PC로도 충분해요.</li>
+    <li>가장 큰 단점은 고장과 보안을 내가 책임진다는 점이에요. 대신 요즘 OS는 쉬워졌고 AI(Artificial Intelligence)에게 물어 가며 세팅할 수도 있어요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">홈서버가 뭐고, 왜 지금 쉬워졌나요</a></li>
+    <li><a href="#s2">① 사진 백업과 ② 미디어 서버</a></li>
+    <li><a href="#s3">③ 파일 공유와 ④ 동기화·백업</a></li>
+    <li><a href="#s4">⑤ 스마트홈 — Home Assistant</a></li>
+    <li><a href="#s5">시작 전에 알아둘 세 가지 단점</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>홈서버가 뭐고, 왜 지금 쉬워졌나요</h2>
+<p>사진 클라우드, 음악, OTT(Over The Top)처럼 매달 몇천 원씩 나가는 구독료는 모이면 꽤 커요. 발표자가 먼저 띄우는 화면은 구글 원 요금제예요. 100GB가 월 2,400원, 가운데 추천 표시가 붙은 Standard 200GB가 월 3,700원, 그 위로 400GB 7,500원, 2TB 11,900원이 이어져요.</p>
+<figure>
+  <img src="assets/frame-0030.webp" alt="구글 원 요금제 페이지. Basic 100GB 월 2,400원, Standard 200GB 월 3,700원, Google AI Plus 400GB 월 7,500원, 2TB 월 11,900원 카드가 나란히 있어요">
+  <figcaption>사진은 계속 쌓이니 한 칸 올린 요금제는 다시 내리기 어려워요. 영상은 이 구독료를 홈서버로 대신하자는 이야기에서 시작해요. <a href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=30s" target="_blank" rel="noopener">영상 00:30에서 보기</a></figcaption>
+</figure>
+
+<h3>집에 24시간 켜 두는 작은 컴퓨터</h3>
+<p>홈서버는 거창한 장비가 아니에요. 평소 쓰는 PC와 다른 점은 모니터나 키보드를 꽂지 않는다는 것뿐이에요. 그 위에 쓸 프로그램을 깔아 두고, 폰이나 다른 PC에서 접속해서 써요. 그래서 구조로만 보면 구글 클라우드 같은 구독 서비스와 같아요. 서버가 남의 회사에 있느냐, 우리 집에 있느냐만 달라요.</p>
+<p>발표자는 사진 한 장이 어디로 가는지로 이 차이를 보여 줘요. 첫 슬라이드에서는 '내 폰'에서 나간 선이 구글 포토의 '데이터센터'로 이어지고, 오른쪽에 빨간 '매달 결제' 칸이 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-0138.webp" alt="'사진 한 장은 어디로 갈까요?' 슬라이드. 내 폰에서 구독 중인 데이터센터(구글 포토)로 선이 이어지고, 오른쪽에 매달 결제 월 2,900원부터라는 빨간 칸이 있어요">
+  <figcaption>클라우드에 올리면 쓴 용량만큼 매달 돈이 나가요. <a href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=98s" target="_blank" rel="noopener">영상 01:38에서 보기</a></figcaption>
+</figure>
+<p>다음 슬라이드에서는 데이터센터와 결제 칸이 흐려지고, 내 폰에서 나간 초록 선이 아래쪽 '우리 집 홈서버 PC'로 꺾여요. 사진은 똑같이 자동으로 올라가지만 도착하는 곳이 집 안이라 따로 내는 돈이 없어요.</p>
+<figure>
+  <img src="assets/frame-0144.webp" alt="같은 슬라이드에서 데이터센터와 매달 결제 칸이 흐려지고, 내 폰에서 초록 선이 우리 집 홈서버 PC로 이어진 모습">
+  <figcaption>바뀌는 건 사진이 도착하는 곳 하나뿐이에요. <a href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=104s" target="_blank" rel="noopener">영상 01:44에서 보기</a></figcaption>
+</figure>
+
+<h3>예전엔 어려웠는데 지금은 왜 쉬울까요</h3>
+<p>홈서버는 예전에도 있었어요. 다만 리눅스 터미널을 띄워 놓고 복잡한 명령어를 하나씩 쳐야 해서 개인이 만들기엔 벽이 높았어요. 발표자는 최근 몇 년 사이 두 가지가 바뀌었다고 해요. 하나는 성능이 괜찮으면서 전기를 적게 먹는 미니 PC가 흔해진 거예요. 화면 속 책상 밑에 놓인 손바닥만 한 상자 세 개가 그런 미니 PC예요.</p>
+<figure>
+  <img src="assets/frame-0209.webp" alt="모니터 받침대 아래와 위에 놓인 GEEKOM 미니 PC 여러 대. 각각 손바닥만 한 크기의 상자예요">
+  <figcaption>모니터도 키보드도 없이 켜 두기만 하면 되는 크기예요. <a href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=129s" target="_blank" rel="noopener">영상 02:09에서 보기</a></figcaption>
+</figure>
+<p>다른 하나는 설치가 쉬워진 거예요. UmbrelOS나 ZimaOS처럼 홈서버 전용 OS가 여럿 나왔어요. 아래는 발표자의 UmbrelOS 첫 화면이에요. 위쪽 카드에 저장 공간(40.6GB 사용)과 CPU(Central Processing Unit)·메모리 사용량이 보이고, 그 아래에 Home Assistant, Immich, Jellyfin, Syncthing 같은 앱이 아이콘으로 깔려 있어요. 이 영상에서 소개할 앱 대부분이 이미 여기 있어요.</p>
+<figure>
+  <img src="assets/frame-0224.webp" alt="UmbrelOS 홈 화면. 인사말 아래에 파일, 저장 공간 40.6GB, CPU·메모리 사용량 카드가 있고, Home Assistant, Immich, Jellyfin, OpenClaw, Syncthing, WireGuard 앱 아이콘이 한 줄로 놓여 있어요">
+  <figcaption>앱을 아이콘으로 깔고 지우는 방식이라 명령어를 몰라도 시작할 수 있어요. 가벼워서 사양이 낮은 PC에서도 잘 돌아간다고 해요. <a href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=144s" target="_blank" rel="noopener">영상 02:24에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=162s" target="_blank" rel="noopener">02:42</a>
+  <h2>① 사진 백업과 ② 미디어 서버</h2>
+<p>홈서버를 깔았다면 무엇을 할 수 있을까요. 발표자는 많이 쓰는 용도를 다섯 칸으로 정리해요. 사진(찍는 대로 자동 백업), 미디어 서버(내 영상·음악 스트리밍), 파일 공유(어디서든 꺼내 쓰기), 동기화·백업(기기끼리 자동으로), 스마트홈(집안 기기 한 곳에서)이에요. 이 절은 앞의 두 칸을 다뤄요.</p>
+<figure>
+  <img src="assets/frame-0252.webp" alt="'그럼, 뭘 할 수 있을까요?' 슬라이드. 사진, 미디어 서버, 파일 공유, 동기화·백업, 스마트홈 다섯 카드가 있고 첫 번째 사진 카드가 강조돼 있어요">
+  <figcaption>영상은 이 다섯 칸을 하나씩 켜 가며 설명해요. <a href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=172s" target="_blank" rel="noopener">영상 02:52에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>용도</th><th>영상이 든 앱</th><th>대신하는 서비스</th></tr></thead>
+    <tbody>
+      <tr><td>① 사진 백업</td><td>Immich</td><td>구글 포토(구글 원)</td></tr>
+      <tr><td>② 미디어 서버</td><td>Jellyfin</td><td>넷플릭스 같은 이어 보기 화면 (콘텐츠는 내 파일만)</td></tr>
+      <tr><td>③ 파일 공유</td><td>UmbrelOS 기본 파일 기능</td><td>외부 서버에 파일 올리기</td></tr>
+      <tr><td>④ 동기화·백업</td><td>Syncthing · Duplicati</td><td>구글 드라이브</td></tr>
+      <tr><td>⑤ 스마트홈</td><td>Home Assistant</td><td>CCTV(Closed-Circuit Television)·출입 알림</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3>① 사진 — Immich</h3>
+<p>폰으로 찍은 사진이 자동으로 집 서버에 올라가요. Immich는 날짜와 장소로 사진을 나누고, 얼굴도 알아서 알아봐서 정리해 줘요. 아래 웹 화면 맨 위 줄에 동그란 얼굴 사진이 나란히 있는데, Immich가 같은 사람끼리 묶은 결과예요. 그 아래로 장소별 묶음과 날짜순 사진이 이어져요.</p>
+<figure>
+  <img src="assets/frame-0307.webp" alt="Immich 웹 화면. 맨 위에 사람 얼굴 썸네일이 한 줄로 있고, 아래에 장소별 사진 묶음과 날짜별 사진 목록이 있어요">
+  <figcaption>얼굴·장소·날짜로 찾는 기능은 구글 포토에서 쓰던 그대로예요. <a href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=187s" target="_blank" rel="noopener">영상 03:07에서 보기</a></figcaption>
+</figure>
+<p>차이는 용량이에요. 구글 원 200GB는 월 3,700원인데, 홈서버는 내 PC 하드디스크가 허락하는 만큼 쓸 수 있어요. 폰 앱도 왼쪽 구글 포토와 오른쪽 Immich 앱을 나란히 놓으면 겉모습으로는 차이를 느끼기 어려워요. 발표자 말로는 저장되는 장소만 다를 뿐이에요.</p>
+<figure>
+  <img src="assets/frame-0332.webp" alt="폰 화면 두 개를 나란히 놓은 비교. 왼쪽은 구글포토, 오른쪽은 Immich앱이라는 자막이 붙어 있고 둘 다 사진 격자 화면이에요">
+  <figcaption>사진 격자, 아래쪽 탭 구성까지 비슷해서 옮겨 와도 쓰는 법을 새로 익힐 게 별로 없어요. <a href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=212s" target="_blank" rel="noopener">영상 03:32에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>홈서버로 사진을 옮기면 원본이 집에 한 벌만 남을 수 있어요. Immich 공식 문서도 <span class="term" data-term="3-2-1 백업" data-en="3-2-1 backup rule" data-desc="사본을 3개 두고, 2가지 다른 저장 매체에 나누고, 1개는 다른 장소에 두라는 백업 원칙이에요." data-g="8">3-2-1 백업</span>을 권하고, 업로드한 사진·영상과 Immich 데이터베이스를 함께 백업하라고 해요. 하드디스크 하나가 고장 나면 사진이 통째로 사라지지 않도록, 다른 디스크나 다른 장소에 사본을 하나 더 두는 게 좋아요.</p>
+  <p class="cite">출처: <a href="https://docs.immich.app/administration/backup-and-restore" target="_blank" rel="noopener">Immich 공식 문서 — Backup and Restore</a></p>
+</aside>
+
+<h3>② 미디어 서버 — Jellyfin</h3>
+<p>발표자는 미디어 서버로 Jellyfin을 써요. PC에 흩어진 영상을 Jellyfin 서버에 올려 두면 아래처럼 Movies, Shows, Music, Playlists로 나뉜 화면이 생겨요. 가운데 줄은 보다 만 영상을 모은 '계속 시청하기'라서 넷플릭스처럼 이어 보기가 돼요. 밖에서 폰이나 태블릿으로 볼 수 있고, 가족이나 지인에게 공유할 수도 있어요.</p>
+<figure>
+  <img src="assets/frame-0350.webp" alt="Jellyfin 홈 화면. 위에 Movies, Shows, Music, Playlists 타일이 있고, 아래에 계속 시청하기 줄과 최근 영화 포스터 목록이 있어요">
+  <figcaption>화면 구성은 OTT와 비슷하지만 여기 뜨는 건 전부 내 하드디스크에 있는 파일이에요. <a href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=230s" target="_blank" rel="noopener">영상 03:50에서 보기</a></figcaption>
+</figure>
+<p>여기서 발표자가 오해를 하나 짚어요. Jellyfin을 깔면 넷플릭스처럼 보고 싶은 걸 마음껏 볼 수 있는 게 아니에요. 이미 가진 영상을 편하게 보는 도구이지, 유료 콘텐츠를 새로 볼 수 있게 해 주지는 않아요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Jellyfin은 자원봉사자들이 만드는 무료 소프트웨어이고 GPL(GNU General Public License) 라이선스로 배포돼요. 공식 사이트는 유료 등급 없이 모든 기능을 쓸 수 있다고 소개해요. 영상이 말한 '별도 비용 없이'가 Jellyfin에서는 기능 제한 없이라는 뜻까지 포함하는 셈이에요.</p>
+  <p class="cite">출처: <a href="https://jellyfin.org/" target="_blank" rel="noopener">Jellyfin 공식 사이트</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=261s" target="_blank" rel="noopener">04:21</a>
+  <h2>③ 파일 공유와 ④ 동기화·백업</h2>
+<h3>③ 파일 공유</h3>
+<p>발표자는 회사에서 하던 일을 집에 와서 이어 하는 일이 많아요. UmbrelOS 같은 홈서버 전용 OS는 파일을 끌어다 놓기만 하면 서버에 올라가요. 노트북에서 저장한 파일이 집 서버에 들어가고, 폰이나 다른 PC에서 바로 열 수 있어요.</p>
+<p>보안 이야기도 붙여요. 슬라이드 왼쪽 '외부 서버'에는 '누가 열어보는지 알 수 없다'는 경고가, 아래에 '찜찜하다'는 표시가 있어요. 오른쪽 '나만의 서버'에는 '집 밖으로 나가지 않는다'가 적혀 있어요. 회사 파일이나 개인 파일을 남의 서버에 올리기 꺼려질 때 내 서버에 두면 보안 면에서 조금 더 낫다는 거예요.</p>
+<figure>
+  <img src="assets/frame-0456.webp" alt="'회사·개인 파일, 어디에 둘까요?' 슬라이드. 왼쪽 흐려진 외부 서버 칸에 누가 열어보는지 알 수 없다, 찜찜하다는 표시가 있고, 오른쪽 우리 집 나만의 서버 칸에 집 밖으로 나가지 않는다는 초록 표시가 있어요">
+  <figcaption>발표자는 '조금 더 도움이 된다' 정도로 말해요. 완전히 안전하다는 뜻은 아니에요. <a href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=296s" target="_blank" rel="noopener">영상 04:56에서 보기</a></figcaption>
+</figure>
+
+<h3>④ 동기화와 백업</h3>
+<p>파일 공유와 동기화는 달라요. 공유는 필요할 때 내가 직접 올리는 것이고, 동기화는 신경 쓰지 않아도 노트북이나 데스크톱의 파일이 서버와 자동으로 맞춰지는 거예요. 같은 일을 하는 유료 서비스가 구글 드라이브예요.</p>
+<p>슬라이드 아래쪽 두 칸이 비교예요. 빨간 '구글 드라이브' 칸에는 용량 제한이 있고, 늘리면 요금도 올라가고, 큰 파일은 부담이라고 적혀 있어요. 초록 '내 홈서버' 칸에는 디스크 용량만큼, 추가 요금 없음, 큰 파일도 통째로가 적혀 있어요. 맨 아래에는 대표 앱으로 동기화에 Syncthing, 백업에 Duplicati를 꼽아요.</p>
+<figure>
+  <img src="assets/frame-0538.webp" alt="'동기화 — 내가 신경 쓰지 않아도' 슬라이드. 노트북, 데스크톱, 회사 작업 폴더가 홈서버와 선으로 이어지고, 아래에 구글 드라이브와 내 홈서버의 장단점 칸, 맨 아래에 대표 앱 Syncthing(동기화), Duplicati(백업)가 적혀 있어요">
+  <figcaption>왼쪽 위 '내 기기' 목록에 회사 작업 폴더가 들어 있는 게 발표자의 실제 쓰임이에요. <a href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=338s" target="_blank" rel="noopener">영상 05:38에서 보기</a></figcaption>
+</figure>
+<p>발표자는 회사에서 작업하던 폴더를 통째로 동기화해 둬요. 집이나 다른 곳에 가면 이미 맞춰진 파일로 바로 일을 이어 갈 수 있어요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상은 동기화와 백업을 한 칸에 묶었지만, 두 앱이 하는 일은 달라요. Syncthing은 두 대 이상의 컴퓨터 사이에서 파일을 실시간으로 맞추는 프로그램이에요. 한쪽에서 파일을 지우거나 망가뜨리면 그 변화도 다른 쪽으로 퍼져요. Duplicati는 백업을 암호화해서 로컬 디스크나 여러 클라우드 저장소에 따로 보관하는 도구예요. 실수로 지운 파일을 되살리려면 동기화만으로는 부족하고 백업이 따로 있어야 해요.</p>
+  <p class="cite">출처: <a href="https://syncthing.net/" target="_blank" rel="noopener">Syncthing 공식 사이트</a> · <a href="https://duplicati.com/" target="_blank" rel="noopener">Duplicati 공식 사이트</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=345s" target="_blank" rel="noopener">05:45</a>
+  <h2>⑤ 스마트홈 — Home Assistant</h2>
+<p>마지막 용도는 스마트홈이에요. 외출했거나 사무실을 비웠을 때 안이 궁금하다면 Home Assistant라는 홈서버 앱이 좋다고 해요. 아래 대시보드에는 조명 스위치, 실내 온도 그래프, 에너지 사용 흐름, 집 평면도, 현관 초인종 기록이 한 화면에 모여 있어요.</p>
+<figure>
+  <img src="assets/frame-0600.webp" alt="Home Assistant 대시보드. 조명 토글 목록, 실내 온도 20.9도 그래프, 오늘의 에너지 흐름도, 집 평면도, 온도 조절 다이얼, 초인종 기록이 한 화면에 있어요">
+  <figcaption>집 안 기기를 한 곳에서 보고 다루는 게 Home Assistant의 역할이에요. <a href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=360s" target="_blank" rel="noopener">영상 06:00에서 보기</a></figcaption>
+</figure>
+<p>발표자의 실제 쓰임은 더 단순해요. 안 쓰는 스마트폰을 벽에 달아 CCTV로 쓰고 있어요. 아래 사진처럼 거치대에 물린 폰에 전원선이 꽂혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0605.webp" alt="벽 위쪽 레일에 거치대로 고정한 은색 스마트폰. 아래로 충전 케이블이 연결돼 있어요">
+  <figcaption>새 카메라를 사지 않고 서랍 속 폰을 다시 쓴 사례예요. <a href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=365s" target="_blank" rel="noopener">영상 06:05에서 보기</a></figcaption>
+</figure>
+<p>문이 열리거나 누가 사무실에 들어오면 이를 감지해서 알림을 보내게 할 수도 있어요. 화면 왼쪽은 알림이 메신저로 쌓인 모습이고, 오른쪽은 그 순간 찍힌 영상이에요. 여러 홈서버용 센서를 조합하면 할 수 있는 일이 훨씬 많아진다고 해요.</p>
+<figure>
+  <img src="assets/frame-0610.webp" alt="왼쪽은 메신저 창에 감지 알림과 사진이 차례로 쌓인 모습, 오른쪽은 사무실 안에서 사람이 지나가는 흐린 CCTV 영상이에요">
+  <figcaption>감지 → 알림 → 영상 확인까지가 폰 한 대와 홈서버로 이어져요. <a href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=370s" target="_blank" rel="noopener">영상 06:10에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=389s" target="_blank" rel="noopener">06:29</a>
+  <h2>시작 전에 알아둘 세 가지 단점</h2>
+<p>여기까지 들으면 홈서버만 깔면 다 공짜로 될 것 같지만, 발표자는 세 가지를 솔직하게 짚어요.</p>
+
+<h3>전기요금</h3>
+<p>구독료는 사라져도 전기요금이 생겨요. PC마다 다르지만, 화면 자막처럼 저전력 미니 PC를 24시간 켜 두면 한 달에 2,000~3,000원 정도예요.</p>
+<figure>
+  <img src="assets/frame-0649.webp" alt="책상 위 원통형 미니 PC 사진 위에 '저전력 미니PC 24시간 사용시 한 달 약 2,000~3,000원 정도'라는 자막이 크게 붙어 있어요">
+  <figcaption>저전력 기준이에요. 일반 데스크톱을 켜 두면 이보다 더 나와요. <a href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=409s" target="_blank" rel="noopener">영상 06:49에서 보기</a></figcaption>
+</figure>
+<p>영상에 나온 숫자 두 개를 같은 눈금에 놓으면 이래요. 사진 백업 하나만 놓고 봐도 구독료와 전기요금이 비슷한 크기예요. 홈서버 한 대가 여러 구독을 함께 대신할 때 차이가 벌어져요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 560 170" role="img" aria-label="한 달 비용 비교. 구글 원 200GB 월 3,700원, 저전력 미니 PC 전기요금 월 2,000에서 3,000원">
+    <line class="axis" x1="170" y1="130" x2="530" y2="130"/>
+    <text x="170" y="150" text-anchor="middle" class="sub">0</text>
+    <text x="260" y="150" text-anchor="middle" class="sub">1,000</text>
+    <text x="350" y="150" text-anchor="middle" class="sub">2,000</text>
+    <text x="440" y="150" text-anchor="middle" class="sub">3,000</text>
+    <text x="530" y="150" text-anchor="middle" class="sub">4,000원</text>
+    <text x="160" y="42" text-anchor="end">구글 원 200GB</text>
+    <rect class="bar bad" x="170" y="25" width="333" height="26"/>
+    <text x="510" y="43">3,700원</text>
+    <text x="160" y="97" text-anchor="end">미니 PC 전기요금</text>
+    <rect class="bar ok" x="170" y="80" width="180" height="26"/>
+    <rect class="bar ok dim" x="350" y="80" width="90" height="26"/>
+    <text x="447" y="98">2,000~3,000원</text>
+  </svg>
+  <figcaption>한 달 기준, 영상 02:55와 06:49에 나온 숫자만 그렸어요. 연한 부분은 영상이 말한 범위의 위쪽 끝이에요. PC 구입비는 여기에 들어 있지 않아요.</figcaption>
+</figure>
+
+<h3>PC 구입비</h3>
+<p>PC도 한 대 있어야 해요. 요즘은 메모리와 저장장치 값이 올라서 미니 PC가 '미니 PC가 아닌 가격'이 됐다고 해요. 그래도 미니 PC가 꼭 필요하진 않아요. 슬라이드 오른쪽 '중고 노트북이면 충분' 칸에 대안이 정리돼 있어요. 미니 PC처럼 저전력이고, 당근 같은 중고 거래로 보통 10만 원 안쪽이며, 메모리 8GB면 충분하고 고성능은 필요 없어요. 집에 안 쓰는 PC가 있다면 그걸 써도 돼요.</p>
+
+<h3>직접 고쳐야 해요</h3>
+<p>발표자가 가장 크다고 보는 단점이에요. 같은 슬라이드 아래쪽에서 초록 '구독 서비스' 칸은 문제가 생기면 그 회사가 고쳐 주고 보안도 신경 쓸 필요가 없다고 적혀 있어요. 반면 '홈서버' 칸에는 내가 직접 세팅하고 직접 고친다고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0747.webp" alt="'홈서버, 시작 전에 생각할 두 가지' 슬라이드. 1번 PC가 한 대 필요합니다 아래 미니 PC는 메모리·저장장치 값이 올랐다는 칸과 중고 노트북이면 충분하다는 칸, 2번 세팅도 수리도 내 몫입니다 아래 구독 서비스 칸과 홈서버 칸이 있어요">
+  <figcaption>왼쪽 구독 서비스 칸 밑의 '편하다'가 홈서버에서 포기하는 부분이에요. <a href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=467s" target="_blank" rel="noopener">영상 07:47에서 보기</a></figcaption>
+</figure>
+<p>그래도 미리 겁먹을 필요는 없다고 해요. 요즘 홈서버 OS는 설정이 쉬워서 대부분 큰 문제 없이 설치할 수 있어요. AI를 저렴하게 쓸 수 있게 된 만큼, AI의 도움을 받아 세팅하는 방법도 있어요. 영상 끝부분 화면에서는 왼쪽 VS Code 창의 Claude Code가 UmbrelOS 설정을 손보고 있고, 가운데 UmbrelOS의 '에이전트 연결' 창이 Claude Code, Codex, Cursor 같은 AI 에이전트에 연결하는 방법을 보여 줘요.</p>
+<figure>
+  <img src="assets/frame-0809.webp" alt="왼쪽에 VS Code의 Claude Code 대화 창, 가운데에 UmbrelOS 설정 화면 위로 '에이전트 연결' 창이 떠 있어요. 창에는 OpenClaw, Hermes Agent, Codex, Claude Code, Cursor 탭과 터미널에서 실행할 claude mcp add 명령이 보여요">
+  <figcaption>에이전트 연결 창은 Umbrel을 MCP(Model Context Protocol) 서버로 등록하는 명령을 그대로 보여 줘요. 이 영상에서는 화면만 스치고, 자세한 방법은 다음 영상들로 미뤄요. <a href="https://www.youtube.com/watch?v=U_taDL6fIWk&amp;t=489s" target="_blank" rel="noopener">영상 08:09에서 보기</a></figcaption>
+</figure>
+<p>다음 영상에서는 홈서버를 어디에 설치하면 좋을지, 홈서버 전용 OS 몇 가지 비교, 처음에 꼭 깔아야 할 앱을 다룬다고 예고해요.</p>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-6"><dt>동기화<span class="en">Synchronization</span></dt><dd>여러 기기의 같은 폴더를 자동으로 똑같이 맞추는 일이에요. 한쪽에서 바꾸거나 지운 것도 다른 쪽에 그대로 반영돼요.</dd></div>
+    <div class="g" id="g-2"><dt>미니 PC<span class="en">Mini PC</span></dt><dd>손바닥만 한 상자에 든 작은 데스크톱이에요. 전기를 적게 먹고 조용해서 계속 켜 두는 홈서버로 많이 써요.</dd></div>
+    <div class="g" id="g-5"><dt>미디어 서버<span class="en">Media server</span></dt><dd>내 영상·음악 파일을 모아 두고 여러 기기에서 스트리밍으로 꺼내 보게 해 주는 프로그램이에요.</dd></div>
+    <div class="g" id="g-7"><dt>백업<span class="en">Backup</span></dt><dd>원본이 망가질 때를 대비해 따로 떼어 둔 사본이에요. 동기화와 달리 지난 상태로 되돌릴 수 있어야 의미가 있어요.</dd></div>
+    <div class="g" id="g-4"><dt>터미널<span class="en">Terminal</span></dt><dd>글자로 명령어를 쳐서 컴퓨터를 다루는 창이에요. 예전 홈서버 설정은 대부분 여기서 했어요.</dd></div>
+    <div class="g" id="g-1"><dt>홈서버<span class="en">Home server</span></dt><dd>집에 24시간 켜 두고 다른 기기에서 접속해 쓰는 컴퓨터예요. 클라우드 서비스가 하는 일을 우리 집 안에서 돌린다고 보면 돼요.</dd></div>
+    <div class="g" id="g-3"><dt>홈서버 전용 OS<span class="en">Home server OS</span></dt><dd>홈서버로 쓰라고 만든 운영체제예요. 앱스토어처럼 아이콘을 눌러 서비스를 깔 수 있어서 명령어를 몰라도 돼요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>CCTV</dt><dd>Closed-Circuit Television</dd></div>
+    <div class="g"><dt>CPU</dt><dd>Central Processing Unit</dd></div>
+    <div class="g"><dt>GPL</dt><dd>GNU General Public License</dd></div>
+    <div class="g"><dt>MCP</dt><dd>Model Context Protocol</dd></div>
+    <div class="g"><dt>OS</dt><dd>Operating System</dd></div>
+    <div class="g"><dt>OTT</dt><dd>Over The Top</dd></div>
+    <div class="g"><dt>PC</dt><dd>Personal Computer</dd></div>
+    <div class="g" id="g-8"><dt>3-2-1 백업<span class="en">3-2-1 backup rule</span></dt><dd>사본을 3개 두고, 2가지 다른 저장 매체에 나누고, 1개는 다른 장소에 두라는 백업 원칙이에요.</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=U_taDL6fIWk" target="_blank" rel="noopener">원본 영상 — 잇츠 매거진</a></li>
+    <li id="src-2"><a href="https://docs.immich.app/administration/backup-and-restore" target="_blank" rel="noopener">Immich 공식 문서 — Backup and Restore</a></li>
+    <li id="src-3"><a href="https://jellyfin.org/" target="_blank" rel="noopener">Jellyfin 공식 사이트</a></li>
+    <li id="src-4"><a href="https://syncthing.net/" target="_blank" rel="noopener">Syncthing 공식 사이트</a></li>
+    <li id="src-5"><a href="https://duplicati.com/" target="_blank" rel="noopener">Duplicati 공식 사이트</a></li>
+    <li id="src-6"><a href="https://www.home-assistant.io/" target="_blank" rel="noopener">Home Assistant 공식 사이트</a></li>
+    <li id="src-7"><a href="https://umbrel.com/umbrelos" target="_blank" rel="noopener">UmbrelOS 공식 페이지</a></li>
+    <li id="src-8"><a href="https://www.zimaspace.com/zimaos" target="_blank" rel="noopener">ZimaOS 공식 페이지</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 4일에 이 영상을 보고 정리했어요. 원본은 잇츠 매거진 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

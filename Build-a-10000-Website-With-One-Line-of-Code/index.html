@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>코드 한 줄로 1만 달러짜리 웹사이트 만들기</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>코드 한 줄로 1만 달러짜리 웹사이트 만들기</h1>
+  <p class="lede">Claude Code에 붙이는 도구 네 가지와, &#x27;한 줄&#x27;의 실체를 짚어요</p>
+  <div class="meta">
+    <span>Automate AI Consulting</span><span class="dot">·</span>
+    <span>영상 00:36</span><span class="dot">·</span>
+    <span>읽는 데 약 6분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=Srjqf8B3k4c" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>Claude Code를 설치하고, <span class="term" data-term="애니메이션 라이브러리" data-en="Animation library" data-desc="화면 요소가 나타나고 움직이는 효과를 짧은 코드로 넣게 해 주는 코드 묶음이에요. 고급스러워 보이는 사이트의 상당 부분이 이런 움직임에서 나와요." data-g="2">애니메이션 라이브러리</span> Framer Motion을 깔아요.</li>
+    <li>Claude Code에게 GitHub 주소를 주며 UI(User Interface) UX(User Experience) Pro Max <span class="term" data-term="스킬" data-en="Agent Skill" data-desc="Claude Code 같은 AI 코딩 도구에 붙이는 지침·자료 묶음이에요. 필요한 순간에 불러와 쓰기 때문에, 디자인 규칙 같은 전문 지식을 매번 설명하지 않아도 돼요." data-g="1">스킬</span>을 설치하라고 시켜요.</li>
+    <li>21st.dev에서 복사한 내용을 Claude Code에 붙여 넣으면 사이트가 나온다고 해요. 화면을 보면 붙여 넣은 건 710줄이에요.</li>
+    <li>결과물 첫 화면만 보여 주고, 지시 내용이나 걸린 시간은 나오지 않아요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">어떤 주장을 하나요?</a></li>
+    <li><a href="#s2">네 단계 따라 하기</a></li>
+    <li><a href="#s3">만들어진 사이트와 빠진 것</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=Srjqf8B3k4c&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>어떤 주장을 하나요?</h2>
+<p>영상은 '웹 디자이너를 고용하지 말라'는 말로 시작해요. 그러면서 Claude Code가 만들었다는 사이트를 먼저 보여 줘요. 분홍 구름 위에 우주인이 떠 있고, 왼쪽에 큰 글씨로 'a sky odyssey'라고 적힌 첫 화면이에요.</p>
+<figure>
+  <img src="assets/frame-0002.webp" alt="분홍 구름 위에 우주인이 떠 있고 왼쪽에 a sky odyssey라는 큰 제목이 있는 웹사이트 첫 화면">
+  <figcaption>
+    영상이 '1만 달러짜리'라고 부르는 결과물 중 하나예요. 큰 사진 한 장과 큰 제목으로 첫 화면을 채우는 스타일이에요.
+    <a href="https://www.youtube.com/watch?v=Srjqf8B3k4c&amp;t=2s" target="_blank" rel="noopener">영상 00:02에서 보기</a>
+  </figcaption>
+</figure>
+<p>제목의 '코드 한 줄'이 무엇인지는 다음 화면에서 드러나요. Claude Code 터미널의 입력 줄에 <code>Install this skill</code>이라는 한 문장만 쳐 있어요. 코드라기보다 Claude Code에게 자연어로 시키는 한 줄이에요. 상단에는 Claude Code v2.1.81, 모델은 Sonnet 4.6이라고 찍혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0006.webp" alt="Claude Code v2.1.81 시작 화면과 입력 줄에 Install this skill이라고 친 터미널">
+  <figcaption>
+    '한 줄'은 이런 자연어 지시를 가리켜요. 실제로는 아래에서 보듯 이런 단계를 네 번 거쳐요.
+    <a href="https://www.youtube.com/watch?v=Srjqf8B3k4c&amp;t=6s" target="_blank" rel="noopener">영상 00:06에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=Srjqf8B3k4c&amp;t=8s" target="_blank" rel="noopener">00:08</a>
+  <h2>네 단계 따라 하기</h2>
+<p>영상은 화면 위에 주황색 띠로 '1. Install Claude code'처럼 단계 번호를 붙여 가며 네 단계를 빠르게 넘겨요. 한 장씩 따로 나오기 때문에, 전체 흐름을 먼저 한 그림으로 모았어요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["1. Claude Code 설치"] --> B["2. Framer Motion 설치"] --> C["3. UI UX Pro Max 스킬"] --> D["4. 21st.dev 내용 붙여 넣기"] --> E["웹사이트"]
+</pre>
+  <figcaption>앞의 둘은 터미널에서 직접, 뒤의 둘은 Claude Code에게 시키거나 붙여 넣는 방식이에요.</figcaption>
+</figure>
+
+<h3>1. Claude Code 설치</h3>
+<p>공식 설치 문서에서 운영체제별 명령을 고르는 장면이에요. 맨 위 macOS, Linux, WSL(Windows Subsystem for Linux) 칸에는 <code>curl -fsSL https://claude.ai/install.sh | bash</code>가 있고, 그 아래로 Windows PowerShell과 Windows CMD(Command Prompt)용 명령이 따로 있어요. 커서는 PowerShell 줄의 복사 버튼 쪽에 있어요.</p>
+<figure>
+  <img src="assets/frame-0010.webp" alt="Claude Code 설치 문서에서 macOS·Linux·WSL, Windows PowerShell, Windows CMD별 설치 명령이 나열된 화면">
+  <figcaption>
+    자기 운영체제에 맞는 줄 하나를 복사해 터미널에 붙여 넣으면 돼요.
+    <a href="https://www.youtube.com/watch?v=Srjqf8B3k4c&amp;t=10s" target="_blank" rel="noopener">영상 00:10에서 보기</a>
+  </figcaption>
+</figure>
+<pre><code class="language-bash">curl -fsSL https://claude.ai/install.sh | bash</code></pre>
+
+<h3>2. Framer Motion 설치</h3>
+<p>두 번째는 애니메이션을 맡는 Framer Motion이에요. 패키지 페이지의 Install 칸에 있는 <code>npm i framer-motion</code>을 복사해요. 바로 아래 Repository 칸에는 github.com/motiondivision/motion이 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0016.webp" alt="framer-motion 패키지 페이지의 Install 칸에 npm i framer-motion 명령, 그 아래 github.com/motiondivision/motion 저장소 주소">
+  <figcaption>
+    저장소 이름이 이미 motion이에요. 이 차이는 바로 아래 보충 상자에서 설명해요.
+    <a href="https://www.youtube.com/watch?v=Srjqf8B3k4c&amp;t=16s" target="_blank" rel="noopener">영상 00:16에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Framer Motion은 지금 Motion이라는 이름으로 불려요. 공식 업그레이드 안내는 <code>framer-motion</code>을 지우고 <code>motion</code>을 설치한 뒤, import 경로를 <code>motion/react</code>로 바꾸라고 해요. 영상 속 패키지 페이지에서도 README 첫 줄에 이미 <code>npm install motion</code>이 보여요.</p>
+  <p>또 이 라이브러리는 React 프로젝트 안에서 쓰는 거라, 아무 폴더에서나 설치하면 소용이 없어요. 프로젝트 폴더를 먼저 만들고 그 안에서 설치하거나, Claude Code가 프로젝트를 만들 때 함께 넣게 하는 편이 자연스러워요.</p>
+  <p class="cite">출처: <a href="https://motion.dev/docs/react-upgrade-guide" target="_blank" rel="noopener">Motion 공식 문서 — Upgrade guide</a></p>
+</aside>
+
+<h3>3. UI UX Pro Max 스킬</h3>
+<p>세 번째로 UI UX Pro Max 소개 사이트를 보여 줘요. 'Design Intelligence'라는 제목 아래, UI 스타일·색 조합·폰트 짝·차트 종류·UX 지침을 검색할 수 있는 데이터베이스라고 적혀 있어요. 맨 위에는 Cursor, Windsurf, Antigravity, GitHub Copilot, Kiro 같은 지원 도구 로고가 줄지어 있고, 가운데 명령 칸에는 <code>uipro init --ai antigravity</code>가 보여요.</p>
+<figure>
+  <img src="assets/frame-0020.webp" alt="UI UX Pro Max Design Intelligence 소개 화면, 지원 도구 로고와 uipro init --ai antigravity 명령 칸">
+  <figcaption>
+    사이트의 예시 명령은 Antigravity용이에요. 영상은 이 명령을 쓰지 않고 다음 장면처럼 Claude Code에게 맡겨요.
+    <a href="https://www.youtube.com/watch?v=Srjqf8B3k4c&amp;t=20s" target="_blank" rel="noopener">영상 00:20에서 보기</a>
+  </figcaption>
+</figure>
+<p>실제 설치는 Claude Code 안에서 해요. 입력 줄에 GitHub 주소 <code>github.com/nextlevelbuilder/ui-ux-pro-max-skill</code>을 주고 설치해 달라고 시키는 장면이에요.</p>
+<figure>
+  <img src="assets/frame-0022.webp" alt="Claude Code 입력 줄에 github.com/nextlevelbuilder/ui-ux-pro-max-skill 주소가 들어간 터미널">
+  <figcaption>
+    저장소 주소만 알려 주면 Claude Code가 알아서 내려받아 설치해요.
+    <a href="https://www.youtube.com/watch?v=Srjqf8B3k4c&amp;t=22s" target="_blank" rel="noopener">영상 00:22에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>저장소 README에는 Claude Code용 공식 설치 방법이 따로 있어요. Claude Code 안에서 <code>/plugin marketplace add nextlevelbuilder/ui-ux-pro-max-skill</code>와 <code>/plugin install ui-ux-pro-max@ui-ux-pro-max-skill</code> 두 줄을 치거나, CLI(Command Line Interface)를 전역 설치한 뒤 프로젝트 폴더에서 <code>uipro init --ai claude</code>를 실행해요. 영상처럼 Claude Code에게 맡겨도 되지만, 어디에 무엇을 깔았는지 확실히 알고 싶다면 공식 방법이 안전해요.</p>
+  <p class="cite">출처: <a href="https://github.com/nextlevelbuilder/ui-ux-pro-max-skill" target="_blank" rel="noopener">nextlevelbuilder/ui-ux-pro-max-skill — GitHub</a></p>
+</aside>
+
+<h3>4. 21st.dev 내용 붙여 넣기</h3>
+<p>마지막은 21st.dev예요. 왼쪽 메뉴에 Components, Agent Templates, Agents, Magic Chat 같은 항목이 있고, 오른쪽에는 UI Components 미리보기가 떠 있어요.</p>
+<figure>
+  <img src="assets/frame-0024.webp" alt="21st.dev 홈 화면, 왼쪽 메뉴에 Components와 Agent Templates, 오른쪽에 UI Components 미리보기">
+  <figcaption>
+    여기서 마음에 드는 컴포넌트를 골라 복사하는 장면이에요. 어떤 컴포넌트를 골랐는지는 나오지 않아요.
+    <a href="https://www.youtube.com/watch?v=Srjqf8B3k4c&amp;t=24s" target="_blank" rel="noopener">영상 00:24에서 보기</a>
+  </figcaption>
+</figure>
+<p>복사한 내용을 Claude Code에 붙여 넣은 화면이에요. 입력 줄에 <code>[Pasted text #1 +710 lines]</code>라고 찍혀 있어요. 영상은 '한 줄을 복사하라'고 말하지만, 실제로 들어간 건 710줄짜리 텍스트예요.</p>
+<figure>
+  <img src="assets/frame-0026.webp" alt="Claude Code 입력 줄에 Pasted text #1 +710 lines라고 표시된 터미널">
+  <figcaption>
+    이 단계가 사실상 사이트의 모양을 정해요. '한 줄'이라는 제목과 가장 거리가 먼 부분이에요.
+    <a href="https://www.youtube.com/watch?v=Srjqf8B3k4c&amp;t=26s" target="_blank" rel="noopener">영상 00:26에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=Srjqf8B3k4c&amp;t=26s" target="_blank" rel="noopener">00:26</a>
+  <h2>만들어진 사이트와 빠진 것</h2>
+<p>네 단계를 거치면 이런 사이트가 나온다며 결과물 두 개를 보여 줘요. 첫 번째는 초원 위 코끼리 사진을 화면 가득 깔고 'SAFARI'라는 큰 글자를 얹은 여행 사이트예요.</p>
+<figure>
+  <img src="assets/frame-0028.webp" alt="초원의 코끼리 사진 위에 SAFARI라는 큰 글자가 있는 여행 사이트 첫 화면">
+  <figcaption>
+    큰 사진과 큰 제목, 오른쪽 위 작은 메뉴라는 구성은 첫 장면의 'a sky odyssey'와 같아요.
+    <a href="https://www.youtube.com/watch?v=Srjqf8B3k4c&amp;t=28s" target="_blank" rel="noopener">영상 00:28에서 보기</a>
+  </figcaption>
+</figure>
+<p>두 번째는 빨간 재킷과 선글라스를 쓴 모델을 오른쪽에 두고, 왼쪽에 'stella'라는 굵은 글자를 놓은 패션 사이트예요. 오른쪽 아래에는 'next collection' 카드가 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-0030.webp" alt="빨간 재킷의 모델 사진과 stella라는 굵은 제목, 오른쪽 아래 next collection 카드가 있는 패션 사이트">
+  <figcaption>
+    영상이 보여 주는 결과물은 모두 첫 화면 한 장이에요. 그 아래 페이지나 실제 동작은 나오지 않아요.
+    <a href="https://www.youtube.com/watch?v=Srjqf8B3k4c&amp;t=30s" target="_blank" rel="noopener">영상 00:30에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상에 빠진 것도 짚어 둘게요. 사이트를 만들 때 Claude Code에게 어떤 지시를 줬는지, 몇 번 고쳤는지, 얼마나 걸렸는지는 나오지 않아요. '1만 달러'도 값을 매긴 근거 없이 붙인 표현이에요. 그래서 이 영상은 만드는 법이라기보다, 어떤 도구를 조합하는지 알려 주는 목록으로 보는 게 맞아요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>단계</th><th>도구</th><th>맡는 일</th><th>어떻게 넣나요</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Claude Code</td><td>코드를 실제로 짜는 AI(Artificial Intelligence) 코딩 도구</td><td>터미널에 설치 명령</td></tr>
+      <tr><td>2</td><td>Framer Motion</td><td>애니메이션</td><td>터미널에 설치 명령</td></tr>
+      <tr><td>3</td><td>UI UX Pro Max</td><td>색·폰트·스타일 같은 디자인 지식</td><td>Claude Code에게 설치 지시</td></tr>
+      <tr><td>4</td><td>21st.dev</td><td>완성된 <span class="term" data-term="UI 컴포넌트" data-en="UI component" data-desc="버튼, 카드, 입력창처럼 화면을 이루는 재사용 가능한 조각이에요. 잘 만든 조각을 가져다 쓰면 디자인 수준이 한 번에 올라가요." data-g="3">UI 컴포넌트</span></td><td>복사해서 Claude Code에 붙여 넣기</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 도구 이름이 잘못 받아적혔어요. 화면 글자를 기준으로 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>CloudCode</td><td>Claude Code</td><td></td></tr>
+      <tr><td>UIUX Pro Max</td><td>UI UX Pro Max</td><td>화면의 사이트 제목 기준</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-1"><dt>스킬<span class="en">Agent Skill</span></dt><dd>Claude Code 같은 AI 코딩 도구에 붙이는 지침·자료 묶음이에요. 필요한 순간에 불러와 쓰기 때문에, 디자인 규칙 같은 전문 지식을 매번 설명하지 않아도 돼요.</dd></div>
+    <div class="g" id="g-2"><dt>애니메이션 라이브러리<span class="en">Animation library</span></dt><dd>화면 요소가 나타나고 움직이는 효과를 짧은 코드로 넣게 해 주는 코드 묶음이에요. 고급스러워 보이는 사이트의 상당 부분이 이런 움직임에서 나와요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>CLI</dt><dd>Command Line Interface</dd></div>
+    <div class="g"><dt>CMD</dt><dd>Command Prompt</dd></div>
+    <div class="g"><dt>UI</dt><dd>User Interface</dd></div>
+    <div class="g" id="g-3"><dt>UI 컴포넌트<span class="en">UI component</span></dt><dd>버튼, 카드, 입력창처럼 화면을 이루는 재사용 가능한 조각이에요. 잘 만든 조각을 가져다 쓰면 디자인 수준이 한 번에 올라가요.</dd></div>
+    <div class="g"><dt>UX</dt><dd>User Experience</dd></div>
+    <div class="g"><dt>WSL</dt><dd>Windows Subsystem for Linux</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=Srjqf8B3k4c" target="_blank" rel="noopener">원본 영상 — Automate AI Consulting</a></li>
+    <li id="src-2"><a href="https://code.claude.com/docs/en/setup" target="_blank" rel="noopener">Claude Code 공식 문서 — Setup</a></li>
+    <li id="src-3"><a href="https://motion.dev/docs/react-upgrade-guide" target="_blank" rel="noopener">Motion 공식 문서 — Upgrade guide</a></li>
+    <li id="src-4"><a href="https://github.com/nextlevelbuilder/ui-ux-pro-max-skill" target="_blank" rel="noopener">nextlevelbuilder/ui-ux-pro-max-skill — GitHub</a></li>
+    <li id="src-5"><a href="https://21st.dev/" target="_blank" rel="noopener">21st.dev</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 4일에 이 영상을 보고 정리했어요. 원본은 Automate AI Consulting 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
