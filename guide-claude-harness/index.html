@@ -1,0 +1,1552 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Code 하네스 다듬기 합본 — CLAUDE.md·스킬·훅·서브에이전트</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Claude Code 하네스 다듬기 합본 — CLAUDE.md·스킬·훅·서브에이전트</h1>
+  <p class="lede">영상 스무 편을 주제별로 엮었어요. 무엇을 어디에 적고, 모델이 바뀌면 무엇을 지울지까지 한 흐름이에요</p>
+  <div class="meta">
+    <span>유튜브 채널 19곳</span><span class="dot">·</span>
+    <span>영상 20편 · 모두 약 7시간</span><span class="dot">·</span>
+    <span>읽는 데 약 58분</span>
+  </div>
+  <a class="src-btn" href="#sources">원본 영상 20편 목록 ↓</a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li><code>CLAUDE.md</code>, 스킬 설명, 지난 대화는 요청마다 다시 실려요. 한 단어 답에도 5만 토큰이 들었고, 읽은 것의 97% 넘게가 다시 읽기였어요.</li>
+    <li>규칙은 컨텍스트를 차지하는 방식으로 자리를 골라요. 늘 필요한 몇 줄만 <code>CLAUDE.md</code>에, 영역별 규칙은 docs로, 절차는 스킬로, 꼭 지킬 규칙은 <span class="term" data-term="훅" data-en="Hook" data-desc="도구를 쓰기 전후나 작업이 끝날 때처럼 정해진 순간에 저절로 도는 스크립트예요. 관련 없을 때는 컨텍스트를 차지하지 않고, 걸리면 그 자리에서 막거나 경고해요." data-g="4">훅</span>으로 옮겨요.</li>
+    <li><code>CLAUDE.md</code>는 설명서가 아니라 지도예요. 200줄 아래로, 어디에 무엇이 있고 언제 여는지만 적고, 실수를 볼 때마다 알맞은 곳에 한 줄씩 더해요.</li>
+    <li>스킬은 문장보다 구조예요. <code>SKILL.md</code>는 500줄 아래 목차로, 참고 파일은 한 단계로 잇고, 위험한 단계는 스크립트로 잠그고, 검사-수정 루프를 넣어요.</li>
+    <li>옛 모델용 지시는 새 모델에게 방해가 돼요. 모델이 바뀌면 스킬을 다시 돌려 보고, 지울 것과 더할 것을 11절 기록표로 관리해요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">이 합본을 읽는 법</a></li>
+    <li><a href="#s2">요청마다 무엇이 실려 가나요</a></li>
+    <li><a href="#s3">규칙은 어디에 둘까요</a></li>
+    <li><a href="#s4">CLAUDE.md는 설명서가 아니라 지도</a></li>
+    <li><a href="#s5">스킬을 만드는 규칙</a></li>
+    <li><a href="#s6">지시문은 어떻게 쓸까요</a></li>
+    <li><a href="#s7">훅으로 같은 실수를 막아요</a></li>
+    <li><a href="#s8">서브에이전트와 루프는 언제 쓸까요</a></li>
+    <li><a href="#s9">&#x27;다 됐어요&#x27;를 믿지 않는 법</a></li>
+    <li><a href="#s10">남이 만든 스킬을 들일 때</a></li>
+    <li><a href="#s11">모델이 바뀌면 다시 볼 것</a></li>
+    <li><a href="#s12">숫자 기준과 점검표</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <h2>이 합본을 읽는 법</h2>
+<p>이 합본은 Claude Code에 늘 따라붙는 파일들, 즉 <code>CLAUDE.md</code>, 스킬, 훅, <span class="term" data-term="서브에이전트" data-en="Subagent" data-desc="메인 에이전트가 일을 넘기는 별도의 에이전트예요. 자기 컨텍스트 윈도우에서 일하고 결과만 요약해 돌려줘서 메인 대화가 가벼워져요." data-g="5">서브에이전트</span>를 어떻게 쓰고 다듬을지 다룬 영상 스무 편의 정리 노트를 한 흐름으로 다시 엮은 거예요. 내 하네스(<code>~/.claude/</code> 아래 문서와 커스텀 스킬)를 고칠 때 옆에 펴 두고 쓰려고 만들었어요.</p>
+<p>영상 순서가 아니라 주제 순서로 모았어요. 여러 영상이 같은 말을 하면 한 번만 쓰고 누가 그랬는지 밝혔어요. 말이 다르면 나란히 놓았고, 숫자로 된 기준은 마지막 절에 표로 다시 모았어요.</p>
+
+<p>아래 그림이 이 글의 지도예요. 먼저 요청마다 무엇이 실려 가는지 보고, 규칙을 놓을 자리를 정해요. 그다음 <code>CLAUDE.md</code>, 스킬, 지시문을 쓰는 법을 보고, 훅·서브에이전트·검증으로 일을 나누는 법으로 넘어가요. 끝에서는 남의 스킬을 들이는 법과 모델이 바뀔 때 다시 볼 것을 다뤄요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 150" role="img" aria-label="실리는 것, 놓을 자리, 쓰는 법, 나누고 확인하기, 들이고 고치기 다섯 덩어리를 화살표로 잇고 덩어리마다 절 번호를 단 지도">
+    <defs><marker id="arrow-map" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-map"></g>
+  </svg>
+  <figcaption>2·3절은 왜 짧게 써야 하는지를, 4~9절은 어떻게 쓰고 나눌지를, 10·11절은 시간이 지나도 낡지 않게 하는 법을 다뤄요. 12절은 바로 쓰는 점검표예요.</figcaption>
+</figure>
+
+<p>영상마다 이 합본에서 쓰인 자리는 다음과 같아요. 제목을 누르면 그 영상 하나만 정리한 노트로 가요. 본문에서는 둘째 열의 짧은 이름으로 불러요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>영상</th><th>본문에서 부르는 이름</th><th>채널 · 길이</th><th>이 합본에서</th></tr></thead>
+    <tbody>
+      <tr><td><a href="../클로드-코드의-책임-설계자가-CLAUDE.md-를-더이상-사용하지-않는-이유/">클로드 코드 설계자가 CLAUDE.md를 거의 안 쓰는 이유</a></td><td>홀먼 영상</td><td>마일드코드 · 11:02</td><td>2·3·5·7·8·12절</td></tr>
+      <tr><td><a href="../Why-Your-AI-Generates-Crap-Code-And-How-to-Fix-It/">AI가 엉터리 코드를 내놓는 이유와 고치는 법</a></td><td>Kyle 강의</td><td>Web Dev Simplified · 23:54</td><td>2·3·4·5·12절</td></tr>
+      <tr><td><a href="../앤트로픽-피셜-클로드-스킬-만드는-규칙-바뀜-공식-7가지/">앤트로픽 피셜: 클로드 스킬 만드는 규칙 (공식 7가지)</a></td><td>스킬 규칙 7가지</td><td>낭만빌더 김스듴 · 11:54</td><td>5·11·12절</td></tr>
+      <tr><td><a href="../클로드-코드-공식-플러그인-4개로-토큰-절약-끝-하네스-실무-포함/">클로드 코드 공식 플러그인 4개로 토큰 절약 끝</a></td><td>공식 플러그인 4개</td><td>짐코딩 · 15:31</td><td>2·4·7·12절</td></tr>
+      <tr><td><a href="../한영자막-Flutter-개발자-인터뷰-플러터-개발자의-AI-워크플로우/">플러터 개발자의 AI 워크플로우</a></td><td>Ivanna 인터뷰</td><td>Tech Bridge · 15:28</td><td>3·5·10·11·12절</td></tr>
+      <tr><td><a href="../AI가-내-업무를-모르는-진짜-이유/">AI가 내 업무를 모르는 진짜 이유</a></td><td><code>CLAUDE.md</code> 입문</td><td>임대표의 AI(Artificial Intelligence)오피스 · 25:40</td><td>4절</td></tr>
+      <tr><td><a href="../AI로-게임-만들-때-쓰는-에이전트-세팅-Claude.mdAgents.md-자동-테스트-루프/">AI로 게임 만들 때 쓰는 에이전트 세팅</a></td><td>게임 팀 세팅</td><td>MGD - Midnight Game Devs · 08:40</td><td>4·8·9·12절</td></tr>
+      <tr><td><a href="../같은-일인데-비용-263배-차이비용-줄이는-루프-설계법/">같은 일인데 비용 263배 차이</a></td><td>263배 실험</td><td>코난쌤 conanssam · 12:27</td><td>2·8·11·12절</td></tr>
+      <tr><td><a href="../Ive-Set-Up-500-AI-Second-Brains.-Heres-The-Only-18-Things-Yo/">AI 세컨드 브레인을 500번 넘게 세팅하며 얻은 팁 18가지</a></td><td>세컨드 브레인 18팁</td><td>Ben AI · 29:44</td><td>4·5·12절</td></tr>
+      <tr><td><a href="../앤트로픽이-직접-말아주는-Fable-5.1-지리게-잘-사용하는-법/">앤트로픽이 직접 말아주는 Fable 5.1 잘 쓰는 법</a></td><td>Fable 5.1 가이드</td><td>코드팩토리 · 08:06</td><td>6·8·11절</td></tr>
+      <tr><td><a href="../클로드-코워크를-1주-반-만에-만든-앤트로픽-리드가-클로드에게-일을-맡기는-법-전문가처럼-해-줘-대신-쓰는/">클로드 코워크를 만든 앤트로픽 리드가 클로드에게 일을 맡기는 법</a></td><td>펠릭스 인터뷰</td><td>AgentOS · 43:37</td><td>6·8·9·11절</td></tr>
+      <tr><td><a href="../클로드-스킬-깔기-전-확인할-3가지/">클로드 스킬 깔기 전 확인할 3가지</a></td><td>스킬 점검 쇼츠</td><td>AI 시스메이커 · 00:22</td><td>10절</td></tr>
+      <tr><td><a href="../클로드-코드-왕초보-2026년-완벽-가이드-60분-정리-Claude-입문-1단계부터-7단계까지-팁-40개-및/">클로드 코드 왕초보 가이드 — 팁 40개</a></td><td>왕초보 가이드</td><td>AI싱크클럽 · 1:01:37</td><td>2·3·4·5·6·7·10·11·12절</td></tr>
+      <tr><td><a href="../유명-AI-코딩-스킬-7개를-단계별로-비교했습니다/">유명 AI 코딩 스킬 7개 단계별 비교</a></td><td>코딩 스킬 7개 비교</td><td>MINDUNG · 10:15</td><td>9·10절</td></tr>
+      <tr><td><a href="../맷-포콕-vs-애디-오스마니-vs-피스택-비교-총정리/">맷 포콕 vs 애디 오스마니 vs 피스택 비교 총정리</a></td><td>세 스킬 묶음 비교</td><td>MINDUNG · 05:06</td><td>5·9·10절</td></tr>
+      <tr><td><a href="../Matt-Pocock-The-Most-Valuable-Skill-to-Learn-in-the-Age-of-A/">Matt Pocock: AI 시대에 가장 값진 기술</a></td><td>Matt Pocock 대담</td><td>Nate Herk | AI Automation · 44:50</td><td>6·9·11절</td></tr>
+      <tr><td><a href="../Pstack-How-a-Cursor-Engineer-Ships-Code-With-AI/">pstack: Cursor 엔지니어가 AI로 코드를 내보내는 방식</a></td><td>pstack 해설</td><td>Eric Tech · 14:56</td><td>3·9·10절</td></tr>
+      <tr><td><a href="../AI-Can-Build-Your-App.-It-Cant-Engineer-It.-9-Skills/">AI 에이전트를 위한 엔지니어링 시스템</a></td><td>9 Skills</td><td>JavaScript Mastery · 23:33</td><td>4·6·9절</td></tr>
+      <tr><td><a href="../Anthropic-Just-Released-A-New-System-For-Using-Claude-Code/">Claude Code 팀의 코드 리뷰 방식을 내 프로젝트에 옮기는 법</a></td><td>리뷰 루프</td><td>AI LABS · 15:58</td><td>4·7·9·12절</td></tr>
+      <tr><td><a href="../멀티-에이전트-쓰지-마세요..-실제-테스트-결과/">멀티 에이전트 쓰지 마세요 (실제 테스트 결과)</a></td><td>멀티 에이전트 실험</td><td>챗대리의 AI연구소 · 09:15</td><td>8·10·12절</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>이 합본은 모델이 바뀔 때마다 다시 봐야 하는 글이에요. 영상마다 찍은 시점의 모델(Opus 5.5, Sonnet 5.5, Haiku 5.5, Fable 5.1)을 기준으로 말하고, 같은 지시가 다음 모델에게는 오히려 방해가 될 수 있다고 여러 영상이 경고해요. 그래서 모델 때문에 생긴 지시는 11절 표에 따로 모았어요. 새 영상을 더할 때마다 그 표부터 다시 보고, 그때의 모델에게 필요 없어진 지시는 지워요.</p>
+</aside>
+</section>
+
+<section id="s2">
+  <h2>요청마다 무엇이 실려 가나요</h2>
+<p>Claude Code에 프롬프트를 보내면 그 문장만 가는 게 아니에요. Kyle 강의는 화이트보드에 함께 실려 가는 것들을 늘어놓고 시작해요. 도구가 써 둔 시스템 프롬프트, 저장소 맨 위의 <code>AGENTS.md</code>(Claude Code에서는 <code>CLAUDE.md</code>), 설치한 스킬의 이름과 설명은 <b>모든 요청에</b> 붙어요. 문서와 코드는 문제를 풀 때 필요하면 그때 읽혀요.</p>
+<figure>
+  <img src="assets/kyle-frame-0100.webp" alt="화이트보드에 SYSTEM.md, AGENTS.md, SKILL.md, Docs 상자와 마름모 모양의 Prompt, 그 아래 CLAUDE.md와 Codebase 상자를 배치한 그림">
+  <figcaption>프롬프트 하나 옆에 늘 붙어 가는 상자가 이렇게 많아요. 시스템 프롬프트는 손댈 수 없으니, 고칠 곳은 <code>CLAUDE.md</code>와 스킬 설명이에요. <a href="https://www.youtube.com/watch?v=jojMVmRZABw&amp;t=60s" target="_blank" rel="noopener">Kyle 강의 01:00에서 보기</a></figcaption>
+</figure>
+
+<p>홀먼 영상은 공식 문서의 시각화 화면으로 같은 얘기를 해요. 첫 메시지를 치기도 전에 시스템 프롬프트, 자동 메모리, 스킬 설명, 전역과 프로젝트 <code>CLAUDE.md</code>가 <span class="term" data-term="컨텍스트 윈도우" data-en="Context window" data-desc="모델이 한 번에 읽고 처리할 수 있는 최대 분량이에요. CLAUDE.md처럼 늘 실리는 것이 클수록 실제 작업에 쓸 자리가 줄어요." data-g="1">컨텍스트 윈도우</span>를 이미 차지하고 있어요. 홀먼은 <code>CLAUDE.md</code>를 대화가 오갈 때마다 통째로 내는 비용으로 보고, 그 내용의 90%는 지금 하는 작업과 상관이 없다고 말해요.</p>
+<figure>
+  <img src="assets/hollman-frame-0130.webp" alt="'BEFORE YOU TYPE ANYTHING' 아래 System prompt +4.2K, Auto memory +680, Environment info +280, MCP tools +120, Skill descriptions +450, ~/.claude/CLAUDE.md +320, Project CLAUDE.md +1.8K가 나열된 컨텍스트 윈도우 시각화 화면">
+  <figcaption>맨 아래 두 줄이 내가 쓰는 <code>CLAUDE.md</code>예요. 아무것도 묻기 전에 이미 실려 있어요. <a href="https://www.youtube.com/watch?v=nf4AWqLMME0&amp;t=90s" target="_blank" rel="noopener">홀먼 영상 01:30에서 보기</a></figcaption>
+</figure>
+
+<h3>한 단어 답에 5만 토큰</h3>
+<p>263배 실험은 이걸 숫자로 재요. "한 단어로 답해: 하늘 색?"을 평소대로 보내니 답은 '파랑' 한 단어인데 보낸 토큰은 53,043개였어요. 도구를 끄고, 설정 파일을 읽지 않게 막고, 시스템 프롬프트를 한 줄로 바꿔 보내니 574토큰이었어요. 약 70분의 1이에요. 발표자의 <code>CLAUDE.md</code> 하나만 약 2만 1천 토큰이었어요.</p>
+<figure>
+  <img src="assets/cost263-frame-0147.webp" alt="claude -p로 같은 질문을 평소대로 보낸 결과 53,043토큰 $0.1710, 옵션을 붙여 맨몸으로 보낸 결과 574토큰 $0.0024가 찍힌 터미널">
+  <figcaption>같은 질문, 같은 답이에요. 차이는 Claude Code가 기본으로 싣는 짐뿐이에요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=107s" target="_blank" rel="noopener">263배 실험 01:47에서 보기</a></figcaption>
+</figure>
+<p>Kyle 강의는 남의 저장소에서 같은 문제를 찾아요. Apache Airflow의 <code>AGENTS.md</code>는 537줄, 약 8,600토큰이었어요. 발표자는 컨텍스트 창이 100만 토큰이어도 10만~20만 토큰쯤부터 결과가 눈에 띄게 나빠진다고 봐요. 10만 토큰을 기준으로 잡으면 이 파일 하나가 거의 10%를 차지해요.</p>
+
+<h3>캐시가 있어도 공짜는 아니에요</h3>
+<p>매번 똑같이 반복되는 앞부분은 <span class="term" data-term="프롬프트 캐싱" data-en="Prompt caching" data-desc="매번 같은 앞부분을 한 번 처리해 두고 다음 요청부터 싸게 다시 읽는 기능이에요. 앞부분이 글자 하나라도 달라지면 그 뒤는 새로 써야 해요." data-g="2">프롬프트 캐싱</span>으로 싸져요. 공식 플러그인 4개 영상은 캐시가 먹으면 그 부분을 10분의 1 값으로 깎아 준다고 설명해요. 263배 실험은 캐시 읽기 단가를 입력의 20분의 1로 잡았어요. 그런데 캐시는 앞부분이 글자 하나까지 같을 때만 읽기로 처리돼요. 앞쪽이 조금만 달라지면 그 뒤는 전부 새로 쓰고, 처음 캐시에 쓸 때는 입력값의 두 배를 내요.</p>
+<figure>
+  <img src="assets/cost263-frame-0939.webp" alt="도구 정의, 시스템 프롬프트, CLAUDE.md·설정, 대화 기록, 새 질문 다섯 칸 띠 위에 '캐시 읽기: 앞이 같을 때' 괄호, 아래 '새로 쓰기' 표시와 '기본 53,043', 짧은 띠 '질문'과 '맨몸 574'">
+  <figcaption>요청 한 번은 이 순서로 이어 붙어요. <code>CLAUDE.md</code>는 대화 기록보다 앞에 있어서, 여기를 고치면 그 뒤가 다 새로 쓰여요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=579s" target="_blank" rel="noopener">263배 실험 09:39에서 보기</a></figcaption>
+</figure>
+<p>기본 호출은 이 띠가 5만 토큰이 넘고, <span class="term" data-term="맨몸 호출" data-en="Bare call" data-desc="도구 설명서와 설정 파일을 빼고 한 줄짜리 시스템 프롬프트로 모델을 부르는 방식이에요. 한 번에 싣는 짐이 작아 비용이 크게 줄어요." data-g="16">맨몸 호출</span>은 질문과 한 줄 지시가 거의 전부예요. 싼 걸 수천 번 읽으면 결국 큰 덩어리가 돼요. 세 영상이 각자 자기 기록을 열어 봤는데 숫자가 거의 같아요.</p>
+<ul>
+  <li>263배 실험: 일주일 대화 103개, 호출 7,923번에서 토큰의 98.7%가 캐시 읽기였어요. 비용으로는 캐시 읽기가 61.7%, 캐시 쓰기 약 27%, 출력 약 11%였어요.</li>
+  <li>왕초보 가이드: Claude Code 기록 438개에서 클로드가 읽은 것의 97%가 이미 읽은 걸 다시 읽은 것이었어요. 대화가 길수록 매번 처음부터 다시 읽기 때문이에요.</li>
+  <li>공식 플러그인 4개: session-report의 데모 리포트에서 총 1.01B 토큰 중 96.9%가 캐시 읽기였어요.</li>
+</ul>
+<figure>
+  <img src="assets/beginner-frame-1427.webp" alt="클로드가 읽은 양 막대그래프: 이미 읽은 걸 다시 읽음 97%, 새 내용 저장 2.38%, 클로드가 쓴 답 0.24%">
+  <figcaption>클로드가 실제로 쓴 답은 0.24%예요. 나머지는 거의 다 앞 내용을 다시 읽는 데 썼어요. 그래서 일이 바뀌면 새 대화를 열라고 해요. <a href="https://www.youtube.com/watch?v=2R-kUFv7GZg&amp;t=867s" target="_blank" rel="noopener">왕초보 가이드 14:27에서 보기</a></figcaption>
+</figure>
+
+<h3><code>CLAUDE.md</code>는 어떻게 불어나나요</h3>
+<p>263배 실험의 <code>CLAUDE.md</code>는 지적받을 때마다 한 줄씩 적어 온 파일이었어요. 10월 21일 6,136바이트에서 닷새 만에 43,373바이트, 일곱 배가 됐어요. 이 크기면 일주일 7,900번 호출마다 2만 토큰씩 다시 실려요.</p>
+<figure>
+  <img src="assets/cost263-frame-0328.webp" alt="'7배' 제목 아래 CLAUDE.md 크기 막대그래프: 10/21 6,136, 10/22 10,263, 10/24 20,653, 지금 43,373">
+  <figcaption>지적할 때마다 한 줄씩 붙이면 닷새 만에 이렇게 커져요. 4절의 '실수를 볼 때마다 알맞은 곳에 한 줄'과 같이 봐야 하는 그림이에요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=208s" target="_blank" rel="noopener">263배 실험 03:28에서 보기</a></figcaption>
+</figure>
+
+<h3>짐을 줄이는 것과 왕복을 줄이는 것</h3>
+<p>그렇다고 <code>CLAUDE.md</code>만 줄이면 끝나는 건 아니에요. 263배 실험은 유튜브 제목 후보 10개를 뽑는 같은 일을 일곱 방식으로 세 판씩 돌렸어요. 일곱 방식 모두 검사를 30개 중 30개 통과했어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>방식</th><th>세 판 평균</th><th>기준 대비</th></tr></thead>
+    <tbody>
+      <tr><td>통째로 맡기기 (Opus 에이전트)</td><td>$1.0071</td><td>100%</td></tr>
+      <tr><td>+ <code>CLAUDE.md</code> 다이어트</td><td>$0.9316</td><td>92.5%</td></tr>
+      <tr><td>판정만 코드로</td><td>$0.8192</td><td>81.3%</td></tr>
+      <tr><td>+ 일꾼 도구만 끔</td><td>$0.7161</td><td>71.1%</td></tr>
+      <tr><td>일꾼 맨몸 (Opus)</td><td>$0.0740</td><td>7.4%</td></tr>
+      <tr><td>일꾼 맨몸 (Sonnet)</td><td>$0.0397</td><td>1/25</td></tr>
+      <tr><td>일꾼 맨몸 (Haiku)</td><td>$0.0038</td><td>1/263</td></tr>
+    </tbody>
+  </table>
+</div>
+<p><code>CLAUDE.md</code>의 '배운 것' 목록을 <code>lessons.md</code>로 빼서 필요할 때만 읽게 했더니 10%도 안 줄었어요. 턴 수가 11~13번으로 늘어 아낀 걸 도로 썼거든요. 발표자는 비용을 <b>한 번에 싣는 양 × 다시 싣는 횟수 × 모델 단가</b>로 정리해요. 통째로 맡기는 한 짐 무게보다 몇 번 오가느냐가 비용을 정하고, 크게 줄인 건 횟수와 단가를 함께 깎은 방식이었어요(8절). 그래도 턴마다 1만 수천 토큰을 덜 싣는 건 이득이라 정리할 가치는 있다고 해요.</p>
+
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>Kyle 강의는 스킬도 공짜가 아니라고 짚어요. 스킬 본문은 쓸 때만 읽히지만, 맨 위의 이름과 설명은 AI가 어떤 스킬을 쓸지 고르는 데 필요해서 모든 요청에 실려요. 스킬을 100개 깔면 그만큼 컨텍스트가 지저분해져요(10절).</p>
+</aside>
+</section>
+
+<section id="s3">
+  <h2>규칙은 어디에 둘까요</h2>
+<p>규칙 하나를 적을 자리는 여러 곳이에요. <code>CLAUDE.md</code>, 거기서 링크한 문서, 스킬, 훅, 서브에이전트예요. 홀먼 영상은 이 자리들을 <b>컨텍스트 윈도우를 언제, 얼마나 차지하느냐</b>로 갈라요. 홀먼이 플러그인과 에이전트 팀을 설계하며 쓴 기준이에요.</p>
+<figure>
+  <img src="assets/hollman-frame-0056.webp" alt="CLAUDE.md 제목 아래 'You pay for all of it, every turn — even the 90% irrelevant to this task', 'doesn't compose', 'Doesn't scale' 세 문장이 적힌 강연 슬라이드">
+  <figcaption>홀먼이 <code>CLAUDE.md</code>를 평가한 슬라이드예요. 플러그인 1,000개가 각자 <code>CLAUDE.md</code>를 들고 오면 버틸 수 없다는 게 'Doesn't scale'의 뜻이에요. <a href="https://www.youtube.com/watch?v=nf4AWqLMME0&amp;t=56s" target="_blank" rel="noopener">홀먼 영상 00:56에서 보기</a></figcaption>
+</figure>
+
+<p>아래 그림은 다섯 자리가 컨텍스트를 차지하는 모양을 나란히 놓은 거예요. 막대가 길수록 매 요청에 많이 실려요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 260" role="img" aria-label="CLAUDE.md는 늘 전부, 링크한 문서는 필요할 때 전부, 스킬은 설명만 늘 있고 본문은 쓸 때, 훅은 관련 없으면 0, 서브에이전트는 별도 창에서 일하고 요약만 돌아오는 모양을 막대로 비교한 그림">
+    <defs><marker id="arrow-slots" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <g id="fig-slots"></g>
+  </svg>
+  <figcaption><code>CLAUDE.md</code>만 늘 통째로 실려요. 나머지 넷은 필요할 때만 자리를 차지해요. 그래서 홀먼은 <code>CLAUDE.md</code>에 모든 작업에 통하는 몇 줄만 남기라고 해요.</figcaption>
+</figure>
+
+<h3>어떤 규칙을 어디에 둘까요</h3>
+<p>여러 영상이 같은 방향으로 나눠요. 홀먼 영상의 정리를 뼈대로 다른 영상의 기준을 붙이면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>이런 규칙이면</th><th>자리</th><th>왜 거기인가요</th><th>말한 영상</th></tr></thead>
+    <tbody>
+      <tr><td>정말 모든 작업에 통하는 몇 줄</td><td><code>CLAUDE.md</code></td><td>매 요청에 실리니 늘 필요한 것만 둬요</td><td>홀먼 영상, Kyle 강의</td></tr>
+      <tr><td>거의 모든 작업에 쓰이지만 길고 영역별인 규칙(CSS(Cascading Style Sheets), API(Application Programming Interface), 테스트 규칙)</td><td><code>CLAUDE.md</code>에서 링크한 <code>docs/</code> 문서</td><td>그 영역 일을 할 때만 열려요</td><td>Kyle 강의</td></tr>
+      <tr><td>특정 시점에 쓰는 절차, 가끔 하는 작업(인증, PR(Pull Request) 내기)</td><td>스킬</td><td>짧은 설명만 늘 있고 본문은 쓸 때 불러와요</td><td>홀먼 영상, Kyle 강의, Ivanna 인터뷰</td></tr>
+      <tr><td>엄밀하게 지켜져야 하는 규칙(비밀 키 노출, 되돌릴 수 없는 삭제)</td><td>훅</td><td>적어 둔 부탁이 아니라 그 순간 저절로 돌아요</td><td>홀먼 영상, 왕초보 가이드</td></tr>
+      <tr><td>과정보다 결과만 필요한 일(검색, 로그 훑기)</td><td>서브에이전트</td><td>별도 창에서 일하고 요약만 돌려줘요</td><td>홀먼 영상</td></tr>
+      <tr><td>어디에도 둘 필요가 없거나 한 달 동안 필요 없었던 규칙</td><td>삭제</td><td>남겨 두면 비용만 들어요</td><td>홀먼 영상</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>홀먼은 스킬을 '언제 읽어야 하는지 짧은 요약이 붙은 <code>CLAUDE.md</code>'라고 설명해요. 공식 문서도 같은 지시를 계속 붙여 넣고 있다면 스킬을 만들라고 하고, <code>CLAUDE.md</code>와 달리 스킬 본문은 쓸 때만 실린다고 적어 뒀어요.</p>
+<figure>
+  <img src="assets/hollman-frame-0457.webp" alt="스킬 공식 문서. 'Create a skill when you keep pasting the same instructions... Unlike CLAUDE.md content, a skill's body loads only when it's used' 문단">
+  <figcaption>같은 지시를 반복해서 붙여 넣는다는 게 스킬로 옮길 신호예요. <a href="https://www.youtube.com/watch?v=nf4AWqLMME0&amp;t=297s" target="_blank" rel="noopener">홀먼 영상 04:57에서 보기</a></figcaption>
+</figure>
+<p>서브에이전트는 반대로 메인 창 바깥에서 돌아요. 홀먼은 '스킬은 컨텍스트 안에서, 서브에이전트는 밖에서' 돈다고 정리해요. 서브에이전트의 창에 시스템 프롬프트와 <code>CLAUDE.md</code>, 파일을 읽은 기록이 쌓여도 메인에는 요약만 돌아와요.</p>
+<figure>
+  <img src="assets/hollman-frame-0218.webp" alt="서브에이전트의 별도 컨텍스트 윈도우에 System prompt, Project CLAUDE.md, 파일 읽기 기록이 쌓이고, 메인에는 'Subagent returns summary +420'만 돌아오는 시각화 화면">
+  <figcaption>파일을 수십 개 읽어도 메인 창에 늘어나는 건 맨 아래 요약 한 줄이에요. 언제 쓰면 손해인지는 8절에서 따로 봐요. <a href="https://www.youtube.com/watch?v=nf4AWqLMME0&amp;t=138s" target="_blank" rel="noopener">홀먼 영상 02:18에서 보기</a></figcaption>
+</figure>
+
+<h3><code>CLAUDE.md</code>는 부탁이에요</h3>
+<p><code>CLAUDE.md</code>에 적었다고 지켜지는 것도 아니에요. 홀먼 영상의 발표자도 처음엔 규칙을 잔뜩 적었지만 클로드 코드가 무시하고 코드를 썼다고 해요. 공식 문서는 <code>CLAUDE.md</code>가 시스템 프롬프트가 아니라 사용자 메시지로 전달되고, 엄격하게 지킨다는 보장은 없다고 적어 뒀어요. 왕초보 가이드도 <code>CLAUDE.md</code>는 부탁이라 가끔 빠지니, 꼭 지킬 규칙은 훅으로 만들라고 해요(7절).</p>
+<figure>
+  <img src="assets/hollman-frame-0305.webp" alt="공식 문서 'Troubleshoot memory issues' 아래 'Claude isn't following my CLAUDE.md' 항목에서 'no guarantee of strict compliance'에 형광펜이 칠해진 화면">
+  <figcaption>공식 문서가 직접 '엄격한 준수는 보장하지 않는다'고 적어 뒀어요. 길수록 준수도도 떨어진다고 해요. <a href="https://www.youtube.com/watch?v=nf4AWqLMME0&amp;t=185s" target="_blank" rel="noopener">홀먼 영상 03:05에서 보기</a></figcaption>
+</figure>
+
+<h3>원칙도 시스템 프롬프트 대신 스킬로</h3>
+<p>pstack 해설도 같은 이유를 대요. Lauren Tan은 자기 원칙을 시스템 프롬프트에 몰아넣지 않고 스킬 여러 개로 나눠, 언제 무엇을 꺼낼지 색인만 둬요. 시스템 프롬프트는 매 메시지마다 통째로 읽히니 지금 일과 상관없는 규칙에도 토큰을 쓰게 되거든요.</p>
+<figure>
+  <img src="assets/pstack-frame-1259.webp" alt="왼쪽에 줄이 많은 system-prompt.md 문서, 오른쪽에 거의 가득 찬 tokens 막대와 메시지 말풍선 세 개, 그 아래 입력창이 있다">
+  <figcaption>메시지 세 개만 오갔는데 토큰 막대가 거의 찼어요. 긴 시스템 프롬프트가 매번 같이 실리기 때문이에요. <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=779s" target="_blank" rel="noopener">pstack 해설 12:59에서 보기</a></figcaption>
+</figure>
+
+<h3>지울 규칙은 /doctor에게 먼저 물어요</h3>
+<p>홀먼 영상은 정리를 이렇게 끝내요. <code>CLAUDE.md</code>가 200줄을 넘으면 늘 필요한 규칙 말고는 전부 스킬로 빼 달라고 하고, 지울 규칙은 <code>/doctor</code>로 후보부터 받아요. 화면 예시에서는 프로젝트 <code>CLAUDE.md</code>의 '답변은 한국어로 한다'가 전역 <code>CLAUDE.md</code>와 겹쳐서 삭제 후보로, '파일 작업은 이 폴더 안에서만 한다'는 유지 권장으로 나왔어요.</p>
+<figure>
+  <img src="assets/hollman-frame-0744.webp" alt="/doctor 점검 결과 표. 규칙 1 '답변은 한국어로 한다' — 삭제 후보(중복), 근거: 전역 ~/.claude/CLAUDE.md에 같은 규칙. 규칙 2 '파일 작업은 이 폴더 안에서만 한다' — 유지 권장, 근거: 폴더를 열어 봐도 알 수 없는 범위 제한">
+  <figcaption>남길 이유도 함께 나와요. 폴더를 열어 봐도 알 수 없는 제한이라 유지하라는 식이에요. <a href="https://www.youtube.com/watch?v=nf4AWqLMME0&amp;t=464s" target="_blank" rel="noopener">홀먼 영상 07:44에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <h2>CLAUDE.md는 설명서가 아니라 지도</h2>
+<p>세컨드 브레인 18팁은 <code>CLAUDE.md</code>(<code>AGENTS.md</code>)를 한 문장으로 정리해요. <b>설명서가 아니라 지도</b>예요. 회사 정보나 규칙 본문을 다 넣는 대신, 어디에 무엇이 있고 언제 무엇을 열지를 적어요. Kyle 강의, 게임 팀 세팅, 9 Skills도 같은 쪽으로 가요.</p>
+<figure>
+  <img src="assets/brain-frame-0734.webp" alt="A map, not a manual 제목 아래 왼쪽은 AGENTS.md에서 Context, Sales, Team, Projects 폴더로 갈라지는 지도, 오른쪽은 348 pages짜리 Business manual 목차에 Not in AGENTS.md 표시가 붙은 슬라이드">
+  <figcaption>왼쪽은 갈림길만 적은 지도, 오른쪽은 348쪽짜리 설명서예요. <code>AGENTS.md</code>에 들어갈 건 왼쪽이에요. <a href="https://www.youtube.com/watch?v=pXHpUyC54uQ&amp;t=454s" target="_blank" rel="noopener">세컨드 브레인 18팁 07:34에서 보기</a></figcaption>
+</figure>
+
+<h3>무엇을 남기고 무엇을 뺄까요</h3>
+<p>Kyle 강의는 데모 프로젝트의 <code>AGENTS.md</code>를 직접 줄여 보여 줘요. 남긴 건 네 가지예요.</p>
+<ul>
+  <li>프로젝트 소개 한두 문장</li>
+  <li><code>pnpm</code>처럼 표준이 아닌 도구, 모든 작업에 쓰이는 특이한 스크립트</li>
+  <li>큰 틀의 폴더 구조. 파일 단위로 적으면 이름과 위치가 금방 바뀌어 낡은 정보가 AI를 헷갈리게 해요</li>
+  <li><code>docs/</code> 안의 세부 규칙 문서로 가는 링크 한 줄씩</li>
+</ul>
+<p>뺀 것도 분명해요. '시작하기' 절은 지워요. 에이전트는 이미 세팅된 프로젝트에서 코드를 쓰는 사람과 같아서 설치 안내가 필요 없어요. CSS, API, 테스트 규칙은 <code>docs/</code> 문서로 옮기고, PR 제출이나 배포 절차도 문서로 빼서 그 일을 할 때만 읽히게 해요.</p>
+<figure>
+  <img src="assets/kyle-frame-1243.webp" alt="정리 후 AGENTS.md 윗부분. Projectly 소개 한 문장, Use pnpm as the package manager, 강조된 Repository layout 절에 apps와 packages 폴더 다섯 개의 역할이 한 줄씩 적혀 있음">
+  <figcaption>정리한 뒤의 첫 화면이에요. 소개 한 줄, 패키지 매니저 한 줄, 폴더마다 역할 한 줄이 전부예요. <a href="https://www.youtube.com/watch?v=jojMVmRZABw&amp;t=763s" target="_blank" rel="noopener">Kyle 강의 12:43에서 보기</a></figcaption>
+</figure>
+
+<h3>지도에는 라우팅 표와 인덱스를</h3>
+<p>세컨드 브레인 18팁은 지도의 핵심을 <span class="term" data-term="라우팅 테이블" data-en="Routing table" data-desc="폴더마다 무엇이 있고, 언제 쓰고, 새 내용을 어디 저장할지 한 줄씩 적은 표예요. AI가 모든 파일을 뒤지지 않고 필요한 곳만 열게 해요." data-g="6">라우팅 테이블</span>로 봐요. 폴더마다 무엇이 있고, 언제 쓰고, 새 내용을 어디 저장할지를 한 줄씩 적어요. 지도가 없으면 Claude는 모든 걸 뒤져서 토큰을 낭비하고 엉뚱한 맥락을 가져와요. 지도가 있으면 영업 통화 준비를 부탁받았을 때 영업 폴더의 고객 노트와 오퍼 문서만 열어요.</p>
+<figure>
+  <img src="assets/brain-frame-0928.webp" alt="AGENTS 문서에 BenAI OS 설명과 Core context 두 줄, 그 아래 Knowledge Routing 표에 Context, Team, Projects, Departments, YouTube/videos 폴더별로 내용, 사용 시점, 저장 대상이 적힌 화면">
+  <figcaption>표의 열이 내용, 사용 시점, 저장 대상이에요. '언제 여는지'가 적혀 있어야 Claude가 고를 수 있어요. <a href="https://www.youtube.com/watch?v=pXHpUyC54uQ&amp;t=568s" target="_blank" rel="noopener">세컨드 브레인 18팁 09:28에서 보기</a></figcaption>
+</figure>
+<p>같은 영상은 지도를 지키는 팁을 두 개 더 줘요. 하나는 <b>폴더 구조를 자주 바꾸지 않기</b>예요. 고객 폴더를 '진행 중'과 '지난'으로 쪼개면, 지도를 고칠 때까지 Claude는 옛 위치에 계속 저장해요. 다른 하나는 <b>하위 폴더마다 작은 인덱스 파일</b>이에요. 파일이 수십, 수백 개 쌓이면 맨 위 지도만으로는 어느 파일을 열지 몰라서, 하위 폴더 안에 무엇이 있는지 적은 '작은 agents.md'를 둬요. 안드레이 카파시가 자기 지식 베이스에 쓰는 방식이라고 해요.</p>
+
+<h3>전역, 프로젝트, 하위 폴더</h3>
+<p><code>CLAUDE.md</code> 입문은 파일이 놓인 자리에 따라 적용 범위가 달라진다는 걸 보여 줘요. 전역 <code>CLAUDE.md</code>는 내 컴퓨터 어디서 클로드를 켜든 들어가니 '나에 대한 정보'를 적고, 프로젝트 <code>CLAUDE.md</code>는 그 폴더에서만 적용되니 그 일의 지침을 적어요. 새 대화를 시작하면 전역 파일을 먼저 읽고 이어서 프로젝트 파일을 읽어요.</p>
+<figure>
+  <img src="assets/claudemd101-frame-1745.webp" alt="칠판 위쪽에 빗금 친 타원과 '전역(글로벌) claude.md'를 동그라미로 묶고, 그 아래 큰 테두리 안에 폴더 다섯 개를 그린 그림. 오른쪽 폴더 하나를 '프로젝트 로컬'이라고 표시하고 위 타원에서 각 폴더로 선을 이었다">
+  <figcaption>위의 전역 파일 하나가 아래 모든 폴더에 들어가요. 폴더마다 똑같은 내용을 넣으면 바뀔 때 모든 파일을 고쳐야 해서 전역으로 올려요. <a href="https://www.youtube.com/watch?v=IwvF-xVmRis&amp;t=1065s" target="_blank" rel="noopener">CLAUDE.md 입문 17:45에서 보기</a></figcaption>
+</figure>
+<p>두 가지를 같이 알아 두면 좋아요. <code>CLAUDE.md</code>를 고친 뒤에는 새 대화창을 열어야 반영돼요. 이미 열린 대화는 예전 내용을 읽은 채로 돌아가요(<code>CLAUDE.md</code> 입문). 그리고 <span class="term" data-term="모노레포" data-en="Monorepo" data-desc="웹, 서버, 공용 패키지처럼 여러 프로젝트를 한 저장소에 함께 두는 방식이에요. 폴더마다 규칙이 달라서 하위 폴더별 AGENTS.md가 쓸모 있어요." data-g="8">모노레포</span>라면 하위 폴더마다 <code>AGENTS.md</code>를 둘 수 있어요. Kyle 강의의 설명으로는 어느 파일이 실리는지가 에이전트를 어느 폴더에서 실행했는지로 정해져요. 루트에서 열면 루트 파일만, <code>apps/api</code>에서 열면 루트와 그 폴더 파일이 함께 실려요. 9 Skills도 모노레포라면 어디서나 참인 내용만 루트에 두고 각 부분 옆에 따로 두라고 해요.</p>
+
+<h3>한 파일만 고치게 하기</h3>
+<p>Claude Code는 <code>CLAUDE.md</code>, Codex는 <code>AGENTS.md</code>를 읽어요. 두 파일을 따로 두면 에이전트가 나중에 규칙을 덧붙일 때 한쪽에만 적어서 어긋나기 쉬워요. 해법은 두 가지가 나와요.</p>
+<ul>
+  <li><b><span class="term" data-term="심볼릭 링크" data-en="Symbolic link" data-desc="다른 파일을 가리키는 바로가기 파일이에요. CLAUDE.md를 AGENTS.md의 링크로 만들면 두 이름이 한 파일을 보게 돼서 내용이 어긋나지 않아요." data-g="7">심볼릭 링크</span></b>(Kyle 강의): <code>ln -s AGENTS.md CLAUDE.md</code>로 <code>CLAUDE.md</code>를 <code>AGENTS.md</code>의 링크로 만들어요.</li>
+  <li><b>한 줄짜리 <code>CLAUDE.md</code></b>(게임 팀 세팅): <code>CLAUDE.md</code>에는 <code>@AGENTS.md</code> 한 줄만 두고 규칙은 <code>AGENTS.md</code> 한 파일에 모아요.</li>
+</ul>
+<figure>
+  <img src="assets/gamesetup-frame-0010.webp" alt="slime-game 폴더 목록. .claude/skills/, AGENTS.md 163줄, CLAUDE.md 3줄, GAME_FEEL.md, docs/feel-log/, docs/perf-log/, tests/godot/ 236, tools/, godot/">
+  <figcaption><code>AGENTS.md</code>는 163줄, <code>CLAUDE.md</code>는 3줄이에요. 규칙을 고칠 곳이 한 군데뿐이에요. <a href="https://www.youtube.com/watch?v=qtIUFHhdBBg&amp;t=10s" target="_blank" rel="noopener">게임 팀 세팅 00:10에서 보기</a></figcaption>
+</figure>
+<p>세컨드 브레인 18팁은 하나를 경고해요. 이미 claude.md가 있다면 이름을 agents.md로 바꾸고 둘을 같이 두지 말라고 해요. claude.md가 있으면 Claude가 그것만 읽고 agents.md는 건너뛴다는 거예요. 리뷰 루프는 <code>@</code> 링크를 반대 방향으로 써요. 따로 시키지 않으면 읽히지 않는 <code>review.md</code>를 <code>CLAUDE.md</code>에서 <code>@review.md</code>로 링크해, 새 세션마다 같이 불러오게 해요. <code>@</code>로 건 파일은 링크가 아니라 내용이 함께 실린다는 뜻이니, 늘 필요한 파일에만 써요.</p>
+
+<h3>맨 위에 둘 몇 줄</h3>
+<p>게임 팀 세팅은 모든 규칙 파일에 들어갈 기본 네 가지를 먼저 꼽아요. 정보 없이 코딩하지 말 것, 무조건 동의하지 말 것, 테스트만 보고 완료라고 하지 말 것, 같은 실수를 반복하지 말 것이에요. 여기에 맨 위에 두는 줄을 보태요.</p>
+<ul>
+  <li><b>"최신 사용자 지시가 이 파일보다 우선한다."</b> 파일이 낡아도 방금 한 말을 따르게 하려고요.</li>
+  <li><b>"사용자가 직접 고친 파일은 덮어쓰지 않는다."</b> 손으로 고친 그림이나 설정을 AI가 자기 버전으로 다시 덮는 걸 막아요.</li>
+  <li><b>"자동 검사 통과는 재미나 미술 승인이 아니다."</b> 그래서 AI가 보고할 때 코드로 확인한 것, 실제 화면·소리로 본 것, 확인 못 한 것을 나눠 말하게 해 놨어요.</li>
+</ul>
+<figure>
+  <img src="assets/gamesetup-frame-0150.webp" alt="AI 보고서. '확인한 것' 아래 main_tutorial 186개 확인 등 검사 결과 목록, '확인하지 못한 것과 남은 일' 아래 사람이 직접 플레이한 기록은 아직 없다는 항목">
+  <figcaption>세 번째 줄 덕분에 보고서 끝에 '확인하지 못한 것'이 따로 붙어요. 사람이 직접 플레이한 기록은 아직 없다고 적혀 있어요. <a href="https://www.youtube.com/watch?v=qtIUFHhdBBg&amp;t=110s" target="_blank" rel="noopener">게임 팀 세팅 01:50에서 보기</a></figcaption>
+</figure>
+<p>세컨드 브레인 18팁은 팀이 함께 쓰는 지도에 한 줄을 더 넣으라고 해요. AI 에이전트는 사실보다 말하는 사람에게 동의하는 경향이 있어서, 영업 담당의 Claude는 영업 담당에게, 마케터의 Claude는 마케터에게 동의할 뿐이에요. 그래서 '항상 우리의 목표와 전략에 따라 회사에 가장 이로운 쪽으로 행동하고, 요청이 그와 충돌하면 그냥 동의하지 말고 분명히 말하라' 같은 줄을 넣어요.</p>
+
+<h3>커지지 않게 지키는 법</h3>
+<p><code>CLAUDE.md</code>는 지적할 때마다 한 줄씩 붙으며 자라요(2절). 게임 팀 세팅의 <code>AGENTS.md</code>도 한때 466줄까지 불어 거의 일기장이 됐대요. 지금도 유효한 규칙만 남기라고 시켰더니 117줄이 됐고, 지운 내용은 <code>AGENTS_HISTORY.md</code>로 옮겼어요.</p>
+<figure>
+  <img src="assets/gamesetup-frame-0108.webp" alt="왼쪽에 '한때 466줄' 긴 파일, 오른쪽 위에 '정리 직후 117줄' 짧은 파일, 아래에 '옛 지시 원문 474줄'이라고 적힌 AGENTS_HISTORY.md 카드">
+  <figcaption>지운 지시를 버리지 않고 기록 파일로 옮겼어요. 매 요청에 실리지 않으니 비용은 들지 않아요. <a href="https://www.youtube.com/watch?v=qtIUFHhdBBg&amp;t=68s" target="_blank" rel="noopener">게임 팀 세팅 01:08에서 보기</a></figcaption>
+</figure>
+<p>실수를 봤을 때 어디에 적을지는 영상마다 조금씩 달라요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>영상</th><th>실수를 봤을 때</th><th>파일을 지키는 장치</th></tr></thead>
+    <tbody>
+      <tr><td>Kyle 강의</td><td>AI가 실제로 틀린 걸 볼 때마다 알맞은 문서에 규칙을 하나씩 더해요</td><td>처음부터 AI에게 <code>AGENTS.md</code>를 만들라고 시키지 않아요. 장황한 파일이 나와요</td></tr>
+      <tr><td>왕초보 가이드</td><td>"이거 <code>CLAUDE.md</code>에 적어 둬"라고 해요</td><td><code>/init</code>으로 만들고 200줄 안으로 유지하고, 가끔 예전 강조 문구를 청소해요</td></tr>
+      <tr><td>게임 팀 세팅</td><td>그 작업 폴더의 메모에 날짜와 사용자가 한 말을 그대로 적어요</td><td>규칙 파일에는 오래 갈 규칙만 한두 줄로 올리고, 지운 건 기록 파일로 옮겨요</td></tr>
+      <tr><td>리뷰 루프</td><td>리뷰어가 같은 실수를 계속 찾으면 <code>review.md</code> 맨 아래 'Learned rules'에 한 줄 넣어요</td><td>루프가 끝날 때 규칙을 제안하고, 사람이 승인하면 넣어요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>도구의 도움도 받을 수 있어요. 공식 플러그인 4개의 <b>claude-md-management</b>에는 두 도구가 있어요. 세션 끝에 한 번 돌리는 <code>/revise-claude-md</code>는 이번 대화에서 새로 알게 된 명령어, 작업 패턴, 함정을 <code>CLAUDE.md</code> 후보로 뽑아 줘요. 주기적으로 돌리는 <code>claude-md-improver</code>는 모든 <code>CLAUDE.md</code>를 여섯 기준으로 100점 만점 채점하고, 작동하지 않는 명령어나 빠진 설정도 짚어 줘요.</p>
+<figure>
+  <img src="assets/plugins4-frame-0638.webp" alt="슬라이드. 6개 평가 기준 — 100점 만점. Commands/workflows 20점, Architecture clarity 20점, Non-obvious patterns 15점, Conciseness 15점, Currency 15점, Actionability 15점">
+  <figcaption>간결함과 최신성이 각각 15점이에요. 길고 낡은 파일은 점수가 깎여요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=398s" target="_blank" rel="noopener">공식 플러그인 4개 06:38에서 보기</a></figcaption>
+</figure>
+<p>9 Skills의 <code>audit</code>과 <code>sync</code> 스킬도 같은 일을 해요. 실제 프로젝트 구조를 읽고 컨텍스트 파일을 쓰되, 사람이 직접 쓴 내용은 덮어쓰지 않고 빈 곳만 채워요. 코드가 문서와 어긋나면 고치지 않고 표시만 해서 사람이 정하게 해요. 세컨드 브레인 18팁은 이 청소를 1~2주마다 예약 작업으로 돌리고, 지도와 인덱스를 고치며 200줄 아래로 유지해요.</p>
+</section>
+
+<section id="s5">
+  <h2>스킬을 만드는 규칙</h2>
+<p>스킬 규칙 7가지는 Anthropic 공식 가이드에서 일곱 규칙을 골라, 이미 만든 스킬을 어떻게 고칠지 알려 줘요. 결론은 이래요. 스킬을 잘 만드는 일은 문장을 잘 쓰는 일보다 <b>파일을 어떻게 놓고 무슨 검사를 돌리느냐</b>에 달렸어요. 이 절은 그 일곱 규칙을 뼈대로, 다른 영상이 보탠 내용을 제자리에 끼워 넣었어요. 일곱째 규칙 '쓸 모델 전부로 테스트하기'는 11절에서 따로 다뤄요.</p>
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>영상 제목은 규칙이 '바뀌었다'고 하지만, 정리 노트에 따르면 일곱 규칙은 2025년 말 가이드에도 이미 있었어요. 새 규칙이라기보다 다시 짚을 만한 규칙으로 읽으면 돼요.</p>
+</aside>
+
+<h3>언제 스킬로 만들까요</h3>
+<p>Ivanna 인터뷰는 신호를 두 개로 꼽아요. 하나는 반복이에요. 코드 리뷰처럼 매번 같은 순서를 밟는 일이라면, 그 순서를 템플릿이나 단계별 지침으로 적어 둔 게 곧 스킬이에요. 다른 하나는 반복하지 않아도 자동화하고 싶은 큰 일이에요. 앱에 광고를 붙이는 일처럼 한 번이면 끝나지만 덩치가 큰 일은 스킬을 찾아 써서 끝내고, 다 쓰면 프로젝트에서 빼요. 홀먼 영상이 인용한 공식 문서의 신호도 같아요. 같은 지시를 계속 붙여 넣고 있다면 스킬로 옮길 때예요(3절).</p>
+<p>만드는 일도 맡길 수 있어요. 왕초보 가이드는 <code>/skill-creator</code>가 인터뷰하며 스킬을 써 준다고 하고, 일을 한 번 끝낸 뒤 "방금 한 거 스킬로 만들어 줘"라고 해도 된다고 해요. Ivanna 인터뷰는 Skill Creator를 추천 1번으로 꼽아요. <code>SKILL.md</code>만 쓰고 끝내기 쉬운데, 이 스킬은 잊기 쉬운 <code>scripts</code>, <code>references</code>, <code>assets</code>까지 만들어 줘요. 다만 에이전트가 던지는 질문에 답하며 다듬고, 결과물은 꼭 직접 읽어 보라고 해요.</p>
+
+<h3>설명 한 줄이 스킬을 불러요</h3>
+<p>Kyle 강의는 <code>SKILL.md</code> 맨 위의 이름과 설명이 모든 요청에 실려 간다는 걸 화면으로 짚어요. AI는 이 목록을 보고 어떤 스킬을 열지 골라요. 그래서 설명에는 <b>언제 쓰는지</b>가 들어가야 해요. Ivanna 인터뷰의 '새 엔드포인트 붙이기' 스킬은 설명란에 '새 기능을 추가할 때 사용'이라고 적어 두어서, 에이전트가 새 기능 요청을 받을 때마다 이 스킬과 <code>assets</code> 폴더의 템플릿을 읽어요.</p>
+<figure>
+  <img src="assets/kyle-frame-2247.webp" alt="apps/api/.agents/skills/algorithmic-art/SKILL.md 파일. name: algorithmic-art 위에 description은 모든 요청에 추가되어 에이전트가 스킬을 언제 읽을지 결정하는 데 쓰인다는 툴팁이 떠 있고 아래로 본문이 이어짐">
+  <figcaption>툴팁이 짚는 건 설명 한 줄이에요. 본문은 아래로 길게 이어지지만 늘 실리는 건 이 한 줄뿐이에요. <a href="https://www.youtube.com/watch?v=jojMVmRZABw&amp;t=1367s" target="_blank" rel="noopener">Kyle 강의 22:47에서 보기</a></figcaption>
+</figure>
+
+<h3><code>SKILL.md</code>는 목차처럼, 참조는 한 단계만</h3>
+<p>공식 가이드는 <code>SKILL.md</code> 본문을 500줄 안으로 두고 전체의 목차처럼 쓰라고 해요. 나머지는 따로 빼고, 클로드는 필요할 때만 그 파일을 열어요. 정확히 똑같이 해야 하는 일은 스크립트 폴더에 둬요. 여러 분야를 다루면 파일도 분야별로 나눠요. 매출을 물을 때 마케팅 파일은 열리지 않아요.</p>
+<figure>
+  <img src="assets/skillrules-frame-0557.webp" alt="공식 가이드의 점진적 공개 패턴 항목. 본문을 500줄 미만으로 유지하라는 문장 아래 이 한도에 가까워지면 콘텐츠를 별도의 파일로 분할하세요에 주황색 표시가 있는 화면">
+  <figcaption>500줄은 상한이 아니라 나눌 때가 됐다는 신호예요. <a href="https://www.youtube.com/watch?v=pXTD2DJBlDo&amp;t=357s" target="_blank" rel="noopener">스킬 규칙 7가지 05:57에서 보기</a></figcaption>
+</figure>
+<p>처음엔 짧은 목차만 두고 필요할 때 자세한 파일을 열게 하는 이 구성을 공식 가이드는 <span class="term" data-term="점진적 공개" data-en="Progressive disclosure" data-desc="처음엔 짧은 목차만 보여 주고 필요할 때 자세한 파일을 열게 하는 구성이에요. SKILL.md를 목차로 두고 참고 파일로 나누는 방식이 이거예요." data-g="9">점진적 공개</span> 패턴이라고 불러요. 파일이 파일을 가리키는 사슬은 피해요. <code>SKILL.md</code>가 <code>advanced.md</code>를, 그 파일이 다시 <code>details.md</code>를 가리키면 끝에 있는 정보는 앞부분만 읽힐 수 있어요. 참고 파일은 전부 <code>SKILL.md</code>에서 바로 연결해요.</p>
+<figure>
+  <img src="assets/skillrules-frame-0717.webp" alt="DEPTH 0의 SKILL.md, DEPTH 1의 advanced.md, DEPTH 2의 details.md가 화살표로 이어진 그림. details.md 위에 돋보기가 있고 아래에 전체 정보는 여기라고 적혀 있으며 왼쪽 아래에 head -100 앞 100줄만이라고 표시된 그림">
+  <figcaption>정작 전체 정보가 든 파일이 두 단계 아래에 있어요. 거기까지 가면 앞 100줄만 읽힐 수 있다는 게 이 그림의 경고예요. <a href="https://www.youtube.com/watch?v=pXTD2DJBlDo&amp;t=437s" target="_blank" rel="noopener">스킬 규칙 7가지 07:17에서 보기</a></figcaption>
+</figure>
+
+<h3>100줄 넘는 참고 파일에는 목차부터</h3>
+<p>영상은 클로드가 긴 참고 파일을 <code>head -100</code>으로 앞 100줄만 보고 그 파일이 필요한지 판단할 때가 많다고 해요. 그래서 100번째 줄 아래에 쓴 규칙은 없는 것과 같다고 말해요. 해결은 맨 위에 목차를 다는 거예요. 그러면 클로드가 전체를 읽을지, 필요한 곳으로 바로 갈지 고를 수 있어요.</p>
+<figure>
+  <img src="assets/skillrules-frame-0016.webp" alt="왼쪽에 head -100 reference.md 명령이 있는 터미널, 오른쪽에 312줄 파일. 1~100번째 줄은 밝게 표시되고 그 아래 중요한 규칙은 여기라는 표시와 안 읽힘 도장이 있는 그림">
+  <figcaption>312줄 파일에서 밝게 표시된 100줄만 읽히고, 그 아래 중요한 규칙에는 '안 읽힘' 도장이 찍혀 있어요. <a href="https://www.youtube.com/watch?v=pXTD2DJBlDo&amp;t=16s" target="_blank" rel="noopener">스킬 규칙 7가지 00:16에서 보기</a></figcaption>
+</figure>
+<p>할 일도 단순해요. 클로드에게 100줄 넘는 참고 파일을 찾아 제목에 맞춰 목차를 넣으라고 시키면 돼요.</p>
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>정리 노트가 짚은 대로, 공식 가이드의 <code>head -100</code> 문장은 다른 참고 파일을 거쳐 참조된 파일을 두고 '그럴 수 있다'고 한 말이에요. 모든 긴 파일을 늘 100줄만 읽는다는 뜻은 아니에요. 그래도 목차는 어느 쪽이든 손해가 없어요.</p>
+</aside>
+
+<h3>자유도는 단계마다 정해요</h3>
+<p>스킬을 얼마나 자세히 쓸지는 그 일이 얼마나 쉽게 깨지고, 얼마나 매번 달라지는지 보고 정해요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>자유도</th><th>쓰는 모양</th><th>맞는 일</th></tr></thead>
+    <tbody>
+      <tr><td>높음</td><td>글로 쓴 지시</td><td>코드 리뷰, 영업 통화 돌아보기, 링크드인 글 초안처럼 방법을 열어 둬도 되는 일</td></tr>
+      <tr><td>중간</td><td>설정값이 있는 템플릿</td><td>매주 보내는 고객 보고서처럼 모양은 정해져 있고 조금 달라져도 되는 일</td></tr>
+      <tr><td>낮음</td><td>정해진 스크립트</td><td>데이터베이스 이전, 청구서 발행, 환불, 회원 삭제처럼 실수하면 안 되는 일</td></tr>
+    </tbody>
+  </table>
+</div>
+<p><span class="term" data-term="자유도" data-en="Degrees of freedom" data-desc="스킬이 방법을 얼마나 열어 두는지의 정도예요. 깨지기 쉬운 단계일수록 자유도를 낮춰 스크립트로 잠가요." data-g="10">자유도</span>는 스킬 하나 안에서도 단계마다 달라요. 단계마다 "클로드가 이걸 다르게 하면 무슨 일이 생기지?"를 물어요. 별일 없으면 풀어 주고, 큰일 나면 잠가요. 잠근다는 건 보통 글을 더 쓰는 게 아니라 스크립트로 바꾸는 거예요.</p>
+<figure>
+  <img src="assets/skillrules-frame-0323.webp" alt="invoice-skill의 SKILL.md 그림. 01 안내 문구 쓰기에 HIGH FREEDOM, 02 청구서 발행에 LOW LOCKED와 자물쇠가 표시되어 있고 옆에 안내 문구 초안 카드들이 있는 그림">
+  <figcaption>청구서 스킬 하나 안에서 안내 문구는 풀어 두고 발행 단계에만 자물쇠를 걸었어요. <a href="https://www.youtube.com/watch?v=pXTD2DJBlDo&amp;t=203s" target="_blank" rel="noopener">스킬 규칙 7가지 03:23에서 보기</a></figcaption>
+</figure>
+
+<h3>체크리스트와 스스로 고치는 루프</h3>
+<p>복잡한 일에는 체크리스트를 줘요. 클로드가 답변에 복사해 두고 하나씩 지워 가요. 다만 순서가 중요할 때만 쓰고, 상관없으면 빼요. 영상이 꼭 보여 주려는 건 "인용이 빠졌으면 3단계로 돌아가라"는 한 줄이에요. 이 한 줄 덕분에 실패한 단계를 체크하고 넘어가지 않아요.</p>
+<figure>
+  <img src="assets/skillrules-frame-0846.webp" alt="체크리스트 단계 설명 화면. Step 5 Verify citations 아래 If citations are incomplete, return to Step 3 문장에 주황색 표시가 있고, 아래에 PDF 양식 작성 예시가 이어지는 화면">
+  <figcaption>주황색으로 짚은 문장이 '돌아갈 곳'을 정해 줘요. 체크리스트가 루프가 되는 지점이에요. <a href="https://www.youtube.com/watch?v=pXTD2DJBlDo&amp;t=526s" target="_blank" rel="noopener">스킬 규칙 7가지 08:46에서 보기</a></figcaption>
+</figure>
+<p>루프는 검사하고, 고치고, 통과할 때까지 반복하는 구조예요. 검사 기준이 꼭 코드일 필요는 없어요. 스타일 가이드나 브랜드 말투 문서도 돼요. 초안이 문서에 없는 이유로 걸리면 작업 끝에 클로드에게 새 규칙을 제안하게 하고, 승인한 규칙은 문서에 넣어요. 그러면 스킬이 쓸수록 나아져요.</p>
+<p>세 스킬 묶음 비교는 단계를 건너뛰지 못하게 하는 장치를 하나 더 보여 줘요. 애디 오스마니의 스킬에는 AI가 단계를 건너뛸 때 댈 법한 핑계와 그 반박이 표로 적혀 있어요. "간단해서 테스트가 필요 없다", "직접 확인했으니 충분하다" 같은 핑계로 넘어가지 못하게 하려는 거예요.</p>
+<figure>
+  <img src="assets/threeway-frame-0238.webp" alt="test-driven-development SKILL.md의 Common Rationalizations 표. 왼쪽 Rationalization(핑계) 열과 오른쪽 Reality(반박) 열에 일곱 줄">
+  <figcaption>왼쪽이 AI가 할 법한 핑계, 오른쪽이 반박이에요. 스킬 안에 미리 답을 적어 둔 셈이에요. <a href="https://www.youtube.com/watch?v=8KxUBUm9Ciw&amp;t=158s" target="_blank" rel="noopener">세 스킬 묶음 비교 02:38에서 보기</a></figcaption>
+</figure>
+
+<h3>설치할 패키지까지 적어요</h3>
+<p>직접 만든 스킬은 내 노트북에서만 잘 돌기 쉬워요. 필요한 걸 오래전에 깔아 놓고 잊었기 때문이에요. "PDF 라이브러리로 처리해라"로 끝내지 말고, 설치할 패키지 이름까지 적어요. 이미 깔려 있으면 클로드가 알아서 건너뛴다고 해요. 다만 Claude API 환경은 실행 중 설치가 안 되니, 쓸 수 있는 패키지인지 먼저 확인해야 해요.</p>
+<figure>
+  <img src="assets/skillrules-frame-1017.webp" alt="공식 가이드의 도구가 설치되어 있다고 가정하지 마세요 항목. Bad example 두 줄에 주황색 표시가 있고 아래 Good example에 pip install pypdf와 PdfReader 코드가 있는 화면">
+  <figcaption>좋은 예에는 <code>pip install pypdf</code> 한 줄이 먼저 있어요. 다른 사람 컴퓨터에서도 돌게 하는 한 줄이에요. <a href="https://www.youtube.com/watch?v=pXTD2DJBlDo&amp;t=617s" target="_blank" rel="noopener">스킬 규칙 7가지 10:17에서 보기</a></figcaption>
+</figure>
+<p>설치는 반대쪽 위험과도 이어져요. 남이 만든 스킬이 시키지 않은 설치를 실행한 사례는 10절에서 봐요.</p>
+
+<h3>같은 참고 자료는 한 파일만</h3>
+<p>세컨드 브레인 18팁은 스킬 여러 개가 저마다 같은 문서의 사본을 들고 있는 걸 경고해요. 스킬 10개가 전략 문서 사본을 하나씩 가지고 있으면, 전략이 바뀔 때 10곳을 고쳐야 하고 결국 아무도 안 고쳐요. 참고 파일은 한 곳에 두고 스킬은 그 파일을 가리키게 하면 한 번 고쳐서 모든 스킬에 반영돼요. 브랜드 말투 가이드나 가격 문서가 그런 예예요.</p>
+<figure>
+  <img src="assets/brain-frame-1941.webp" alt="Point every skill to one file 제목 아래 strategy.md v2 파일과 linkedin-post, newsletter, email-reply, proposal, call-prep, outreach, ad-copy, landing-page, sales-deck, weekly-report 스킬 카드 10개가 있고 대부분 v1 outdated로 표시된 슬라이드">
+  <figcaption>원본은 v2로 바뀌었는데 스킬 카드 대부분이 아직 v1을 들고 있어요. 사본을 나눠 가지면 이렇게 낡아요. <a href="https://www.youtube.com/watch?v=pXHpUyC54uQ&amp;t=1181s" target="_blank" rel="noopener">세컨드 브레인 18팁 19:41에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s6">
+  <h2>지시문은 어떻게 쓸까요</h2>
+<p><code>CLAUDE.md</code>든 스킬이든 결국 문장으로 써요. 이 절은 그 문장을 어떻게 쓸지를 모았어요. 영상들이 반복해서 하는 말은 셋이에요. 역할 대신 과정과 도구를 주고, 강조 대신 이유를 대고, 원치 않는 행동은 그 행동을 정확히 짚어 막아요. 특정 모델 때문에 생긴 문장(서식 금지문, 진행 알림 요청)은 11절에 따로 모았어요.</p>
+
+<h3>역할 대신 최고의 사람이 거치는 과정</h3>
+<p>펠릭스 인터뷰는 "너는 뛰어난 엔지니어야"를 2024년에 유행한 방식이라고 해요. 지금 모델도 "훌륭한 회계사처럼 해"라고 하면 역할극을 하며 말투만 바꿔요. 대신 그 분야 최고의 사람이 어떤 단계를 거치고 어떤 도구를 쓰는지 묻고, 똑같이 쓰게 해요. 펠릭스의 말로는 '말은 다섯 살에게 하듯 쉽게, 도구는 최고로'예요.</p>
+<figure>
+  <img src="assets/felix-frame-0051.webp" alt="'클로드를 만드는 쪽 사람이 일을 맡기는 법' 표: 2024년식 네 줄(역할을 씌운다, 작업을 하나씩 집어 준다, 만든 세션이 채점한다, 내가 다 본다)과 지금 칸의 물음표">
+  <figcaption>인터뷰가 바꾸자고 하는 2024년식 네 가지예요. 첫 줄 '역할을 씌운다'가 이 절, 셋째 줄 '만든 세션이 채점한다'가 9절에서 다루는 내용이에요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=51s" target="_blank" rel="noopener">펠릭스 인터뷰 00:51에서 보기</a></figcaption>
+</figure>
+<p>펠릭스는 기준도 결과가 아니라 과정에 둬요. 날씨 예시가 그래요. 모델이 기온을 찍어서 맞혔다면 통과가 아니라 실패예요. 위치를 제대로 찾고 믿을 만한 출처를 거쳤다면 0.5도 틀려도 그쪽이 더 나은 결과예요. 애니메이션도 클로드에게 좋은 애니메이션이 뭔지 가르친 게 아니라, 전문 애니메이터의 도구인 블렌더를 쓰게 했더니 결과가 좋아졌어요.</p>
+<p>맡기기 전에 클로드에게 먼저 물어볼 네 가지도 소개해요. 펠릭스가 블로그에 쓴 '깊이 프롬프트'예요. 답을 다 받으면 내 프롬프트를 정확히 그걸 요구하도록 다시 써요.</p>
+<figure>
+  <img src="assets/felix-frame-2704.webp" alt="'맡기기 전에, 먼저 네 가지를 묻는다' 슬라이드: ① 최고의 전문가라면 내가 요청하지 않은 무엇을 할까 ② 누가 정리해 둔 것 말고 어떤 날것의 재료에서 시작할까 ③ 어떤 방법과 도구를 쓸까 ④ 너와 나 말고 무엇이 결과가 맞다는 걸 보여 줄까, 아래 '내 프롬프트를 정확히 그걸 요구하도록 다시 쓰기'">
+  <figcaption>넷째 질문 '너와 나 말고 무엇이 결과가 맞다는 걸 보여 줄까'는 9절의 바깥 채점과 이어져요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1624s" target="_blank" rel="noopener">펠릭스 인터뷰 27:04에서 보기</a></figcaption>
+</figure>
+<p>인터뷰는 한 걸음 더 나가요. 일을 작업으로 쪼개 맡기지 말고 "그다음에 일어났으면 하는 목표"를 맡기라고 해요. 크래시를 하나씩 집어 주던 펠릭스는 크래시 데이터 전체를 열어 주고 뭘 고칠지 클로드가 정하게 했어요.</p>
+
+<h3>무엇을, 왜, 누가 볼지, 언제 끝인지</h3>
+<p>왕초보 가이드는 클로드를 '똑똑하지만 우리 회사를 모르는 신입'으로 봐요. 그래서 무엇을, 왜, 누가 볼지, 어떤 모양으로를 함께 말해요. 통째로 맡기되 완료 조건을 붙여요. "합계가 원본과 같은지 확인하고, 같으면 끝내" 같은 문장이에요.</p>
+<figure>
+  <img src="assets/beginner-frame-0824.webp" alt="입력창의 지시문 중 합계가 원본과 같은지 확인하고 같으면 끝내라는 부분에 빨간 테두리와 완료 조건이라는 말풍선이 붙은 화면">
+  <figcaption>빨간 테두리 친 부분이 완료 조건이에요. 이 한 줄 덕분에 클로드가 합계를 원본과 다시 맞춰 봤어요. <a href="https://www.youtube.com/watch?v=2R-kUFv7GZg&amp;t=504s" target="_blank" rel="noopener">왕초보 가이드 08:24에서 보기</a></figcaption>
+</figure>
+<p>Matt Pocock 대담은 이걸 소통의 문제로 봐요. 모델이 아무리 똑똑해도 에이전트는 내가 무엇을 신경 쓰는지 몰라서 매번 알려 줘야 해요. 그런데 나도 내가 무엇을 원하는지 정확히 모를 때가 많아요. 그래서 Matt의 grill-me 스킬은 에이전트가 나를 집요하게 인터뷰하게 해요. 그러면 보안이나 배포 방식처럼 신경 써야 하는 줄도 몰랐던 것이 드러나요. 이걸 놓치면 에이전트는 지어내거나 '언급이 없으니 중요하지 않다'고 넘겨요.</p>
+<figure>
+  <img src="assets/pocock-frame-0024.webp" alt="SECURITY, DEPLOY 두 칸 아래 빨간 UNKNOWNS 칸이 강조된 그래픽과 'COULD BE HOW YOU DEPLOY IT, COULD BE JUST THINGS YOU HAVEN'T' 자막">
+  <figcaption>빨간 칸이 '모르는 줄도 모르는 것'이에요. 인터뷰를 시키는 이유가 이 칸을 채우려는 거예요. <a href="https://www.youtube.com/watch?v=Z8lf5oWKfj0&amp;t=24s" target="_blank" rel="noopener">Matt Pocock 대담 00:24에서 보기</a></figcaption>
+</figure>
+<p>왕초보 가이드도 할 말이 정리되지 않으면 클로드에게 인터뷰를 시키라고 해요. 객관식 카드로 묻고, 끝나면 내 답과 클로드의 짐작을 나눠 정리하게 해요. 프롬프트 초안도 클로드에게 쓰게 하고 내가 손봐요.</p>
+
+<h3>강조 대신 이유</h3>
+<p>"잘 생각해", "다시 확인해", "절대 하지 마" 같은 강조 문구는 요즘 모델을 느리게 해요(왕초보 가이드). 예전 AI에는 먹혔지만 요즘 모델은 안 시켜도 생각하고 확인하니, 거기에 더 붙이면 느려지기만 해요. 대신 "임원 보고라 한 장이어야 해"처럼 이유를 말해요.</p>
+<figure>
+  <img src="assets/beginner-frame-1054.webp" alt="왼쪽에 잘 생각해, 다시 확인해, 절대 하지 마 세 문구가 빨간 줄로 지워져 있고 오른쪽에 예전 AI는 이런 말이 먹혔지만 요즘 모델은 안 시켜도 생각하고 확인하며 거기에 더 붙이면 느려진다는 설명이 있는 화면">
+  <figcaption>세 문구를 지운 이유가 오른쪽에 있어요. 모델이 바뀌면서 필요 없어진 문장이라, 11절 표에도 올렸어요. <a href="https://www.youtube.com/watch?v=2R-kUFv7GZg&amp;t=654s" target="_blank" rel="noopener">왕초보 가이드 10:54에서 보기</a></figcaption>
+</figure>
+
+<h3>원치 않는 행동은 그 행동을 짚어 막아요</h3>
+<p>Fable 5.1 가이드는 에이전트가 이상하게 굴 때 모델을 바꾸기 전에 <b>그 행동을 정확히 짚어 막는 한 문장</b>부터 찾으라고 해요. 영상이 보여 준 문장들이에요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>이런 행동이 보이면</th><th>넣는 문장</th></tr></thead>
+    <tbody>
+      <tr><td>로그인 오류를 고쳐 달랬는데 관련 없는 화면까지 바꿔요</td><td>"요청과 관련 없는 문제를 발견하면 수정하지 말고 작업이 끝난 뒤 알려줘"</td></tr>
+      <tr><td>확인용으로 잠깐 만든 코드를 전부 테스트 파일로 남겨요</td><td>요청했거나 프로젝트가 같은 종류의 테스트를 관리할 때만, 기존 방식대로 필요한 만큼 추가하라고 적어요</td></tr>
+      <tr><td>한두 줄만 고치면 되는데 파일 전체를 다시 써요</td><td>결과가 같을 땐 필요한 부분만 고치라고 시스템 프롬프트나 첫 메시지에 적어요</td></tr>
+      <tr><td>"진행할까요?" 하고 묻거나 다음으로 미루며 멈춰요</td><td>"나는 작업 중에 답할 수 없어. 이미 요청한 일은 다시 묻지 말고 진행해. 물어볼 게 있으면 처음에 한 번에 물어봐 줘."</td></tr>
+      <tr><td>일부가 막히면 전체를 멈춰요</td><td>"요청한 작업은 끝까지 완료해 줘. 일부가 막혀도 나머지는 다 마치고, 못 한 부분은 이유를 따로 알려줘."</td></tr>
+    </tbody>
+  </table>
+</div>
+<figure>
+  <img src="assets/fable-frame-0505.webp" alt="system 칸에 '나는 작업 중에 답할 수 없어. 이미 요청한 일은 다시 묻지 말고 진행해'와 '요청한 작업은 끝까지 완료해줘. 일부가 막히더라도 할 수 있는 나머지는 다 마치고, 못 한 부분은 이유를 따로 알려줘' 두 문장. 오른쪽 작업 목록 중 하나는 X, 나머지는 진행 중">
+  <figcaption>오른쪽 목록에서 하나가 막혀도 나머지는 계속 진행 중이에요. 두 번째 문장이 하는 일이에요. <a href="https://www.youtube.com/watch?v=BDN9i5TucEI&amp;t=305s" target="_blank" rel="noopener">Fable 5.1 가이드 05:05에서 보기</a></figcaption>
+</figure>
+<p>예외도 함께 적어요. 되돌리기 어려운 삭제나 범위를 바꾸는 일은 먼저 묻게 하고, 의견만 물었을 때는 고치지 말고 설명만 하게 해요. 프롬프트가 길다면 첫 번째 지침('다시 묻지 말고 진행')부터 넣으라고 해요.</p>
+
+<h3>아무도 내리지 않은 결정에서 멈추게</h3>
+<p>9 Skills는 반대 방향의 장치를 보여 줘요. AI에게 설계를 맡기면 데이터베이스 구조나 핵심 로직 같은 결정을 묻지 않고 '돌아가게 하는 것'으로 골라 코드 속에 묻어 버려요. 그러면 사람은 결정을 내린 게 아니라 물려받게 돼요. 그래서 <code>architect</code> 스킬은 결정마다 추천안과 진 대안, 진 이유를 문서에 적어서 사람이 보고 뒤집을 수 있게 해요.</p>
+<p>핵심은 '값의 출처'예요. 기능이 보여 주거나 계산해야 하는 값(합계, 날짜, 상태)마다 어디서 오는지 적어요. 출처가 없는 값은 아무도 내리지 않은 결정이에요. <code>develop</code> 스킬은 구현 직전에 이 목록을 기계적으로 다시 확인하고, 출처 없는 값이 있으면 멈춰서 사람에게 결정을 돌려보내요.</p>
+<figure>
+  <img src="assets/nineskills-frame-0652.webp" alt="docs/specs/0003-design-system-ui-foundation/index.md 문서의 Value sourcing 표. Action, Value produced or displayed, Source 세 열에 테마, 색상 토큰, status-icon, issue-card 날짜, board-column 개수, 오류 메시지 등의 출처가 적혀 있음">
+  <figcaption>값마다 Source 칸이 채워져 있어요. 이 칸이 빈 줄이 곧 AI가 몰래 채울 뻔한 결정이에요. <a href="https://www.youtube.com/watch?v=Vok_nReMFaU&amp;t=412s" target="_blank" rel="noopener">9 Skills 06:52에서 보기</a></figcaption>
+</figure>
+<p>영상은 이 방식도 100%는 아니라고 인정해요. 그래도 거의 다 잡는 것과 전부 조용히 넘어가는 건 완전히 다르다고 해요. AI는 진짜 결정을 '그냥 배선'이라고 스스로 납득하고 넘어가기 쉬워서, 느낌이 아니라 목록으로 확인하는 거예요.</p>
+</section>
+
+<section id="s7">
+  <h2>훅으로 같은 실수를 막아요</h2>
+<p><code>CLAUDE.md</code>에 적은 규칙은 부탁이라 가끔 빠져요(3절). 꼭 지켜야 할 규칙은 훅으로 옮겨요. 왕초보 가이드는 훅을 사람이 지나가면 켜지는 센서등에 빗대요. 명령을 실행하기 전이나 작업이 끝났을 때처럼 정해진 순간에 저절로 도는 규칙이에요. 홀먼 영상의 슬라이드 제목대로, 훅은 그냥 셸 스크립트예요. <code>settings.json</code>에 언제(<code>PreToolUse</code>, <code>PostToolUse</code>, <code>UserPromptSubmit</code>, <code>Stop</code>) 무엇을 돌릴지 적어요.</p>
+<figure>
+  <img src="assets/hollman-frame-0225.webp" alt="'Hooks are just shell scripts' 슬라이드. settings.json에 PostToolUse, matcher Edit|Write, command ./lint-changed.sh가 적힌 코드와 PreToolUse·PostToolUse·UserPromptSubmit·Stop 이벤트 목록">
+  <figcaption>파일을 고친 직후(<code>PostToolUse</code>, <code>Edit|Write</code>)마다 바뀐 곳을 린트하는 스크립트를 거는 예예요. 관련 없는 순간에는 컨텍스트에 아무것도 넣지 않아요. <a href="https://www.youtube.com/watch?v=nf4AWqLMME0&amp;t=145s" target="_blank" rel="noopener">홀먼 영상 02:25에서 보기</a></figcaption>
+</figure>
+
+<h3>실수한 그 순간의 빨간 밑줄</h3>
+<p>홀먼은 훅을 '에이전트를 위한 빨간 물결선'이라고 불러요. 문서 편집기에서 맞춤법이 틀리면 바로 밑줄이 생기듯, 규칙을 어긴 바로 그 순간에 알려 줘요. 슬라이드 예시에서는 에이전트가 없는 변수 <code>backoffMs</code>를 쓰자, 파일을 고친 직후 도는 훅이 '그 이름을 못 찾았다, <code>config.backoffMs</code>를 말한 거냐'는 경고를 컨텍스트에 바로 넣어 줘요.</p>
+<figure>
+  <img src="assets/hollman-frame-0235.webp" alt="에이전트가 쓴 retry 코드에서 존재하지 않는 변수 backoffMs에 빨간 물결선이 있고, 그 아래 'POSTTOOLUSE HOOK → BACK INTO CONTEXT: retry.ts:41 — Cannot find name backoffMs. Did you mean config.backoffMs?'가 표시된 슬라이드">
+  <figcaption>사흘 뒤 코드 리뷰가 아니라 실수한 그 턴에 고치게 해요. 경고가 '컨텍스트로 돌아간다'는 화살표가 핵심이에요. <a href="https://www.youtube.com/watch?v=nf4AWqLMME0&amp;t=155s" target="_blank" rel="noopener">홀먼 영상 02:35에서 보기</a></figcaption>
+</figure>
+
+<h3>되돌릴 수 없는 일은 실행 직전에 막아요</h3>
+<p>발표자는 비밀 키 노출이나 복구할 수 없는 삭제를 훅으로 실행 직전에 막아요. 화면 예시에서는 클로드 코드가 시크릿 키 값을 코드 파일에 직접 쓰려다 <code>PreToolUse</code> 훅에 막혀요. 클로드 코드는 우회하지 않고 '.env에 두고 서버에서 읽으라'는 안내를 따르겠다고 답해요. 같은 장치를 만들려면 클로드 코드에게 "훅으로 위험한 작업 실행 직전에 막는 장치를 설계해 줘"라고 부탁하면 된대요.</p>
+<figure>
+  <img src="assets/hollman-frame-0415.webp" alt="fixture-demo.ts 생성 실패 화면. 'PreToolUse:Write hook error: 시크릿 키의 실제 값을 파일에 직접 적고 있습니다' 메시지와 적용되지 않은 export const SECRET_KEY 줄, 그 아래 훅이 막았다는 클로드의 설명">
+  <figcaption>파일이 써지기 전에 막혔어요. 클로드는 우회하지 않고 '.env에 두라'는 안내를 따르겠다고 답했어요. <a href="https://www.youtube.com/watch?v=nf4AWqLMME0&amp;t=255s" target="_blank" rel="noopener">홀먼 영상 04:15에서 보기</a></figcaption>
+</figure>
+<p>왕초보 가이드의 발표자도 훅 두 개를 만들었어요. 위험한 삭제 막기와 작업 끝 알림이에요. 삭제 훅은 <code>rm -rf</code>, <code>git reset --hard</code>, <code>git push --force</code> 같은 명령을 실행 전에 막아요.</p>
+<figure>
+  <img src="assets/beginner-frame-4430.webp" alt="클로드의 작업 보고: 사용자 전역 설정(~/.claude/settings.json)에 훅 두 개를 추가했고, 위험한 삭제 차단은 rm -rf, Remove-Item -Recurse, git reset --hard, git push --force 같은 명령을 실행 전에 막는 block-dangerous-delete.js, 작업 완료 알림은 윈도우 트레이 알림을 띄우는 notify-done.ps1이라는 설명과 시험 결과">
+  <figcaption>훅도 말로 만들어요. 클로드가 전역 설정에 두 훅을 넣고 시험한 결과까지 보고했어요. <a href="https://www.youtube.com/watch?v=2R-kUFv7GZg&amp;t=2670s" target="_blank" rel="noopener">왕초보 가이드 44:30에서 보기</a></figcaption>
+</figure>
+
+<h3>하네스 엔지니어링: 같은 실수를 환경으로 막기</h3>
+<p>공식 플러그인 4개는 Hookify를 <span class="term" data-term="하네스 엔지니어링" data-en="Harness engineering" data-desc="에이전트가 실수할 때마다 그 실수가 다시는 일어나지 않게 환경을 고치는 일이에요. AI를 탓하는 대신 규칙 파일, 훅, 검사를 손봐요." data-g="3">하네스 엔지니어링</span>과 묶어 설명해요. Mitchell Hashimoto는 하네스 엔지니어링을 "에이전트가 실수할 때마다 그 실수가 다시는 일어나지 않도록 엔지니어링하는 것"이라고 했어요. AI를 탓하지 말고 환경을 고치라는 뜻이에요.</p>
+<p>토큰 면에서도 이득이에요. 클로드가 잘못 쓰면 우리가 "왜 그렇게 했어?"라고 지적하고, 클로드가 사과하고 정리한 뒤 다시 시도해요. 발표자는 이 한 사이클에 수천 토큰이 사라진다고 추정해요. 훅은 이 사이클이 시작되기 전에 끊어요.</p>
+<figure>
+  <img src="assets/plugins4-frame-1253.webp" alt="슬라이드. 토큰이 진짜로 새는 지점: 클로드가 잘못 씀 → 여러분이 '왜 거기 썼어요?' 지적 → 클로드가 사과하고 정리 → 다시 시도. 아래에 사이클 한 번 = 수천 토큰 사라짐 (추정)">
+  <figcaption>잘못 쓰고, 지적받고, 사과하고, 다시 하는 네 단계가 통째로 비용이에요. 슬라이드도 '추정'이라고 밝혀 뒀어요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=773s" target="_blank" rel="noopener">공식 플러그인 4개 12:53에서 보기</a></figcaption>
+</figure>
+<p>Hookify는 규칙을 말로 만들게 해 줘요. 데모에서는 <code>/hookify 프로덕션 코드에 console.log 쓰지 마</code>라고 입력하고 질문 몇 개에 답하면, <code>.claude/</code> 아래에 마크다운 규칙 파일이 생겨요. 앞부분(프론트매터)에는 언제 발동할지 조건이, 본문에는 클로드가 지킬 지침이 들어 있어요.</p>
+<figure>
+  <img src="assets/plugins4-frame-1334.webp" alt="편집기의 .claude/hookify.warn-console-log.local.md 파일. 프론트매터에 name warn-console-log, enabled true, event file, action warn, conditions로 file_path regex_match src/.*\.tsx?$, file_path not_contains .test., new_text regex_match console\.log\(가 있고 아래 본문에 경고 메시지">
+  <figcaption>조건이 세 줄이에요. <code>src/</code>의 TypeScript 파일이고, 테스트 파일이 아니고, 새로 쓴 글에 <code>console.log(</code>가 있을 때만 경고해요. <a href="https://www.youtube.com/watch?v=L94yAQR9VvA&amp;t=814s" target="_blank" rel="noopener">공식 플러그인 4개 13:34에서 보기</a></figcaption>
+</figure>
+<p>발표자의 팁은 같은 실수를 세 번 겪었다 싶으면 인자 없이 <code>/hookify</code>를 한 번 돌려 보라는 거예요. 최근 대화에서 짜증 났던 패턴을 자동으로 뽑아 규칙 후보로 만들어 줘요.</p>
+
+<h3>훅으로 '완료' 표시를 막기</h3>
+<p>리뷰 루프는 훅을 검증에 써요. 기능마다 통과 기준(<span class="term" data-term="eval" data-en="Evaluation" data-desc="일이 끝났는지 알려 주는 고정된 검사예요. 만들기 전에 먼저 써 두고, 나쁜 결과를 떨어뜨릴 만큼 엄격해야 해요." data-g="12">eval</span>)을 먼저 써 두고, eval이 통과하기 전에는 작업을 끝났다고 표시하지 못하게 훅으로 막아요. 처음 쓰는 사람처럼 앱을 써 보는 검사 에이전트가 앱 코드를 읽지 못하게 막는 것도 훅이에요. 둘 다 9절에서 자세히 봐요.</p>
+</section>
+
+<section id="s8">
+  <h2>서브에이전트와 루프는 언제 쓸까요</h2>
+<p>서브에이전트는 별도의 컨텍스트 윈도우에서 일하고 결과만 요약해 돌려줘요(3절). 홀먼 영상이 인용한 공식 문서는 검색 결과, 로그, 파일 내용처럼 과정에서 잔뜩 쌓이는 데이터가 메인 대화를 채울 때 쓰라고 해요. 그런데 이게 '에이전트를 많이 쓸수록 좋다'는 뜻은 아니에요. 이 절은 언제 나누고 언제 혼자 두는지를 모았어요.</p>
+<figure>
+  <img src="assets/hollman-frame-0549.webp" alt="서브에이전트 공식 문서. 검색 결과·로그·파일 내용이 메인 대화를 채울 때 서브에이전트를 쓰라는 문단과, 'Each subagent runs in its own context window'에 형광펜이 칠해진 문장">
+  <figcaption>공식 문서가 꼽는 신호는 '메인 대화를 채우는 데이터'예요. 결과만 필요한 일이 서브에이전트 몫이에요. <a href="https://www.youtube.com/watch?v=nf4AWqLMME0&amp;t=349s" target="_blank" rel="noopener">홀먼 영상 05:49에서 보기</a></figcaption>
+</figure>
+
+<h3>역할별 에이전트 팀은 대부분 손해였어요</h3>
+<p>멀티 에이전트 실험은 감독·개발자·기획자처럼 업무별로 에이전트를 나누면 더 효율적이라는 말을 직접 시험했어요. 발표자가 먼저 꼽는 문제는 '전화 게임'이에요. 작은 일까지 역할을 쪼개면 에이전트끼리 정보를 주고받는 과정에서 내용이 조금씩 새어 나가 정확도가 떨어져요.</p>
+<figure>
+  <img src="assets/multiagent-frame-0048.webp" alt="'전화 게임' 라벨 아래 에이전트 네 마리가 한 줄로 서 있고, 각자 밑의 검은 점이 다섯, 넷, 둘, 하나로 줄어드는 그림">
+  <figcaption>점 다섯 개로 시작한 정보가 네 번 건너며 하나만 남아요. 역할을 잘게 쪼갤수록 이 손실이 커져요. <a href="https://www.youtube.com/watch?v=cIGRF-acSzs&amp;t=48s" target="_blank" rel="noopener">멀티 에이전트 실험 00:48에서 보기</a></figcaption>
+</figure>
+<p>비교한 설정은 셋이에요. Claude 혼자 다 하는 단일, 계획부터 보안 리뷰까지 에이전트 다섯이 나눠 맡는 팀, 그리고 단일 세션에 코드 리뷰 한 번만 별도 에이전트에게 맡기는 단일+리뷰어예요. 미니 칸반보드 과제에서는 셋 다 인수 테스트 47개를 모두 통과했는데, 작업 시간은 6.0분, 39.6분, 7.3분이었어요. 팀이 일곱 배 가까이 오래 걸렸어요.</p>
+<p>실제로 운영하는 서버의 2주치 작업 14개를 다시 구현하게 한 실전 과제에서도 결과는 비슷했어요.</p>
+<figure>
+  <img src="assets/multiagent-frame-0422.webp" alt="실전 테스트 결과 표. 핵심 기능 58점·52점(가장 낮음)·63점, 서브에이전트 호출 0회·9회·1회, 출력 토큰 22.8만·53.0만·25.7만(약 2배), 작업 시간 36.5분·79.6분·36.9분">
+  <figcaption>팀은 서브에이전트를 9번 부르고 토큰을 두 배쯤 썼는데 점수는 가장 낮았어요. 리뷰어 하나만 붙인 오른쪽 줄이 가장 높아요. <a href="https://www.youtube.com/watch?v=cIGRF-acSzs&amp;t=262s" target="_blank" rel="noopener">멀티 에이전트 실험 04:22에서 보기</a></figcaption>
+</figure>
+<p>모델을 Opus 5.5로 올려도 같았어요. 단독은 42.8분에 64점, 팀은 63.6분에 62점이었어요. 눈에 띄는 건 단독 Opus가 시키지 않았는데도 계획 단계에서 탐색 에이전트(Explore) 세 개를 불러 코드를 나눠 읽었다는 점이에요.</p>
+<figure>
+  <img src="assets/multiagent-frame-0615.webp" alt="'Explore × 3 스스로 호출' 라벨이 붙은 에이전트에서 돋보기 세 개로 갈라져 각각 src/tools/, src/trades/, src/map/ 폴더와 그 안의 파일로 이어지는 그림">
+  <figcaption>모델이 스스로 고른 분담은 역할이 아니라 '폴더별로 나눠 읽기'였어요. 넓은 코드베이스 조사가 에이전트를 쓸 만한 자리라는 예예요. <a href="https://www.youtube.com/watch?v=cIGRF-acSzs&amp;t=375s" target="_blank" rel="noopener">멀티 에이전트 실험 06:15에서 보기</a></figcaption>
+</figure>
+<p>발표자의 결론은 '얼마나 많이가 아니라 언제'예요.</p>
+<ul>
+  <li><b>에이전트를 쓸 때:</b> 구현이 끝난 뒤의 독립 코드 리뷰, 넓은 코드베이스를 먼저 조사할 때, 독립된 기능을 각자 만들거나 여러 관점의 리뷰를 동시에 돌리는 병렬 작업. 다만 에이전트 수만큼 토큰도 늘어요.</li>
+  <li><b>단일 Claude가 나을 때:</b> 계획·구현·테스트가 한 맥락으로 이어지는 작업, 작고 빠른 수정, 대화하며 주고받으며 다듬는 작업.</li>
+</ul>
+<p>펠릭스 인터뷰도 같은 쪽이에요. 펠릭스의 '매운 의견'은 우리가 에이전트라는 개념에 너무 기울어 있다는 거예요. 역할을 붙이는 건 사람이 이해하기 쉬워서일 뿐, 범용 모델 하나가 이미 만능에 가깝다고 봐요. 데이터도 에이전트마다 조각내 주지 말고, 전체를 도구로 열어 주고 도구 뒤에 어떤 데이터가 있는지 잘 문서화하라고 해요.</p>
+<figure>
+  <img src="assets/felix-frame-1724.webp" alt="열쇠로 상자를 여는 손과 잘린 종이 조각 옆 가위 선 그림, 꼬리표 '데이터 과학자·회계사…', '역할 = 사람이 이해하기 쉬워서', '모델은 원래 만능에 가깝다', 지워진 '데이터를 조각내 나눠 주기', '전체를 도구로 열어 준다'">
+  <figcaption>가위로 잘라 나눠 주던 데이터를 지우고 열쇠로 상자를 통째로 여는 쪽을 골랐어요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1044s" target="_blank" rel="noopener">펠릭스 인터뷰 17:24에서 보기</a></figcaption>
+</figure>
+
+<h3>넘길 때는 지시서, 돌려받을 때는 정해진 보고</h3>
+<p>게임 팀 세팅은 이미지가 필요한 일을 Claude가 Codex에게 넘겨요. 넘기는 방식이 정해져 있어요. Claude가 쓰는 작업 지시서에는 먼저 읽을 것, 목표(사용자 말 그대로), 고쳐도 되는 범위, 하면 안 되는 일이 들어가요.</p>
+<figure>
+  <img src="assets/gamesetup-frame-0233.webp" alt="'작업 지시서' 문서에 먼저 읽을 것, 목표, 수정 범위, 하면 안 되는 일 네 제목이 있고 마지막 칸이 빨간 테두리로 강조된 화면. 오른쪽에 Claude '지시서를 쓴다', Codex '실행' 카드">
+  <figcaption>빨간 테두리가 '하면 안 되는 일'이에요. 받는 쪽이 범위를 넘지 않게 하는 칸이에요. <a href="https://www.youtube.com/watch?v=qtIUFHhdBBg&amp;t=153s" target="_blank" rel="noopener">게임 팀 세팅 02:33에서 보기</a></figcaption>
+</figure>
+<p>Codex는 일을 끝내면 통과(<code>PASS</code>)·실패(<code>FAIL</code>)·못 돌림(<code>NOT_RUN</code>) 셋 중 하나로 보고해요. 검사를 못 돌렸는데 통과라고 쓰면 안 되니까요. Claude는 그 보고를 그대로 믿지 않아요. 실제로 바뀐 파일을 보고서와 맞춰 보고, Codex가 돌렸다는 검사를 자기가 다시 돌리고, 렌더한 이미지도 직접 열어 봐요. 다 맞을 때만 커밋해요.</p>
+<figure>
+  <img src="assets/gamesetup-frame-0250.webp" alt="왼쪽 'Codex 보고 PASS'와 물음표, 그 아래 바뀐 파일 다섯 개 체크 목록, 오른쪽에 'Claude가 다시 돌림' 터미널의 npm run test:godot 통과 로그와 렌더된 화분 두 장">
+  <figcaption><code>PASS</code> 옆의 물음표가 이 팀의 태도예요. 받은 쪽이 검사를 다시 돌려 확인한 뒤에야 믿어요. <a href="https://www.youtube.com/watch?v=qtIUFHhdBBg&amp;t=170s" target="_blank" rel="noopener">게임 팀 세팅 02:50에서 보기</a></figcaption>
+</figure>
+<p>Fable 5.1 가이드는 넘긴 뒤의 행동을 짚어요. 서브에이전트에게 일을 넘겼다면 메인이 기다리지 말고 다음 일을 계속하게 해요. 품질과 비용은 비슷한데 평균 완료 시간이 줄어든대요. 메인 컨텍스트를 아끼려고 기다리게 하던 예전 방식과 반대라서, 11절 표에도 올렸어요.</p>
+<figure>
+  <img src="assets/fable-frame-0329.webp" alt="메인과 서브 두 줄짜리 타임라인. 메인이 서브에게 일을 넘긴 뒤 다음 막대로 바로 이어지고, 서브 줄에서도 막대가 동시에 진행되는 그림">
+  <figcaption>메인 줄에 빈칸이 없어요. 넘긴 일과 다음 일이 동시에 진행돼요. <a href="https://www.youtube.com/watch?v=BDN9i5TucEI&amp;t=209s" target="_blank" rel="noopener">Fable 5.1 가이드 03:29에서 보기</a></figcaption>
+</figure>
+
+<h3>정해진 일은 에이전트 대신 루프로</h3>
+<p>263배 실험이 비용을 가장 크게 줄인 건 에이전트를 더 쓴 게 아니라 루프였어요. 파이썬이 검사와 기억을 맡고, 모델에게는 짧은 요청을 한 번 보내요. 떨어진 것만 이유와 함께 새 호출로 다시 보내고, 앞 대화를 이어 붙이지 않아요. 무엇이 끝났고 무엇이 남았는지는 대화가 아니라 파일과 코드가 기억해요.</p>
+<figure>
+  <img src="assets/cost263-frame-0957.webp" alt="'파이썬 루프' 그림: 짧은 띠가 모델로 가고, 파이썬 저울 '검사 = title_check'와 체크리스트 '기억 = 통과 9 · 남은 1'을 거쳐 두 번째 모델로 이어지는 구조">
+  <figcaption>모델로 가는 띠가 매번 짧아요. 검사와 기억을 코드가 맡아서 대화를 다시 싣지 않거든요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=597s" target="_blank" rel="noopener">263배 실험 09:57에서 보기</a></figcaption>
+</figure>
+<p>발표자의 템플릿은 네 가지로 이뤄져요. 통과 기준을 <code>check</code> 함수에 코드로 적고, 일꾼은 도구를 끄고 한 줄 시스템 프롬프트로 맨몸으로 부르고, 모델은 Haiku부터 시작해 통과율이 낮으면 한 단계씩 올리고, 떨어진 것만 새 호출에 넣어요. 다만 모든 일을 루프로 바꿀 수는 없어요. 무엇을 할지부터 찾아야 하거나 파일 여러 곳을 뒤져야 하는 일은 에이전트에게 맡기는 게 맞아요.</p>
+<figure>
+  <img src="assets/cost263-frame-1131.webp" alt="'루프로 바꿀 일' 슬라이드: '할 일이 정해짐', '합격 기준 = 코드', '자주 반복' 세 줄에 모두 체크 표시">
+  <figcaption>세 줄이 다 맞으면 1달러짜리를 몇 센트로 바꿀 수 있대요. 하나라도 아니면 에이전트에게 맡겨요. <a href="https://www.youtube.com/watch?v=ndpzi0ocrCA&amp;t=691s" target="_blank" rel="noopener">263배 실험 11:31에서 보기</a></figcaption>
+</figure>
+<p>게임 팀 세팅은 루프의 값을 경고해요. Anthropic의 실험에서 모델 혼자 한 번 만들면 20분에 9달러였는데, 만들고·검사하고·다시 만드는 루프로 돌리니 6시간에 200달러가 들었어요. 게다가 어느 정도 돌면 점수가 더 안 오르는 지점이 와요. 그래서 이 팀은 코드처럼 테스트로 충분한 일에는 루프를 잘 안 돌리고, 그림처럼 정답이 없는 작업에만 써요. 회차 상한을 두고, 점수가 더 안 오르기 시작하면 사람에게 돌아오게 해 놨어요.</p>
+<figure>
+  <img src="assets/gamesetup-frame-0626.webp" alt="가로축 회차, 세로축 점수인 곡선. 초반에 가파르게 오르다 평평해지고, 중간에 '사람'이라고 적힌 세로선">
+  <figcaption>곡선이 평평해지는 곳에 '사람' 선이 그어져 있어요. 언제 사람이 끼어들지 먼저 정해 두는 게 제일 중요하대요. <a href="https://www.youtube.com/watch?v=qtIUFHhdBBg&amp;t=386s" target="_blank" rel="noopener">게임 팀 세팅 06:26에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s9">
+  <h2>&#x27;다 됐어요&#x27;를 믿지 않는 법</h2>
+<p>에이전트는 일을 끝냈다고 말하지만, 실제로 써 보면 빠진 게 많아요. 리뷰 루프는 그래서 가장 중요한 일이 "정말 했는지"를 확인하는 거라고 말해요. 이 절은 여러 영상이 그 확인을 어떻게 짜는지 모았어요. 공통점은 셋이에요. 완료 기준을 먼저 정하고, 만든 세션 바깥에서 채점하고, 멈출 지점을 미리 정해요.</p>
+<figure>
+  <img src="assets/reviewloop-frame-0014.webp" alt="Said 열은 모두 체크, Did 열은 한 줄이 X이고 두 줄이 빈 채로 나란히 놓인 비교 화면">
+  <figcaption>'했다고 한 것'은 모두 체크인데 '실제로 한 것'은 하나가 X, 둘이 빈칸이에요. <a href="https://www.youtube.com/watch?v=S49gppZl8H0&amp;t=14s" target="_blank" rel="noopener">리뷰 루프 00:14에서 보기</a></figcaption>
+</figure>
+
+<h3>완료 기준부터 정해요</h3>
+<p>리뷰 루프가 소개한 Claude Code 팀의 방식은 리뷰의 질문부터 바꿔요. "누가 코드를 읽었나?" 대신 "이 변경으로 무엇이 잘못될 수 있고, 그걸 어떻게 잡나?"를 물어요. 그리고 Claude에게 "됐다"는 말 대신 테스트 결과나 디자인과 비교한 스크린샷 같은 증거를 보여 달라고 해요. Claude Code를 만든 Boris Cherny도 Claude가 자기 작업을 검증할 방법을 주는 게 가장 중요하다고 했어요.</p>
+<p>채널은 이걸 <code>write-evals</code> 스킬로 옮겼어요. 기능마다 통과·실패가 분명한 검사(eval)를 먼저 쓰고, 사람이 승인하기 전에는 아무것도 만들지 않아요. eval이 통과하기 전에는 작업을 끝났다고 표시하지 못하게 훅으로 막아요(7절).</p>
+<figure>
+  <img src="assets/reviewloop-frame-0323.webp" alt="자물쇠가 달린 eval 카드가 선으로 아래 Checkout 창과 이어지고, 창 오른쪽 위에 done 배지가 붙은 그림">
+  <figcaption>eval 카드에 자물쇠가 걸려 있어요. 만들기 전에 고정해 두고, 이걸 통과해야 done 배지가 붙어요. <a href="https://www.youtube.com/watch?v=S49gppZl8H0&amp;t=203s" target="_blank" rel="noopener">리뷰 루프 03:23에서 보기</a></figcaption>
+</figure>
+<p>세 스킬 묶음 비교도 공통으로 가져갈 점을 하나로 꼽아요. 완료를 어떤 결과로 확인할지 처음부터 함께 정해 두는 거예요. 세 묶음 모두 테스트를 하니 '테스트가 있다'는 고르는 기준이 못 되고, 무엇을 어떻게 확인하게 하는지를 봐야 한대요.</p>
+
+<h3>방금 일한 세션은 자기 판사로 서툴러요</h3>
+<p>펠릭스 인터뷰의 말로는 펠릭스가 못 믿는 건 클로드가 아니라 세션 하나예요. 방금 일한 세션은 자기 결과의 판사로 서툴러요. 그래서 실제로 무엇이 통하는지 보여 주는 바깥 증거를 찾고, 급하면 다른 세션이라도 써요. 리뷰 루프도 같은 이유를 대요. 기능을 만든 에이전트는 모든 결정을 직접 내렸기 때문에 리뷰를 맡기면 자기 생각에 동의해 버려요. 게임 팀 세팅의 그림 루프에서도 그린 AI는 자기 그림에 점수가 후해서, 처음 보는 AI에게 기준표와 기준 그림만 주고 채점을 맡겨요.</p>
+<p>모르는 분야라면 펠릭스는 한 단계 더 가요. 결과물을 만든 클로드와 따로, 그걸 깨는 게 유일한 임무인 클로드를 여러 개 띄워요. 펠릭스는 이걸 <span class="term" data-term="적대적 리뷰" data-en="Adversarial review" data-desc="결과물을 깨는 게 유일한 임무인 검토자를 따로 띄워 약점만 찾게 하는 방식이에요. 만든 쪽이 놓친 그럴듯한 오답을 잡아요." data-g="13">적대적 리뷰</span>라고 불러요. 흠을 찾는 건 새로 만드는 것보다 쉬워서 한 단계 낮은 모델을 써도 꽤 잘 된대요. 비판이 쏟아지면 판사 클로드가 타당한 것만 걸러 원래 만든 클로드에게 돌려주고, 그 클로드도 받아들일지 스스로 판단해요.</p>
+<figure>
+  <img src="assets/felix-frame-1337.webp" alt="'구조는 세 겹' 슬라이드: 공격 클로드 ×5(비판을 낸다)에서 빨간 화살표 다섯 개가 판사 클로드(타당한 것만 거른다)로, 초록 화살표가 만든 클로드(받아들일지 정한다)로 이어짐, 상단 '만든 세션이 채점한다 → 바깥에서 채점한다'">
+  <figcaption>공격, 판사, 만든 쪽의 세 겹이에요. 비판이 그럴듯해도 요점을 놓쳤거나 실행할 게 없으면 결과물이 꽤 좋다는 신호래요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=817s" target="_blank" rel="noopener">펠릭스 인터뷰 13:37에서 보기</a></figcaption>
+</figure>
+<p>다른 눈을 어디서 얻을지는 영상마다 달라요. 애디 오스마니는 <b>새 맥락</b>의 검토자가 중요한 판단을 다시 의심하게 하고, pstack은 <b>아예 다른 모델</b>(Claude와 Grok처럼)에게 같은 변경을 따로 검토시켜 여러 모델이 함께 짚은 문제를 더 강한 신호로 봐요(세 스킬 묶음 비교, 코딩 스킬 7개 비교). 9 Skills도 코드를 쓴 모델과 다른 모델로 diff를 읽혀요. 같은 모델은 같은 맹점을 갖고 있어서예요.</p>
+<figure>
+  <img src="assets/threeway-frame-0349.webp" alt="'다시 검토' 제목 아래 왼쪽 애디 오스마니 doubt-driven-development '새 맥락'(fresh-context adversarial review), 오른쪽 피스택 /interrogate '다른 모델'(model diversity, not assigned personas)과 모델 A, B, C">
+  <figcaption>오른쪽 괄호가 눈에 띄어요. 역할을 나눠 준 페르소나가 아니라 모델 자체가 다르다는 뜻이에요. 6절의 '역할 대신'과 같은 생각이에요. <a href="https://www.youtube.com/watch?v=8KxUBUm9Ciw&amp;t=229s" target="_blank" rel="noopener">세 스킬 묶음 비교 03:49에서 보기</a></figcaption>
+</figure>
+
+<h3>리뷰 기준은 review.md에</h3>
+<p>리뷰어가 무엇을 중요하게 볼지는 <code>review.md</code>에 적어요. 이 앱에서 무엇이 진짜 실패이고 얼마나 심각한지, 무시할 것, 리뷰를 어떻게 보고할지, 앱을 어떤 방법으로 테스트할지예요. 이 파일은 따로 시키지 않으면 읽히지 않아서, <code>CLAUDE.md</code>에서 <code>@review.md</code>로 링크해 새 세션마다 같이 불러오게 해요(4절). 그러면 <code>/code-review</code>도 그 기준을 따라요.</p>
+<figure>
+  <img src="assets/reviewloop-frame-0703.webp" alt="REVIEW.md 편집 창. What counts as a failure 제목 아래 Checkout breaks는 high, Wrong price shown은 medium, Button misaligned는 low 배지">
+  <figcaption>실패마다 심각도가 붙어 있어요. 결제가 깨지면 high, 버튼이 어긋나면 low예요. <a href="https://www.youtube.com/watch?v=S49gppZl8H0&amp;t=423s" target="_blank" rel="noopener">리뷰 루프 07:03에서 보기</a></figcaption>
+</figure>
+
+<h3>리뷰 루프가 멈추게 하는 규칙</h3>
+<p>빌더와 리뷰어는 언제 멈춰야 할지 몰라요. 리뷰 루프에 따르면 Claude Code 팀에서는 한 변경이 50번 넘게 오간 적도 있었고, 리뷰어가 계속 보고한 것의 약 59%는 첫 라운드부터 있던 문제였어요. 새 버그를 찾는 게 아니라 옛 문제를 하나씩 다시 찾고 있었던 거예요.</p>
+<figure>
+  <img src="assets/reviewloop-frame-1209.webp" alt="reviewer 창의 라운드 1~7 막대그래프. 각 막대 아래쪽 주황 칸은 since round 1, 위쪽 회색 칸은 new, 오른쪽에 큰 글씨 59%">
+  <figcaption>라운드가 지나도 막대 아래쪽 주황 칸(첫 라운드부터 있던 문제)이 줄지 않아요. <a href="https://www.youtube.com/watch?v=S49gppZl8H0&amp;t=729s" target="_blank" rel="noopener">리뷰 루프 12:09에서 보기</a></figcaption>
+</figure>
+<p>채널의 <code>review-loop</code> 스킬은 매 라운드 새 컨텍스트의 서브에이전트를 띄워서, 메인 에이전트와 같은 생각에 끌려가지 않게 해요. 메인 세션은 <span class="term" data-term="오케스트레이터" data-en="Orchestrator" data-desc="루프를 돌리고 다른 에이전트를 띄우기만 하는 메인 세션이에요. 직접 코드를 쓰거나 판정하지 않아서 생각이 한쪽으로 끌려가지 않아요." data-g="14">오케스트레이터</span>로 루프를 돌리고 에이전트를 띄울 뿐, 앱 코드를 직접 쓰거나 판정하지 않아요. 빌더가 만들고, 검증자가 eval 항목마다 통과·실패와 증거를 남기고, 리뷰어가 <code>review.md</code> 기준으로 eval이 놓친 문제를 찾아요.</p>
+<p>그래서 팀은 규칙을 세 개 더했어요.</p>
+<ol class="steps">
+  <li><b>세 라운드가 지나면</b> 리뷰어는 문제를 더 늘어놓지 않고, 빌더에게 만드는 방식을 다시 생각하라고 해요.</li>
+  <li><b>첫 라운드 이후에는</b> 마지막 수정이 바꾼 부분만 보고, 이미 보고한 건 다시 보고하지 않아요.</li>
+  <li><b>문제를 찾으면 종류를 말해요.</b> 빌더가 그 한 곳만이 아니라 같은 종류를 전부 고쳐요.</li>
+</ol>
+<p>이 뒤로 첫 리뷰에서 통과하는 변경이 늘었대요. 채널의 루프는 상한을 다섯 라운드로 두고, 같은 문제가 수정 두 번 뒤에도 남으면 그 전에 멈춰요. 게임 팀 세팅도 검토자 점수가 흔들리는 걸 봤어요. 같은 클로버 그림이 한 번은 통과, 한 번은 탈락이 나와서 검토자 둘의 평균을 써요. 그리고 기준을 다 통과한 회차보다 사람 눈에 더 좋은 회차가 있었어요.</p>
+<figure>
+  <img src="assets/gamesetup-frame-0738.webp" alt="왼쪽 '21회차 · 기준 모두 통과' 민들레, 오른쪽 '18회차 · 저희 눈엔 이쪽' 민들레, 아래 r2부터 r23까지 회차 목록에 r23 강조">
+  <figcaption>기준은 21회차가 통과했는데 팀은 18회차를 골랐어요. 저장해 둔 18회차를 기준 그림으로 놓고 검토 기준을 고치게 했어요. <a href="https://www.youtube.com/watch?v=qtIUFHhdBBg&amp;t=458s" target="_blank" rel="noopener">게임 팀 세팅 07:38에서 보기</a></figcaption>
+</figure>
+
+<h3>위험할수록 세게 검사해요</h3>
+<p>모든 변경을 꼼꼼히 리뷰하면 시간과 사용량이 들어요. Claude Code 팀의 원칙은 "잘못됐을 때 피해가 클수록 더 세게 검사한다"예요. 직접 나눌 때는 "이 기능이 깨지면 고객에게 무슨 일이 생기나?" 하나만 물으면 돼요. 모양만 이상해지면 낮음, 기능이 안 되지만 잃는 건 없으면 중간, 돈을 잃거나 남의 데이터를 보게 되면 높음이에요(리뷰 루프). 9 Skills도 같아요. 버릴 프로토타입은 자체 확인만, 결제 시스템은 네 가지 검사를 매번 다 돌려요.</p>
+<figure>
+  <img src="assets/nineskills-frame-1700.webp" alt="왼쪽 A THROWAWAY PROTOTYPE 카드에 /check verify만 켜져 있고 Just self-checks, 오른쪽 A PAYMENT SYSTEM 카드에 /check verify, /test, /check review, /document가 모두 켜져 있고 All four, every time">
+  <figcaption>왼쪽은 하나만, 오른쪽은 넷 다 켜져 있어요. 같은 검사 도구를 위험에 맞춰 골라 써요. <a href="https://www.youtube.com/watch?v=Vok_nReMFaU&amp;t=1020s" target="_blank" rel="noopener">9 Skills 17:00에서 보기</a></figcaption>
+</figure>
+
+<h3>빌드 성공은 완료가 아니에요</h3>
+<p>테스트가 초록색이어도 AI가 떠올린 코드만 검사했을 뿐이에요(9 Skills). 세 스킬 묶음 비교의 정산 앱 예시는 화면에 "정산 완료"가 떠도 송금 요청 알림은 한 명에게도 안 갔을 수 있다고 보여 줘요. 그래서 pstack은 실제 실행 결과로 확인해요. 버그 수정이라면 재현, 로그로 원인 찾기, 수정, 같은 조건에서 재확인 순서로 가고, 실패하던 결과(0/4)와 통과한 결과(4/4)를 나란히 보여 줘요.</p>
+<figure>
+  <img src="assets/threeway-frame-0417.webp" alt="/poteto-mode Bug fix 네 단계. 1 재현(npm test notify FAIL 0/4), 2 로그로 원인('notify: 오늘 이미 요청함'에 원인 표시), 3 수정(notify.ts 한 줄 변경), 4 같은 조건 재확인(PASS 4/4)">
+  <figcaption>1단계와 4단계가 같은 조건이에요. 고치기 전 0/4와 고친 뒤 4/4가 함께 있어야 고쳤다는 증거가 돼요. <a href="https://www.youtube.com/watch?v=8KxUBUm9Ciw&amp;t=257s" target="_blank" rel="noopener">세 스킬 묶음 비교 04:17에서 보기</a></figcaption>
+</figure>
+<p>직접 써 보는 것도 한계가 있어요. 이미 동작을 알기 때문에 놓치는 게 있거든요. 리뷰 루프의 <code>first-time-user</code> 스킬은 앱이 만들어지는 걸 본 적 없는 새 에이전트를 띄워 처음 온 고객처럼 실제 앱을 쓰게 해요. 이 에이전트는 앱 코드를 읽지 못하게 막고, 터미널 명령으로 우회하는 것도 훅으로 막고, 테스트용 임시 데이터베이스를 써요. Matt Pocock 대담에서도 가장 큰 이득은 환경 개선에서 왔어요. 영상 편집기를 에이전트가 브라우저로 직접 눌러 보고 스크린샷을 찍게 바꾸자 결과물 품질이 크게 올랐대요.</p>
+<figure>
+  <img src="assets/reviewloop-frame-1415.webp" alt="편집기에 열린 first-time-user SKILL.md의 'What keeps the subagent blind' 절. omitClaudeMd: true와 PreToolUse 훅 first-time-user-guard.mjs 설명이 보이는 화면">
+  <figcaption>'눈을 가리는 장치' 절이에요. <code>CLAUDE.md</code>도 빼고, 코드를 읽으려 하면 훅이 막아요. <a href="https://www.youtube.com/watch?v=S49gppZl8H0&amp;t=855s" target="_blank" rel="noopener">리뷰 루프 14:15에서 보기</a></figcaption>
+</figure>
+
+<h3>같은 버그를 계속 고친다면</h3>
+<p>9 Skills의 <code>debug</code> 스킬은 먼저 버그를 확실히 재현해요. 재현이 안 되면 고쳤는지 증명할 수 없거든요. 원인 가설을 딱 하나 세워 그것만 확인하고, 틀리면 그 수정을 버려서 쓸모없는 변경이 남지 않게 해요. 고친 뒤엔 수정 전엔 실패하고 수정 후엔 통과하는 테스트를 써요. 원인이 코드가 아니라 잘못된 설계 결정이면 그렇다고 말하고 다시 설계하게 돌려보내요. pstack의 <code>attack-the-premise</code> 원칙도 같은 쪽이에요. 같은 버그를 고치고 또 고치는데 계속 남아 있으면, 고치기를 멈추고 '애초에 방향이 맞나'부터 의심하게 해요.</p>
+<figure>
+  <img src="assets/pstack-frame-1348.webp" alt="bug 상자에서 right track? 갈림길로 이어지고, 회색 more fixes 쪽이 아니라 주황색 the premise 쪽으로 선이 강조되어 있다. 아래에 suspect the premise, not the fixes 문구가 있다">
+  <figcaption>갈림길에서 '수정 더 하기'가 아니라 '전제 의심하기'로 가요. <a href="https://www.youtube.com/watch?v=4wBVuj2an8E&amp;t=828s" target="_blank" rel="noopener">pstack 해설 13:48에서 보기</a></figcaption>
+</figure>
+<p>그래도 실수는 새요. 리뷰 루프는 그래서 되돌리는 길도 함께 만들라고 해요. 기능마다 브랜치를 따로 두면 문제가 생긴 기능만 되돌릴 수 있어요. 이게 되려면 <code>CLAUDE.md</code>에 git을 쓰고, 기능마다 브랜치를 만들고, 잘 되는 버전마다 저장하라고 적어 둬야 해요.</p>
+</section>
+
+<section id="s10">
+  <h2>남이 만든 스킬을 들일 때</h2>
+<p>스킬은 직접 만들기도 하지만 남이 만든 걸 받아 쓰기도 해요. 이 절은 받을 때 확인할 것과, 스킬 묶음을 고르는 기준을 모았어요. 영상들의 결론은 둘이에요. 별 개수가 아니라 스킬이 내 컴퓨터에서 무엇을 하는지 보고 깔고, 많이 깔기보다 내 작업에서 비어 있는 단계를 메우는 것만 골라요.</p>
+
+<h3>별 개수는 안전을 말해 주지 않아요</h3>
+<p>스킬 점검 쇼츠의 발표자는 별이 18,825개 달린 인기 스킬을 깔아 썼어요. 그런데 스킬이 실행되다가 다운로드에 실패하자 <code>pip install -U yt-dlp</code>로 프로그램을 스스로 업데이트했어요. 시킨 적 없는 설치였고, 그렇게 컴퓨터 상태가 몰래 바뀌었어요.</p>
+<figure>
+  <img src="assets/skillsafety-frame-0006.webp" alt="별 18,825개 표시 아래 터미널에서 다운로드 실패 뒤 pip install -U yt-dlp가 실행되고 '안 시킨 설치' 딱지가 붙은 화면">
+  <figcaption>위의 별 개수와 아래의 '안 시킨 설치' 딱지가 한 화면에 있어요. 인기는 스킬이 무엇을 하는지 알려 주지 않아요. <a href="https://www.youtube.com/watch?v=9aLLxtFDh9k&amp;t=6s" target="_blank" rel="noopener">스킬 점검 쇼츠 00:06에서 보기</a></figcaption>
+</figure>
+<p>그래서 깔기 전에 세 가지를 확인해요.</p>
+<ul class="checklist">
+  <li><b>내 키 파일을 읽나요?</b> <code>.env</code>에 든 다른 AI 서비스의 API 키를 스킬이 가져다 쓰면 요금은 내 키로 나가요.</li>
+  <li><b>설치나 업데이트를 시키나요?</b> 설명서에 "업데이트하세요" 한 줄만 있어도 <code>pip</code>, <code>npm</code>, <code>curl</code>로 무언가를 깔 수 있어요.</li>
+  <li><b>내 자료를 밖으로 보내나요?</b> 내 컴퓨터의 파일을 외부 서버로 전송하는지 봐요.</li>
+</ul>
+<figure>
+  <img src="assets/skillsafety-frame-0018.webp" alt="권한 모드 창에서 '매번 묻기'가 선택되고 '전부 자동 허용'에 빨간 X가 표시된 화면, 오른쪽 위에 '처음 쓰는 스킬' 딱지">
+  <figcaption>처음 쓰는 스킬은 '매번 묻기'로 두라고 해요. 그래야 위 세 가지가 일어날 때마다 보고 막을 수 있어요. <a href="https://www.youtube.com/watch?v=9aLLxtFDh9k&amp;t=18s" target="_blank" rel="noopener">스킬 점검 쇼츠 00:18에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>세 권한 모드는 공식 문서의 <code>default</code>, <code>acceptEdits</code>, <code>bypassPermissions</code>에 가까워요. 공식 문서는 <code>bypassPermissions</code>를 컨테이너나 VM(Virtual Machine)처럼 격리된 환경에서만 쓰라고 해요. 또 스킬은 <code>SKILL.md</code> 머리말의 <code>allowed-tools</code>로 자기 실행 동안 일부 도구를 묻지 않고 쓰도록 미리 허용할 수 있어서, 남의 스킬을 깔 때는 이 줄도 같이 보는 게 좋아요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/permissions" target="_blank" rel="noopener">Claude Code 공식 문서 — Configure permissions</a> · <a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Skills</a></p>
+</aside>
+
+<h3>마크다운 파일도 공격 통로예요</h3>
+<p>Ivanna 인터뷰는 스킬이 그냥 마크다운 파일이라 무해해 보이지만, 직접 조사해 보니 <span class="term" data-term="프롬프트 인젝션" data-en="Prompt injection" data-desc="문서나 웹 페이지 속에 숨긴 지시로 AI를 조종하는 공격이에요. 남이 만든 스킬의 마크다운 파일도 그 통로가 될 수 있어요." data-g="11">프롬프트 인젝션</span>에 취약했다고 해요. 인터넷에서 받은 마크다운 파일이 에이전트를 조종해 키를 훔치게 할 수 있고, 겉보기엔 멀쩡한 글에 숨은 유니코드 명령이 들어 있을 수도 있어요. 그래서 Google의 Flutter·Dart 공식 스킬이나 패키지 관리자가 직접 낸 스킬처럼 출처가 분명한 것을 쓰라고 해요. 검색해서 처음 나온 스킬을 그대로 받지 말고, 공식 스킬을 쓰거나 내용을 직접 확인해야 해요.</p>
+<p>왕초보 가이드도 같은 경고를 해요. 다른 도구의 스킬 마켓에서 악성 스킬 341개가 나온 일이 있어서, 깔기 전에 "설치하지 말고 읽어만 줘"로 먼저 클로드에게 읽혀요.</p>
+<figure>
+  <img src="assets/beginner-frame-2104.webp" alt="다른 조사(Snyk)에서 심각한 문제가 있던 스킬이라는 제목 아래 점 스무 개 중 두 개만 빨간색이고 열에 하나 넘게 13.4%라고 적힌 화면">
+  <figcaption>화면의 다른 조사(Snyk)에서는 심각한 문제가 있던 스킬이 열에 하나 넘게(13.4%) 나왔어요. <a href="https://www.youtube.com/watch?v=2R-kUFv7GZg&amp;t=1264s" target="_blank" rel="noopener">왕초보 가이드 21:04에서 보기</a></figcaption>
+</figure>
+<p>스킬은 들인 뒤에도 관리할 거리예요. Ivanna는 커뮤니티 Flutter 스킬 저장소를 운영하며 적어도 2주마다 바뀐 게 없는지 확인해요. 사람의 역할을 묻자 직접 쓰는 사람보다 관리자에 가깝다고 답해요.</p>
+
+<h3>많이 깐다고 좋아지지 않아요</h3>
+<p>코딩 스킬 7개 비교는 Superpowers, gstack, Spec Kit, Feature Dev, 맷 포콕 skills, 애디 오스마니 agent-skills, pstack을 같은 예제로 요구사항·설계·구현·검증 네 단계에 나란히 놓아요. 소개 문구만 보면 일곱 개 모두 설계·코드·테스트·검토를 한다고 해요. 그런데 힘을 주는 곳이 달라서, 비슷한 절차가 겹치거나 부딪칠 수 있어요. 그래서 내 작업에서 보완하고 싶은 부분을 기준으로 고르라고 해요.</p>
+<figure>
+  <img src="assets/sevenskills-frame-0841.webp" alt="일곱 스킬을 세로로, 요구사항·설계·구현·검증을 가로로 놓고 단계마다 색 막대를 채운 표. 맷 포콕 줄만 점선이다">
+  <figcaption>막대가 채워진 칸이 그 스킬이 힘을 주는 단계예요. 맷 포콕 줄만 점선인 건 필요한 것만 골라 쓰는 도구 상자라서예요. <a href="https://www.youtube.com/watch?v=nTwbveOwuS4&amp;t=521s" target="_blank" rel="noopener">코딩 스킬 7개 비교 08:41에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>이럴 때</th><th>살펴볼 스킬</th></tr></thead>
+    <tbody>
+      <tr><td>정해진 개발 절차를 체계적으로 따르고 싶을 때</td><td>Superpowers</td></tr>
+      <tr><td>제품 방향부터 기술 설계, 실제 QA(Quality Assurance)까지 여러 관점에서 보고 싶을 때</td><td>gstack</td></tr>
+      <tr><td>여러 설계안 비교, 다른 AI 모델의 검토, 실행 검증까지 쓰고 싶을 때</td><td>pstack</td></tr>
+      <tr><td>질문, TDD(Test-Driven Development), 아키텍처 개선처럼 필요한 스킬만 골라 쓰고 싶을 때</td><td>맷 포콕</td></tr>
+      <tr><td>요구사항부터 구현·테스트까지 실무 개발 원칙을 넓게 쓰고 싶을 때</td><td>애디 오스마니</td></tr>
+      <tr><td>기존 코드 분석부터 설계·구현·리뷰를 한 흐름으로 하고 싶을 때</td><td>Feature Dev</td></tr>
+      <tr><td>명세를 기준으로 개발 전체를 관리하고 싶을 때</td><td>Spec Kit</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>세 스킬 묶음 비교는 셋만 골라 성격을 한 줄로 줄여요. 맷 포콕은 골라 쓰는 도구 상자, 애디 오스마니는 <code>/spec</code>부터 <code>/ship</code>까지 이어지는 하나의 절차, 피스택은 조사·경쟁·검토예요. pstack 해설은 pstack의 기획 스킬이 이미 코드가 있는 프로젝트를 이해하는 데 맞춰져 있어서, 처음부터 혼자 만드는 사람에게는 Matt Pocock 스킬이나 Superpowers가 더 낫다고 판단해요.</p>
+<p>에이전트 묶음도 마찬가지예요. 멀티 에이전트 실험은 ECC(Everything Claude Code)처럼 에이전트 71개가 든 플러그인을 쓴다면 규칙 폴더(<code>rules/</code>)를 통째로 깔지 말고, 필요한 순간에 원하는 에이전트를 직접 부르라고 해요. 구현을 마친 뒤 code-reviewer만 골라 부르는 식이에요.</p>
+<figure>
+  <img src="assets/multiagent-frame-0832.webp" alt="'ECC 에이전트 71' 격자 위에 rules/ 카드가 주황색 X로 지워져 있고, 오른쪽 상자에 '구현을 마친 뒤 직접 부르기'라고 적힌 화면">
+  <figcaption>71개 격자 위의 <code>rules/</code> 카드에 X가 있어요. 늘 실리는 규칙으로 깔지 말고 필요할 때 부르라는 뜻이에요. <a href="https://www.youtube.com/watch?v=cIGRF-acSzs&amp;t=512s" target="_blank" rel="noopener">멀티 에이전트 실험 08:32에서 보기</a></figcaption>
+</figure>
+<p>왕초보 가이드는 영상에 나온 플러그인 8개, 스킬 8개, 연결 8개를 다 깔라는 게 아니라, 공식 표시부터 내 단계에 맞는 것만 깔라고 해요. 이미 깐 스킬 중 안 쓰는 건 <code>/skill-doctor</code>로 찾아요. 스킬 설명은 모든 요청에 실리니(2절), 안 쓰는 스킬을 빼는 것도 짐을 줄이는 일이에요.</p>
+</section>
+
+<section id="s11">
+  <h2>모델이 바뀌면 다시 볼 것</h2>
+<p>펠릭스 인터뷰는 AI에서는 시간이 압축돼 있어서 좋은 스킬의 반감기가 짧다고 해요. 지난 세대 모델에게 맞던 지시가 새 모델에겐 방해가 되고, 스킬을 빼면 결과가 더 좋아지기도 해요. 펠릭스는 자기 조언조차 10주쯤 지나면 새 버전이 나올 거라고 말해요. 그래서 이 절은 모델이 바뀔 때 무엇을 다시 볼지, 그리고 어떤 지시가 어떤 모델 때문에 생겼는지를 표로 모았어요.</p>
+<figure>
+  <img src="assets/felix-frame-1947.webp" alt="'좋은 스킬의 반감기는 짧다' 그래프: 지난 세대 모델·새 모델·그다음 모델마다 내려가는 주황 곡선과 '옛 지시 = 오히려 방해', 위쪽 초록 점선 '스킬을 빼 보니 더 좋아짐', 오른쪽 '보리스 체르니 · 클로드 코드를 만든 사람' 카드">
+  <figcaption>모델 세대가 바뀔 때마다 주황 곡선이 꺾여 내려가요. 위의 초록 점선이 '스킬을 빼 보니 더 좋아졌다'는 경우예요. <a href="https://www.youtube.com/watch?v=gV0CtvIX5zk&amp;t=1187s" target="_blank" rel="noopener">펠릭스 인터뷰 19:47에서 보기</a></figcaption>
+</figure>
+<p>다만 이렇게 판단하려면 좋고 나쁨을 가를 평가 기준이 있어야 한다고 펠릭스는 덧붙여요. 지시를 지울지 말지는 느낌이 아니라 결과를 비교해서 정해요.</p>
+
+<h3>쓸 모델 전부로 테스트해요</h3>
+<p>스킬 규칙 7가지의 셋째 규칙이에요. 스킬 결과는 밑에 깔린 모델에 따라 달라져요. 예전 모델은 단계를 자주 건너뛰어서 번호를 매기고 대문자로 강조했어요. Fable 5 가이드는 정반대로, 예전 모델용 스킬이 너무 깐깐해서 결과를 망칠 수 있다고 해요. 지시를 뺐을 때 더 잘하면 지우라는 거예요.</p>
+<figure>
+  <img src="assets/skillrules-frame-0415.webp" alt="공식 가이드의 사용할 계획인 모든 모델로 테스트하세요 항목. 효과는 기반 모델에 따라 달라진다는 문장에 주황색 표시가 있고 아래에 Claude Haiku, Sonnet, Opus별 질문 세 줄이 있는 화면">
+  <figcaption>아래 세 줄이 모델마다 던질 질문이에요. 같은 스킬도 모델마다 다른 걸 확인해요. <a href="https://www.youtube.com/watch?v=pXTD2DJBlDo&amp;t=255s" target="_blank" rel="noopener">스킬 규칙 7가지 04:15에서 보기</a></figcaption>
+</figure>
+<p>가이드는 모델마다 질문을 하나씩 줘요. Haiku는 안내가 충분한지, Sonnet은 명확하고 효율적인지, Opus는 설명이 너무 많지 않은지 봐요. 자주 쓰는 스킬 하나를 세 모델로 돌려 보고, 결과에 따라 이렇게 고쳐요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["자주 쓰는 스킬 하나"] --> B["Haiku · Sonnet · Opus로 돌려 보기"]
+  B --> C{"결과는?"}
+  C -->|"작은 모델이 단계를 빼먹어요"| D["더 분명하게 쓰거나 스크립트로 잠가요"]
+  C -->|"스킬 없을 때보다 못해요"| E["지시를 하나씩 지워 보며 다시 돌려요"]
+  C -->|"모두 괜찮아요"| F["그대로 두고 확인한 모델을 적어요"]
+</pre>
+  <figcaption>스킬 규칙 7가지가 말한 두 갈래를 그렸어요. 작은 모델에서는 더하고, 큰 모델에서는 빼는 방향이 서로 반대예요.</figcaption>
+</figure>
+<p>영상은 스킬을 나눠 줄 때 머리말에 어떤 모델로 테스트했는지 적으라고 해요. 다만 정리 노트가 짚은 대로 <code>model</code> 칸은 Claude Code에서 실제 모델을 바꾸는 설정이고 claude.ai 업로드에서는 오류가 나요. 메모로 남기려면 <code>metadata</code>가 맞아요.</p>
+<figure>
+  <img src="assets/skillrules-frame-0536.webp" alt="invoice 스킬의 SKILL.md 앞부분을 터미널에 띄운 화면. 4번째 줄 model: claude-sonnet-4-5 (Haiku·Opus에서도 테스트함)에 주황색 상자가 쳐져 있는 화면">
+  <figcaption>영상의 예시는 <code>model</code> 줄에 적었어요. 기록용이라면 이 줄 대신 <code>metadata</code> 아래에 적어야 실제 모델이 바뀌지 않아요. <a href="https://www.youtube.com/watch?v=pXTD2DJBlDo&amp;t=336s" target="_blank" rel="noopener">스킬 규칙 7가지 05:36에서 보기</a></figcaption>
+</figure>
+<p>같은 가이드는 Fable 5가 작업에서 배운 것을 바탕으로 스킬을 업데이트하는 일도 잘한다고 적어 뒀어요. 스킬을 고치는 일 자체를 새 모델에게 맡길 수 있다는 뜻이에요.</p>
+
+<h3>effort도 다시 맞춰요</h3>
+<p>Fable 5.1 가이드는 작은 모델을 높은 <span class="term" data-term="effort" data-en="Effort level" data-desc="모델이 답하기 전에 얼마나 오래 생각할지 정하는 설정이에요. 높을수록 느리고 비싸며, 모델이 바뀌면 알맞은 단계도 달라져요." data-g="15">effort</span>로 쓰고 있었다면 Fable 5.1의 low와 비교해 보라고 해요. 가이드에 따르면 low의 작업당 비용은 Opus·Sonnet과 비슷하면서 평가 점수는 더 높은 경우가 많아요. 기본값인 high에서 시작해 medium, low로 같은 작업을 돌려 보고, 결과가 충분하면 낮춰 써요.</p>
+<figure>
+  <img src="assets/fable-frame-0055.webp" alt="Consider all effort levels 제목 아래 'At low, Claude Fable 5.1 is often competitive with Claude Opus and Claude Sonnet models on cost per task while scoring higher'로 시작하는 인용문">
+  <figcaption>'low에서도 Opus·Sonnet과 비용은 비슷하고 점수는 더 높다'는 문장이에요. 모델이 바뀌면 같은 effort 설정의 뜻도 바뀌어요. <a href="https://www.youtube.com/watch?v=BDN9i5TucEI&amp;t=55s" target="_blank" rel="noopener">Fable 5.1 가이드 00:55에서 보기</a></figcaption>
+</figure>
+<p>Matt Pocock 대담도 대부분의 사람이 effort를 너무 높게 쓴다고 봐요. Matt은 Opus 5.5를 medium으로 쓰고 low도 고민 중이에요. 테스트로 바닥을 올려 둬서 실수를 잡아 주니 에이전트가 애쓸 필요가 없대요. 왕초보 가이드도 평소 노력 수준은 '중간'으로 둬요. 다만 low는 검색을 덜 해요. 최신 정보를 확인하지 않아 문제가 생기면 그 질문에서만 effort를 올리거나, "알고 있는 내용이더라도 최신 정보는 무조건 검색해서 확인해 줘"를 적어요(Fable 5.1 가이드).</p>
+
+<h3>모델 때문에 생긴 지시 기록표</h3>
+<p>아래 표는 영상들이 '어떤 모델 때문에 생겼다', '이 모델에서는 바꿔야 한다'고 짚은 지시만 모은 거예요. 위쪽은 새 모델에서 지울 쪽, 아래쪽은 새 모델 때문에 더해야 하는 쪽이에요. 셋째 열은 영상이 찍힌 2026년 하반기 모델(Opus 5.5, Sonnet 5.5, Haiku 5.5, Fable 5.1)을 기준으로 해요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>지시</th><th>생긴 까닭</th><th>영상 시점의 권장</th><th>작은 모델·로컬 LLM(Large Language Model)</th><th>근거</th></tr></thead>
+    <tbody>
+      <tr><td>단계에 번호를 매기고 대문자로 강조하기</td><td>예전 모델이 단계를 자주 건너뜀</td><td>너무 깐깐하면 결과를 망칠 수 있어요. 빼서 더 잘하면 지워요</td><td>Haiku가 단계를 빼먹으면 더 분명하게 쓰거나 스크립트로 잠가요</td><td>스킬 규칙 7가지 (5절)</td></tr>
+      <tr><td>"잘 생각해", "다시 확인해", "절대 하지 마"</td><td>예전 AI에는 먹혔음</td><td>요즘 모델은 안 시켜도 생각하고 확인해요. 붙이면 느려지니 이유로 바꿔요</td><td>영상에 근거 없음</td><td>왕초보 가이드 (6절)</td></tr>
+      <tr><td>"굵은 글씨나 목록을 쓰지 마" 같은 서식 금지문</td><td>예전 모델이 서식을 많이 씀</td><td>Fable 5.1은 원래 서식을 덜 써요. 지우거나 언제 써도 되는지 알려 주는 규칙으로 바꿔요</td><td>영상에 근거 없음</td><td>Fable 5.1 가이드</td></tr>
+      <tr><td>"너는 ○○ 전문가야" 역할 부여</td><td>2024년에 유행한 방식</td><td>역할극을 하며 말투만 바뀌어요. 최고의 사람이 거치는 과정과 도구로 바꿔요</td><td>영상에 근거 없음</td><td>펠릭스 인터뷰 (6절)</td></tr>
+      <tr><td>서브에이전트가 끝날 때까지 메인이 기다리기</td><td>메인 컨텍스트를 아끼려던 예전 방식</td><td>Fable 5.1에서는 기다리지 말고 다음 일을 계속하게 해요</td><td>영상에 근거 없음</td><td>Fable 5.1 가이드 (8절)</td></tr>
+      <tr><td>높은 effort를 기본으로 두기</td><td>더 오래 생각하면 낫다는 기대</td><td>Fable 5.1은 low부터 비교해요. Matt은 medium을 써요</td><td>작은 모델을 높은 effort로 쓰던 일은 큰 모델의 low와 비교해 봐요</td><td>Fable 5.1 가이드, Matt Pocock 대담</td></tr>
+      <tr><td>(더할 것) 진행 상황을 알려 달라는 문장</td><td>Fable 5.1은 설명을 덜 해서 작업 중 말이 없음</td><td>"시작 전에 할 일을 한 줄로, 작업 중에는 짧게, 끝나면 확인한 내용을" 넣어요</td><td>영상에 근거 없음</td><td>Fable 5.1 가이드</td></tr>
+      <tr><td>(더할 것) 인용 표시 규칙과 올바른 답 예시</td><td>Fable 5.1에서 요약하며 인용 표시를 빼먹는 일이 잦아짐</td><td>시스템 프롬프트에 올바른 답변 예시 하나와 "그대로 가져온 표현에는 따옴표"를 넣어요</td><td>영상에 근거 없음</td><td>Fable 5.1 가이드</td></tr>
+      <tr><td>(더할 것) "알고 있어도 최신 정보는 검색해"</td><td>low effort는 검색을 덜 함</td><td>그 질문만 effort를 올리거나 이 문장을 넣어요</td><td>영상에 근거 없음</td><td>Fable 5.1 가이드</td></tr>
+      <tr><td>(남길 것) 학습 데이터가 적은 분야의 기초 스킬</td><td>강한 모델도 Flutter 레이아웃을 이상하게 조합함</td><td>Row, Column, Wrap, Stack을 언제 쓰는지 알려 주는 작은 스킬을 둬요</td><td>데이터가 적은 분야는 모델과 상관없이 계속 알려 줘야 해요</td><td>Ivanna 인터뷰</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>서식 금지문은 지우기만 하지 않고 바꿔 쓸 수도 있어요. Fable 5.1 가이드가 보여 준 공식 예시는 '요청받았거나 내용이 여러 갈래라 목록이 명확성에 도움이 될 때 목록을 쓰라'는 규칙이에요.</p>
+<figure>
+  <img src="assets/fable-frame-0551.webp" alt="system 칸에 'Use lists and bullet points when asked to, or when the content is multifaceted enough that they help with clarity'로 시작하는 영어 규칙, 오른쪽 답변 칸에는 글머리표가 몇 개 보이는 화면">
+  <figcaption>금지 대신 '언제 써도 되는지'를 적은 문장이에요. 오른쪽 답에는 필요한 곳에만 글머리표가 있어요. <a href="https://www.youtube.com/watch?v=BDN9i5TucEI&amp;t=351s" target="_blank" rel="noopener">Fable 5.1 가이드 05:51에서 보기</a></figcaption>
+</figure>
+
+<aside class="note">
+  <span class="tag">작은 모델과 로컬 LLM</span>
+  <p>스무 편 중 로컬 LLM을 직접 시험한 영상은 없어요. 가장 가까운 근거는 작은 모델 이야기예요. 스킬 규칙 7가지는 Haiku가 단계를 빼먹으면 더 분명하게 쓰거나 스크립트로 바꾸라고 하고, 263배 실험에서는 할 일이 정해지고 합격 기준을 코드가 검사하는 일이라면 Haiku 일꾼도 10개를 다 통과했어요(8절). 그래서 표에서 큰 모델 때문에 지우는 지시도, 작은 모델에게 필요하다는 근거가 있으면 넷째 열로 옮겨 남겨요. Matt Pocock 대담은 Opus 5.5 수준의 오픈 모델이 나오기를 기다린다고 했어요.</p>
+</aside>
+
+<aside class="note">
+  <span class="tag">이 표를 고치는 법</span>
+  <p>관련 영상을 이 합본에 더할 때마다 이 표부터 다시 봐요. 그때의 모델에게 필요 없어졌다고 확인된 지시는 지우고, 작은 모델에게는 여전히 필요하다는 근거가 있으면 넷째 열로 옮겨요. 새 모델 때문에 생긴 지시는 '(더할 것)' 줄로 추가하고, 근거 영상을 다섯째 열에 적어요. 확인한 날: 2026년 11월 11일.</p>
+</aside>
+</section>
+
+<section id="s12">
+  <h2>숫자 기준과 점검표</h2>
+<p>앞 절에 흩어진 숫자 기준을 한 표로 모으고, 내 <code>CLAUDE.md</code>와 스킬을 고칠 때 차례대로 짚어 볼 점검표로 끝낼게요.</p>
+
+<h3>숫자로 본 기준</h3>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>무엇</th><th>기준이나 숫자</th><th>말한 영상</th></tr></thead>
+    <tbody>
+      <tr><td><code>CLAUDE.md</code>(<code>AGENTS.md</code>) 길이</td><td>파일당 200줄 아래</td><td>홀먼 영상(공식 문서), 세컨드 브레인 18팁, 왕초보 가이드</td></tr>
+      <tr><td>실제로 커진 예</td><td>Airflow 537줄 ≈ 8,600토큰 · 게임 팀 466줄 → 117줄 → 163줄 · 홀먼 영상 발표자 344줄 · 263배 실험 약 2만 1천 토큰(닷새 만에 6,136 → 43,373바이트)</td><td>Kyle 강의, 게임 팀 세팅, 홀먼 영상, 263배 실험</td></tr>
+      <tr><td>결과가 눈에 띄게 나빠지는 대화 길이</td><td>10만~20만 토큰쯤부터(창이 100만이어도)</td><td>Kyle 강의</td></tr>
+      <tr><td>다시 읽기가 차지하는 몫</td><td>토큰의 96.9~98.7%가 캐시 읽기 · 읽은 것의 97%가 다시 읽기 · 비용의 61.7%가 캐시 읽기</td><td>공식 플러그인 4개, 263배 실험, 왕초보 가이드</td></tr>
+      <tr><td><code>CLAUDE.md</code>만 줄였을 때</td><td>비용 약 7.5% 감소(맨몸 일꾼은 1/14~1/263)</td><td>263배 실험</td></tr>
+      <tr><td><code>SKILL.md</code> 본문</td><td>500줄 미만, 넘으면 나눠요</td><td>스킬 규칙 7가지</td></tr>
+      <tr><td>목차를 달 참고 파일</td><td>100줄 넘는 파일</td><td>스킬 규칙 7가지</td></tr>
+      <tr><td>참조 깊이</td><td><code>SKILL.md</code>에서 한 단계</td><td>스킬 규칙 7가지</td></tr>
+      <tr><td>리뷰 루프 멈춤</td><td>3라운드 뒤엔 방식부터 다시 · 상한 5라운드 · 같은 문제가 수정 2번 뒤에도 남으면 멈춤</td><td>리뷰 루프</td></tr>
+      <tr><td>만들고 검사하는 루프의 비용</td><td>혼자 20분 9달러 → 루프 6시간 200달러(20배 넘게)</td><td>게임 팀 세팅</td></tr>
+      <tr><td>에이전트 팀과 단일 세션</td><td>시간 약 7배(6.0분 · 39.6분), 실전 점수는 팀이 가장 낮음</td><td>멀티 에이전트 실험</td></tr>
+      <tr><td>훅으로 만들 때</td><td>같은 실수를 세 번 겪었다 싶을 때 <code>/hookify</code></td><td>공식 플러그인 4개</td></tr>
+      <tr><td>점검 주기</td><td>스킬 저장소 2주마다 · 지도와 인덱스 청소 1~2주마다</td><td>Ivanna 인터뷰, 세컨드 브레인 18팁</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3><code>CLAUDE.md</code>와 docs</h3>
+<ul class="checklist">
+  <li>모든 작업에 통하는 줄만 남았나요? 영역별 규칙은 <code>docs/</code>로, 절차는 스킬로, 꼭 지킬 규칙은 훅으로 옮겼나요? (3절)</li>
+  <li>200줄 아래인가요? 소개 한두 줄, 특이한 도구, 큰 틀의 폴더 구조, 문서 링크만 있나요? (4절)</li>
+  <li>문서마다 '언제 여는지'가 적혀 있나요? 라우팅 표처럼 상황과 파일을 짝지었나요? (4절)</li>
+  <li><code>CLAUDE.md</code>와 <code>AGENTS.md</code>를 둘 다 고쳐야 하는 구조는 아닌가요? 링크나 <code>@AGENTS.md</code> 한 줄로 하나만 고치게 했나요? (4절)</li>
+  <li>맨 위에 '최신 지시 우선', '사람이 고친 파일은 덮어쓰지 않기', '검사 통과는 승인이 아님' 같은 줄이 필요한가요? (4절)</li>
+  <li>새 규칙은 AI가 실제로 틀렸을 때만, 알맞은 문서에 한 줄씩 더하고 있나요? 지운 규칙은 기록 파일로 옮겼나요? (4절)</li>
+  <li>전역 <code>CLAUDE.md</code>와 프로젝트 <code>CLAUDE.md</code>에 같은 규칙이 겹치지 않나요? <code>/doctor</code>로 삭제 후보를 받아 봤나요? (3절)</li>
+</ul>
+
+<h3>스킬</h3>
+<ul class="checklist">
+  <li>설명 한 줄에 '언제 쓰는지'가 들어 있나요? 설명은 모든 요청에 실려요. (5절)</li>
+  <li><code>SKILL.md</code>가 500줄 아래이고, 전체의 목차처럼 읽히나요? (5절)</li>
+  <li>참고 파일이 전부 <code>SKILL.md</code>에서 한 단계로 연결되나요? 파일이 파일을 가리키는 사슬은 없나요? (5절)</li>
+  <li>100줄 넘는 참고 파일 맨 위에 목차가 있나요? (5절)</li>
+  <li>실수하면 안 되는 단계는 글이 아니라 스크립트로 잠갔나요? (5절)</li>
+  <li>긴 작업에 체크리스트와 '실패하면 몇 단계로 돌아가라'가 있나요? (5절)</li>
+  <li>필요한 패키지 이름까지 적었나요? (5절)</li>
+  <li>여러 스킬이 같은 참고 문서의 사본을 따로 들고 있지 않나요? (5절)</li>
+</ul>
+
+<h3>지시문</h3>
+<ul class="checklist">
+  <li>역할 대신 그 분야 최고의 사람이 거치는 과정과 쓰는 도구를 적었나요? (6절)</li>
+  <li>완료 조건과, 무엇을·왜·누가 볼지가 들어 있나요? (6절)</li>
+  <li>강조 문구 대신 이유를 썼나요? (6절)</li>
+  <li>원치 않는 행동(범위 밖 수정, 다시 묻고 멈추기, 파일 통째 다시 쓰기)은 그 행동을 짚는 문장으로 막고, 예외(삭제·범위 변경은 먼저 묻기)도 적었나요? (6절)</li>
+  <li>출처 없는 값이나 아무도 내리지 않은 결정에서 멈추게 했나요? (6절)</li>
+</ul>
+
+<h3>훅, 서브에이전트, 검증</h3>
+<ul class="checklist">
+  <li>되돌릴 수 없는 일(비밀 키, 삭제, 강제 푸시)은 실행 직전 훅으로 막았나요? 훅 메시지가 이유와 갈 길을 알려 주나요? (7절)</li>
+  <li>서브에이전트는 결과만 필요한 일(조사, 넓은 코드 읽기, 독립 리뷰)에만 쓰나요? 이어지는 작업을 역할별로 쪼개고 있지 않나요? (8절)</li>
+  <li>넘길 때 지시서(먼저 읽을 것, 목표, 범위, 하면 안 되는 일)와 보고 형식(통과·실패·못 돌림)을 정했나요? 받은 보고를 다시 확인하나요? (8절)</li>
+  <li>할 일이 정해지고, 합격 기준을 코드로 쓸 수 있고, 자주 반복하는 일은 루프로 바꿨나요? (8절)</li>
+  <li>완료 기준을 먼저 정하고, 만든 세션 바깥(새 맥락, 다른 모델, 처음 쓰는 사람)에서 채점하나요? (9절)</li>
+  <li>리뷰 루프에 라운드 상한과 '바뀐 부분만 다시 보기'가 있나요? 위험도에 따라 검사 강도를 나눴나요? (9절)</li>
+</ul>
+
+<h3>남의 스킬과 모델 변화</h3>
+<ul class="checklist">
+  <li>새 스킬을 깔기 전에 키 파일 읽기, 설치 실행, 외부 전송 세 가지를 확인하고, 먼저 '읽어만 줘'로 읽혔나요? (10절)</li>
+  <li>겹치는 스킬 묶음을 여러 개 깔지 않았나요? 안 쓰는 스킬은 뺐나요? (10절)</li>
+  <li>새 모델이 나오면 자주 쓰는 스킬을 Haiku·Sonnet·Opus로 다시 돌려 봤나요? (11절)</li>
+  <li>11절 기록표의 '지울 것' 줄에 해당하는 문장이 내 파일에 남아 있지 않나요? '더할 것' 줄은 필요한가요? (11절)</li>
+  <li>effort를 높게 고정해 두지 않았나요? 낮은 단계부터 비교해 봤나요? (11절)</li>
+</ul>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-6"><dt>라우팅 테이블<span class="en">Routing table</span></dt><dd>폴더마다 무엇이 있고, 언제 쓰고, 새 내용을 어디 저장할지 한 줄씩 적은 표예요. AI가 모든 파일을 뒤지지 않고 필요한 곳만 열게 해요.</dd></div>
+    <div class="g" id="g-16"><dt>맨몸 호출<span class="en">Bare call</span></dt><dd>도구 설명서와 설정 파일을 빼고 한 줄짜리 시스템 프롬프트로 모델을 부르는 방식이에요. 한 번에 싣는 짐이 작아 비용이 크게 줄어요.</dd></div>
+    <div class="g" id="g-8"><dt>모노레포<span class="en">Monorepo</span></dt><dd>웹, 서버, 공용 패키지처럼 여러 프로젝트를 한 저장소에 함께 두는 방식이에요. 폴더마다 규칙이 달라서 하위 폴더별 AGENTS.md가 쓸모 있어요.</dd></div>
+    <div class="g" id="g-5"><dt>서브에이전트<span class="en">Subagent</span></dt><dd>메인 에이전트가 일을 넘기는 별도의 에이전트예요. 자기 컨텍스트 윈도우에서 일하고 결과만 요약해 돌려줘서 메인 대화가 가벼워져요.</dd></div>
+    <div class="g" id="g-7"><dt>심볼릭 링크<span class="en">Symbolic link</span></dt><dd>다른 파일을 가리키는 바로가기 파일이에요. CLAUDE.md를 AGENTS.md의 링크로 만들면 두 이름이 한 파일을 보게 돼서 내용이 어긋나지 않아요.</dd></div>
+    <div class="g" id="g-14"><dt>오케스트레이터<span class="en">Orchestrator</span></dt><dd>루프를 돌리고 다른 에이전트를 띄우기만 하는 메인 세션이에요. 직접 코드를 쓰거나 판정하지 않아서 생각이 한쪽으로 끌려가지 않아요.</dd></div>
+    <div class="g" id="g-10"><dt>자유도<span class="en">Degrees of freedom</span></dt><dd>스킬이 방법을 얼마나 열어 두는지의 정도예요. 깨지기 쉬운 단계일수록 자유도를 낮춰 스크립트로 잠가요.</dd></div>
+    <div class="g" id="g-13"><dt>적대적 리뷰<span class="en">Adversarial review</span></dt><dd>결과물을 깨는 게 유일한 임무인 검토자를 따로 띄워 약점만 찾게 하는 방식이에요. 만든 쪽이 놓친 그럴듯한 오답을 잡아요.</dd></div>
+    <div class="g" id="g-9"><dt>점진적 공개<span class="en">Progressive disclosure</span></dt><dd>처음엔 짧은 목차만 보여 주고 필요할 때 자세한 파일을 열게 하는 구성이에요. SKILL.md를 목차로 두고 참고 파일로 나누는 방식이 이거예요.</dd></div>
+    <div class="g" id="g-1"><dt>컨텍스트 윈도우<span class="en">Context window</span></dt><dd>모델이 한 번에 읽고 처리할 수 있는 최대 분량이에요. CLAUDE.md처럼 늘 실리는 것이 클수록 실제 작업에 쓸 자리가 줄어요.</dd></div>
+    <div class="g" id="g-11"><dt>프롬프트 인젝션<span class="en">Prompt injection</span></dt><dd>문서나 웹 페이지 속에 숨긴 지시로 AI를 조종하는 공격이에요. 남이 만든 스킬의 마크다운 파일도 그 통로가 될 수 있어요.</dd></div>
+    <div class="g" id="g-2"><dt>프롬프트 캐싱<span class="en">Prompt caching</span></dt><dd>매번 같은 앞부분을 한 번 처리해 두고 다음 요청부터 싸게 다시 읽는 기능이에요. 앞부분이 글자 하나라도 달라지면 그 뒤는 새로 써야 해요.</dd></div>
+    <div class="g" id="g-3"><dt>하네스 엔지니어링<span class="en">Harness engineering</span></dt><dd>에이전트가 실수할 때마다 그 실수가 다시는 일어나지 않게 환경을 고치는 일이에요. AI를 탓하는 대신 규칙 파일, 훅, 검사를 손봐요.</dd></div>
+    <div class="g" id="g-4"><dt>훅<span class="en">Hook</span></dt><dd>도구를 쓰기 전후나 작업이 끝날 때처럼 정해진 순간에 저절로 도는 스크립트예요. 관련 없을 때는 컨텍스트를 차지하지 않고, 걸리면 그 자리에서 막거나 경고해요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>CSS</dt><dd>Cascading Style Sheets</dd></div>
+    <div class="g"><dt>ECC</dt><dd>Everything Claude Code</dd></div>
+    <div class="g" id="g-15"><dt>effort<span class="en">Effort level</span></dt><dd>모델이 답하기 전에 얼마나 오래 생각할지 정하는 설정이에요. 높을수록 느리고 비싸며, 모델이 바뀌면 알맞은 단계도 달라져요.</dd></div>
+    <div class="g" id="g-12"><dt>eval<span class="en">Evaluation</span></dt><dd>일이 끝났는지 알려 주는 고정된 검사예요. 만들기 전에 먼저 써 두고, 나쁜 결과를 떨어뜨릴 만큼 엄격해야 해요.</dd></div>
+    <div class="g"><dt>LLM</dt><dd>Large Language Model</dd></div>
+    <div class="g"><dt>PR</dt><dd>Pull Request</dd></div>
+    <div class="g"><dt>QA</dt><dd>Quality Assurance</dd></div>
+    <div class="g"><dt>TDD</dt><dd>Test-Driven Development</dd></div>
+    <div class="g"><dt>VM</dt><dd>Virtual Machine</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=pXTD2DJBlDo" target="_blank" rel="noopener">클로드 스킬 만드는 공식 규칙 7가지 — 낭만빌더 김스듴</a></li>
+    <li id="src-2"><a href="https://www.youtube.com/watch?v=nf4AWqLMME0" target="_blank" rel="noopener">클로드 코드 설계자가 CLAUDE.md를 거의 안 쓰는 이유 — 마일드코드</a></li>
+    <li id="src-3"><a href="https://www.youtube.com/watch?v=jojMVmRZABw" target="_blank" rel="noopener">AI가 엉터리 코드를 내놓는 이유와 고치는 법 — Web Dev Simplified</a></li>
+    <li id="src-4"><a href="https://www.youtube.com/watch?v=L94yAQR9VvA" target="_blank" rel="noopener">클로드 코드 공식 플러그인 4개로 토큰 절약하기 — 짐코딩</a></li>
+    <li id="src-5"><a href="https://www.youtube.com/watch?v=4hfmNiQDt1g" target="_blank" rel="noopener">플러터 개발자의 AI 워크플로우 — Ivanna Kaceviča 인터뷰 — Tech Bridge</a></li>
+    <li id="src-6"><a href="https://www.youtube.com/watch?v=IwvF-xVmRis" target="_blank" rel="noopener">AI가 내 업무를 모르는 진짜 이유 — 임대표의 AI오피스</a></li>
+    <li id="src-7"><a href="https://www.youtube.com/watch?v=qtIUFHhdBBg" target="_blank" rel="noopener">AI로 게임 만들 때 쓰는 에이전트 세팅 — MGD - Midnight Game Devs</a></li>
+    <li id="src-8"><a href="https://www.youtube.com/watch?v=ndpzi0ocrCA" target="_blank" rel="noopener">같은 일인데 비용 263배 차이 — 비용 줄이는 루프 설계법 — 코난쌤 conanssam</a></li>
+    <li id="src-9"><a href="https://www.youtube.com/watch?v=pXHpUyC54uQ" target="_blank" rel="noopener">AI 세컨드 브레인, 500번 넘게 세팅하며 얻은 팁 18가지 — Ben AI</a></li>
+    <li id="src-10"><a href="https://www.youtube.com/watch?v=BDN9i5TucEI" target="_blank" rel="noopener">Anthropic이 알려 주는 Fable 5.1 잘 쓰는 법 10가지 — 코드팩토리</a></li>
+    <li id="src-11"><a href="https://www.youtube.com/watch?v=gV0CtvIX5zk" target="_blank" rel="noopener">클로드 코워크를 1주 반 만에 만든 앤트로픽 리드가 클로드에게 일을 맡기는 법 — AgentOS</a></li>
+    <li id="src-12"><a href="https://www.youtube.com/watch?v=9aLLxtFDh9k" target="_blank" rel="noopener">클로드 스킬 깔기 전 확인할 3가지 — AI 시스메이커</a></li>
+    <li id="src-13"><a href="https://www.youtube.com/watch?v=2R-kUFv7GZg" target="_blank" rel="noopener">클로드 코드 왕초보 가이드 — 1단계부터 7단계까지 팁 40개 — AI싱크클럽</a></li>
+    <li id="src-14"><a href="https://www.youtube.com/watch?v=nTwbveOwuS4" target="_blank" rel="noopener">유명 AI 코딩 스킬 7개, 단계별로 비교하기 — MINDUNG</a></li>
+    <li id="src-15"><a href="https://www.youtube.com/watch?v=8KxUBUm9Ciw" target="_blank" rel="noopener">맷 포콕 vs 애디 오스마니 vs 피스택 — MINDUNG</a></li>
+    <li id="src-16"><a href="https://www.youtube.com/watch?v=Z8lf5oWKfj0" target="_blank" rel="noopener">Matt Pocock: AI 시대에 가장 값진 기술 — Nate Herk | AI Automation</a></li>
+    <li id="src-17"><a href="https://www.youtube.com/watch?v=4wBVuj2an8E" target="_blank" rel="noopener">pstack: Cursor 엔지니어가 AI로 코드를 내보내는 방식 — Eric Tech</a></li>
+    <li id="src-18"><a href="https://www.youtube.com/watch?v=Vok_nReMFaU" target="_blank" rel="noopener">AI 에이전트를 위한 엔지니어링 시스템 — JavaScript Mastery</a></li>
+    <li id="src-19"><a href="https://www.youtube.com/watch?v=S49gppZl8H0" target="_blank" rel="noopener">Claude Code 팀의 코드 리뷰 방식을 내 프로젝트에 옮기는 법 — AI LABS</a></li>
+    <li id="src-20"><a href="https://www.youtube.com/watch?v=cIGRF-acSzs" target="_blank" rel="noopener">멀티 에이전트 쓰지 마세요 — 실제 테스트 결과 — 챗대리의 AI연구소</a></li>
+    <li id="src-21"><a href="https://code.claude.com/docs/en/permissions" target="_blank" rel="noopener">Claude Code 공식 문서 — Configure permissions</a></li>
+    <li id="src-22"><a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code 공식 문서 — Skills</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 11일에 CLAUDE.md·스킬·훅·서브에이전트를 다룬 영상 스무 편의 정리 노트를 엮어 만들었어요. 관련 영상이 늘 때마다 흐름에 맞춰 끼워 넣고, 그때의 모델에게 필요 없어진 지시는 11절 표에서 지워요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+
+// 1절: 합본 지도 — 다섯 덩어리를 한 줄로
+(() => {
+  const g = document.getElementById('fig-map');
+  if (!g) return;
+  const parts = [
+    ['실리는 것', '컨텍스트 비용', '2절'],
+    ['놓을 자리', '문서·스킬·훅', '3절'],
+    ['쓰는 법', '파일·스킬·문장', '4~6절'],
+    ['나누고 확인', '훅·에이전트', '7~9절'],
+    ['들이고 고치기', '남의 스킬·모델', '10~11절'],
+  ];
+  const W = 110, H = 104, GAP = 21, X0 = 3, Y = 22;
+  parts.forEach(([title, sub, secs], i) => {
+    const x = X0 + i * (W + GAP);
+    g.append(el('rect', { x, y: Y, width: W, height: H, rx: 12, class: `c${i + 1} cell` }));
+    g.append(el('text', { x: x + W / 2, y: Y + 36, 'text-anchor': 'middle', 'font-weight': 600 }, title));
+    g.append(el('text', { x: x + W / 2, y: Y + 60, 'text-anchor': 'middle', class: 'sub', 'font-size': 12 }, sub));
+    g.append(el('text', { x: x + W / 2, y: Y + 84, 'text-anchor': 'middle', class: 'sub' }, secs));
+    if (i < parts.length - 1)
+      g.append(el('path', { d: `M${x + W + 2} ${Y + H / 2} h${GAP - 6}`, class: 'line', 'marker-end': 'url(#arrow-map)' }));
+  });
+})();
+
+// 3절: 다섯 자리가 매 요청에 차지하는 양
+(() => {
+  const g = document.getElementById('fig-slots');
+  if (!g) return;
+  const X = 180, FULL = 440, H = 36, GAP = 12, Y0 = 26;
+  g.append(el('text', { x: X, y: 14, class: 'sub' }, '매 요청에 실리는 양'));
+  const rows = [
+    ['CLAUDE.md', [[FULL, 'solid', '늘 전부']], ''],
+    ['링크한 docs 문서', [[FULL, 'dash', '그 일을 할 때만 전부']], ''],
+    ['스킬', [[70, 'solid', '설명'], [FULL - 70, 'dash', '본문은 쓸 때만']], ''],
+    ['훅', [], '관련 없으면 0 · 걸리면 경고 한 줄'],
+    ['서브에이전트', [[70, 'solid', '요약만']], '일은 별도 창에서'],
+  ];
+  rows.forEach(([name, segs, note], i) => {
+    const y = Y0 + i * (H + GAP);
+    g.append(el('text', { x: 10, y: y + H / 2 + 5, 'font-weight': 600 }, name));
+    let x = X;
+    segs.forEach(([w, kind, label]) => {
+      const attrs = { x, y, width: w, height: H, rx: 8 };
+      if (kind === 'solid') attrs.class = `c${i + 1} cell`;
+      else { attrs.class = 'box dim'; attrs['stroke-dasharray'] = '5 4'; }
+      g.append(el('rect', attrs));
+      g.append(el('text', { x: x + w / 2, y: y + H / 2 + 5, 'text-anchor': 'middle', class: kind === 'solid' ? '' : 'sub' }, label));
+      x += w;
+    });
+    if (note) g.append(el('text', { x: x + 12, y: y + H / 2 + 5, class: 'sub' }, note));
+  });
+})();
+</script>
+</body>
+</html>
