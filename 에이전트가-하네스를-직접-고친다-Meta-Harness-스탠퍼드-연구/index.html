@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>에이전트가 하네스를 직접 고친다 — Meta-Harness 스탠퍼드 연구</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>에이전트가 하네스를 직접 고친다 — Meta-Harness 스탠퍼드 연구</h1>
+  <p class="lede">요약 대신 원본 로그를 줬더니 에이전트가 더 잘 고쳤어요</p>
+  <div class="meta">
+    <span>아프니까 개발자다</span><span class="dot">·</span>
+    <span>영상 08:46</span><span class="dot">·</span>
+    <span>읽는 데 약 10분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=7gxBaxveEEU" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>Meta-Harness는 오프라인 루프에서 에이전트가 자기 <span class="term" data-term="하네스" data-en="Harness" data-desc="모델 가중치는 그대로 두고, 무엇을 기억하고 검색해 어떤 순서로 보여 줄지, 도구를 어떻게 쓸지 정하는 바깥 코드예요. 같은 모델이라도 이 코드에 따라 성능이 크게 달라져요." data-g="1">하네스</span> 코드를 직접 다시 쓰는 방식이에요.</li>
+    <li>기존 도구는 점수나 요약만 건네서 실패의 근본 원인이 묻혔어요. Meta-Harness는 코드·점수·전체 로그를 다 줘요.</li>
+    <li>많은 기록은 프롬프트가 아니라 파일 시스템에 두고, <span class="term" data-term="제안자" data-en="Proposer" data-desc="Meta-Harness 루프에서 과거 기록을 읽고 새 후보 하네스 코드를 써 내는 코딩 에이전트예요. 논문에서는 Opus 4.6을 쓰는 Claude Code가 이 역할을 해요." data-g="2">제안자</span> 에이전트가 grep과 cat으로 골라 읽어요.</li>
+    <li><span class="term" data-term="절제 실험" data-en="Ablation study" data-desc="시스템의 한 요소만 빼거나 바꿔 성능이 얼마나 달라지는지 보는 실험이에요. 여기서는 제안자에게 주는 정보만 바꿔 로그의 효과를 따로 쟀어요." data-g="5">절제 실험</span>에서 LLM(Large Language Model) 요약은 거의 도움이 안 됐고, 원본 로그를 주자 <span class="term" data-term="중앙값" data-en="Median" data-desc="결과를 크기순으로 줄 세웠을 때 가운데 값이에요. 운 좋은 한 번이 아니라 후보들이 대체로 얼마나 좋았는지를 보여 줘요." data-g="6">중앙값</span> 정확도가 34.6에서 50.0으로 올랐어요.</li>
+    <li>교훈은 하나예요. AI(Artificial Intelligence) 시스템을 고칠 때 가장 가치 있는 건 압축하지 않은 실패 기록이에요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">하네스와 두 종류의 메타 하네스</a></li>
+    <li><a href="#s2">요약된 피드백이 원인을 숨겨요</a></li>
+    <li><a href="#s3">프롬프트 대신 파일 시스템을 줘요</a></li>
+    <li><a href="#s4">숫자로 본 효과</a></li>
+    <li><a href="#s5">한계, 그리고 원본 로그를 버리지 마세요</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=34s" target="_blank" rel="noopener">00:34</a>
+  <h2>하네스와 두 종류의 메타 하네스</h2>
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>이 영상은 슬라이드와 내레이션으로 논문 'Meta-Harness: End-to-End Optimization of Model Harnesses'(arXiv 2603.28052)를 풀어 준 영상이에요. 숫자는 논문 원문과 맞춰 봤고, 다른 곳은 그 자리에서 짚었어요.</p>
+</aside>
+<p>하네스는 모델 가중치 바깥에서 기억, 정보 검색, 프롬프트 순서, 도구 사용을 정하는 주변 코드예요. 슬라이드는 이걸 말의 마구(馬具)에 빗대요. 언어 모델이 힘센 말이라면 하네스는 그 힘을 원하는 쪽으로 이끄는 장치라는 거죠. 같은 모델을 써도 하네스를 어떻게 짜느냐에 따라 성능이 크게 달라진다는 게 이 연구의 출발점이에요.</p>
+<figure>
+  <img src="assets/frame-0058.webp" alt="말 머리와 마구 그림 위에 '하네스(Harness): 모델을 감싸며 기억, 검색, 프롬프트, 도구를 통제하는 주변 코드. 말의 마구와 같은 역할'이라고 적힌 노란 슬라이드">
+  <figcaption>하네스가 통제하는 네 가지는 기억, 검색, 프롬프트, 도구예요. <a href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=58s" target="_blank" rel="noopener">영상 00:58에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>논문은 첫 문장에서 같은 모델이라도 하네스만 바꾸면 같은 벤치마크에서 성능이 6배까지 벌어질 수 있다고 써요. 저자는 Yoonho Lee, Chelsea Finn 등 스탠퍼드 연구진이고, 크래프톤(Kangwook Lee)과 MIT(Omar Khattab)가 함께했어요. 2026년 3월 30일 arXiv에 올라왔어요.</p>
+  <p class="cite">출처: <a href="https://arxiv.org/abs/2603.28052" target="_blank" rel="noopener">arXiv 2603.28052 — Meta-Harness 논문</a></p>
+</aside>
+<h3>메타 하네스는 두 종류예요</h3>
+<p>'메타 하네스'라는 말은 두 가지를 가리켜요. 왼쪽 카드는 실행 중에 여러 에이전트를 조율하는 상위 층이에요. 지금까지 흔히 보던 런타임 관리자 방식이죠. 오른쪽 카드가 이 논문의 방식이에요. 사람 대신 에이전트가 하네스 코드를 다시 쓰는 루프예요.</p>
+<figure>
+  <img src="assets/frame-0134.webp" alt="두 장의 노란 카드. 왼쪽은 악수와 조직도 그림에 '실행 중에 여러 에이전트를 조율하는 상위 층', 오른쪽은 망치·렌치와 순환 화살표 그림에 '사람 대신 에이전트가 하네스 코드를 다시 쓰는 루프'">
+  <figcaption>이 논문은 오른쪽이에요. 실행 중에 끼어들지 않고, 따로 도는 오프라인 루프에서 코드를 고쳐요. <a href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=94s" target="_blank" rel="noopener">영상 01:34에서 보기</a></figcaption>
+</figure>
+<p>핵심은 실행 중에 개입하지 않는다는 점이에요. 에이전트는 별도의 <span class="term" data-term="오프라인 탐색 루프" data-en="Offline search loop" data-desc="실제 서비스 실행과 떨어진 곳에서 후보를 만들고 평가하기를 반복하는 과정이에요. 실행 중에 끼어들지 않으니 시간을 들여 기록을 샅샅이 볼 수 있어요." data-g="7">오프라인 탐색 루프</span>를 돌면서 자기를 감싼 통제 코드를 직접 뜯어고쳐요.</p>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=102s" target="_blank" rel="noopener">01:42</a>
+  <h2>요약된 피드백이 원인을 숨겨요</h2>
+<p>기존 자가 개선 에이전트가 기대만큼 나아지지 않은 이유를 영상은 <span class="term" data-term="피드백 압축" data-en="Feedback compression" data-desc="실행 결과를 점수나 짧은 요약으로 줄여서 최적화 도구에 넘기는 것이에요. 다루기는 쉽지만 어느 단계에서 실패했는지 같은 단서가 사라져요." data-g="3">피드백 압축</span>에서 찾아요. 최적화 도구가 에이전트에게 결과를 너무 줄여서 건네거든요. 슬라이드 문구 그대로, 압축이 여러 단계에 걸친 실패의 근본 원인을 숨겨요.</p>
+<figure>
+  <img src="assets/frame-0156.webp" alt="엉킨 실타래를 비추는 돋보기와 하락 그래프 그림 옆에 '기존 도구는 피드백을 압축해 다단계 실패의 근본 원인을 숨깁니다'라는 문장">
+  <figcaption>돋보기 안의 엉킨 실타래가 압축된 피드백이에요. 어디서 꼬였는지 보이지 않아요. <a href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=116s" target="_blank" rel="noopener">영상 01:56에서 보기</a></figcaption>
+</figure>
+<p>영상의 예가 이래요. 코드가 10단계 중 어딘가에서 망가졌는데 에이전트가 받는 건 '최종 점수 41.3' 한 줄이에요. 1단계 검색이 틀렸는지 마지막 단계가 꼬였는지 알 수 없어요. 아래 그림의 왼쪽이 이 상황이고, 오른쪽이 다음 섹션에서 볼 Meta-Harness의 방식이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="왼쪽은 점수 41.3 한 줄만 받는 에이전트, 오른쪽은 코드, 점수, 실행 로그 폴더를 grep과 cat으로 직접 읽는 에이전트">
+    <defs>
+      <marker id="arrow-cmp-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker>
+      <marker id="arrow-cmp-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker>
+    </defs>
+    <text x="150" y="22" text-anchor="middle">(a) 압축된 피드백</text>
+    <rect class="box dim" x="20" y="40" width="120" height="150" rx="10"/>
+    <text x="80" y="72" text-anchor="middle" class="sub">1단계 검색</text>
+    <text x="80" y="100" text-anchor="middle" class="sub">…</text>
+    <text x="80" y="128" text-anchor="middle" class="sub">10단계 실행</text>
+    <text x="80" y="170" text-anchor="middle" class="sub">어디서 실패?</text>
+    <path class="line" d="M142 115 h28" marker-end="url(#arrow-cmp-a)"/>
+    <rect class="box bad" x="174" y="90" width="100" height="50" rx="10"/>
+    <text x="224" y="120" text-anchor="middle" class="mono">점수 41.3</text>
+    <text x="224" y="170" text-anchor="middle" class="sub">이것만 받아요</text>
+    <line class="line dim" x1="320" y1="30" x2="320" y2="210"/>
+    <text x="480" y="22" text-anchor="middle">(b) 파일 시스템</text>
+    <rect class="c1 cell" x="350" y="40" width="110" height="40" rx="8"/>
+    <text x="405" y="65" text-anchor="middle">소스 코드</text>
+    <rect class="c2 cell" x="350" y="95" width="110" height="40" rx="8"/>
+    <text x="405" y="120" text-anchor="middle">점수</text>
+    <rect class="c3 cell" x="350" y="150" width="110" height="40" rx="8"/>
+    <text x="405" y="175" text-anchor="middle">실행 로그 전체</text>
+    <path class="line" d="M462 115 h40" marker-end="url(#arrow-cmp-b)"/>
+    <text x="566" y="78" text-anchor="middle" class="mono">grep · cat</text>
+    <rect class="box ok" x="506" y="90" width="120" height="50" rx="10"/>
+    <text x="566" y="120" text-anchor="middle">제안자 에이전트</text>
+    <text x="566" y="170" text-anchor="middle" class="sub">필요한 곳만 찾아 읽어요</text>
+  </svg>
+  <figcaption>왼쪽은 실패 위치가 점수 하나에 묻혀요. 오른쪽은 모든 후보의 기록을 파일로 두고 에이전트가 골라 읽어요.</figcaption>
+</figure>
+<h3>주는 정보량이 수백~수천 배 달라요</h3>
+<p>화면 표는 방법마다 반복 한 번에 주는 피드백과 그 양(MTok, 백만 토큰 단위)을 나란히 보여 줘요. 위 네 줄이 기존 방법이에요. 맨 아래 Meta-Harness 줄만 '코드, 점수, 전체 로그'를 주고 양이 10.0이에요. 표 위 막대그래프에 축을 끊은 표시(scale break)가 있는 것도 그 차이 때문이에요.</p>
+<figure>
+  <img src="assets/frame-0245.webp" alt="방법, 제공되는 피드백, 반복당 맥락(MTok) 세 열의 표. OPRO 과거 해답 및 점수 0.002, TextGrad 텍스트 피드백 0.015, GEPA 요약된 반성문 0.008, AlphaEvolve DB 및 점수 0.022, Meta-Harness 코드·점수·전체 로그 10.0">
+  <figcaption>기존 방법은 수천~수만 토큰, Meta-Harness는 약 천만 토큰이에요. <a href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=165s" target="_blank" rel="noopener">영상 02:45에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>방법</th><th>제공되는 피드백</th><th>반복당 맥락(MTok)</th></tr></thead>
+    <tbody>
+      <tr><td>OPRO(Optimization by PROmpting)</td><td>과거 해답과 점수</td><td>0.002</td></tr>
+      <tr><td>TextGrad</td><td>텍스트 피드백</td><td>0.015</td></tr>
+      <tr><td>GEPA(Genetic-Pareto)</td><td>요약된 반성문</td><td>0.008</td></tr>
+      <tr><td>AlphaEvolve</td><td>DB(Database)와 점수</td><td>0.022</td></tr>
+      <tr><td>Meta-Harness</td><td>코드, 점수, 전체 로그</td><td>10.0</td></tr>
+    </tbody>
+  </table>
+</div>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>논문 원문은 '평가 한 번이 최대 1,000만 토큰의 진단 정보를 만든다'고 써요. 그래서 10.0 MTok은 '매 반복 늘 이만큼'이라기보다 다룰 수 있는 정보의 규모로 읽는 게 정확해요. 같은 표에서 GEPA는 '롤아웃 기록에서 뽑은 요약된 반성 피드백'을 준다고 적혀 있어요. 로그를 보긴 하지만 요약해서 건넨다는 뜻이에요.</p>
+  <p class="cite">출처: <a href="https://arxiv.org/html/2603.28052v1" target="_blank" rel="noopener">Meta-Harness 논문 HTML판 (표 1, 3장)</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=178s" target="_blank" rel="noopener">02:58</a>
+  <h2>프롬프트 대신 파일 시스템을 줘요</h2>
+<p>천만 토큰을 프롬프트 하나에 넣을 수는 없어요. 연구진의 답을 영상은 한 문장으로 소개해요. 슬라이드 왼쪽의 책장이 '외워야 할 도서관 전체'이고, 위쪽 카드가 '출입증'이에요.</p>
+<figure>
+  <img src="assets/frame-0314.webp" alt="책장 그림과 출입 카드 그림 옆에 '도서관 전체를 암기시키는 대신 도서관 출입증을 주는 발상과 비슷하다'라는 인용문, 오른쪽 아래에 폴더 구조와 돋보기 그림">
+  <figcaption>요약본을 외우게 하는 대신, 필요한 자료를 직접 찾아 읽을 권한을 줘요. <a href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=194s" target="_blank" rel="noopener">영상 03:14에서 보기</a></figcaption>
+</figure>
+<h3>평가 → 기록 → 탐색 → 개선</h3>
+<p>안에서 도는 루프는 네 단계예요. 슬라이드 왼쪽부터 평가(후보 하네스를 벤치마크 문제로 실행), 기록(코드·점수·로그를 파일로 저장), 탐색(제안자가 grep과 cat으로 로그 검색), 개선(새 후보 하네스 코드 작성) 순서예요. 맨 왼쪽 아래 순환 화살표가 다시 평가로 돌아간다는 표시예요.</p>
+<figure>
+  <img src="assets/frame-0346.webp" alt="노란 띠 위에 네 칸이 나란히 있는 슬라이드. 평가: 후보 하네스 평가 실행, 기록: 코드·점수·로그를 파일로 저장, 탐색: 제안자가 grep과 cat으로 로그 검색, 개선: 새로운 후보 하네스 코드 작성">
+  <figcaption>미리 정한 요약 규칙이 없어요. 무엇을 읽을지는 에이전트가 정해요. <a href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=226s" target="_blank" rel="noopener">영상 03:46에서 보기</a></figcaption>
+</figure>
+<p>탐색 단계는 사람 개발자가 낯선 코드를 디버깅하는 모습과 같아요. 로그를 grep으로 뒤져 에러 원인을 찾고, 그걸 바탕으로 다음 버전 코드를 짜요. 이 과정 전체가 오프라인에서 끊임없이 돌아가요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>논문에서 제안자는 Opus 4.6을 쓰는 Claude Code예요. 하네스 하나는 프롬프트·검색·메모리·오케스트레이션을 담은 파이썬 파일 하나고, 제안자는 '새 하네스를 어디에 쓰고 이전 기록을 어떻게 보는지'만 적은 짧은 스킬을 받아요. 보통 한 번 실행에 20번 반복하며 후보 약 60개를 평가해요.</p>
+  <p class="cite">출처: <a href="https://arxiv.org/html/2603.28052v1" target="_blank" rel="noopener">Meta-Harness 논문 HTML판 (3장)</a></p>
+</aside>
+<h3>에이전트는 점수보다 기록을 열었어요</h3>
+<p>에이전트가 실제로 어떤 파일을 열었는지 세어 본 결과예요. 도넛 오른쪽 범례를 보면 소스 코드 41%, <span class="term" data-term="실행 로그" data-en="Execution trace" data-desc="에이전트가 실행되며 남긴 프롬프트, 도구 호출, 모델 출력, 상태 변화 기록이에요. 실패 원인을 거꾸로 추적할 때 가장 직접적인 증거가 돼요." data-g="4">실행 로그</span> 40%로 둘이 대부분이고, 점수 요약은 6%뿐이에요. 나머지 13%는 기타 파일이에요.</p>
+<figure>
+  <img src="assets/frame-0418.webp" alt="'열람한 파일' 도넛 차트. 범례에 소스 코드 41%, 실행 로그 40%, 점수 요약 6%, 기타 파일 13%. 오른쪽에 '에이전트는 숫자보다 현장의 기록을 훨씬 더 많이 선택했습니다'라는 작은 문장">
+  <figcaption>점수 요약은 6%만 열었어요. 에이전트 스스로 날것의 기록이 더 쓸모 있다고 본 셈이에요. <a href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=258s" target="_blank" rel="noopener">영상 04:18에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>이 비율은 TerminalBench-2 탐색 실행(10회 반복, Claude Opus 4.6)에서 잰 값이에요. 제안자는 반복마다 파일을 중앙값 82개(69~99개) 열었어요. 논문은 이를 근거로 제안자가 직전 결과만 보지 않고 과거 기록 대부분을 훑는다고 설명해요.</p>
+  <p class="cite">출처: <a href="https://arxiv.org/html/2603.28052v1" target="_blank" rel="noopener">Meta-Harness 논문 HTML판 (부록 A.1, 표 8)</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=272s" target="_blank" rel="noopener">04:32</a>
+  <h2>숫자로 본 효과</h2>
+<p>먼저 절제 실험이에요. 텍스트 분류 과제에서 제안자에게 주는 정보만 바꿔 봤어요. 표의 세 줄이 '점수만', '점수 + LLM 요약', '점수 + 원본 로그'예요. 주황색으로 칠한 맨 아래 줄만 숫자가 크게 뛰어요.</p>
+<figure>
+  <img src="assets/frame-0456.webp" alt="제공된 피드백, 중앙값 정확도, 최고 정확도 세 열의 표. 점수만 34.6과 41.3, 점수 + LLM 요약 34.9와 38.7, 점수 + 원본 로그 50.0과 56.7">
+  <figcaption>LLM 요약을 더하면 최고 정확도가 41.3에서 38.7로 오히려 떨어져요. <a href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=296s" target="_blank" rel="noopener">영상 04:56에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>받은 피드백</th><th>중앙값 정확도</th><th>최고 정확도</th></tr></thead>
+    <tbody>
+      <tr><td>점수만</td><td>34.6</td><td>41.3</td></tr>
+      <tr><td>점수 + LLM 요약</td><td>34.9</td><td>38.7</td></tr>
+      <tr><td>점수 + 원본 로그</td><td>50.0</td><td>56.7</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>요약은 중앙값을 0.3점 올리는 데 그쳤어요. 원본 로그를 주자 중앙값이 15점 넘게 올랐어요. 영상은 친절한 요약이 문제 해결에 필요한 디테일을 지워 왔다는 증거로 읽어요.</p>
+<h3>세 가지 과제의 결과</h3>
+<p>텍스트 분류에서는 기존 최고 수준의 맥락 관리 기법보다 7.7점 높았어요. 슬라이드 왼쪽의 '3/4'와 아래 '1/4 size' 표시가 맥락을 4분의 1만 썼다는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0520.webp" alt="큰 글씨 '+7.7' 주변에 상자와 3/4 화살표, '1/4 size'라고 적힌 동전 더미, 'efficiency' 상승 그래프, 'self-correction' 순환 화살표가 그려진 슬라이드">
+  <figcaption>점수는 올리고 맥락은 줄였어요. <a href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=320s" target="_blank" rel="noopener">영상 05:20에서 보기</a></figcaption>
+</figure>
+<p>수학 추론에서는 찾아낸 하네스를 탐색 때 한 번도 쓰지 않은 다섯 개의 다른 언어 모델에 붙였어요. 오른쪽 아래 문구가 그 조건이에요. 평균 4.7점 올랐어요. 특정 모델에 억지로 끼워 맞춘 게 아니라 여러 모델에 통하는 개선이라는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0544.webp" alt="큰 글씨 '+4.7' 아래 A부터 E까지 적힌 톱니바퀴 다섯 개, 오른쪽에 색이 다른 뇌 그림들과 '훈련 과정에서 한 번도 본 적 없는 5개의 전혀 다른 언어 모델들'이라는 문구">
+  <figcaption>A~E 톱니바퀴가 탐색에 쓰지 않은 다섯 모델이에요. <a href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=344s" target="_blank" rel="noopener">영상 05:44에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>텍스트 분류의 비교 대상은 ACE(Agentic Context Engineering)예요. Meta-Harness가 찾은 하네스는 정확도 48.6%로 ACE보다 7.7점 높았고, 맥락은 11.4K 토큰으로 ACE의 50.8K보다 훨씬 적었어요. 수학 쪽은 IMO(International Mathematical Olympiad) 수준 문제 200개에서 잰 값이고, 검색 말뭉치에서 평가 문제와 겹치는 것을 걸러 냈다고 해요.</p>
+  <p class="cite">출처: <a href="https://arxiv.org/html/2603.28052v1" target="_blank" rel="noopener">Meta-Harness 논문 HTML판 (4.1~4.2장)</a></p>
+</aside>
+<h3>TerminalBench-2와 80줄짜리 개선</h3>
+<p>코딩 에이전트 벤치마크 <span class="term" data-term="TerminalBench-2" data-en="Terminal-Bench 2.0" data-desc="에이전트가 터미널에서 긴 작업을 혼자 끝내는지 보는 89개 과제 벤치마크예요. 같은 모델에서도 하네스에 따라 점수 차이가 커서 하네스 비교에 많이 써요." data-g="8">TerminalBench-2</span> 슬라이드는 시상대 하나로 성과를 보여 줘요. 영상에 따르면 Claude Haiku 4.5로는 1위, Opus 4.6으로는 2위였어요. 양옆의 'Code Improvements'와 'Time Efficiency'는 아래에서 설명할 개선 내용을 가리켜요.</p>
+<figure>
+  <img src="assets/frame-0620.webp" alt="'TerminalBench-2 성과' 제목 아래 1st, 2nd, 3rd 시상대와 별, 왼쪽에 코드 두루마리와 'Code Improvements', 오른쪽에 시계와 모래시계, 'Time Efficiency'">
+  <figcaption>순위는 같은 모델을 쓰는 에이전트끼리 비교한 거예요. <a href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=380s" target="_blank" rel="noopener">영상 06:20에서 보기</a></figcaption>
+</figure>
+<p>발표자가 가장 인상적이라고 꼽은 건 에이전트가 찾은 해결책이에요. 로그를 읽어 보니 매번 파이썬이 깔려 있는지 확인하느라 턴을 날리고 있었어요. 그래서 처음부터 실행 환경을 점검하는 80줄짜리 코드를 끼워 넣었어요. 점수만 봤다면 찾기 어려운 개선이에요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>논문 표 7 기준으로 Opus 4.6에서 76.4%로, 손으로 만든 Terminus-KIRA(74.7%)를 넘었지만 ForgeCode(81.8%) 다음 2위예요. Haiku 4.5에서는 37.6%로 다음 순위 Goose(35.5%)보다 2.1점 높은 1위예요. 이 순위는 공식 리더보드 수치와 견준 거예요.</p>
+  <p>80줄은 Terminus-KIRA 위에 더한 분량이에요. 하는 일은 파이썬 확인만이 아니에요. 첫 모델 호출 전에 셸 명령 하나로 작업 폴더, /app 목록, 설치된 언어와 버전(Python, GCC(GNU Compiler Collection), Node, Java, Rust, Go 등), 패키지 관리자, 메모리를 모아 첫 프롬프트에 붙여요. 논문은 이것으로 에이전트가 처음에 환경을 알아보느라 쓰던 2~4턴을 없앴다고 써요.</p>
+  <p class="cite">출처: <a href="https://arxiv.org/html/2603.28052v1" target="_blank" rel="noopener">Meta-Harness 논문 HTML판 (4.3장, 부록 B.3)</a> · <a href="https://github.com/stanford-iris-lab/meta-harness-tbench2-artifact" target="_blank" rel="noopener">GitHub — meta-harness-tbench2-artifact</a></p>
+</aside>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=405s" target="_blank" rel="noopener">06:45</a>
+  <h2>한계, 그리고 원본 로그를 버리지 마세요</h2>
+<p>들뜨기 전에 짚을 한계도 있어요. 슬라이드는 네 아이콘으로 정리해요. 왼쪽부터 탐색 문제와 평가 문제의 중복, 89개 과제 중 7개에만 몰린 향상, 단일 제안자 모델 의존, 20번 반복에 드는 큰 컴퓨팅 비용이에요.</p>
+<figure>
+  <img src="assets/frame-0705.webp" alt="'고려해야 할 주의 사항' 제목 아래 네 아이콘. 재활용 화살표에 '벤치마크 탐색과 평가 문제 세트의 중복', 과녁에 '89개 과제 중 7개에만 성능 향상 집중', 로봇에 '단일 제안자 모델에 대한 높은 의존성', 시계와 동전에 '20번의 반복에 따른 막대한 컴퓨팅 비용'">
+  <figcaption>앞의 두 개는 결과를 얼마나 일반화할 수 있는지, 뒤의 두 개는 따라 하는 데 드는 값에 관한 한계예요. <a href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=425s" target="_blank" rel="noopener">영상 07:05에서 보기</a></figcaption>
+</figure>
+<ol class="steps">
+  <li><b>탐색과 평가 문제가 겹쳐요</b> — 코딩 벤치마크에서 탐색에 쓴 문제와 최종 평가 문제가 분리되지 않았어요.</li>
+  <li><b>향상이 일부 과제에 몰렸어요</b> — 89개 과제 중 큰 향상은 7개에 집중됐어요.</li>
+  <li><b>제안자 모델 하나에 기대요</b> — 긴 맥락을 잘 다루는 Claude Opus 하나에 크게 의존했어요.</li>
+  <li><b>비용이 숨어 있어요</b> — 파일 수십 개를 여는 무거운 에이전트를 20번 반복해 돌렸으니 컴퓨팅 비용이 컸을 거라고 발표자는 추정해요.</li>
+</ol>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>논문도 첫 번째 한계를 직접 밝혀요. TerminalBench-2는 89개 과제가 전부라 따로 나누면 탐색 신호가 약해진다며 같은 세트로 탐색과 평가를 했고, 대신 과제별 문자열이 하네스에 새어 들어갔는지 정규식 검사와 수작업으로 확인했다고 써요. 향상이 Terminus-KIRA 대비 89개 중 7개 과제에서 나왔다는 것도 원문과 같아요.</p>
+  <p>영상은 단일 모델을 'Claude Opus 4.0'이라고 말하지만, 논문의 제안자는 Opus 4.6을 쓰는 Claude Code예요. 비용은 논문이 금액으로 밝히지 않았어요. 한 번의 탐색이 '몇 시간'에 끝난다는 소요 시간만 적혀 있어요.</p>
+  <p class="cite">출처: <a href="https://arxiv.org/html/2603.28052v1" target="_blank" rel="noopener">Meta-Harness 논문 HTML판 (3장, 4.3장, 5장)</a></p>
+</aside>
+<h3>원본 로그를 버리지 마세요</h3>
+<p>영상이 딱 하나만 챙겨 가라며 꼽은 문장이에요. 슬라이드에서 '압축되지 않은'과 '실패 기록'에 밑줄처럼 색을 칠해 강조했어요.</p>
+<figure>
+  <img src="assets/frame-0745.webp" alt="두루마리와 보석 그림 사이에 'AI 시스템을 고칠 때 가장 가치 있는 정보는 압축되지 않은, 있는 그대로의 실패 기록입니다'라는 문장">
+  <figcaption>사람이 디버깅하든 AI가 하든 같다고 발표자는 말해요. <a href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=465s" target="_blank" rel="noopener">영상 07:45에서 보기</a></figcaption>
+</figure>
+<blockquote>
+  <p>LLM이 제가 분석해 보니 이렇습니다 하고 친절하게 요약해 주는 순간 정작 근본 원인을 파헤칠 수 있는 가장 중요한 디테일들은 모두 허공으로 날아가 버리는 겁니다.</p>
+  <cite>— 영상 07:52</cite>
+</blockquote>
+<p>마지막 슬라이드는 질문으로 끝나요. 위쪽 '로그의 바다'가 '프롬프트'라고 적힌 깔때기를 지나 물방울 하나로 줄어들고, 나머지는 오른쪽 쓰레기통으로 가요. 에이전트 로그를 억지로 쥐어짜 프롬프트에 밀어 넣고 있다면, 가장 귀한 데이터를 버리고 있는 건 아닌지 돌아보라는 거예요.</p>
+<figure>
+  <img src="assets/frame-0815.webp" alt="위쪽 '로그의 바다'가 '프롬프트' 깔때기를 지나 물방울 하나로 떨어지는 그림, 오른쪽 '쓰레기통'에 파일이 버려지는 그림, 가운데 '당신의 AI 최적화 도구는 가장 귀중한 데이터를 버리고 있나요?'라는 질문">
+  <figcaption>깔때기를 지나지 못한 로그가 쓰레기통으로 가요. 그 안에 근본 원인이 있을 수 있어요. <a href="https://www.youtube.com/watch?v=7gxBaxveEEU&amp;t=495s" target="_blank" rel="noopener">영상 08:15에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 이름과 일부 단어가 잘못 받아적혔어요. 화면과 논문 원문을 보고 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>오피아로나 텍스트 그레이드</td><td>OPRO나 TextGrad</td><td>화면 표의 방법 이름</td></tr>
+      <tr><td>수천 에러, 수만 토큰</td><td>수천~수만 토큰 (추정)</td><td>화면의 &#x27;thousands/tens of thousands of tokens&#x27;</td></tr>
+      <tr><td>꽁꽁 스며 버리는</td><td>꽁꽁 숨어 버리는 (추정)</td><td></td></tr>
+      <tr><td>제한자 에이전트</td><td>제안자 에이전트</td><td>논문의 proposer, 화면의 &#x27;제안자&#x27;</td></tr>
+      <tr><td>정성건 요약된 점수 파일</td><td>점수 요약 파일 (추정)</td><td>화면 범례 &#x27;점수 요약&#x27;</td></tr>
+      <tr><td>원본 실행 로그를 통째로 지워 주니까</td><td>통째로 쥐어 주니까 (추정)</td><td></td></tr>
+      <tr><td>메타 러너스</td><td>Meta-Harness (추정)</td><td></td></tr>
+      <tr><td>꾀맞춘</td><td>끼워 맞춘</td><td></td></tr>
+      <tr><td>터미널 벤치 다투</td><td>TerminalBench-2</td><td>화면 제목</td></tr>
+      <tr><td>아카운트를 날리고</td><td>턴을 날리고 (추정)</td><td>논문은 &#x27;탐색에 쓰던 2~4턴&#x27;이라고 씀</td></tr>
+      <tr><td>클로드 오푸스 4.0</td><td>Claude Opus 4.6 (추정)</td><td>논문의 제안자 모델</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-4"><dt>실행 로그<span class="en">Execution trace</span></dt><dd>에이전트가 실행되며 남긴 프롬프트, 도구 호출, 모델 출력, 상태 변화 기록이에요. 실패 원인을 거꾸로 추적할 때 가장 직접적인 증거가 돼요.</dd></div>
+    <div class="g" id="g-7"><dt>오프라인 탐색 루프<span class="en">Offline search loop</span></dt><dd>실제 서비스 실행과 떨어진 곳에서 후보를 만들고 평가하기를 반복하는 과정이에요. 실행 중에 끼어들지 않으니 시간을 들여 기록을 샅샅이 볼 수 있어요.</dd></div>
+    <div class="g" id="g-5"><dt>절제 실험<span class="en">Ablation study</span></dt><dd>시스템의 한 요소만 빼거나 바꿔 성능이 얼마나 달라지는지 보는 실험이에요. 여기서는 제안자에게 주는 정보만 바꿔 로그의 효과를 따로 쟀어요.</dd></div>
+    <div class="g" id="g-2"><dt>제안자<span class="en">Proposer</span></dt><dd>Meta-Harness 루프에서 과거 기록을 읽고 새 후보 하네스 코드를 써 내는 코딩 에이전트예요. 논문에서는 Opus 4.6을 쓰는 Claude Code가 이 역할을 해요.</dd></div>
+    <div class="g" id="g-6"><dt>중앙값<span class="en">Median</span></dt><dd>결과를 크기순으로 줄 세웠을 때 가운데 값이에요. 운 좋은 한 번이 아니라 후보들이 대체로 얼마나 좋았는지를 보여 줘요.</dd></div>
+    <div class="g" id="g-3"><dt>피드백 압축<span class="en">Feedback compression</span></dt><dd>실행 결과를 점수나 짧은 요약으로 줄여서 최적화 도구에 넘기는 것이에요. 다루기는 쉽지만 어느 단계에서 실패했는지 같은 단서가 사라져요.</dd></div>
+    <div class="g" id="g-1"><dt>하네스<span class="en">Harness</span></dt><dd>모델 가중치는 그대로 두고, 무엇을 기억하고 검색해 어떤 순서로 보여 줄지, 도구를 어떻게 쓸지 정하는 바깥 코드예요. 같은 모델이라도 이 코드에 따라 성능이 크게 달라져요.</dd></div>
+    <div class="g"><dt>ACE</dt><dd>Agentic Context Engineering</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>DB</dt><dd>Database</dd></div>
+    <div class="g"><dt>GCC</dt><dd>GNU Compiler Collection</dd></div>
+    <div class="g"><dt>GEPA</dt><dd>Genetic-Pareto</dd></div>
+    <div class="g"><dt>IMO</dt><dd>International Mathematical Olympiad</dd></div>
+    <div class="g"><dt>LLM</dt><dd>Large Language Model</dd></div>
+    <div class="g"><dt>MIT</dt><dd>Massachusetts Institute of Technology</dd></div>
+    <div class="g"><dt>OPRO</dt><dd>Optimization by PROmpting</dd></div>
+    <div class="g" id="g-8"><dt>TerminalBench-2<span class="en">Terminal-Bench 2.0</span></dt><dd>에이전트가 터미널에서 긴 작업을 혼자 끝내는지 보는 89개 과제 벤치마크예요. 같은 모델에서도 하네스에 따라 점수 차이가 커서 하네스 비교에 많이 써요.</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=7gxBaxveEEU" target="_blank" rel="noopener">원본 영상 — 아프니까 개발자다</a></li>
+    <li id="src-2"><a href="https://arxiv.org/abs/2603.28052" target="_blank" rel="noopener">arXiv 2603.28052 — Meta-Harness: End-to-End Optimization of Model Harnesses</a></li>
+    <li id="src-3"><a href="https://arxiv.org/html/2603.28052v1" target="_blank" rel="noopener">Meta-Harness 논문 HTML판</a></li>
+    <li id="src-4"><a href="https://yoonholee.com/meta-harness" target="_blank" rel="noopener">Meta-Harness 프로젝트 페이지</a></li>
+    <li id="src-5"><a href="https://github.com/stanford-iris-lab/meta-harness-tbench2-artifact" target="_blank" rel="noopener">GitHub — stanford-iris-lab/meta-harness-tbench2-artifact</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 12일에 이 영상을 보고 정리했어요. 원본은 아프니까 개발자다 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
