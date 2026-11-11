@@ -1,0 +1,910 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 영상 제작 이렇게 쉬워도 되나?</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>AI 영상 제작 이렇게 쉬워도 되나?</h1>
+  <p class="lede">프롬프트 세 개로 얼굴이 유지되는 AI 영상을 만드는 순서예요</p>
+  <div class="meta">
+    <span>Todaycoding</span><span class="dot">·</span>
+    <span>영상 09:47</span><span class="dot">·</span>
+    <span>읽는 데 약 11분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=OW3QquoIV48" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>AI(Artificial Intelligence) 영상은 캐릭터 이미지 → <span class="term" data-term="캐릭터 시트" data-en="Character sheet" data-desc="같은 인물을 앞모습, 옆모습, 얼굴 클로즈업 등 여러 각도로 한 장에 담은 이미지예요. 영상 모델에 레퍼런스로 주면 장면이 바뀌어도 얼굴과 옷이 흔들리지 않아요." data-g="1">캐릭터 시트</span> → 영상, 세 단계로 만들어요. 이미지는 GPT(Generative Pre-trained Transformer) Image 2.5, 영상은 Seedance 2.5를 Higgsfield에서 써요.</li>
+    <li>같은 인물을 앞·옆·얼굴로 한 장에 담은 캐릭터 시트를 <span class="term" data-term="레퍼런스" data-en="Reference" data-desc="생성할 때 &#x27;이 사람·이 물건을 그대로 써라&#x27;라고 함께 넘기는 참고 이미지나 영상이에요. 프롬프트 글만으로는 같은 얼굴을 매번 똑같이 뽑기 어려워서 써요." data-g="2">레퍼런스</span>로 붙여야 컷이 바뀌어도 얼굴이 유지돼요.</li>
+    <li>영상 프롬프트에는 누가 나오는지, 무슨 일이 일어나는지, 카메라가 어떻게 움직이는지, 어떤 소리가 나는지 네 가지를 적어요.</li>
+    <li>결과는 얼굴 일치, 컷 간 유지, 움직임 세 가지로 확인하고, 문장 한 줄만 바꿔 새 버전을 뽑을 수 있어요.</li>
+    <li>Genjutsu를 쓰면 유행 영상의 동작과 구도는 그대로 두고 사람만 내 캐릭터로 바꿀 수 있어요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">무엇을 만들고, 어떤 모델을 쓰나요</a></li>
+    <li><a href="#s2">Higgsfield 가입과 요금제</a></li>
+    <li><a href="#s3">캐릭터와 캐릭터 시트 만들기</a></li>
+    <li><a href="#s4">캐릭터를 움직이는 영상 만들기</a></li>
+    <li><a href="#s5">Genjutsu로 유행 영상에 캐릭터 넣기</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>무엇을 만들고, 어떤 모델을 쓰나요</h2>
+<p>영상 첫 15초가 이 강의로 만든 결과물이에요. 경복궁 마당에서 한복을 입은 외국인 관광객이 셀카로 웃고, 바닥에 세워 둔 폰 앞으로 뛰어가 포즈를 잡고, 다시 셀카로 걸으며 영어로 한마디 해요. 카메라도 모델도 배경도 없이 프롬프트 세 개로 만들었고, 발소리와 셔터 소리, 목소리까지 AI가 한 번에 넣었어요.</p>
+<p>아래 화면 왼쪽 큰 사진이 처음 만든 캐릭터 이미지, 오른쪽 위가 캐릭터 시트, 오른쪽 아래가 완성 영상의 한 장면이에요. 이 세 장이 곧 강의의 세 단계예요.</p>
+<figure>
+  <img src="assets/frame-0024.webp" alt="회색 배경에 선 한복 차림 금발 여성의 전신 사진, 같은 인물의 앞·옆·얼굴 세 칸 시트, 경복궁 마당에서 양팔을 벌린 영상 장면을 한 화면에 모은 슬라이드">
+  <figcaption>캐릭터 이미지 → 캐릭터 시트 → 영상, 결과물만 봐도 순서가 보여요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=24s" target="_blank" rel="noopener">영상 00:24에서 보기</a></figcaption>
+</figure>
+<p>단계마다 쓰는 모델과 비율, 비용을 한 줄로 이으면 이래요. 비용은 발표자가 생성 버튼에서 확인한 <span class="term" data-term="크레딧" data-en="Credit" data-desc="Higgsfield 같은 생성 서비스의 사용량 단위예요. 요금제마다 매달 정해진 만큼 들어오고, 모델·길이·화질에 따라 한 번 생성할 때 빠지는 양이 달라요." data-g="3">크레딧</span>이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 660 190" role="img" aria-label="캐릭터 이미지, 캐릭터 시트, 영상 세 단계와 단계별 모델·비율·크레딧">
+    <defs><marker id="arrow-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect x="10" y="30" width="190" height="130" rx="12" class="c1 cell"/>
+    <text x="105" y="62" text-anchor="middle">① 캐릭터 이미지</text>
+    <text x="105" y="90" text-anchor="middle" class="sub">GPT Image 2.5 Flare</text>
+    <text x="105" y="114" text-anchor="middle" class="sub">비율 3:4</text>
+    <text x="105" y="138" text-anchor="middle" class="sub">약 3크레딧</text>
+    <path d="M204 95 h28" class="line" marker-end="url(#arrow-flow)"/>
+    <rect x="236" y="30" width="190" height="130" rx="12" class="c2 cell"/>
+    <text x="331" y="62" text-anchor="middle">② 캐릭터 시트</text>
+    <text x="331" y="90" text-anchor="middle" class="sub">GPT Image 2.5 Sunburst</text>
+    <text x="331" y="114" text-anchor="middle" class="sub">비율 16:9 · 세 칸</text>
+    <text x="331" y="138" text-anchor="middle" class="sub">약 3크레딧</text>
+    <path d="M430 95 h28" class="line" marker-end="url(#arrow-flow)"/>
+    <rect x="462" y="30" width="190" height="130" rx="12" class="c3 cell"/>
+    <text x="557" y="62" text-anchor="middle">③ 영상</text>
+    <text x="557" y="90" text-anchor="middle" class="sub">Seedance 2.5</text>
+    <text x="557" y="114" text-anchor="middle" class="sub">15초 · 16:9 · 720p</text>
+    <text x="557" y="138" text-anchor="middle" class="sub">105크레딧</text>
+  </svg>
+  <figcaption>프롬프트도 단계마다 하나씩, 모두 세 개예요. 비용 대부분은 마지막 영상 단계에서 나가요.</figcaption>
+</figure>
+<h3>이미지 모델과 영상 모델</h3>
+<p>AI 모델은 크게 두 종류로 나뉘어요. 그림을 만드는 이미지 모델과, 그 그림을 움직이게 하는 영상 모델이에요. Higgsfield에는 둘 다 여러 개가 있고, 발표자는 그중 대표적인 것을 네 개, 세 개씩 골라 소개해요. 아래 슬라이드는 이미지 모델 네 개를 번호 순서로 늘어놓은 화면이에요.</p>
+<figure>
+  <img src="assets/frame-0134.webp" alt="이미지 모델 슬라이드. 01 Nano Banana, 02 GPT Image 2.5, 03 Soul Cinema, 04 Seedream과 각 모델의 짧은 설명">
+  <figcaption>강조된 04 Seedream은 인물·장소를 가리지 않는 만능형이에요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=94s" target="_blank" rel="noopener">영상 01:34에서 보기</a></figcaption>
+</figure>
+<p>영상 모델 슬라이드는 Wan, Kling, Seedance 세 개예요. 강조된 Seedance 칸 아래에 '최대 30초'가 따로 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-0150.webp" alt="영상 모델 슬라이드. 01 Wan, 02 Kling, 03 Seedance와 설명, Seedance 아래 최대 30초 표시">
+  <figcaption>Seedance만 소리까지 같이 만들어요. 그래서 이 강의의 셔터 소리와 목소리가 한 번에 나와요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=110s" target="_blank" rel="noopener">영상 01:50에서 보기</a></figcaption>
+</figure>
+<p>두 슬라이드를 표로 모으면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>종류</th><th>모델</th><th>잘하는 것</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="4">이미지</td><td>Nano Banana</td><td>이미 있는 사진의 옷이나 배경 바꾸기</td></tr>
+      <tr><td><b>GPT Image 2.5</b></td><td>자세한 지시를 잘 따르고 글자도 잘 표현</td></tr>
+      <tr><td>Soul Cinema</td><td>영화 같은 느낌의 그림</td></tr>
+      <tr><td>Seedream</td><td>인물·장소 가리지 않는 만능형</td></tr>
+      <tr><td rowspan="3">영상</td><td>Wan</td><td>시작 장면과 끝 장면 사이 움직임 채우기</td></tr>
+      <tr><td>Kling</td><td>액션, 캐릭터 움직임</td></tr>
+      <tr><td><b>Seedance 2.5</b></td><td>캐릭터와 장면을 받아 움직임과 소리를 같이, 최대 30초</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>이번 강의는 굵게 표시한 두 모델을 써요. GPT Image 2.5는 프롬프트를 정확하게 따르고, Seedance 2.5는 가장 사실적인 결과를 내기 때문이래요. 근거로 든 게 발표자의 지난 영상이에요. 여덟 개 모델에게 라면 먹는 장면을 시켜 비교했는데, 아래 화면처럼 Seedance 2.5 칸에 테두리가 쳐져 있어요.</p>
+<figure>
+  <img src="assets/frame-0208.webp" alt="여덟 개 영상 모델이 라면 먹는 인물을 생성한 결과를 2행 4열로 비교한 썸네일. Seedance 2.5 칸이 강조됨. 아래에 '사람 표현·감정 연기 Seedance가 가장 리얼' 문구">
+  <figcaption>사람 표현과 감정 연기는 Seedance가 가장 리얼했다는 게 발표자의 비교 결과예요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=128s" target="_blank" rel="noopener">영상 02:08에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Seedance는 ByteDance의 Seed 팀이 만든 모델이에요. 공식 페이지는 Seedance 2.5를 소리와 영상을 함께 만드는 모델이라고 소개하고, 한 번 생성에 최대 30초, 그 뒤로 두 번 더 이어 붙일 수 있다고 적어요. 영상이 말한 '최대 30초'는 한 번 생성할 때 기준이에요.</p>
+  <p class="cite">출처: <a href="https://seed.bytedance.com/en/seedance2_5" target="_blank" rel="noopener">ByteDance Seed — Seedance 2.5</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=132s" target="_blank" rel="noopener">02:12</a>
+  <h2>Higgsfield 가입과 요금제</h2>
+<p>발표자가 Higgsfield를 고른 이유는 두 가지예요. 앞에서 본 모델을 한 요금제로 다 쓸 수 있고, 초보자용부터 전문가용까지 도구가 같이 있어서예요. 사이트에서 Sign up을 누르면 구글·애플·마이크로소프트 계정으로 바로 가입할 수 있어요.</p>
+<p>가입하면 요금제 페이지가 바로 나와요. 이 강의를 그대로 따라 하려면 Plus 이상이 필요해요. 화면 왼쪽 Starter 카드의 '무제한 모델' 목록에 Seedance 2.5가 빠져 있기 때문이에요.</p>
+<figure>
+  <img src="assets/frame-0248.webp" alt="Higgsfield 요금제 화면. Starter 19달러, Plus 59달러, Ultra 129달러에서 99달러로 할인된 가격 카드와 각 크레딧 수">
+  <figcaption>Plus는 월 1,200크레딧이에요. 녹화 당시 Ultra 카드에는 할인가가 함께 떠 있었어요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=168s" target="_blank" rel="noopener">영상 02:48에서 보기</a></figcaption>
+</figure>
+<p>Plus 카드 아래쪽을 확대하면 첫 7일 동안 무제한인 모델 네 개와, 무료 생성 목록 맨 위의 'Higgsfield Genjutsu 720p 무료 생성 3회'가 보여요. 마지막 단계에서 쓰는 기능이에요.</p>
+<figure>
+  <img src="assets/frame-0300.webp" alt="Plus 요금제 상세. 7일 동안 무제한 모델로 Seedance 2.5 720p, Nano Banana Pro, Seedream 5.0 Pro, GPT Image 2.6이 표시되고, 아래 무료 생성 목록에 Genjutsu 720p 3회가 강조됨">
+  <figcaption>첫 7일이 연습하기 가장 좋은 때라는 게 발표자 권유예요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=180s" target="_blank" rel="noopener">영상 03:00에서 보기</a></figcaption>
+</figure>
+<p>영상에서 말한 요금제 내용을 정리하면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>요금제</th><th>월 요금</th><th>월 크레딧</th><th>이 강의 기준으로 보면</th></tr></thead>
+    <tbody>
+      <tr><td>Free · Starter</td><td>무료 · 19달러</td><td>— · 270</td><td>Seedance 2.5가 없어 따라 할 수 없어요</td></tr>
+      <tr><td>Plus</td><td>59달러</td><td>1,200</td><td>모든 모델 포함. 첫 7일 일부 모델 무제한, Genjutsu 무료 생성 3회. 언제든 해지 가능</td></tr>
+      <tr><td>Ultra</td><td>129달러</td><td>3,000</td><td>Seedance 2.5 영상 약 200개 분량. 작업량이 많을 때</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>처음이라면 Plus로 충분하다는 게 발표자 의견이에요. 요금과 크레딧은 녹화 당시 화면 기준이라 가입 전에 요금제 페이지를 다시 확인하는 게 좋아요.</p>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=199s" target="_blank" rel="noopener">03:19</a>
+  <h2>캐릭터와 캐릭터 시트 만들기</h2>
+<p>상단의 이미지 탭에서 '이미지 만들기'를 누르고 모델을 GPT Image 2.5 Flare로 골라요. 캐릭터로 쓸 사진이 이미 있다면 + 버튼으로 올리고 다음 단계로 바로 넘어가면 돼요. 발표자는 준비된 게 없어서 '경복궁에서 한복 입고 셀카 찍는 외국인 관광객'을 새로 만들어요.</p>
+<h3>캐릭터 프롬프트는 빠짐없이</h3>
+<p>프롬프트는 영어로 한 문단이에요. 아래 화면에서 주황색으로 칠한 부분이 발표자가 짚어 준 항목이에요. 20대 초반 서양 여성, 긴 금발 웨이브, 금색 링 귀걸이, 분홍 저고리와 남색 치마, 산호색 고름과 노리개, 한 손엔 접부채, 다른 손엔 스마트폰, 밝은 회색 스튜디오 배경, 정면을 보고 선 실사 전신 사진이에요. 유명인을 닮지 않은 가상 인물이라는 문장도 들어 있어요.</p>
+<figure>
+  <img src="assets/frame-0423.webp" alt="캐릭터 이미지 영어 프롬프트 한 문단. 인물, 머리, 피부, 귀걸이, 저고리, 고름, 치마, 노리개, 부채, 스마트폰, 배경, 조명 등 항목이 주황색으로 강조됨">
+  <figcaption>누구인지, 뭘 입었는지, 뭘 들었는지, 배경과 조명까지 다 적는 게 요점이에요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=263s" target="_blank" rel="noopener">영상 04:23에서 보기</a></figcaption>
+</figure>
+<p>프롬프트 쓰기가 어렵다면 Claude나 ChatGPT에게 초안을 부탁해도 된다고 해요. <span class="term" data-term="화면비" data-en="Aspect ratio" data-desc="화면의 가로 대 세로 비율이에요. 전신 사진은 3:4, 가로 영상과 세 칸 시트는 16:9처럼 결과물 모양에 맞춰 골라요." data-g="6">화면비</span>는 3:4로 맞추고, 생성 버튼에 비용이 미리 표시되니 확인한 뒤 눌러요. 발표자 말로는 한 장에 3크레딧이에요.</p>
+<p>결과 이미지에는 발표자가 프롬프트대로 나왔는지 확인한 곳에 선을 그어 두었어요. 왼쪽 '산호색 고름', 오른쪽 '금색 링 귀걸이'예요.</p>
+<figure>
+  <img src="assets/frame-0439.webp" alt="회색 배경 앞에 정면으로 선 분홍 저고리와 남색 치마 차림 금발 여성의 전신 사진. 산호색 고름과 금색 링 귀걸이에 표시선">
+  <figcaption>작은 소품까지 요청대로 나왔는지 하나씩 대조해 봐요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=279s" target="_blank" rel="noopener">영상 04:39에서 보기</a></figcaption>
+</figure>
+<h3>캐릭터 시트로 얼굴 고정하기</h3>
+<p>다음은 캐릭터 시트예요. 게임 캐릭터 설정화처럼 같은 인물을 여러 각도에서 한 장에 담아 두는 거예요. 이게 있어야 영상의 모든 장면에서 얼굴이 똑같이 유지되고 결과물도 훨씬 전문적으로 보인다고 해서, 발표자는 이 단계를 꼭 거치라고 해요.</p>
+<p>방금 만든 이미지를 + 버튼으로 첨부하고, 아래 화면 하단의 모델 선택 칸에서 Flare를 GPT Image 2.5 Sunburst로 바꿔요. Sunburst는 정교한 수정에 맞춘 버전이라 첨부한 사람을 그대로 유지해 준다고 해요.</p>
+<figure>
+  <img src="assets/frame-0504.webp" alt="Higgsfield 이미지 생성 화면 하단 입력창. 모델 칸에 GPT Image 2.5 Flare가 선택되어 있고 바꾸려고 커서를 올린 모습">
+  <figcaption>같은 GPT Image 2.5라도 처음 만들 땐 Flare, 첨부 사진을 고칠 땐 Sunburst를 써요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=304s" target="_blank" rel="noopener">영상 05:04에서 보기</a></figcaption>
+</figure>
+<p>비율은 16:9로 바꾸고 프롬프트를 적어요. 첨부 사진만 기준으로 같은 여성의 세 칸 시트를 만들되, 1칸은 전신 앞모습, 2칸은 전신 옆모습, 3칸은 얼굴 클로즈업이에요. 얼굴·눈·머리·귀걸이·한복 색·고름·부채·스마트폰이 세 칸 모두 똑같아야 한다는 문장이 아래 화면에서 강조된 부분이에요.</p>
+<figure>
+  <img src="assets/frame-0522.webp" alt="캐릭터 시트 영어 프롬프트. 세 칸 구성과 얼굴, 머리, 귀걸이, 한복 색, 고름, 치마, 노리개, 부채, 스마트폰이 세 칸 모두 같아야 한다는 문장이 강조됨">
+  <figcaption>무엇을 유지할지 하나하나 이름을 불러 줘야 시트끼리 어긋나지 않아요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=322s" target="_blank" rel="noopener">영상 05:22에서 보기</a></figcaption>
+</figure>
+<p>이것도 3크레딧이에요. 생성된 시트는 왼쪽부터 전신 앞모습, 전신 옆모습, 얼굴 클로즈업이에요. 앞 단계 이미지와 얼굴, 귀걸이, 고름 색이 그대로예요.</p>
+<figure>
+  <img src="assets/frame-0458.webp" alt="세 칸 캐릭터 시트. 한복 차림 금발 여성의 전신 앞모습, 전신 옆모습, 얼굴 클로즈업">
+  <figcaption>이 한 장이 다음 단계 영상의 레퍼런스가 돼요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=298s" target="_blank" rel="noopener">영상 04:58에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=329s" target="_blank" rel="noopener">05:29</a>
+  <h2>캐릭터를 움직이는 영상 만들기</h2>
+<p>이제 시트 속 캐릭터를 움직여요. 비디오 탭에서 '비디오 만들기'를 누르고, 아래 화면처럼 모델 칸이 Seedance 2.5로 되어 있는지 먼저 확인해요. 기본값은 길이 5초, 비율 16:9, 화질 1080p이고 버튼에 80크레딧이 찍혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0537.webp" alt="Higgsfield 비디오 생성 설정 패널. 모델 Seedance 2.5, 길이 5s, 화면비 16:9, 화질 1080p, 생성하기 버튼에 80크레딧">
+  <figcaption>기본값 그대로면 5초짜리가 80크레딧에 만들어져요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=337s" target="_blank" rel="noopener">영상 05:37에서 보기</a></figcaption>
+</figure>
+<p>'레퍼런스 추가'로 캐릭터 시트를 올리고 프롬프트를 붙여 넣어요. 그다음 프롬프트 맨 앞에 @를 치면 첨부 이미지 목록이 떠요. 목록 맨 위 '이미지 1'이 방금 올린 시트예요. 이걸 골라야 프롬프트 속 주인공과 시트가 연결돼요.</p>
+<figure>
+  <img src="assets/frame-0545.webp" alt="프롬프트 입력창에 @를 입력하자 뜬 첨부 이미지 목록. 맨 위에 한복 캐릭터 썸네일의 '이미지 1'이 있고 아래로 다른 에셋 이름이 이어짐">
+  <figcaption>@로 고른 '이미지 1'이 프롬프트 맨 앞에 들어가 주인공을 가리켜요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=345s" target="_blank" rel="noopener">영상 05:45에서 보기</a></figcaption>
+</figure>
+<h3>프롬프트에 적을 네 가지</h3>
+<p>영상 프롬프트에는 네 가지만 적으면 된대요. 누가 나오는지, 무슨 일이 일어나는지, 카메라가 어떻게 움직이는지, 어떤 소리가 들리는지예요. 아래 화면은 그중 '무슨 일이 일어나는지'에 해당하는 <code>SCENE CONTEXT</code> 부분이에요. 서울 궁궐 마당의 밝은 오후, 혼자 폰으로 여행 릴스를 찍는 장면이라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0553.webp" alt="영상 프롬프트의 SCENE CONTEXT 단락. 한국 궁궐 마당의 밝은 오후, 폰으로 여행 릴스를 직접 찍는다는 문장이 강조되고 오른쪽에 '무슨 일이 일어나는지' 제목">
+  <figcaption>장면 전체를 먼저 한 단락으로 설명하고, 컷별 내용은 그 아래에 따로 적어요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=353s" target="_blank" rel="noopener">영상 05:53에서 보기</a></figcaption>
+</figure>
+<p>발표자는 인스타 릴스처럼 15초를 네 컷으로 나눴어요. 한 장면을 길게 뽑아도 되지만 컷을 나눠 적어도 괜찮대요. 프롬프트의 컷 구성을 시간 막대로 옮기면 이래요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 660 200" role="img" aria-label="15초 영상을 네 컷으로 나눈 시간 막대. 0~3초 셀카, 3~7초 고정 카메라에서 양팔 포즈, 7~10초 같은 카메라에서 부채 포즈, 10~15초 다시 셀카로 걸으며 말하기">
+    <g id="fig-shots"></g>
+  </svg>
+  <figcaption>카메라는 셀카 → 고정 → 고정 → 셀카로 바뀌어요. 셔터 소리는 <span class="term" data-term="고정 카메라" data-en="Locked-off shot" data-desc="카메라를 한 자리에 세워 두고 움직이지 않는 촬영이에요. 프롬프트에 적어 두면 화면이 흔들리지 않고 인물 동작만 보여요." data-g="4">고정 카메라</span> 두 컷에만 들어가요.</figcaption>
+</figure>
+<p>각 컷은 프롬프트에 <code>SHOT 1</code>, <code>SHOT 2</code>처럼 시작·끝 초를 달아 적어요. 아래는 첫 컷이에요. 카메라는 쭉 뻗은 오른손에 든 폰이고, 렌즈를 보고 웃으며 눈썹을 올린 뒤 폰을 화면 밖으로 내린다고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0609.webp" alt="SHOT 1 (0:00~0:03) SELFIE POV 단락. 팔을 뻗어 든 폰, 웃으며 눈썹을 올리고 폰을 내리는 동작이 강조되고 오른쪽에 '1컷: 셀카로 웃다가 폰을 내림' 제목">
+  <figcaption>카메라 위치와 동작을 한 컷 안에서 순서대로 적어요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=369s" target="_blank" rel="noopener">영상 06:09에서 보기</a></figcaption>
+</figure>
+<p>마지막 컷에는 영어 대사 한 줄을 그대로 적고, 입 모양은 자연스러운 <span class="term" data-term="립싱크" data-en="Lip sync" data-desc="말소리와 입 모양이 맞아떨어지는 거예요. 소리까지 함께 만드는 영상 모델은 대사를 적으면 입 모양도 거기에 맞춰 만들어요." data-g="5">립싱크</span>로 맞추라고 했어요. 뒤로 관광객 몇 명이 지나가게 했고, 소리는 발소리, 비단 스치는 소리, 셔터 두 번, 목소리와 웃음소리로 적었어요. 하나 더 넣은 게 금지 문장이에요. 아래 화면 강조 부분처럼 읽을 수 있는 글자, 간판, 현판, 로고, 깃발이 나오지 않게 했어요. 글자는 엉터리로 나오는 경우가 많아서래요.</p>
+<figure>
+  <img src="assets/frame-0633.webp" alt="프롬프트 일부. No readable text, no signboards, no plaques, no logos, no flags 문장이 강조되고 오른쪽에 '글자·간판·로고는 나오지 않게' 제목">
+  <figcaption>자주 틀리는 요소는 아예 나오지 않게 적어 두는 거예요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=393s" target="_blank" rel="noopener">영상 06:33에서 보기</a></figcaption>
+</figure>
+<h3>길이·화질과 비용</h3>
+<p>길이는 최대 30초까지 되지만 발표자는 15초로, 비율 16:9, 화질 720p로 맞췄어요. 아래 화면 버튼에 105크레딧이 찍혀 있어요. 같은 패널에서 바꿔 본 값을 모으면 길이와 화질이 비용을 크게 좌우해요.</p>
+<figure>
+  <img src="assets/frame-0645.webp" alt="비디오 설정 패널. Seedance 2.5, 길이 15s, 16:9, 화질 720p, 생성하기 버튼에 105크레딧이 강조됨">
+  <figcaption>생성 전에 버튼의 숫자부터 봐요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=405s" target="_blank" rel="noopener">영상 06:45에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>길이</th><th>화질</th><th>생성 버튼 크레딧</th></tr></thead>
+    <tbody>
+      <tr><td>5초 (기본값)</td><td>1080p</td><td>80</td></tr>
+      <tr><td>15초</td><td>1080p</td><td>240</td></tr>
+      <tr><td>15초</td><td>720p</td><td>105</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>생성을 누르고 몇 분 기다리면 영상이 나와요. 아래는 두 번째 컷의 한 장면이에요. 바닥 높이에 세워 둔 폰 앞에서 양팔을 활짝 벌리고 서 있어요. 프롬프트대로 궁궐 담장과 돌바닥이 보이고 간판이나 글자는 없어요.</p>
+<figure>
+  <img src="assets/frame-0657.webp" alt="완성 영상의 한 장면. 경복궁 회랑 앞 돌바닥 마당에서 한복 차림 금발 여성이 양팔을 벌리고 서 있는 낮은 고정 카메라 화면">
+  <figcaption>얼굴과 한복이 캐릭터 시트와 그대로예요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=417s" target="_blank" rel="noopener">영상 06:57에서 보기</a></figcaption>
+</figure>
+<h3>결과 확인과 한 줄 수정</h3>
+<p>결과는 세 가지로 확인해요.</p>
+<ul class="checklist">
+  <li>얼굴이 캐릭터 시트와 같나요?</li>
+  <li>컷이 바뀌어도 얼굴이 그대로 유지되나요?</li>
+  <li>움직임이 자연스럽나요?</li>
+</ul>
+<p>마음에 들면 내려받고, 부족하면 프롬프트를 고쳐 다시 뽑아요. 발표자도 실수를 하나 짚어요. 마지막 컷은 셀카인데 아래 화면처럼 뻗은 손에 폰이 또 들려 있어요. 폰으로 찍고 있으니 손에 폰이 보이면 안 되는 장면이에요.</p>
+<figure>
+  <img src="assets/frame-0729.webp" alt="셀카 컷 장면. 여성이 카메라를 보고 웃으며 뻗은 오른손에 스마트폰을 들고 있고, 폰에 '손에 핸드폰' 표시선">
+  <figcaption>발표자는 따로 액션캠으로 찍었다고 볼 수도 있어서 이 부분은 고치지 않았어요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=449s" target="_blank" rel="noopener">영상 07:29에서 보기</a></figcaption>
+</figure>
+<p>대신 시간대를 저녁으로 바꿔 봤어요. 첫 문장을 해 질 녘으로, 빛을 낮은 주황 햇빛으로만 고치고 나머지는 그대로 두었어요. 아래 왼쪽이 원래 오후 버전, 오른쪽이 새 저녁 버전이에요. 같은 사람, 같은 장소, 같은 부채 포즈인데 오른쪽은 햇빛이 뒤에서 비쳐 전체가 따뜻하게 물들었어요.</p>
+<figure>
+  <img src="assets/frame-0808.webp" alt="부채를 든 같은 포즈의 두 장면을 나란히 놓은 비교. 왼쪽은 밝은 오후, 오른쪽은 해 질 녘 역광">
+  <figcaption>문장 한 줄만 바꿨는데 새 버전이 나왔어요. 여러 버전을 뽑아 보고 마음에 드는 걸 저장하면 돼요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=488s" target="_blank" rel="noopener">영상 08:08에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=494s" target="_blank" rel="noopener">08:14</a>
+  <h2>Genjutsu로 유행 영상에 캐릭터 넣기</h2>
+<p>마지막 팁은 Genjutsu예요. 요즘 유행하는 영상에 내 캐릭터를 넣어 주는 기능이라, 프롬프트를 처음부터 쓰는 것보다 결과를 빨리 얻을 수 있어요. Genjutsu 탭에 들어가면 아래 화면 오른쪽처럼 커뮤니티 인기 영상이 쭉 나와요. 발표자가 고른 건 왼쪽에서 두 번째, 흰 티셔츠 차림으로 춤추는 아이돌 챌린지 영상이에요.</p>
+<figure>
+  <img src="assets/frame-0832.webp" alt="Higgsfield Genjutsu 화면. 왼쪽에 설정 패널, 오른쪽에 춤추는 여성, 정장 차림 남성들, 수영장 튜브 등 커뮤니티 인기 영상 썸네일 격자">
+  <figcaption>원하는 영상을 골라 바로 쓸 수 있어요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=512s" target="_blank" rel="noopener">영상 08:32에서 보기</a></figcaption>
+</figure>
+<p>'다시 만들기'를 누르면 등장인물만 바꿀 수 있어요. 아까 만든 한복 캐릭터로 바꾸고, 화질을 720p로 맞추고, 비용을 확인한 뒤 생성해요. 아래 왼쪽이 원래 템플릿, 오른쪽이 결과예요. 엘리베이터 앞 배경과 팔 동작, 카메라 구도는 그대로고 사람만 한복 캐릭터로 바뀌었어요.</p>
+<figure>
+  <img src="assets/frame-0856.webp" alt="세로 영상 두 개 비교. 왼쪽은 흰 티셔츠 차림 여성의 챌린지 원본, 오른쪽은 같은 배경과 동작에 한복 차림 금발 캐릭터로 바뀐 결과">
+  <figcaption>발표자 말로는 Genjutsu가 일본어로 환술(幻術)이라는 뜻이래요. 이름처럼 사람만 바꿔치기해요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=536s" target="_blank" rel="noopener">영상 08:56에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Higgsfield 도움말은 Genjutsu를 '찍어 둔 영상의 일부만 다시 만들고 나머지는 그대로 두는' 기능이라고 설명해요. 동작만 가져와 새 장면을 만드는 <span class="term" data-term="Motion transfer" data-desc="Genjutsu의 한 방식으로, 원본 영상에서 동작만 가져와 그 주위에 새 장면을 만들어요. 춤 챌린지를 내 캐릭터로 다시 찍는 데 맞아요." data-g="7">Motion transfer</span>와, 가리킨 대상만 바꾸는 Objects swap 두 방식이 있어요. 내 영상을 직접 올릴 수도 있고, 길이는 4~30초, 참고 이미지는 30장까지예요. 영상에서 쓴 인기 영상 목록은 Motion Library라는 이름으로 'Higgsfield 추천', '커뮤니티 인기', '커뮤니티 신규' 세 갈래로 나뉘어 있어요.</p>
+  <p class="cite">출처: <a href="https://higgsfield.ai/creator-hub/help-center/tools/how-do-i-use-genjutsu" target="_blank" rel="noopener">Higgsfield Creator Hub — How do I use Genjutsu</a></p>
+</aside>
+<h3>마무리: 시장 전망</h3>
+<p>끝으로 발표자는 AI 영상 생성 시장 전망을 보여 줘요. 아래 막대그래프는 현재에서 2033년까지 해마다 막대가 높아지고, 마지막 2033년 막대만 노란색이에요. 왼쪽 아래에 출처로 Grand View Research 전망이 적혀 있어요. 발표자는 4배 가까이, 1년에 20% 정도씩 커진다고 읽어요.</p>
+<figure>
+  <img src="assets/frame-0920.webp" alt="'AI 영상 생성 시장' 막대그래프. 현재부터 2033년까지 막대가 점점 높아지고 2033년 막대만 노란색. 출처 Grand View Research 전망">
+  <figcaption>처음 해 보는 사람도 몇 번만 연습하면 감을 잡을 수 있다는 게 마지막 말이에요. <a href="https://www.youtube.com/watch?v=OW3QquoIV48&amp;t=560s" target="_blank" rel="noopener">영상 09:20에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Grand View Research 보도자료는 세계 AI 영상 생성기 시장이 2033년 34억 4,160만 달러에 이르고, 2026~2033년 연평균 20.3% 성장한다고 전망해요. 20.3%로 7년을 이어 가면 약 3.6배라서, 영상의 '4배 가까이'는 이 수치를 반올림한 말로 보여요.</p>
+  <p class="cite">출처: <a href="https://www.grandviewresearch.com/press-release/global-ai-video-generator-market" target="_blank" rel="noopener">Grand View Research — AI Video Generator Market To Reach $3,441.6 Million By 2033</a></p>
+</aside>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 이름과 한복 용어가 잘못 받아적힌 곳이 많아요. 영상 속 자막과 화면 글자를 보고 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>익스필드, 히스필드, 식스필드, 스필드</td><td>Higgsfield</td><td>화면 로고와 자막</td></tr>
+      <tr><td>나노바나 / 나노바라나프로</td><td>Nano Banana / Nano Banana Pro</td><td></td></tr>
+      <tr><td>소울 시네마</td><td>Soul Cinema</td><td></td></tr>
+      <tr><td>시드림</td><td>Seedream</td><td></td></tr>
+      <tr><td>영상 모델을 보자면와는</td><td>영상 모델을 보자면 Wan은</td><td></td></tr>
+      <tr><td>클링</td><td>Kling</td><td></td></tr>
+      <tr><td>시덴스 2.5로 5로, CS 2.5로 5로</td><td>Seedance 2.5</td><td></td></tr>
+      <tr><td>가장적인 결과</td><td>가장 사실적인 결과</td><td>화면 슬라이드</td></tr>
+      <tr><td>GPT 이미지 2.5 플레이어</td><td>GPT Image 2.5 Flare</td><td>모델 선택 칸</td></tr>
+      <tr><td>GPT 이미지 2.5 선버스트</td><td>GPT Image 2.5 Sunburst</td><td></td></tr>
+      <tr><td>풀이나 스타터</td><td>Free나 Starter</td><td></td></tr>
+      <tr><td>젠주 무료 생성, 젠주츠</td><td>Genjutsu 무료 생성, Genjutsu</td><td></td></tr>
+      <tr><td>환수</td><td>환술(幻術)</td><td>Genjutsu의 뜻</td></tr>
+      <tr><td>저구리, 노리게, 접이체</td><td>저고리, 노리개, 접부채</td><td>(추정) 프롬프트의 folding fan</td></tr>
+      <tr><td>금색 링 귀걸리, 회석 배경</td><td>금색 링 귀걸이, 회색 배경</td><td></td></tr>
+      <tr><td>초환</td><td>초안</td><td></td></tr>
+      <tr><td>최 GPT</td><td>ChatGPT</td><td></td></tr>
+      <tr><td>유죄라고</td><td>유지라고</td><td></td></tr>
+      <tr><td>양파를 벌리고</td><td>양팔을 벌리고</td><td></td></tr>
+      <tr><td>관광에 몇 명</td><td>관광객 몇 명</td><td></td></tr>
+      <tr><td>해질력 노로</td><td>해 질 녘으로</td><td>(추정)</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-4"><dt>고정 카메라<span class="en">Locked-off shot</span></dt><dd>카메라를 한 자리에 세워 두고 움직이지 않는 촬영이에요. 프롬프트에 적어 두면 화면이 흔들리지 않고 인물 동작만 보여요.</dd></div>
+    <div class="g" id="g-2"><dt>레퍼런스<span class="en">Reference</span></dt><dd>생성할 때 &#x27;이 사람·이 물건을 그대로 써라&#x27;라고 함께 넘기는 참고 이미지나 영상이에요. 프롬프트 글만으로는 같은 얼굴을 매번 똑같이 뽑기 어려워서 써요.</dd></div>
+    <div class="g" id="g-5"><dt>립싱크<span class="en">Lip sync</span></dt><dd>말소리와 입 모양이 맞아떨어지는 거예요. 소리까지 함께 만드는 영상 모델은 대사를 적으면 입 모양도 거기에 맞춰 만들어요.</dd></div>
+    <div class="g" id="g-1"><dt>캐릭터 시트<span class="en">Character sheet</span></dt><dd>같은 인물을 앞모습, 옆모습, 얼굴 클로즈업 등 여러 각도로 한 장에 담은 이미지예요. 영상 모델에 레퍼런스로 주면 장면이 바뀌어도 얼굴과 옷이 흔들리지 않아요.</dd></div>
+    <div class="g" id="g-3"><dt>크레딧<span class="en">Credit</span></dt><dd>Higgsfield 같은 생성 서비스의 사용량 단위예요. 요금제마다 매달 정해진 만큼 들어오고, 모델·길이·화질에 따라 한 번 생성할 때 빠지는 양이 달라요.</dd></div>
+    <div class="g" id="g-6"><dt>화면비<span class="en">Aspect ratio</span></dt><dd>화면의 가로 대 세로 비율이에요. 전신 사진은 3:4, 가로 영상과 세 칸 시트는 16:9처럼 결과물 모양에 맞춰 골라요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>GPT</dt><dd>Generative Pre-trained Transformer</dd></div>
+    <div class="g" id="g-7"><dt>Motion transfer</dt><dd>Genjutsu의 한 방식으로, 원본 영상에서 동작만 가져와 그 주위에 새 장면을 만들어요. 춤 챌린지를 내 캐릭터로 다시 찍는 데 맞아요.</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=OW3QquoIV48" target="_blank" rel="noopener">원본 영상 — Todaycoding, AI 영상 제작 이렇게 쉬워도 되나?</a></li>
+    <li id="src-2"><a href="https://seed.bytedance.com/en/seedance2_5" target="_blank" rel="noopener">ByteDance Seed — Seedance 2.5</a></li>
+    <li id="src-3"><a href="https://higgsfield.ai/creator-hub/help-center/tools/how-do-i-use-genjutsu" target="_blank" rel="noopener">Higgsfield Creator Hub — How do I use Genjutsu</a></li>
+    <li id="src-4"><a href="https://www.grandviewresearch.com/press-release/global-ai-video-generator-market" target="_blank" rel="noopener">Grand View Research — AI Video Generator Market To Reach $3,441.6 Million By 2033</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 11일에 이 영상을 보고 정리했어요. 원본은 Todaycoding 채널에 있어요. 요금과 크레딧은 녹화 당시 화면 기준이에요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+(() => {
+  const g = document.getElementById('fig-shots');
+  if (!g) return;
+  const x0 = 20, scale = 41; // 1초 = 41px, 15초 = 615px
+  const shots = [
+    [0, 3, '1컷 셀카', '웃다가 폰 내림', 'c1', ''],
+    [3, 7, '2컷 고정 카메라', '뛰어가 양팔 포즈', 'c2', '찰칵'],
+    [7, 10, '3컷 고정 카메라', '부채 펴고 포즈', 'c2', '찰칵'],
+    [10, 15, '4컷 셀카', '걸으며 영어로 한마디', 'c1', ''],
+  ];
+  shots.forEach(([a, b, name, act, cls, snd]) => {
+    const x = x0 + a * scale, w = (b - a) * scale - 4;
+    g.append(el('rect', { x, y: 40, width: w, height: 90, rx: 8, class: `${cls} cell` }));
+    g.append(el('text', { x: x + w / 2, y: 76, 'text-anchor': 'middle', 'font-size': 12 }, name));
+    g.append(el('text', { x: x + w / 2, y: 100, 'text-anchor': 'middle', class: 'sub', 'font-size': 11 }, act));
+    if (snd) g.append(el('text', { x: x + w / 2, y: 122, 'text-anchor': 'middle', class: 'sub', 'font-size': 11 }, '셔터 ' + snd));
+  });
+  g.append(el('line', { x1: x0, y1: 150, x2: x0 + 15 * scale, y2: 150, class: 'line' }));
+  [0, 3, 7, 10, 15].forEach((t) => {
+    const x = x0 + t * scale;
+    g.append(el('line', { x1: x, y1: 145, x2: x, y2: 155, class: 'line' }));
+    g.append(el('text', { x, y: 175, 'text-anchor': 'middle', class: 'sub' }, `${t}초`));
+  });
+  g.append(el('text', { x: x0, y: 24, class: 'sub' }, '소리: 발소리 · 비단 스치는 소리 · 셔터 두 번 · 목소리와 웃음'));
+})();
+</script>
+</body>
+</html>
