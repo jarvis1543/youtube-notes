@@ -1,0 +1,992 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Code로 더 나은 소프트웨어 팩토리 만들기 (v2)</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Claude Code로 더 나은 소프트웨어 팩토리 만들기 (v2)</h1>
+  <p class="lede">GitHub 이슈를 PR로 바꾸는 에이전트 공장, 설치부터 병렬 실행까지 따라가요</p>
+  <div class="meta">
+    <span>ZazenCodes</span><span class="dot">·</span>
+    <span>영상 32:22</span><span class="dot">·</span>
+    <span>읽는 데 약 20분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=RiaTyJ2POVo" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>입력은 <code>factory</code> 라벨이 붙은 GitHub 이슈, 출력은 그 이슈를 닫는 PR(Pull Request)이에요. 라벨 없는 이슈는 건드리지 않아요.</li>
+    <li>흐름은 접수(Fable) → 스펙(Opus) → 빌드(Opus) → <span class="term" data-term="게이트" data-en="Gate" data-desc="리뷰로 넘어가기 전에 테스트·린트·빌드를 돌려 통과한 것만 보내는 관문이에요. 스크립트라 싸고 결과가 흔들리지 않아요." data-g="5">게이트</span>(<code>checks.sh</code>) → 리뷰어들 → 승인자(Opus)예요. 떨어지면 같은 빌더에게 돌아가요.</li>
+    <li>접수가 매긴 위험도와 영역(UI(User Interface)·보안)에 따라 리뷰어 수와 모델이 달라져요.</li>
+    <li>작업 상태는 <code>job.json</code>에 있고 <code>factory/bin/job</code>만 그 파일을 고쳐요. 그래서 세션이 죽어도 <code>/factory run</code>으로 이어서 돌아요.</li>
+    <li>리뷰어를 싼 모델로 두면 괜한 되돌림이 늘어 오히려 비쌀 수 있어요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">v2에서 달라진 점</a></li>
+    <li><a href="#s2">공장 흐름: 이슈에서 PR까지</a></li>
+    <li><a href="#s3">오케스트레이터와 결정론적 뼈대</a></li>
+    <li><a href="#s4">설치하기</a></li>
+    <li><a href="#s5">첫 이슈 다크 모드를 끝까지</a></li>
+    <li><a href="#s6">여러 이슈를 한꺼번에</a></li>
+    <li><a href="#s7">사람이 결정해야 할 때</a></li>
+    <li><a href="#s8">상태는 스크립트만 써요</a></li>
+    <li><a href="#s9">맺음말: 복잡도, 비용, 프로덕션</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>v2에서 달라진 점</h2>
+<p>발표자는 지난 영상에서 프로젝트 안에 들어가는 모듈형 <span class="term" data-term="소프트웨어 팩토리" data-en="Software factory" data-desc="이슈를 넣으면 에이전트들이 정해진 단계를 거쳐 코드와 PR을 만들어 내는 자동화 파이프라인이에요. 사람이 각 단계를 손으로 하지 않는다는 점에서 공장에 빗대요." data-g="1">소프트웨어 팩토리</span>를 만들었어요. Claude Code <span class="term" data-term="서브에이전트" data-en="Subagent" data-desc="메인 Claude Code 세션이 띄우는 별도 에이전트예요. 자기 컨텍스트와 도구, 모델을 따로 가져서 메인 대화를 어지럽히지 않아요." data-g="3">서브에이전트</span>들이 스펙을 쓰고, 코드를 짜고, 리뷰하는 구조였죠. 이번 2편은 그 영상에 달린 피드백을 받아 고친 버전이에요.</p>
+<p>바뀐 점은 마인드맵의 'What's new in v2' 카드에 다섯 줄로 정리돼 있어요. 분홍 화살표가 하나씩 가리키는 항목이에요.</p>
+<figure>
+  <img src="assets/frame-0145.webp" alt="마인드맵의 What's new in v2 카드. Intake (Fable), Routing by risk (Haiku), Deterministic checks, GitHub, Observability 다섯 항목과 각 설명">
+  <figcaption>맨 위 접수(Fable)와 위험도별 라우팅이 이번 판의 뼈대예요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=105s" target="_blank" rel="noopener">영상 01:45에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>바뀐 점</th><th>무엇을 하나요</th></tr></thead>
+    <tbody>
+      <tr><td>접수 (Fable)</td><td>이슈가 만들 가치가 있는지, 어느 범위로 만들지 정해요. 필요하면 사람에게 물어봐요</td></tr>
+      <tr><td>위험도별 라우팅 (Haiku)</td><td>위험이 낮은 변경엔 싼 리뷰어를, UI·보안 변경엔 더 좋은 모델을 붙여요</td></tr>
+      <tr><td><span class="term" data-term="결정론적" data-en="Deterministic" data-desc="같은 입력이면 늘 같은 결과가 나오는 성질이에요. 에이전트 판단은 매번 달라질 수 있어서, 테스트나 상태 기록처럼 확실해야 하는 일은 스크립트에 맡겨요." data-g="4">결정론적</span> 검사</td><td>프로젝트 테스트를 리뷰어보다 먼저, 머지 직전에 한 번 더 돌려요</td></tr>
+      <tr><td>GitHub</td><td>GitHub 이슈에서 작업이 생기고, 결과물은 PR이에요</td></tr>
+      <tr><td><span class="term" data-term="관측 가능성" data-en="Observability" data-desc="시스템 안에서 무슨 일이 일어나는지 밖에서 알아볼 수 있는 정도예요. 여기서는 작업별 비용·시간과 단계별 기록 파일이 그 역할을 해요." data-g="8">관측 가능성</span></td><td>작업마다 비용과 걸린 시간을 기록해요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>영상 후반은 직접 따라 하는 데모예요. 발표자는 자기 프로젝트에 설치하는 과정부터 보여 주니 같이 따라 해 보라고 권해요.</p>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=97s" target="_blank" rel="noopener">01:37</a>
+  <h2>공장 흐름: 이슈에서 PR까지</h2>
+<p>전체 흐름은 마인드맵의 'The factory' 그림 한 장에 다 들어 있어요. 왼쪽 GitHub issues에서 시작해 Intake, Spec writer, Builder, Gate를 지나 오른쪽 리뷰어 네 칸과 Approver로 가요. 상자마다 아래 작은 글씨가 그 단계를 맡는 모델이에요.</p>
+<figure>
+  <img src="assets/frame-0315.webp" alt="The factory 흐름도. GitHub issues(label: factory) → Intake(Fable) → Spec writer(Opus) → Builder(Opus) → Gate(checks.sh · script) → Code review, UX review, UI design review, Security review → Approver(Opus) → Merge the PR 또는 Needs human">
+  <figcaption>되돌아가는 화살표가 둘이에요. 게이트 실패(<code>FAIL</code>)와 리뷰 수정 요구(<code>CHANGES</code>) 모두 같은 빌더에게 돌아가요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=195s" target="_blank" rel="noopener">영상 03:15에서 보기</a></figcaption>
+</figure>
+<h3>접수: 만들 가치가 있나요?</h3>
+<p>이슈는 한 번에 여러 개 들어와도 돼요. 접수 단계에서 Fable이 프로젝트 맥락 안에서 이 기능을 만들 가치가 있는지, 범위는 어디까지인지, 위험도는 얼마인지 판단해요. 그림의 Intake 아래 글씨처럼 정보가 모자라면 작성자에게 묻고(<code>NEEDS-INFO</code>), 아니다 싶으면 이유를 남기고 거절해요(<code>REJECT</code>).</p>
+<h3>스펙, 빌드, 게이트</h3>
+<p>통과한 이슈는 스펙 작성자와 빌더가 차례로 맡아요. 둘 다 Opus예요. 발표자는 이 둘을 지금은 나눠 뒀지만 하나로 합쳐도 될 것 같다고 해요.</p>
+<p>빌드 결과는 게이트를 지나요. 게이트는 에이전트가 아니라 <code>checks.sh</code>를 돌리는 스크립트라서 싸고 결과가 늘 같아요. 실패하면 빌더가 로그를 받아 다시 고쳐요.</p>
+<h3>리뷰어와 승인자</h3>
+<p>게이트를 넘으면 리뷰어들이 동시에 봐요. 흐름도 오른쪽 칸을 표로 옮기면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>리뷰어</th><th>모델</th><th>언제 붙나요</th></tr></thead>
+    <tbody>
+      <tr><td>코드 리뷰</td><td>Haiku, 위험하면 Sonnet</td><td>항상</td></tr>
+      <tr><td>UX(User Experience) 리뷰</td><td>Sonnet</td><td>UI가 바뀔 때</td></tr>
+      <tr><td>UI 디자인 리뷰</td><td>Haiku</td><td>UI가 바뀔 때</td></tr>
+      <tr><td>보안 리뷰</td><td>Opus</td><td>보안 관련 변경일 때</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>코드 리뷰를 Haiku로 하느냐 Sonnet으로 하느냐는 처음에 Fable이 매긴 위험도로 정해요. 발표자는 앞 단계 에이전트의 판단으로 뒤 단계를 바꾸고 비용까지 아낄 수 있다는 걸 보여 주려고 이렇게 짰다고 해요.</p>
+<p>리뷰를 모두 통과하면 승인자가 마지막으로 판단해요. 바로 머지해도 되면 <code>gh pr merge</code>로 머지하고, 사람이 봐야 하면 Needs human으로 넘겨요. 그림 맨 아래 문장처럼 <span class="term" data-term="오케스트레이터" data-en="Orchestrator" data-desc="여러 에이전트에게 일을 나눠 주고 진행을 챙기는 지휘 역할이에요. 여기서는 &lt;code&gt;/factory run&lt;/code&gt;을 친 Claude Code 세션 하나가 맡아요." data-g="2">오케스트레이터</span> 하나가 최대 3개 작업을 동시에 돌리고, 작업마다 자기 <span class="term" data-term="워크트리" data-en="Git worktree" data-desc="한 저장소에서 여러 브랜치를 각각 다른 폴더에 동시에 체크아웃하는 git 기능이에요. 작업 여러 개가 서로 파일을 덮어쓰지 않고 병렬로 돌 수 있어요." data-g="6">워크트리</span>와 브랜치, 이슈를 닫는 PR 하나를 가져요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>접수는 작업 하나당 Fable을 딱 한 번 불러요. 저장소 README는 플랜에 따라 Fable 사용량이 플랜 기본 사용량이 아니라 사용량 크레딧으로 청구될 수 있다고 적어 뒀어요. 그리고 설치하려면 Claude Code 2.1.257 이상이 필요한데, 접수 에이전트가 Fable로 돌기 때문이에요.</p>
+  <p class="cite">출처: <a href="https://github.com/zazencodes/zazencodes-season-3/tree/main/src/software-factory-claude-code-v2" target="_blank" rel="noopener">zazencodes-season-3 — software-factory-claude-code-v2 README</a>, <a href="https://github.com/zazencodes/zazencodes-season-3/blob/main/src/software-factory-claude-code-v2/INSTALL.md" target="_blank" rel="noopener"><code>INSTALL.md</code></a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=210s" target="_blank" rel="noopener">03:30</a>
+  <h2>오케스트레이터와 결정론적 뼈대</h2>
+<p>실제로 쓰는 방법은 단순해요. Claude Code 세션 하나를 열고 <code>/factory run</code>을 치면 그 세션이 오케스트레이터가 돼요. 마인드맵의 'One orchestrator' 카드가 그 규칙을 네 줄로 정리해 둬요.</p>
+<figure>
+  <img src="assets/frame-0450.webp" alt="One orchestrator 카드. Up to concurrency jobs at once (default 3), Every agent is a background subagent, Agents reply with one line; detail goes in their file, State lives in files, so a new run resumes after a crash. 오른쪽에 The deterministic spine 카드 일부">
+  <figcaption>마지막 줄이 중요해요. 상태가 파일에 있으니 세션이 죽어도 다시 돌리면 이어서 해요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=290s" target="_blank" rel="noopener">영상 04:50에서 보기</a></figcaption>
+</figure>
+<p>오케스트레이터는 일마다 백그라운드 서브에이전트를 띄워요. 에이전트는 결과를 한 줄로만 답하고, 자세한 내용은 자기 파일에 적어요. 오른쪽 'The deterministic spine' 카드에는 <code>factory/checks.sh</code>, <code>factory/bin/gate</code>, <code>factory/bin/route</code>, <code>factory/bin/job</code>이 보여요. 팩토리와 함께 오는 셸 스크립트예요. 작업을 다음 단계로 밀어 주는 일은 이 스크립트들이 해요.</p>
+<p>아래 그림은 이 역할 나눔을 정리한 거예요. 판단은 에이전트가 하고, 확실해야 하는 일은 스크립트가 해요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="오케스트레이터가 서브에이전트에게 일을 맡기고, 상태 변경과 검사는 스크립트를 불러서 하는 구조">
+    <defs><marker id="arrow-spine" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="box accent" x="230" y="14" width="180" height="50" rx="10"/>
+    <text x="320" y="36" text-anchor="middle">오케스트레이터</text>
+    <text x="320" y="54" text-anchor="middle" class="sub">/factory run 세션</text>
+    <rect class="c1 cell" x="20" y="120" width="250" height="96" rx="10"/>
+    <text x="145" y="144" text-anchor="middle">서브에이전트 (판단)</text>
+    <text x="145" y="168" text-anchor="middle" class="sub">접수 · 스펙 · 빌더</text>
+    <text x="145" y="188" text-anchor="middle" class="sub">리뷰어 · 승인자</text>
+    <text x="145" y="206" text-anchor="middle" class="sub">한 줄로 답, 자세한 건 파일에</text>
+    <rect class="c2 cell" x="370" y="120" width="250" height="96" rx="10"/>
+    <text x="495" y="144" text-anchor="middle">결정론적 뼈대 (스크립트)</text>
+    <text x="495" y="168" text-anchor="middle" class="mono">checks.sh · bin/gate</text>
+    <text x="495" y="188" text-anchor="middle" class="mono">bin/route · bin/job</text>
+    <text x="495" y="206" text-anchor="middle" class="sub">검사, 라우팅, 상태 기록</text>
+    <path class="line" d="M270 64 L170 118" marker-end="url(#arrow-spine)"/>
+    <path class="line" d="M370 64 L470 118" marker-end="url(#arrow-spine)"/>
+    <text x="150" y="88" text-anchor="middle" class="sub">일을 맡겨요</text>
+    <text x="500" y="88" text-anchor="middle" class="sub">불러서 단계를 넘겨요</text>
+  </svg>
+  <figcaption>에이전트가 상태 파일을 직접 고치지 않는다는 게 이 구조의 핵심이에요. 섹션 '상태는 스크립트만 써요'에서 다시 나와요.</figcaption>
+</figure>
+<h3>명령은 세 가지</h3>
+<p>명령은 'Commands' 카드 하나에 다 있어요. 마지막 줄의 <code>&lt;anything&gt;</code>이 밑줄 쳐진 부분이에요. 아무 문장이나 넘겨서 팩토리 맥락에서 일을 시킬 수 있어요.</p>
+<figure>
+  <img src="assets/frame-0418.webp" alt="Commands 카드. /factory run 은 run (or resume) processing all issues, /factory run n 은 run for one issue, /factory anything 은 talk to the factory">
+  <figcaption>세 명령 모두 설치할 때 함께 오는 스킬 하나가 처리해요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=258s" target="_blank" rel="noopener">영상 04:18에서 보기</a></figcaption>
+</figure>
+<p>작업이 팩토리를 지나는 모습은 대시보드로 봐요. <span class="term" data-term="동시 실행 수" data-en="Concurrency" data-desc="한 번에 함께 돌릴 수 있는 작업 개수예요. 이 팩토리는 기본 3이고 &lt;code&gt;factory/config.json&lt;/code&gt;에서 바꿔요." data-g="7">동시 실행 수</span>는 기본 3이고, 설치한 뒤 설정 파일에서 바꿀 수 있어요.</p>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=297s" target="_blank" rel="noopener">04:57</a>
+  <h2>설치하기</h2>
+<p>데모 프로젝트는 note-wall-app이라는 간단한 메모 앱이에요. 벽에 메모를 붙이는 게 전부예요. 팩토리가 GitHub 이슈와 PR을 쓰기 때문에 저장소가 GitHub에 올라가 있어야 해요.</p>
+<h3>설치 프롬프트 붙여 넣기</h3>
+<p>Claude Code를 열고 설치 프롬프트를 붙여 넣어요. 내용은 '이 소프트웨어 팩토리를 이 프로젝트에 설치해 줘'와 참고 저장소 주소 한 줄이에요. 오른쪽 브라우저에 열린 저장소 README의 Install 칸에 같은 문장이 있어요.</p>
+<figure>
+  <img src="assets/frame-0545.webp" alt="왼쪽 Claude Code에 설치 프롬프트가 입력돼 있고, 오른쪽 브라우저에 Software Factory for Claude Code (v2) README의 Install 칸이 강조된 화면">
+  <figcaption>프롬프트는 영상 설명란과 README 양쪽에 있어요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=345s" target="_blank" rel="noopener">영상 05:45에서 보기</a></figcaption>
+</figure>
+<pre><code class="language-text">Install this software factory in this project from the reference repository:
+
+https://github.com/zazencodes/zazencodes-season-3/tree/main/src/software-factory-claude-code-v2</code></pre>
+<h3>무엇이 생기나요</h3>
+<p>설치가 끝나면 폴더 두 개가 생겨요.</p>
+<ul>
+  <li><code>.claude/</code>: <code>agents/</code>에 서브에이전트 정의 파일들이, <code>skills/factory/SKILL.md</code>에 팩토리 동작 전체를 설명하는 스킬이 들어가요.</li>
+  <li><code>factory/</code>: 팩토리 코드예요. <code>bin/</code>의 gate, job, route가 작업을 받아 다음 단계로 넘기고, <code>checks.sh</code>가 CI(Continuous Integration)/CD 같은 결정론적 검사를, <code>config.json</code>이 설정을, <code>dashboard.html</code>이 관찰을 맡아요.</li>
+</ul>
+<p>설치 에이전트는 템플릿을 그대로 복사하지 않고 프로젝트에 맞게 고쳐요. 아래는 Claude가 마지막에 남긴 'Changed for Note Wall' 요약이에요.</p>
+<figure>
+  <img src="assets/frame-0709.webp" alt="Changed for Note Wall 요약. factory/checks.sh가 npm ci, lint, typecheck, test, build를 돌림, config.json에 tests/* 보호 경로 추가, 에이전트별 맞춤 내용, AGENTS.md에 Software factory 섹션, .gitignore와 eslint.config.js 수정">
+  <figcaption>첫 줄의 <code>checks.sh</code>가 이제 이 프로젝트의 실제 테스트를 돌려요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=429s" target="_blank" rel="noopener">영상 07:09에서 보기</a></figcaption>
+</figure>
+<p>요약을 줄별로 보면 이래요. <code>checks.sh</code>는 <code>npm ci</code> 뒤에 lint, typecheck, test, build를 돌리고 main에서 통과해요. <code>config.json</code>에는 <code>tests/*</code>가 <span class="term" data-term="보호 경로" data-en="Protected paths" data-desc="팩토리 작업이 고치면 안 되는 파일 목록이에요. 바꾸면 게이트가 떨어져서, 에이전트가 검사나 기존 테스트를 고쳐 통과하는 꼼수를 막아요." data-g="9">보호 경로</span>로 추가돼서, 작업이 새 테스트는 더해도 기존 테스트는 못 바꿔요. 보안 리뷰어에겐 이 앱의 위험 지점(누구나 부를 수 있는 API(Application Programming Interface), 입력 검증, 경로 탐색 등)을 알려 줬어요. <code>AGENTS.md</code>에는 'Software factory' 섹션이 생겨서 팩토리 쓰는 법이 문서로 남아요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p><code>INSTALL.md</code>에 따르면 설치 에이전트가 GitHub 라벨 세 개(<code>factory</code>, <code>factory:needs-info</code>, <code>factory:needs-human</code>)도 <code>gh label create</code>로 만들어요. 영상에서 '라벨이 없으면 직접 만들라'고 한 건 이 단계가 빠졌을 때를 위한 말이에요. 미리 준비할 것은 Claude Code 2.1.257 이상, <code>python3</code>, 저장소에 푸시할 수 있게 로그인된 <code>gh</code>예요.</p>
+  <p class="cite">출처: <a href="https://github.com/zazencodes/zazencodes-season-3/blob/main/src/software-factory-claude-code-v2/INSTALL.md" target="_blank" rel="noopener">software-factory-claude-code-v2 <code>INSTALL.md</code></a></p>
+</aside>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=446s" target="_blank" rel="noopener">07:26</a>
+  <h2>첫 이슈 다크 모드를 끝까지</h2>
+<p>새 Claude Code 세션(Opus 5.5, low effort)에서 <code>factory run</code>을 처음 치면 대기열이 비어 있다고 나와요. 이슈는 여럿 있지만 <code>factory</code> 라벨이 붙은 게 없어서예요.</p>
+<h3>라벨을 붙여야 일이 시작돼요</h3>
+<p>라벨은 일부러 둔 안전장치예요. 여러 사람이 이슈를 올리더라도 어떤 걸 팩토리에 맡길지는 내가 고르게 하려는 거예요. 아래 화면의 Issues 목록에 열린 이슈 다섯 개(Multiple walls, Change display name, Different fonts, Colored sticky notes, Dark mode)가 보여요.</p>
+<figure>
+  <img src="assets/frame-0756.webp" alt="note-wall-app 저장소의 Issues 탭. 열린 이슈 다섯 개가 강조돼 있고 아직 factory 라벨이 없음">
+  <figcaption>맨 아래 Dark mode 하나에만 먼저 라벨을 붙여요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=476s" target="_blank" rel="noopener">영상 07:56에서 보기</a></figcaption>
+</figure>
+<h3>접수 기록 읽기</h3>
+<p>라벨을 붙이고 같은 명령을 다시 치면 작업이 생기고 접수 단계로 들어가요. 대시보드에서 작업 카드를 누르면 단계마다 쌓인 파일이 보여요. Fable이 쓴 <code>intake.md</code> 맨 위 상자에 <code>DECISION: ACCEPT</code>, <code>RISK: low</code>, <code>SURFACES: ui</code>, <code>RESCOPED: no</code>가 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0925.webp" alt="대시보드에서 Dark mode 작업의 intake.md를 연 화면. DECISION: ACCEPT, RISK: low, SURFACES: ui, RESCOPED: no와 Summary, Scope, Why 항목">
+  <figcaption>그 아래 Summary에 '서버나 데이터는 안 건드리니 위험이 낮다'는 이유까지 남아요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=565s" target="_blank" rel="noopener">영상 09:25에서 보기</a></figcaption>
+</figure>
+<p>요약 밑에는 Scope(무엇을 만들지)와 Why(왜 그렇게 판단했는지)가 이어져요. 발표자는 에이전트가 무슨 생각으로 작업을 넘겼는지 남겨 두는 게 중요하다고 해요. 디버깅할 때도, 시간이 지나 팩토리가 잘 돌고 있는지 따져 볼 때도 이 기록을 봐요.</p>
+<h3>빌더 들여다보기</h3>
+<p>빌드 단계에서는 Claude Code 하단에 <code>builder</code> 서브에이전트가 보여요. 화면에선 'Rewriting theme variables in style.css'를 하고 있어요. Enter로 들어가 무슨 생각을 하는지 보고, 방향을 틀 수도 있어요.</p>
+<figure>
+  <img src="assets/frame-0956.webp" alt="Claude Code 화면. 001-dark-mode 작업의 intake accepted, spec written 로그와 하단에 builder 서브에이전트가 Rewriting theme variables in style.css 를 실행 중">
+  <figcaption>로그 위쪽에 접수가 고른 리뷰어 구성(code haiku, ux sonnet, ui haiku)이 먼저 찍혀 있어요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=596s" target="_blank" rel="noopener">영상 09:56에서 보기</a></figcaption>
+</figure>
+<p>다만 발표자는 이렇게 에이전트와 일일이 대화하는 게 팩토리의 목적은 아니라고 덧붙여요. 할 수 있다는 걸 보여 준 정도예요.</p>
+<h3>리뷰에서 되돌아가기</h3>
+<p>빌드가 끝나고 게이트를 통과하면 리뷰 단계로 가요. 그런데 1라운드에서 코드 리뷰가 <code>CHANGES</code>를 냈어요. 아래 화면 터미널 첫 줄에 <code>gate PASS code:CHANGES ux:PASS ui:pending</code>이 보이고, 대시보드 카드의 code 칩이 주황색이에요.</p>
+<figure>
+  <img src="assets/frame-1108.webp" alt="터미널에 001-dark-mode review round 1 gate PASS code:CHANGES ux:PASS ui:pending 로그. 대시보드 카드에서 gate와 ux는 초록, code는 주황 칩으로 강조">
+  <figcaption>코드 리뷰가 떨어지면 UI 리뷰를 기다렸다가 피드백을 모아 빌더에게 넘겨요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=668s" target="_blank" rel="noopener">영상 11:08에서 보기</a></figcaption>
+</figure>
+<p>코드 리뷰의 판정은 '가독성 부족 하나'였어요. 발표자 말로는 리뷰어가 꽤 사소한 걸로 트집을 잡은 거예요. 곧 UI 리뷰도 떨어졌고, 작업은 피드백을 들고 빌더로 돌아갔어요. 2라운드에서는 코드와 UI 모두 초록이 됐어요.</p>
+<p>여기서 발표자가 짚는 문제가 있어요. 낮은 위험도라 코드 리뷰를 Haiku가 맡았는데, Haiku는 빌더만큼 코드를 이해하지 못할 때가 있어요. 리뷰어가 빌더보다 덜 똑똑하면 오히려 나쁜 흐름이 생길 수 있다는 거예요.</p>
+<h3>자동 머지까지</h3>
+<p>승인자는 사람 없이 머지해도 되는 단순한 기능이라고 판단했어요. 아래 화면에 <code>APPROVE</code>와 <code>merged PR #6</code>, 그리고 작업 요약이 나와요.</p>
+<figure>
+  <img src="assets/frame-1256.webp" alt="터미널에 decision.md의 APPROVE, 001-dark-mode: merged PR #6, 작업 요약표 001-dark-mode #1 merged round 2 PR #6 비용 $3.41 시간 8m, total $3.41 (API-equivalent, factory agents only)">
+  <figcaption>2라운드 만에 머지됐고, API 요금으로 치면 $3.41, 8분이 걸렸어요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=776s" target="_blank" rel="noopener">영상 12:56에서 보기</a></figcaption>
+</figure>
+<p>GitHub에서 PR을 열면 팩토리가 만든 커밋들이 다 남아 있고, 맨 아래에 'Pull request successfully merged and closed'가 떠요. 시스템이 내 확인 없이 머지했지만 기록은 그대로 남으니 나중에 추적하기 좋다는 게 발표자의 평가예요.</p>
+<figure>
+  <img src="assets/frame-1326.webp" alt="GitHub PR 페이지. Dark mode with OS default and top-bar toggle PR이 Merged 상태이고 하단에 Pull request successfully merged and closed 메시지가 강조됨">
+  <figcaption>PR 제목은 접수와 스펙이 다듬은 범위(운영체제 기본값 + 상단 토글)를 그대로 따라요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=806s" target="_blank" rel="noopener">영상 13:26에서 보기</a></figcaption>
+</figure>
+<p>로컬로 돌아오면 설치 때 생긴 파일들이 아직 커밋 안 된 상태라 먼저 커밋하고, <code>git pull</code>로 원격 변경을 받아요. <code>AGENTS.md</code>에 충돌이 조금 있었지만 자동 머지로 정리됐어요. <code>npm run dev</code>로 띄운 앱은 이제 기본이 다크 모드예요.</p>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=870s" target="_blank" rel="noopener">14:30</a>
+  <h2>여러 이슈를 한꺼번에</h2>
+<p>이번엔 남은 이슈 네 개에 한꺼번에 라벨을 붙여요. 그다음 <code>/factory run 4</code>로 'Different fonts' 하나만 먼저 넣고, 같은 오케스트레이터 세션에서 <code>/factory run</code>을 다시 쳐서 나머지를 넣어요. 오케스트레이터 세션은 계속 쓸 수 있어서, 돌고 있는 작업에 말을 걸 수도, 새 작업을 넣을 수도 있어요.</p>
+<h3>동시 실행 수는 3</h3>
+<p>대시보드에는 작업 세 개만 돌고 있어요. 동시 실행 수가 몇이냐고 묻자 오케스트레이터가 바로 답해요.</p>
+<figure>
+  <img src="assets/frame-1603.webp" alt="Claude Code에 whats the concurrency setting in the factory 질문과 답변. concurrency는 factory/config.json에서 3이고 세 자리가 모두 사용 중, Issue #5는 대기. 아래 대시보드 Spec 칸에 두 작업, Build 칸에 하나">
+  <figcaption>세 칸이 다 찼으니 #5는 하나가 끝날 때까지 기다려요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=963s" target="_blank" rel="noopener">영상 16:03에서 보기</a></figcaption>
+</figure>
+<h3>작업마다 시간과 비용</h3>
+<p>대시보드 카드에는 위험도, 비용, 시간이 찍혀요. 끝난 Dark mode 카드는 8분, 비용은 발표자가 '3.40달러'라고 읽었는데 화면엔 $3.41이에요. 발표자는 구독 플랜으로 돌려서 실제로 낸 돈은 없다고 해요. 그래도 작업끼리 비교해서 어디를 줄일지 찾는 기준이 된다는 거예요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>README는 이 비용을 '각 작업 에이전트의 <span class="term" data-term="API 환산 가격" data-en="API-equivalent cost" data-desc="구독 플랜으로 썼더라도 같은 토큰을 API로 썼다면 냈을 금액이에요. 실제 청구액은 아니지만 작업끼리 비교하는 기준이 돼요." data-g="12">API 환산 가격</span>'이라고 설명해요. Claude Code 트랜스크립트에서 읽어 오고, <code>config.json</code>의 모델별 토큰 단가로 계산해요. 구독 플랜에서는 청구액이 아니라 돈이 어디로 가는지 보여 주는 숫자예요.</p>
+  <p class="cite">출처: <a href="https://github.com/zazencodes/zazencodes-season-3/tree/main/src/software-factory-claude-code-v2" target="_blank" rel="noopener">software-factory-claude-code-v2 README (Dashboard)</a></p>
+</aside>
+<h3>사람이 필요한 작업</h3>
+<p>Different fonts가 needs-human으로 멈췄어요. 작업 파일을 열면 빌드가 막혔고, 그 이유가 <code>decision.md</code>에 있어요. 하지만 발표자가 실제로 쓰는 방법은 파일 열람이 아니에요. 오케스트레이터에게 묻거나, 같은 프로젝트에서 새 Claude Code 세션을 열고 팩토리 스킬로 물어요.</p>
+<p>물어보니 '접수가 범위를 좁혀 받아들였는데, 폰트를 뭘로 할지 몰라 입력을 원한다'는 답이 왔어요. “알아서 해”라고 답하자 <code>feedback-1.md</code>가 생기고 작업이 다시 빌드 단계로 갔어요.</p>
+<h3>작업마다 다른 리뷰어</h3>
+<p>대시보드 카드의 칩 줄을 보면 작업마다 붙은 리뷰어가 달라요. 아래 화면에서 Colored sticky notes(medium)는 gate, code, ux, ui, sec 다섯 칩이 있고, Change display name(low)은 sec 없이 네 칩이에요.</p>
+<figure>
+  <img src="assets/frame-1822.webp" alt="대시보드. Build 칸에 Multiple walls(high, $0.49, 3m)와 Change display name(low, gate code ux ui 칩), Review 칸에 Colored sticky notes(medium, gate code ux ui sec 칩)">
+  <figcaption>Multiple walls에는 high가 찍혀 있어요. 접수 단계가 붙인 이 표시가 뒤 단계를 바꿔요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=1102s" target="_blank" rel="noopener">영상 18:22에서 보기</a></figcaption>
+</figure>
+<p>발표자는 medium이라서 보안 리뷰가 붙었고 low라서 안 붙었다고 설명해요. 접수 판단에 따라 흐름이 바뀌니, 사실상 동적인 <span class="term" data-term="방향성 비순환 그래프" data-en="Directed Acyclic Graph" data-desc="화살표 방향이 있고 한 바퀴 돌아 제자리로 오는 고리가 없는 그래프예요. 작업 단계의 순서와 갈림길을 표현할 때 써요." data-g="10">방향성 비순환 그래프</span>(DAG(Directed Acyclic Graph))라는 거예요. 효율을 높이는 데도 쓸 수 있어요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>저장소의 설계 문서는 조금 다르게 적어요. 위험도(low·medium·high)는 코드 리뷰 모델만 정하고(low는 Haiku, medium·high는 Sonnet), 보안 리뷰어(Opus)는 접수가 <code>security</code> 영역을 표시했을 때 붙어요. 영상 흐름도의 Security review 칸 글씨도 'security changes'예요. 그러니 Colored sticky notes에 보안 리뷰가 붙은 건 medium이라서라기보다 접수가 보안 영역으로 봤기 때문일 가능성이 커요.</p>
+  <p class="cite">출처: <a href="https://github.com/zazencodes/zazencodes-season-3/blob/main/src/software-factory-claude-code-v2/DESIGN.md" target="_blank" rel="noopener">software-factory-claude-code-v2 DESIGN.md</a>, <a href="https://github.com/zazencodes/zazencodes-season-3/blob/main/src/software-factory-claude-code-v2/factory/config.json" target="_blank" rel="noopener">factory/config.json</a></p>
+</aside>
+<h3>세션을 꺼도 다시 살아나요</h3>
+<p>세션 정리 중에 발표자가 오케스트레이터 세션에서 Ctrl+C를 눌렀어요. 그러자 백그라운드 에이전트가 전부 멈췄어요. 대시보드를 띄우던 셸도 이 세션에 붙어 있었어요. 질문용으로 띄운 두 번째 세션은 꺼도 팩토리에 아무 영향이 없어요.</p>
+<p>다시 <code>factory run</code>을 치자 GitHub와 대기열을 보고 모든 작업을 되살렸어요. 팩토리는 꽤 튼튼한 셈이에요. 다만 돌던 작업은 처음부터 다시 해요. 이때도 진행 중이던 UI 리뷰가 날아가서 새로 시작했어요. 그러니 일부러 끄는 건 좋지 않아요.</p>
+</section>
+
+<section id="s7">
+  <a class="stamp" href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=1226s" target="_blank" rel="noopener">20:26</a>
+  <h2>사람이 결정해야 할 때</h2>
+<p>잠시 뒤 상황을 보면 사람 확인이 필요한 작업이 쌓였고, 둘은 끝났어요. GitHub에는 이슈 세 개에 <code>factory:needs-human</code> 라벨이 붙어 있어요.</p>
+<figure>
+  <img src="assets/frame-2038.webp" alt="GitHub Issues 목록. Multiple walls, Different fonts, Colored sticky notes 세 이슈에 factory:needs-human 과 factory 라벨이 붙어 있음">
+  <figcaption>팩토리가 막힌 작업을 이슈 라벨로 표시해서, GitHub만 봐도 내가 할 일을 알 수 있어요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=1238s" target="_blank" rel="noopener">영상 20:38에서 보기</a></figcaption>
+</figure>
+<p>Pull requests 탭엔 열린 PR 세 개와 닫힌 PR 두 개가 있고, 코드에는 'Merge pull request #7, change display name'이 들어와 있어요. 발표자가 좋아하는 점은 깨끗한 새 세션에서 팩토리 명령 하나로 이 맥락을 전부 불러올 수 있다는 거예요.</p>
+<h3>세 작업에 하나씩 답하기</h3>
+<ul>
+  <li><b>Different fonts(#4)</b>: 기능이 아니라 팩토리 규칙 때문에 막혔어요. 보호된 테스트 파일을 건드려야 했거든요. 발표자는 팩토리에게 '이건 막히면 안 됐다, 스스로 고쳐라'라고 했고, 공개 저장소의 v2 팩토리에도 같이 반영하게 했어요. 지금 설치하면 이 수정이 들어 있대요.</li>
+  <li><b>Colored sticky notes(#3)</b>: 새로 만든 색상 테스트가 서버 쪽 테스트를 건너뛰는 바람에 아예 안 돌았어요. 테스트를 옮겨 다시 돌리겠다는 제안에 그러라고 했어요.</li>
+  <li><b>Multiple walls(#5)</b>: 처음엔 일부러 붙잡아 뒀다는 답이 왔어요. 다른 작업이 먼저 머지된 뒤에 이 PR을 합치려는 거예요. 오케스트레이터가 시스템 전체 상황을 알고 있다는 뜻이에요.</li>
+</ul>
+<p>아래 화면은 #3을 다시 돌린 결과예요. 3라운드에서 게이트가 통과했고, 이 작업에 붙은 리뷰어와 모델이 한 줄로 찍혀요.</p>
+<figure>
+  <img src="assets/frame-2226.webp" alt="터미널에 003-colored-sticky-notes gate round 3, GATE: PASS checks.sh exit 0 in 3s, 리뷰어 구성 code sonnet, ux sonnet, ui haiku, security opus. 아래 대시보드에 Multiple walls 카드가 Needs human 칸에 YOUR CALL로 표시">
+  <figcaption>medium 작업이라 코드 리뷰가 Sonnet이고, 보안 리뷰는 Opus예요. 오른쪽 Multiple walls 카드엔 <code>YOUR CALL</code>이 떠 있어요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=1346s" target="_blank" rel="noopener">영상 22:26에서 보기</a></figcaption>
+</figure>
+<h3>마지막 남은 Multiple walls</h3>
+<p>다른 작업이 다 끝난 뒤에도 Multiple walls는 멈춰 있었어요. 발표자는 출력을 줄여 주는 자기 스킬 <code>/tldr</code>로 요약을 받아요. 저장 데이터 형식(<code>data/wall.json</code>)을 되돌릴 수 없게 바꾸는 일이라 내 사인을 기다리고, main보다 뒤처져 있다는 내용이에요. 아래 PR 본문의 'For the human' 칸에도 같은 경고가 있어요.</p>
+<figure>
+  <img src="assets/frame-2402.webp" alt="Claude Code의 TLDR 출력. #5 multiple walls (PR #10) stalled, Next, Question 세 줄. 입력창에 Yeah, just get rid of the data right now. 아래 PR #10 본문의 For the human 칸에 data/wall.json 형식 변경 경고">
+  <figcaption>PR 본문이 사람이 결정할 내용을 따로 모아 줘서, 코드를 다 읽지 않아도 판단할 수 있어요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=1442s" target="_blank" rel="noopener">영상 24:02에서 보기</a></figcaption>
+</figure>
+<p>테스트 앱이라 데이터는 지워도 된다고 답했어요. 그러자 Claude가 <code>factory/bin/job feedback 5</code>를 불러 내 답을 <code>feedback-1.md</code>로 남겼어요. 사용자 피드백도 에이전트가 파일에 직접 쓰는 게 아니라 팩토리 스크립트의 함수로 기록돼요.</p>
+<p>모든 변경을 받아 앱을 띄우면 메모 색을 바꿀 수 있고(빨강으로 바꿔 봐요), 표시 이름도 바꿀 수 있어요.</p>
+</section>
+
+<section id="s8">
+  <a class="stamp" href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=1456s" target="_blank" rel="noopener">24:16</a>
+  <h2>상태는 스크립트만 써요</h2>
+<p>마지막으로 발표자는 마인드맵으로 돌아가 팩토리가 왜 믿을 만한지 설명해요. 답은 두 가지 결정론적 장치예요.</p>
+<h3>게이트: checks.sh</h3>
+<p>'Deterministic checks' 카드에는 <code>checks.sh</code>가 저장소의 실제 test, lint, typecheck, build 명령을 담는다고 적혀 있어요. 아래 네 줄은 언제 도는지예요.</p>
+<figure>
+  <img src="assets/frame-2446.webp" alt="Deterministic checks 카드. checks.sh holds the repo's real test, lint, typecheck and build commands. The gate also fails if a protected test file was changed, Runs before any reviewer, Runs again after every build round, Runs again before the merge, on the latest main">
+  <figcaption>보호된 테스트 파일을 바꾸기만 해도 게이트가 떨어져요. 테스트를 고쳐서 통과하는 꼼수를 막는 장치예요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=1486s" target="_blank" rel="noopener">영상 24:46에서 보기</a></figcaption>
+</figure>
+<p>파일 자체는 아주 단순한 bash 스크립트예요. npm 프로젝트라 <code>npm ci</code> 뒤에 lint, typecheck, test, build를 차례로 돌려요. 다른 언어 프로젝트라면 여기에 그 프로젝트의 테스트가 들어가요.</p>
+<figure>
+  <img src="assets/frame-2516.webp" alt="Neovim에 열린 factory/checks.sh. 주석 아래 set -euo pipefail, npm ci --prefer-offline --no-audit --no-fund, npm run lint, npm run typecheck, npm test, npm run build 줄에 화살표">
+  <figcaption>여기서 하나라도 실패하면 리뷰어까지 가지도 않아요. 게이트가 리뷰어 바로 앞에 서 있기 때문이에요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=1516s" target="_blank" rel="noopener">영상 25:16에서 보기</a></figcaption>
+</figure>
+<h3>상태: job.json과 factory/bin/job</h3>
+<p>두 번째 장치는 상태 파일이에요. 'Deterministic state' 카드의 강조된 두 곳을 보면 돼요. 모든 단계를 움직이는 건 <code>job.json</code>이고, 그 파일을 쓰는 건 <code>factory/bin/job</code>뿐이에요.</p>
+<figure>
+  <img src="assets/frame-2544.webp" alt="Deterministic state 카드. job.json drives the stages, 단계 흐름 intake → spec → build → gate → review → approve → merging → merged, 갈림길 네 줄, Only factory/bin/job writes it 등 다섯 항목">
+  <figcaption>'잘못된 이동은 거부한다'는 줄이 있어요. 게이트 통과 없이 리뷰로, <code>APPROVE</code> 없이 머지로 갈 수 없어요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=1544s" target="_blank" rel="noopener">영상 25:44에서 보기</a></figcaption>
+</figure>
+<p>카드의 단계와 갈림길을 상태도로 옮기면 이래요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> intake
+  intake --> spec: ACCEPT
+  intake --> needs_info: NEEDS-INFO
+  intake --> rejected: REJECT
+  spec --> build
+  build --> gate
+  gate --> build: FAIL
+  gate --> review: PASS
+  review --> build: CHANGES
+  review --> approve: 모두 PASS
+  approve --> merging: APPROVE
+  approve --> needs_human: ESCALATE
+  merging --> merged
+</pre>
+  <figcaption>되돌아가는 화살표는 모두 build로 가요. 게이트 실패든 리뷰 수정 요구든 같은 빌더가 고쳐요.</figcaption>
+</figure>
+<p>발표자가 거듭 강조하는 점은 이거예요. <code>job.json</code>은 Claude가 기분 따라 고치는 파일이 아니에요. Claude는 <code>factory/bin/job</code>의 함수를 불러서 이 파일을 바꿔요. 스크립트 맨 위 설명에도 'The only writer of factory/jobs/&lt;job-id&gt;/job.json'이라고 적혀 있어요. 명령은 <code>job queue</code>(GitHub 이슈를 보고 대기열 확인), <code>job create</code>, <code>job advance</code>, <code>job merge</code>, <code>job feedback</code> 등이에요.</p>
+<h3>작업 데이터는 내 컴퓨터에만 있어요</h3>
+<p>실제 작업 데이터는 <code>factory/jobs/</code> 폴더에 작업 하나당 폴더 하나로 쌓여요. git에서 제외돼서 GitHub에 백업되지 않아요. 남기고 싶으면 따로 저장하는 흐름을 만들어야 해요. 발표자라면 Google Cloud Storage에 저장하는 워크플로를 Claude에게 만들어 달라고 하겠대요.</p>
+<p>Change display name 작업 폴더를 열면 <code>build.md</code>, <code>decision.md</code>, <code>intake.md</code>, <code>issue.md</code>, <code>spec.md</code>와 <code>round-1</code>~<code>round-3</code> 폴더, 그리고 <code>job.json</code>이 있어요. 대시보드에 보이던 내용이 전부 이 마크다운 파일에서 와요.</p>
+<figure>
+  <img src="assets/frame-2728.webp" alt="Neovim에 열린 004-change-display-name의 job.json. id, issue 3, pr 7, branch factory/004-change-display-name, worktree 경로, stage merged, round 3, round_limit 3, intake decision ACCEPT rescoped true risk low surfaces ui, reviewers code haiku ux sonnet ui haiku, gate PASS, reviews 모두 PASS, cost_usd 1.48">
+  <figcaption>low에 ui 영역이라 리뷰어가 code(Haiku)·ux(Sonnet)·ui(Haiku) 셋이고 보안 리뷰어는 없어요. round와 round_limit가 둘 다 3이에요. <a href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=1648s" target="_blank" rel="noopener">영상 27:28에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p><code>config.json</code>의 기본 <code>max_rounds</code>는 3이에요. README의 예시 작업 003은 빌더가 보호된 테스트 파일을 고쳐 1라운드 게이트에서 떨어졌고, 세 라운드를 다 쓴 뒤 사람에게 넘어갔어요. 게이트는 main 쪽 <code>checks.sh</code> 사본을 돌려서, 브랜치가 자기를 심사하는 검사를 바꿀 수 없게 돼 있어요.</p>
+  <p class="cite">출처: <a href="https://github.com/zazencodes/zazencodes-season-3/blob/main/src/software-factory-claude-code-v2/DESIGN.md" target="_blank" rel="noopener">software-factory-claude-code-v2 DESIGN.md</a>, <a href="https://github.com/zazencodes/zazencodes-season-3/tree/main/src/software-factory-claude-code-v2" target="_blank" rel="noopener">README (The example jobs)</a></p>
+</aside>
+</section>
+
+<section id="s9">
+  <a class="stamp" href="https://www.youtube.com/watch?v=RiaTyJ2POVo&amp;t=1674s" target="_blank" rel="noopener">27:54</a>
+  <h2>맺음말: 복잡도, 비용, 프로덕션</h2>
+<p>마무리는 카메라 앞에서 말로만 해요. 화면에 보여 줄 자료가 없어서, 발표자가 말한 다섯 가지를 정리하고 피드백 루프 하나를 그림으로 옮겼어요.</p>
+<h3>더 나아졌지만 더 복잡해요</h3>
+<p>발표자는 1편보다 잘 돌아간다고 느껴요. 하지만 그만큼 복잡해졌고, 복잡하다고 늘 좋은 건 아니에요. 원하는 성능은 지키면서 내게 맞게 줄일 곳을 찾아보라고 권해요.</p>
+<h3>싼 모델이 더 비쌀 수 있어요</h3>
+<p>비용은 토큰 가격으로 냈다면 얼마일지 추정한 값이에요. 실제로 내는 돈은 아니어도 작업끼리 비교하는 기준이 돼요. 이걸 줄이려고 리뷰어를 Haiku로 바꾸고 싶어질 수 있어요. 그런데 Haiku 리뷰어가 문제를 깊이 생각하지 못하고 작업을 자꾸 빌더로 되돌리면 오히려 돈이 더 들어요. 승인자를 Haiku로 두는 것도 생각해 볼 수 있지만, 머지 결정을 Haiku에게 맡길지는 망설여진대요.</p>
+<h3>GitHub 이슈가 관측 장치가 돼요</h3>
+<p>발표자가 마음에 들어 하는 건 GitHub 이슈와 PR을 입출력으로 쓴 점이에요. 운영 중인 서비스의 성능 지표를 감시하다가 문제가 생기면 자동으로 이슈를 만들고 <code>factory</code> 라벨을 붙이면 돼요. 그러면 배포 후 모니터링이 별도 층 없이 그대로 팩토리의 입력이 돼요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 220" role="img" aria-label="운영 중인 서비스 감시가 GitHub 이슈를 만들고, factory 라벨로 팩토리가 PR을 만들어 다시 서비스에 반영되는 순환">
+    <defs><marker id="arrow-loop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="c3 cell" x="20" y="30" width="170" height="64" rx="10"/>
+    <text x="105" y="58" text-anchor="middle">운영 중인 서비스</text>
+    <text x="105" y="78" text-anchor="middle" class="sub">성능 지표 감시</text>
+    <rect class="c4 cell" x="235" y="30" width="170" height="64" rx="10"/>
+    <text x="320" y="58" text-anchor="middle">GitHub 이슈</text>
+    <text x="320" y="78" text-anchor="middle" class="sub">자동 생성 + factory 라벨</text>
+    <rect class="box accent" x="450" y="30" width="170" height="64" rx="10"/>
+    <text x="535" y="58" text-anchor="middle">소프트웨어 팩토리</text>
+    <text x="535" y="78" text-anchor="middle" class="sub">/factory run</text>
+    <rect class="c2 cell" x="235" y="140" width="170" height="64" rx="10"/>
+    <text x="320" y="168" text-anchor="middle">PR 머지</text>
+    <text x="320" y="188" text-anchor="middle" class="sub">이슈를 닫아요</text>
+    <path class="line" d="M190 62 H233" marker-end="url(#arrow-loop)"/>
+    <path class="line" d="M405 62 H448" marker-end="url(#arrow-loop)"/>
+    <path class="line" d="M535 94 V172 H407" marker-end="url(#arrow-loop)"/>
+    <path class="line" d="M235 172 H105 V96" marker-end="url(#arrow-loop)"/>
+  </svg>
+  <figcaption>이슈가 공통 입구라서, 이슈를 만들 수 있는 시스템이라면 무엇이든 팩토리에 일을 줄 수 있어요.</figcaption>
+</figure>
+<h3>프로덕션에 바로 붙여도 될까요?</h3>
+<p>소프트웨어 팩토리에 늘 따라붙는 비판이 '이걸 실제 서비스에 붙이면 미친 거다'예요. 발표자도 동의해요. 30분짜리 영상의 코드를 눈 감고 운영 시스템에 붙여 모든 이슈를 에이전트에게 맡기라는 얘기는 아니에요.</p>
+<p>대신 영상에서처럼 지켜보고, 통제하고, 결과를 확인하는 방식이라면 시작점으로 쓸 수 있다고 봐요. 그리고 개발이 결국 이런 추상화로 갈 거라고 예상해요. 오늘의 Claude Code 같은 <span class="term" data-term="에이전트 하네스" data-en="Agent harness" data-desc="모델을 감싸 도구 호출, 파일 편집, 권한, 컨텍스트 관리를 해 주는 실행 환경이에요. Claude Code가 대표적인 예예요." data-g="11">에이전트 하네스</span>를 직접 쓰는 게 아니라, 그 위에서 여러 에이전트를 관리하는 '슈퍼 Claude Code' 같은 층이에요. 그래서 팩토리라는 개념을 이해해 두는 게 중요하다고 해요.</p>
+<h3>다음 목표: 클라우드</h3>
+<p>발표자는 이걸 더는 자기 컴퓨터에서 돌리고 싶지 않대요. 어딘가에서 자동으로 계속 돌게 하고 싶고, 그 수단으로 Claude Agent SDK(Software Development Kit)를 보고 있어요. 다음 영상 주제로 고민 중이에요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Claude Agent SDK는 Claude Code를 움직이는 도구, 에이전트 루프, 컨텍스트 관리를 Python과 TypeScript 라이브러리로 쓸 수 있게 한 거예요. 터미널 세션 없이 서버에서 에이전트를 돌릴 때 쓰는 공식 수단이에요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/agent-sdk/overview" target="_blank" rel="noopener">Claude Code 문서 — Agent SDK overview</a></p>
+</aside>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>README의 '비용과 안전' 항목도 발표자의 조심스러운 태도와 같은 방향이에요. 이 팩토리는 실제 PR을 열고 머지하니 <code>concurrency: 1</code>로 시작해서 믿을 만해질 때까지 PR을 다 읽으라고 권해요. 팩토리는 <code>factory/*</code> 브랜치만 푸시하고, <code>gh pr merge</code>로만 머지하며, 배포는 하지 않아요. 라이선스는 GPLv3라서 배포하는 수정본도 GPLv3로 공개해야 해요.</p>
+  <p class="cite">출처: <a href="https://github.com/zazencodes/zazencodes-season-3/tree/main/src/software-factory-claude-code-v2" target="_blank" rel="noopener">software-factory-claude-code-v2 README (Cost and safety, License)</a></p>
+</aside>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>영어 자동생성 자막이라 이름과 명령이 잘못 받아적힌 곳이 있어요. 화면을 기준으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>Claud code / Cloud Code</td><td>Claude Code</td><td></td></tr>
+      <tr><td>Zazon code season 3</td><td>zazencodes-season-3</td><td>팩토리 코드가 있는 GitHub 저장소</td></tr>
+      <tr><td>note wall app</td><td>note-wall-app</td><td>데모 프로젝트 이름</td></tr>
+      <tr><td>check dot SH</td><td>checks.sh</td><td></td></tr>
+      <tr><td>agents dot MD / skill dot MD</td><td>AGENTS.md / SKILL.md</td><td></td></tr>
+      <tr><td>Currency is three</td><td>Concurrency is 3</td><td>동시 실행 수 설정</td></tr>
+      <tr><td>saw on it</td><td>Sonnet</td><td>위험한 작업의 코드 리뷰 모델</td></tr>
+      <tr><td>get status / get pull</td><td>git status / git pull</td><td></td></tr>
+      <tr><td>get ignored / got backed up</td><td>git-ignored / backed up</td><td>factory/jobs 폴더가 git에서 제외됨</td></tr>
+      <tr><td>factory bin job</td><td>factory/bin/job</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-5"><dt>게이트<span class="en">Gate</span></dt><dd>리뷰로 넘어가기 전에 테스트·린트·빌드를 돌려 통과한 것만 보내는 관문이에요. 스크립트라 싸고 결과가 흔들리지 않아요.</dd></div>
+    <div class="g" id="g-4"><dt>결정론적<span class="en">Deterministic</span></dt><dd>같은 입력이면 늘 같은 결과가 나오는 성질이에요. 에이전트 판단은 매번 달라질 수 있어서, 테스트나 상태 기록처럼 확실해야 하는 일은 스크립트에 맡겨요.</dd></div>
+    <div class="g" id="g-8"><dt>관측 가능성<span class="en">Observability</span></dt><dd>시스템 안에서 무슨 일이 일어나는지 밖에서 알아볼 수 있는 정도예요. 여기서는 작업별 비용·시간과 단계별 기록 파일이 그 역할을 해요.</dd></div>
+    <div class="g" id="g-7"><dt>동시 실행 수<span class="en">Concurrency</span></dt><dd>한 번에 함께 돌릴 수 있는 작업 개수예요. 이 팩토리는 기본 3이고 &lt;code&gt;factory/config.json&lt;/code&gt;에서 바꿔요.</dd></div>
+    <div class="g" id="g-10"><dt>방향성 비순환 그래프<span class="en">Directed Acyclic Graph</span></dt><dd>화살표 방향이 있고 한 바퀴 돌아 제자리로 오는 고리가 없는 그래프예요. 작업 단계의 순서와 갈림길을 표현할 때 써요.</dd></div>
+    <div class="g" id="g-9"><dt>보호 경로<span class="en">Protected paths</span></dt><dd>팩토리 작업이 고치면 안 되는 파일 목록이에요. 바꾸면 게이트가 떨어져서, 에이전트가 검사나 기존 테스트를 고쳐 통과하는 꼼수를 막아요.</dd></div>
+    <div class="g" id="g-3"><dt>서브에이전트<span class="en">Subagent</span></dt><dd>메인 Claude Code 세션이 띄우는 별도 에이전트예요. 자기 컨텍스트와 도구, 모델을 따로 가져서 메인 대화를 어지럽히지 않아요.</dd></div>
+    <div class="g" id="g-1"><dt>소프트웨어 팩토리<span class="en">Software factory</span></dt><dd>이슈를 넣으면 에이전트들이 정해진 단계를 거쳐 코드와 PR을 만들어 내는 자동화 파이프라인이에요. 사람이 각 단계를 손으로 하지 않는다는 점에서 공장에 빗대요.</dd></div>
+    <div class="g" id="g-11"><dt>에이전트 하네스<span class="en">Agent harness</span></dt><dd>모델을 감싸 도구 호출, 파일 편집, 권한, 컨텍스트 관리를 해 주는 실행 환경이에요. Claude Code가 대표적인 예예요.</dd></div>
+    <div class="g" id="g-2"><dt>오케스트레이터<span class="en">Orchestrator</span></dt><dd>여러 에이전트에게 일을 나눠 주고 진행을 챙기는 지휘 역할이에요. 여기서는 &lt;code&gt;/factory run&lt;/code&gt;을 친 Claude Code 세션 하나가 맡아요.</dd></div>
+    <div class="g" id="g-6"><dt>워크트리<span class="en">Git worktree</span></dt><dd>한 저장소에서 여러 브랜치를 각각 다른 폴더에 동시에 체크아웃하는 git 기능이에요. 작업 여러 개가 서로 파일을 덮어쓰지 않고 병렬로 돌 수 있어요.</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g" id="g-12"><dt>API 환산 가격<span class="en">API-equivalent cost</span></dt><dd>구독 플랜으로 썼더라도 같은 토큰을 API로 썼다면 냈을 금액이에요. 실제 청구액은 아니지만 작업끼리 비교하는 기준이 돼요.</dd></div>
+    <div class="g"><dt>CI</dt><dd>Continuous Integration</dd></div>
+    <div class="g"><dt>DAG</dt><dd>Directed Acyclic Graph</dd></div>
+    <div class="g"><dt>PR</dt><dd>Pull Request</dd></div>
+    <div class="g"><dt>SDK</dt><dd>Software Development Kit</dd></div>
+    <div class="g"><dt>UI</dt><dd>User Interface</dd></div>
+    <div class="g"><dt>UX</dt><dd>User Experience</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=RiaTyJ2POVo" target="_blank" rel="noopener">원본 영상 — ZazenCodes, Build a Better Software Factory with Claude Code</a></li>
+    <li id="src-2"><a href="https://github.com/zazencodes/zazencodes-season-3/tree/main/src/software-factory-claude-code-v2" target="_blank" rel="noopener">zazencodes-season-3 — software-factory-claude-code-v2 README</a></li>
+    <li id="src-3"><a href="https://github.com/zazencodes/zazencodes-season-3/blob/main/src/software-factory-claude-code-v2/INSTALL.md" target="_blank" rel="noopener">software-factory-claude-code-v2 INSTALL.md</a></li>
+    <li id="src-4"><a href="https://github.com/zazencodes/zazencodes-season-3/blob/main/src/software-factory-claude-code-v2/DESIGN.md" target="_blank" rel="noopener">software-factory-claude-code-v2 DESIGN.md</a></li>
+    <li id="src-5"><a href="https://github.com/zazencodes/zazencodes-season-3/blob/main/src/software-factory-claude-code-v2/factory/config.json" target="_blank" rel="noopener">software-factory-claude-code-v2 factory/config.json</a></li>
+    <li id="src-6"><a href="https://code.claude.com/docs/en/agent-sdk/overview" target="_blank" rel="noopener">Claude Code 문서 — Agent SDK overview</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 12일에 이 영상을 보고 정리했어요. 원본은 ZazenCodes 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
