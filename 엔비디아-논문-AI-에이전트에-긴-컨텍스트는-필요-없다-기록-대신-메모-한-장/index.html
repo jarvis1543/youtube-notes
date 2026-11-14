@@ -1,0 +1,802 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>엔비디아 논문: AI 에이전트에 긴 컨텍스트는 필요 없다</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>엔비디아 논문: AI 에이전트에 긴 컨텍스트는 필요 없다</h1>
+  <p class="lede">기록을 쌓는 대신 메모 한 장으로 갈아 끼우면 무엇이 달라지는지 짚어요</p>
+  <div class="meta">
+    <span>지피닉스</span><span class="dot">·</span>
+    <span>영상 04:35</span><span class="dot">·</span>
+    <span>읽는 데 약 11분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=1x6vfMn_IPk" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>긴 창은 공짜가 아니에요. 같은 GPU(Graphics Processing Unit)에서 256K 창은 16K 창보다 토큰 하나가 3.6~7배 비싸고, API(Application Programming Interface) 요금표에서는 이 차이가 숨어 있어요.</li>
+    <li>기록을 버리고 메모 한 장으로 갈아 끼워도 성적이 거의 그대로였어요. 오퍼스의 <span class="term" data-term="SWE-bench Verified" data-en="SWE-bench Verified" data-desc="실제 깃허브 이슈 500개를 에이전트가 직접 고치게 하고, 테스트가 통과하는지로 채점하는 코딩 벤치마크예요. 에이전트 코딩 실력을 비교할 때 가장 많이 쓰여요." data-g="2">SWE-bench Verified</span>는 70.0%에서 74.8%(24K 한도)로 올랐어요.</li>
+    <li>긴 문서는 통째로 넣지 말고 파일로 둔 채 찾아서 주변만 읽게 하면 훨씬 잘 풀어요(AA-LCR 65%→84%).</li>
+    <li>좋은 메모는 요약이 아니라 <span class="term" data-term="인수인계서" data-desc="다음 담당자가 앞사람에게 묻지 않고 바로 일을 이어받도록, 과제와 현재 상황, 다음 할 일, 필요한 자료 위치를 적어 넘기는 문서예요." data-g="6">인수인계서</span>예요. 원래 과제, 지금 하는 일과 다음 단계, 계획과 파일 위치의 세 칸이면 돼요.</li>
+    <li>233배는 할인 요금을 가정한 추정치예요. 지금 정가로는 오퍼스가 30% 싸졌지만 GPT(Generative Pre-trained Transformer)는 13% 비싸졌어요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">긴 기록은 왜 비쌀까요?</a></li>
+    <li><a href="#s2">기록 대신 메모로 갈아 끼운 실험</a></li>
+    <li><a href="#s3">메모에 적을 세 칸과 조심할 점</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>긴 기록은 왜 비쌀까요?</h2>
+<p>영상은 결과부터 보여 줘요. 화면 가운데 노란 메모가 이 논문이 말하는 '메모 한 장'이에요. 원래 과제(이슈 #4821 수정), 지금 하는 일(parser.py 경계 조건 확인), 다음 할 일(테스트 2개 다시 실행), 관련 파일 경로가 한 줄씩 적혀 있어요. 오른쪽 아래 카드는 기록을 전부 쌓았을 때와 메모로 갈아 끼웠을 때의 SWE-bench Verified 점수예요.</p>
+<figure>
+  <img src="assets/frame-0012.webp" alt="원래 과제, 지금, 다음, 파일 네 줄이 적힌 인수인계 메모와 Claude Opus 4.5 점수 카드(기록 전부 70.0%, 메모로 갈아 끼우기 72.6%)">
+  <figcaption>기록을 버리고 메모만 남겼는데 점수가 오히려 올랐어요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=12s" target="_blank" rel="noopener">영상 00:12에서 보기</a></figcaption>
+</figure>
+<p>논문은 엔비디아 연구진 12명이 쓴 「You don't need long context」(arXiv 2611.05306)예요. 화면 아래에 100만 토큰을 지우고 16,000으로 바꾼 줄이 있어요. 100만 토큰 창을 두고 경쟁하는 흐름과 정반대로, 짧은 창이면 된다는 주장이에요.</p>
+<figure>
+  <img src="assets/frame-0020.webp" alt="논문 제목 You don't need long context와 '1,000,000 토큰'에 취소선을 긋고 16,000으로 바꾼 슬라이드, 오른쪽에 논문 초록 화면">
+  <figcaption>제목 자체가 주장이에요. 긴 컨텍스트는 필요 없다. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=20s" target="_blank" rel="noopener">영상 00:20에서 보기</a></figcaption>
+</figure>
+<h3>숨은 비용은 KV 캐시예요</h3>
+<p>모델은 새 토큰 하나를 만들 때마다 앞의 기록 전부를 다시 참조해요. 그 기록이 GPU 메모리에 <span class="term" data-term="KV 캐시" data-en="Key-Value cache" data-desc="모델이 앞 토큰들을 처리하며 계산해 둔 키·값을 GPU 메모리에 저장해 둔 거예요. 기록이 길수록 커져서, 한 GPU가 동시에 받을 수 있는 요청 수를 줄여요." data-g="1">KV(Key-Value) 캐시</span>로 남아요. 기록이 길수록 캐시가 메모리를 더 차지하고, 그만큼 한 GPU가 동시에 받을 수 있는 요청이 줄어요.</p>
+<p>엔비디아는 H100에서 이걸 직접 쟀어요. 왼쪽 막대가 창을 256K로 열었을 때 16K보다 토큰 하나가 몇 배 비싼지예요. GLM(General Language Model) 5.2가 약 4배, Kimi K2.6이 약 6배, Qwen 3 Coder Next가 약 7배예요. 오른쪽 그래프는 Kimi K2.6에서 창이 커질수록 100만 출력 토큰당 비용이 가파르게 오르는 모습이에요.</p>
+<figure>
+  <img src="assets/frame-0042.webp" alt="창 256K vs 16K 비용 배수 막대(GLM 5.2 4, Kimi K2.6 6, Qwen 3 Coder Next 7)와 Kimi K2.6의 창 크기별 100만 토큰당 비용 그래프">
+  <figcaption>같은 GPU에서 창만 늘렸는데 토큰 값이 3.6~7배가 돼요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=42s" target="_blank" rel="noopener">영상 00:42에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>논문 본문에 모델별 정확한 배수가 있어요. 256K 창이 16K보다 출력 토큰당 GLM 5.2는 3.6배, Kimi K2.6은 5.6배, Qwen 3 Coder Next는 7배 비쌌어요. 영상의 '3.6배에서 7배'는 이 범위예요. 측정은 H100에서 vLLM으로 동시 요청 수를 늘려 가며 처리량이 가장 높을 때를 잡은 값이에요.</p>
+  <p class="cite">출처: <a href="https://arxiv.org/html/2611.05306v1" target="_blank" rel="noopener">arXiv 2611.05306 — You don't need long context (1절, 2.5절)</a></p>
+</aside>
+<p>그런데 API 요금표에서는 이 차이가 안 보여요. 두 카드처럼 16K 요청이든 256K 요청이든 100만 토큰당 값이 같아요. 차이는 공급사의 GPU 비용 안으로 숨어 버려요.</p>
+<figure>
+  <img src="assets/frame-0054.webp" alt="API 정가 카드 두 장(16K 요청 동일, 256K 요청 동일)과 '길이와 상관없이 같은 값, 차이는 공급사 GPU 비용 안으로'라는 문구">
+  <figcaption>요금표만 보면 긴 창이 공짜처럼 보여요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=54s" target="_blank" rel="noopener">영상 00:54에서 보기</a></figcaption>
+</figure>
+<p>장비를 직접 돌리면 바로 느껴져요. DGX Spark(128GB 통합 메모리)에서 잰 결과, 뒤쪽 토큰 하나를 만드는 시간이 앞쪽 토큰의 약 2배였어요. 오른쪽 그래프에서 창이 커질수록 처리량이 꺾여 내려가는 게 보여요. 에이전트가 오래 일할수록 점점 느려지는 이유예요.</p>
+<figure>
+  <img src="assets/frame-0100.webp" alt="DGX Spark 사내 장비 슬라이드: 앞쪽 토큰과 뒤쪽 토큰의 생성 시간 막대(약 2배), Kimi K2.6 창 크기별 처리량이 내려가는 그래프">
+  <figcaption>로컬에서는 비용이 아니라 속도로 드러나요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=60s" target="_blank" rel="noopener">영상 01:00에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=65s" target="_blank" rel="noopener">01:05</a>
+  <h2>기록 대신 메모로 갈아 끼운 실험</h2>
+<p>연구진은 Claude Opus 4.5와 GPT 5.6 Sol 두 모델에게 13개 과제를 맡겼어요. 화면 위쪽 태그가 과제 목록이에요. 실제 깃허브 이슈 500개를 고치는 SWE-bench Verified, 터미널 작업을 푸는 Terminal-Bench 2.1, 긴 문서를 다루는 LongBench v2, AA-LCR, RULER 등이 들어 있어요.</p>
+<figure>
+  <img src="assets/frame-0113.webp" alt="13개 과제 이름 태그(SWE-bench Verified, Terminal-Bench 2.1, FRAMES, Tau2Bench, BFCLv3, LongBench v2, LOONG, AA-LCR, NIAH, RULER, Counting-Stars, BABILong 등)와 '13개 과제 · 모델 2개' 문구">
+  <figcaption>코딩, 도구 사용, 긴 문서 읽기를 고루 섞었어요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=73s" target="_blank" rel="noopener">영상 01:13에서 보기</a></figcaption>
+</figure>
+<p>비교한 건 기록을 다루는 방식 셋이에요. 그래프의 세로축은 모델이 한 번에 보는 기록 길이예요. 빨간 선(끝까지 쌓기)은 계속 올라가요. 지금 대부분의 에이전트가 이 방식이에요. 가운데 파란 톱니(한도에서 메모)는 한도에 닿을 때마다 메모를 쓰고 새로 시작해서 뚝 떨어져요. 맨 아래(행동마다 메모)는 행동 하나마다 메모를 고쳐 써서 낮게 유지돼요.</p>
+<figure>
+  <img src="assets/frame-0127.webp" alt="기록을 다루는 방식 셋 개념도: 끝까지 쌓기(계속 오르는 빨간 선), 한도에서 메모(톱니 모양 파란 선), 행동마다 메모(낮게 유지되는 잔물결 선)">
+  <figcaption>세 방식의 차이는 '기록이 얼마나 길게 자라게 두느냐'예요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=87s" target="_blank" rel="noopener">영상 01:27에서 보기</a></figcaption>
+</figure>
+<h3>코딩: 한도를 줄여도 버텼어요</h3>
+<p>카드 세 줄을 보면 돼요. 기록 전부를 쌓았을 때 70.0%, 24K 한도에서 메모를 쓰면 74.8%, 가장 빡빡한 16K 한도에서는 68.8%예요. 영상 나레이션은 "16,000 토큰까지 줄였고 74.8%로 올랐다"고 이어서 말하는데, 74.8%는 24K 한도의 값이에요. 16K에서는 1.2점 내려갔어요.</p>
+<figure>
+  <img src="assets/frame-0137.webp" alt="대화 한도 48K, 32K, 24K, 16K 선택 탭과 SWE-bench Verified · Claude Opus 4.5 카드(기록 전부 70.0%, 24K 한도 메모 74.8%, 16K 한도 메모 68.8%), 오른쪽에 논문 표">
+  <figcaption>24K에서 가장 좋았고, 16K까지 줄여도 크게 무너지지 않았어요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=97s" target="_blank" rel="noopener">영상 01:37에서 보기</a></figcaption>
+</figure>
+<p>22개 한도 설정 가운데 2점 넘게 떨어진 경우는 모델마다 다섯 개 이하였어요. 더 과감하게, 행동 하나마다 기록을 버리고 메모만 남겨도 오퍼스는 SWE-bench에서 70.2%를 지켰어요. 매번 새 직원이 인수인계서 한 장만 읽고 일하는 셈이에요.</p>
+<p>터미널 과제도 올랐어요. 카드의 숫자는 Terminal-Bench 2.1에서 행동마다 메모를 썼을 때 오퍼스가 47.2%에서 51.6%가 된 거예요. 나레이션과 논문 표는 51.8%라서, 카드 쪽 숫자가 살짝 어긋나 있어요. 오른쪽 배경은 Terminal-Bench 4.0 순위표 화면이고, 실험에 쓴 버전은 2.1이에요.</p>
+<figure>
+  <img src="assets/frame-0153.webp" alt="Terminal-Bench 2.1 · 행동마다 메모 카드(Opus 4.5 47.2에서 51.6%)와 Terminal-Bench 4.0 순위표 화면">
+  <figcaption>행동마다 기록을 비워도 터미널 과제 점수가 올랐어요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=113s" target="_blank" rel="noopener">영상 01:53에서 보기</a></figcaption>
+</figure>
+<p>GPT는 행동마다 메모를 썼을 때 두 과제에서 2~3점쯤 내려갔어요. 대신 한 번에 보는 기록이 확 줄었어요. 최대치는 20만 토큰에서 37,000토큰으로, 중간값은 7,000~9,000토큰이었어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>과제 · 모델</th><th>기록 전부</th><th>메모 사용</th><th>조건</th></tr></thead>
+    <tbody>
+      <tr><td>SWE-bench Verified · 오퍼스</td><td>70.0%</td><td>74.8%</td><td>24K 한도에서 메모</td></tr>
+      <tr><td>SWE-bench Verified · 오퍼스</td><td>70.0%</td><td>68.8%</td><td>16K 한도에서 메모</td></tr>
+      <tr><td>SWE-bench Verified · 오퍼스</td><td>70.0%</td><td>70.2%</td><td>행동마다 메모</td></tr>
+      <tr><td>Terminal-Bench 2.1 · 오퍼스</td><td>47.2%</td><td>51.8%</td><td>행동마다 메모</td></tr>
+      <tr><td>두 과제 · GPT</td><td colspan="2">2~3점 하락</td><td>행동마다 메모</td></tr>
+    </tbody>
+  </table>
+</div>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>논문 표 2에서 GPT 5.6 Sol의 정확한 값은 SWE-bench Verified 84.4%→82.4%, Terminal-Bench 2.1 87.6%→84.3%(행동마다 메모)예요. 반대로 한도에서 메모를 쓰는 방식으로는 GPT도 두 과제 모두 88.8%(48K 한도)까지 올랐어요. 즉 '행동마다'처럼 극단적으로 비울 때만 조금 손해를 봤어요.</p>
+  <p class="cite">출처: <a href="https://arxiv.org/html/2611.05306v1" target="_blank" rel="noopener">arXiv 2611.05306 — 표 2, 3</a></p>
+</aside>
+<h3>긴 문서: 통째로 넣지 말고 골라 읽어요</h3>
+<p>긴 문서에서는 차이가 더 컸어요. 문서를 프롬프트에 통째로 붙이지 않고 파일로 둬요. 화면의 터미널처럼 모델이 grep으로 단어를 찾고, 나온 줄 번호 주변 36줄만 읽어요. 두꺼운 매뉴얼에서 색인을 보고 그쪽만 펴는 것과 같아요.</p>
+<figure>
+  <img src="assets/frame-0217.webp" alt="'긴 문서는 파일로' 슬라이드: input01.txt 파일 아이콘과 grep -n -i dative input01.txt | head -20, doc-read --lines 13190-13226 명령이 보이는 터미널, 논문 예시 설명">
+  <figcaption>찾고(grep), 그 주변만 읽어요(36줄). <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=137s" target="_blank" rel="noopener">영상 02:17에서 보기</a></figcaption>
+</figure>
+<p>막대 두 개가 결과예요. 여러 문서를 엮어 답하는 AA-LCR에서 오퍼스는 통째로 넣을 때 65%, 골라 읽을 때 84%였어요. 긴 문서 속 정보 찾기는 62%에서 96%가 됐어요.</p>
+<figure>
+  <img src="assets/frame-0225.webp" alt="Claude Opus 4.5 · 16K 한도 정확도 막대: AA-LCR 통째로 65%, AA-LCR 골라 읽기 84%, 오른쪽에 논문 표">
+  <figcaption>16K 한도로 골라 읽었는데 오히려 19점이 올랐어요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=145s" target="_blank" rel="noopener">영상 02:25에서 보기</a></figcaption>
+</figure>
+<p>왜 그럴까요? 왼쪽 U자 곡선은 <span class="term" data-term="Lost in the Middle" data-en="Lost in the Middle" data-desc="긴 입력에서 앞과 끝에 있는 정보는 잘 찾지만 가운데 있는 정보는 놓치기 쉬운 현상이에요. 2023년 같은 이름의 논문에서 널리 알려졌어요." data-g="4">Lost in the Middle</span> 현상이에요. 문서 앞과 끝에 있는 정보는 잘 찾지만, 가운데 있는 정보는 놓치기 쉬워요. 오른쪽 그래프도 답이 든 문서가 가운데로 갈수록 정확도가 떨어지는 모양이에요. 골라 읽으면 애초에 놓칠 '중간'이 줄어요. 이렇게 해서 추정 비용은 최대 233배 줄었어요.</p>
+<figure>
+  <img src="assets/frame-0233.webp" alt="Lost in the Middle 개념도(앞과 끝은 높고 가운데가 낮은 U자 곡선)와 20 Total Retrieved Documents 정확도 그래프">
+  <figcaption>통째로 넣으면 가운데가 구멍이 돼요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=153s" target="_blank" rel="noopener">영상 02:33에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>'233배'는 GPT 5.6 Sol의 한 벤치마크에서 나온 최댓값이에요. 논문은 긴 입력 과제 전체에서 추정 비용 절감 폭을 오퍼스 6.5~54.6배, GPT 4.4~233.3배로 적었어요. '62%→96%'는 RULER 평균 재현율로, 오퍼스는 62.5%→95.7%, GPT는 65.5%→96.4%예요. U자 곡선은 2023년 논문 「Lost in the Middle」에서 나온 관찰이에요.</p>
+  <p class="cite">출처: <a href="https://arxiv.org/html/2611.05306v1" target="_blank" rel="noopener">arXiv 2611.05306 — 4절, 표 15</a> · <a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu 외, Lost in the Middle (arXiv 2307.03172)</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=160s" target="_blank" rel="noopener">02:40</a>
+  <h2>메모에 적을 세 칸과 조심할 점</h2>
+<h3>요약 말고 인수인계서</h3>
+<p>그럼 메모엔 무엇을 적어야 할까요? 연구진이 먼저 해 본 건 요약이었는데, 효과가 떨어졌어요. 요약은 모든 사실을 같은 무게로 다루고, 여러 번 반복한 일을 실제보다 부풀려요. 메모는 다음 담당자에게 넘기는 인수인계서처럼 써야 해요.</p>
+<p>잘 된 메모는 세 칸이었어요. 화면 왼쪽 세 상자가 그 칸이에요.</p>
+<ol class="steps">
+  <li><b>원래 과제</b> — 처음 받은 지시를 거의 그대로 옮겨요.</li>
+  <li><b>지금 하는 일</b> — 현재 작업, 의도, 다음 단계를 적어요.</li>
+  <li><b>앞으로 필요한 자료</b> — 쪼갠 계획, 완료 조건, 파일 위치를 남겨요.</li>
+</ol>
+<figure>
+  <img src="assets/frame-0255.webp" alt="인수인계 메모 세 칸 슬라이드: 원래 과제(처음 받은 지시를 거의 그대로), 지금 하는 일(현재 작업·의도·다음 단계), 앞으로 필요한 자료(분해 계획·완료 조건·파일 위치), 오른쪽에 논문 부록 A">
+  <figcaption>지나온 이야기가 아니라 앞으로 할 일에 필요한 것만 남겨요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=175s" target="_blank" rel="noopener">영상 02:55에서 보기</a></figcaption>
+</figure>
+<p>이 세 칸은 Claude Code나 Codex의 <span class="term" data-term="압축 지침" data-en="Compaction instructions" data-desc="에이전트가 대화 기록을 줄일 때 무엇을 꼭 남길지 적어 둔 지시예요. Claude Code는 CLAUDE.md, Codex는 AGENTS.md 같은 지침 파일에 둘 수 있어요." data-g="3">압축 지침</span>에 그대로 옮길 수 있어요. 오른쪽 검은 상자가 예시예요. CLAUDE.md나 AGENTS.md에 '압축할 때 남길 것' 제목 아래 원래 과제 원문, 지금 작업과 다음 단계, 완료 조건과 파일 경로를 적어 두는 식이에요.</p>
+<figure>
+  <img src="assets/frame-0300.webp" alt="Claude Code 소개 화면과 CLAUDE.md · AGENTS.md 예시 상자(압축할 때 남길 것: 원래 과제 원문, 지금 작업·다음 단계, 완료 조건·파일 경로)">
+  <figcaption>논문의 세 칸을 내 에이전트 설정으로 바로 옮기는 방법이에요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=180s" target="_blank" rel="noopener">영상 03:00에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>논문 부록 A는 세 번째 칸을 더 잘게 나눠요. 입력 과제에서 쪼갠 계획, 언제 끝난 걸로 볼지 정한 완료 조건, 그리고 관련 정보나 그 정보가 든 파일을 가리키는 포인터예요. 연구진은 "좋은 압축은 실행 기록의 서사가 아니라, 남은 일을 위해 골라낸 브리핑"이라고 정리했어요.</p>
+  <p>Claude Code 공식 문서에도 같은 자리가 있어요. 프로젝트 루트의 CLAUDE.md에 <code># Compact instructions</code> 제목을 두고 압축 때 무엇을 남길지 적으면 되고, 한 번만 바꾸려면 <code>/compact</code> 뒤에 지시를 붙여요.</p>
+  <p class="cite">출처: <a href="https://arxiv.org/html/2611.05306v1" target="_blank" rel="noopener">arXiv 2611.05306 — 부록 A</a> · <a href="https://code.claude.com/docs/en/costs" target="_blank" rel="noopener">Claude Code 공식 문서 — Manage costs effectively</a></p>
+</aside>
+<h3>조심할 점</h3>
+<p>메모는 정보를 잃어요. 동전 던지기 결과를 계속 묻는 과제라면, 메모 한도가 정해져 있는 한 언젠가는 앞 결과를 잃을 수밖에 없어요. 그래서 전체 기록은 파일로 따로 남기고, 필요할 때 찾아 읽게 해요.</p>
+<p>규칙도 사라질 수 있어요. 막대 세 개가 다른 연구(The Compaction Cliff)의 결과예요. Claude Code의 /compact 프롬프트로 Sonnet 4.6이 압축했을 때, 안전 규칙이 1번 뒤 53%, 5번 뒤 10%만 남았어요. 꼭 지켜야 할 규칙은 메모가 아니라 지침 파일에 둬야 해요.</p>
+<figure>
+  <img src="assets/frame-0320.webp" alt="'규칙도 사라진다' 슬라이드: 안전 규칙이 남은 비율 막대(압축 전 100%, 1번 뒤 53%, 5번 뒤 10%), Claude Code /compact 프롬프트 · Sonnet 4.6, The Compaction Cliff 논문 화면">
+  <figcaption>압축을 거듭할수록 규칙이 빠르게 빠져요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=200s" target="_blank" rel="noopener">영상 03:20에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>이 숫자는 엔비디아 논문이 아니라 2026년 8월에 나온 별도 논문 「The Compaction Cliff in Long-Running AI(Artificial Intelligence) Agent Memory」의 측정이에요. 실제 운영 중인 에이전트 설정 20개로 쟀어요. 저자들은 안전 규칙은 정확한 문구가 있어야 지킬 수 있는데, 압축은 규칙과 작업 기록을 같은 비율로 줄여 버린다고 짚어요.</p>
+  <p class="cite">출처: <a href="https://arxiv.org/abs/2608.22752" target="_blank" rel="noopener">arXiv 2608.22752 — The Compaction Cliff in Long-Running AI Agent Memory</a></p>
+</aside>
+<p>233배도 그대로 믿으면 안 돼요. 오른쪽 상자가 가정이에요. 256K 요청은 정가 그대로, 16K 요청은 정가의 0.2배로 받는다고 놓고 계산한 추정치예요. 지금 공급사들은 길이와 상관없이 같은 값을 받으니, 이 할인은 아직 현실이 아니에요.</p>
+<figure>
+  <img src="assets/frame-0330.webp" alt="×233 숫자 위에 ESTIMATE 도장, 논문 부록 B 가정한 요금 상자(256K 요청 정가×1, 16K 요청 정가×0.2)와 부록 B 수식">
+  <figcaption>233배는 짧은 요청이 5분의 1 값일 때의 이야기예요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=210s" target="_blank" rel="noopener">영상 03:30에서 보기</a></figcaption>
+</figure>
+<p>지금 정가로 계산하면 결과가 갈려요. 왼쪽 카드의 오퍼스는 $420에서 $296로 30% 싸졌어요. 오른쪽 GPT 5.6 Sol은 $168에서 $189로 13% 비싸졌어요. 메모를 쓰느라 출력 토큰이 310만에서 470만 개로 늘었기 때문이에요.</p>
+<figure>
+  <img src="assets/frame-0335.webp" alt="SWE-bench Verified · 지금 정가 · 24K 한도 카드 두 장: Claude Opus 4.5 기록 전부 $420, 메모 $296(-30%), GPT 5.6 Sol 기록 전부 $168, 메모 $189(+13%)">
+  <figcaption>지금 요금표로는 모델에 따라 오히려 손해일 수 있어요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=215s" target="_blank" rel="noopener">영상 03:35에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>논문 표 3에서 확인해 보면, 출력 토큰이 310만→470만 개로 는 건 GPT 5.6 Sol 쪽이에요(24K 한도). 오퍼스는 440만→410만 개로 오히려 조금 줄었어요. 0.2배라는 할인율도 임의로 정한 게 아니라, 세 공개 모델에서 잰 16K/256K 처리량 비율(0.14~0.28)의 평균을 반올림한 값이에요.</p>
+  <p class="cite">출처: <a href="https://arxiv.org/html/2611.05306v1" target="_blank" rel="noopener">arXiv 2611.05306 — 표 3, 부록 B</a></p>
+</aside>
+<p>작은 모델에는 독이 될 수도 있어요. 공개 모델 Qwen 3 Coder Next는 SWE-bench에서 16K 한도로 압축하자 53%에서 3.6%로 무너졌어요. 화면 설명처럼 출력이 장황해서, 압축과 압축 사이에 일을 거의 못 했어요. 왼쪽 아래 노란 줄은 검색·추론 과제(FRAMES)에서도 압축하면 최대 3.7점 떨어졌다는 표시예요.</p>
+<figure>
+  <img src="assets/frame-0350.webp" alt="Qwen 3 Coder Next · SWE-bench · 16K 한도 3.6%, '장황한 출력 → 압축 사이에 일을 못 함' 문구, FRAMES(검색·추론) 압축 시 최대 -3.7점 표시, Hugging Face 모델 페이지">
+  <figcaption>모든 모델이 짧은 창을 견디는 건 아니에요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=230s" target="_blank" rel="noopener">영상 03:50에서 보기</a></figcaption>
+</figure>
+<h3>한 걸음 더: 의미 상태 공간 모델</h3>
+<p>연구진은 더 나가요. 그림의 세 상자가 도는 순서예요. 현재 상태를 문장으로 읽고(상태 문장 읽기), 행동 하나를 하고, 상태를 다시 고쳐 써요. 이런 모델을 <span class="term" data-term="의미 상태 공간 모델" data-en="Semantic State Space Model" data-desc="현재 상태를 자연어 문장으로 들고 다니며, 읽고 행동하고 다시 고쳐 쓰는 고리로만 일하는 모델을 가리키는 논문의 개념이에요. 긴 기록 없이 상태 문장만 넘겨요." data-g="5">의미 상태 공간 모델</span>이라고 불렀어요. 그러면서 "왜 긴 기록을 다루도록 학습시키나?"라고 되묻죠. 다만 아직은 제안 단계예요.</p>
+<figure>
+  <img src="assets/frame-0400.webp" alt="'한 걸음 더' 슬라이드: 행동 하나, 상태 문장 읽기, 상태 고쳐 쓰기 세 상자가 도는 그림, '의미 상태 공간 모델 · SSSM'과 '왜 긴 기록을 다루도록 학습시키나?' 문구">
+  <figcaption>읽고, 행동하고, 고쳐 쓰는 고리만 있으면 긴 기록이 필요 없다는 구상이에요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=240s" target="_blank" rel="noopener">영상 04:00에서 보기</a></figcaption>
+</figure>
+<h3>정리: 쌓지 말고 고쳐 써요</h3>
+<p>이득이 가장 큰 곳은 GPU를 직접 돌리는 쪽이에요. 막대 두 개처럼 같은 GPU에서 16K 창은 256K 창보다 토큰을 3.6~7배 더 만들어요.</p>
+<figure>
+  <img src="assets/frame-0415.webp" alt="'쌓지 말고, 고쳐 쓴다' 슬라이드: 이득이 가장 큰 곳 · GPU를 직접 돌리는 쪽, 256K 창 1배 대비 16K 창 3.6~7배 막대">
+  <figcaption>같은 장비로 몇 배를 더 뽑을 수 있어요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=255s" target="_blank" rel="noopener">영상 04:15에서 보기</a></figcaption>
+</figure>
+<p>창을 16K~32K로 줄이면 KV 캐시가 비운 메모리만큼(그림의 파란 칸) 동시 요청을 더 받을 수 있어요. 그래서 서버 규모도 노란 상자의 식처럼 '동시 요청 수 × 실제 컨텍스트 길이'로 잡으면 돼요. 영상은 경쟁이 창의 크기에서 메모의 질로 옮겨 간다고 말하고, 우리 에이전트의 실제 컨텍스트 길이(중간값과 최댓값)부터 재 보라고 권하며 끝나요.</p>
+<figure>
+  <img src="assets/frame-0425.webp" alt="'창 16K~32K로 줄이면' 슬라이드: 가중치, KV 캐시, 더 받는 동시 요청을 색으로 나눈 메모리 칸 그림과 '서버 규모 = 동시 요청 수 × 실제 컨텍스트 길이' 상자">
+  <figcaption>서버는 최대 창이 아니라 실제 길이 기준으로 잡아요. <a href="https://www.youtube.com/watch?v=1x6vfMn_IPk&amp;t=265s" target="_blank" rel="noopener">영상 04:25에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 몇몇 단어가 잘못 받아적혔어요. 화면 글자와 논문을 보고 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>클라우드 코드</td><td>Claude Code</td><td>앤트로픽의 코딩 에이전트</td></tr>
+      <tr><td>메모는 정보를 읽습니다</td><td>메모는 정보를 잃습니다</td><td>화면 글자 기준</td></tr>
+      <tr><td>아직은 제한 단계입니다</td><td>아직은 제안 단계입니다</td><td>화면 글자 &#x27;아직 제안 단계&#x27;</td></tr>
+      <tr><td>메모의 진로</td><td>메모의 질로</td><td>화면 글자 &#x27;메모의 질로&#x27;</td></tr>
+      <tr><td>GPT</td><td>GPT 5.6 Sol</td><td>자막은 모델 이름을 줄여 말했어요. 화면과 논문 기준</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-3"><dt>압축 지침<span class="en">Compaction instructions</span></dt><dd>에이전트가 대화 기록을 줄일 때 무엇을 꼭 남길지 적어 둔 지시예요. Claude Code는 CLAUDE.md, Codex는 AGENTS.md 같은 지침 파일에 둘 수 있어요.</dd></div>
+    <div class="g" id="g-5"><dt>의미 상태 공간 모델<span class="en">Semantic State Space Model</span></dt><dd>현재 상태를 자연어 문장으로 들고 다니며, 읽고 행동하고 다시 고쳐 쓰는 고리로만 일하는 모델을 가리키는 논문의 개념이에요. 긴 기록 없이 상태 문장만 넘겨요.</dd></div>
+    <div class="g" id="g-6"><dt>인수인계서</dt><dd>다음 담당자가 앞사람에게 묻지 않고 바로 일을 이어받도록, 과제와 현재 상황, 다음 할 일, 필요한 자료 위치를 적어 넘기는 문서예요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>GLM</dt><dd>General Language Model</dd></div>
+    <div class="g"><dt>GPT</dt><dd>Generative Pre-trained Transformer</dd></div>
+    <div class="g"><dt>GPU</dt><dd>Graphics Processing Unit</dd></div>
+    <div class="g"><dt>KV</dt><dd>Key-Value</dd></div>
+    <div class="g" id="g-1"><dt>KV 캐시<span class="en">Key-Value cache</span></dt><dd>모델이 앞 토큰들을 처리하며 계산해 둔 키·값을 GPU 메모리에 저장해 둔 거예요. 기록이 길수록 커져서, 한 GPU가 동시에 받을 수 있는 요청 수를 줄여요.</dd></div>
+    <div class="g" id="g-4"><dt>Lost in the Middle<span class="en">Lost in the Middle</span></dt><dd>긴 입력에서 앞과 끝에 있는 정보는 잘 찾지만 가운데 있는 정보는 놓치기 쉬운 현상이에요. 2023년 같은 이름의 논문에서 널리 알려졌어요.</dd></div>
+    <div class="g" id="g-2"><dt>SWE-bench Verified<span class="en">SWE-bench Verified</span></dt><dd>실제 깃허브 이슈 500개를 에이전트가 직접 고치게 하고, 테스트가 통과하는지로 채점하는 코딩 벤치마크예요. 에이전트 코딩 실력을 비교할 때 가장 많이 쓰여요.</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=1x6vfMn_IPk" target="_blank" rel="noopener">원본 영상 — 지피닉스</a></li>
+    <li id="src-2"><a href="https://arxiv.org/abs/2611.05306" target="_blank" rel="noopener">Belcak 외(NVIDIA), You don&#x27;t need long context — arXiv 2611.05306</a></li>
+    <li id="src-3"><a href="https://arxiv.org/html/2611.05306v1" target="_blank" rel="noopener">같은 논문 HTML 본문(표 2·3·15, 부록 A·B)</a></li>
+    <li id="src-4"><a href="https://arxiv.org/abs/2608.22752" target="_blank" rel="noopener">Zerhoudi 외, The Compaction Cliff in Long-Running AI Agent Memory — arXiv 2608.22752</a></li>
+    <li id="src-5"><a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noopener">Liu 외, Lost in the Middle: How Language Models Use Long Contexts — arXiv 2307.03172</a></li>
+    <li id="src-6"><a href="https://code.claude.com/docs/en/costs" target="_blank" rel="noopener">Claude Code 공식 문서 — Manage costs effectively</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 15일에 이 영상을 보고 정리했어요. 원본은 지피닉스 채널에 있어요. 숫자는 영상 화면과 arXiv 2611.05306 원문을 맞춰 봤어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
