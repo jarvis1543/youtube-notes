@@ -1,0 +1,988 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API 보안 가이드: 현대 비즈니스의 &#x27;신경망&#x27;을 지키는 법</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>API 보안 가이드: 현대 비즈니스의 &#x27;신경망&#x27;을 지키는 법</h1>
+  <p class="lede">토큰 검증 너머, 데이터 한 건마다 주인을 확인하는 설계를 짚어요</p>
+  <div class="meta">
+    <span>AI&amp;Security Insight</span><span class="dot">·</span>
+    <span>영상 13:12</span><span class="dot">·</span>
+    <span>읽는 데 약 15분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=aLIzXtvuQm8" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>토큰이 유효하다는 건 로그인했다는 뜻일 뿐이에요. 요청한 데이터가 그 사람 것인지는 서버가 따로 확인해야 하고, 이걸 빠뜨리면 <span class="term" data-term="BOLA" data-en="Broken Object Level Authorization" data-desc="요청 속 객체 번호만 바꿔 남의 데이터에 접근할 수 있는 취약점이에요. 서버가 &#x27;로그인했나&#x27;만 보고 &#x27;이 데이터의 주인인가&#x27;를 확인하지 않아서 생겨요." data-g="1">BOLA(Broken Object Level Authorization)</span>가 생겨요.</li>
+    <li>대책은 세 겹이에요. 추측할 수 없는 UUID(Universally Unique Identifier) v4, 소유권 조건을 DB(Database) 조회에 자동으로 붙이는 <span class="term" data-term="공통 인터셉터" data-en="Interceptor" data-desc="모든 요청이 지나가는 길목에서 공통 처리를 끼워 넣는 장치예요. 여기서 소유권 조건을 자동으로 붙이면 개발자가 잊어도 남의 데이터가 조회되지 않아요." data-g="4">공통 인터셉터</span>, 필요한 필드만 내보내는 DTO(Data Transfer Object)예요.</li>
+    <li>훔친 정상 자격 증명으로 들어온 공격은 WAF(Web Application Firewall)가 못 잡아요. 호출 순서와 맥락을 보는 행위 기반 탐지(<span class="term" data-term="WAAP" data-en="Web Application and API Protection" data-desc="웹 방화벽에 API 보호, 봇 관리, 이상 탐지를 더한 보안 솔루션 묶음이에요. 영상은 머신러닝으로 사용자 행위를 실시간 분석하는 쪽을 강조해요." data-g="6">WAAP(Web Application and API Protection)</span>)와 미끼 ID인 <span class="term" data-term="허니 토큰" data-en="Honeytoken" data-desc="정상 사용자는 절대 쓰지 않을 가짜 ID나 값을 일부러 심어 둔 미끼예요. 이걸 건드린 요청은 공격일 가능성이 매우 높아서 탐지 신호로 써요." data-g="7">허니 토큰</span>이 필요해요.</li>
+    <li>허니 토큰은 내부망과 승인된 IP(Internet Protocol) 대역을 빼는 허용 목록과 함께 둬야 오인 사격이 없어요.</li>
+    <li><span class="term" data-term="섀도우 API" data-en="Shadow API" data-desc="운영 중이지만 보안팀의 목록이나 문서에 없는 API예요. 아무도 관리하지 않으니 점검과 방어에서 빠져요." data-g="8">섀도우 API(Application Programming Interface)</span>는 트래픽 관찰과 코드 스캐닝을 함께 써서 찾고, 권한 판정은 각 서비스 옆 <span class="term" data-term="사이드카" data-en="Sidecar" data-desc="서비스 옆에 같은 노드로 붙여 띄우는 보조 프로세스예요. OPA를 사이드카로 두면 권한 판정을 네트워크 왕복 없이 로컬에서 해요." data-g="10">사이드카</span>로 붙인 OPA(Open Policy Agent)에 맡겨요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">화면에서 숨겨도 API는 다 보내요</a></li>
+    <li><a href="#s2">남의 데이터를 원천 차단하는 세 가지 장치</a></li>
+    <li><a href="#s3">정상 토큰을 쥔 공격자는 어떻게 잡나요?</a></li>
+    <li><a href="#s4">숨은 API까지 찾고, 권한은 OPA에 맡기기</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=aLIzXtvuQm8&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>화면에서 숨겨도 API는 다 보내요</h2>
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>두 진행자가 화면에 띄운 슬라이드 문서 '살아있는 아키텍처: 차세대 엔터프라이즈 API 보안'을 검토하며 보완점을 짚는 대담이에요. 슬라이드는 대화와 따로 넘어가서, 캡처는 말하는 시점이 아니라 주제가 맞는 장면으로 골랐어요. 캡션 링크는 그 슬라이드가 나오는 시점이에요.</p>
+</aside>
+
+<p>진행자들이 처음 짚는 건 이 문서가 '화면에서 무엇을 숨길지'에 머물러 있다는 점이에요. 화면에서 민감한 데이터를 가리는 건 거실 창문에 블라인드만 치고 현관문은 열어 둔 것과 같다고 해요. 화면에 안 보여도 API 응답에는 남의 개인정보가 그대로 실려 있을 수 있거든요.</p>
+
+<h3>토큰이 유효한데 왜 뚫리나요</h3>
+<p>한 진행자가 반문해요. 게이트웨이에서 JWT(JSON Web Token)를 이미 검증했으면 검증된 사용자 아니냐고요. 답은 토큰 검증이 '안전한 통신 채널'을 확보하는 데 그친다는 거예요. 암호화된 터널을 뚫어 놓고 터널 안에서는 무엇이든 하게 두면, 공격을 암호화해서 안전하게 배달해 주는 꼴이 돼요.</p>
+
+<blockquote>
+  <p>토큰을 검증하는 건 단지 안전한 통신 채널을 확보하는 것에 불과하거든요.</p>
+  <cite>— 영상 01:07</cite>
+</blockquote>
+
+<p>로그인했다는 사실(인증)과 이 데이터를 볼 자격(<span class="term" data-term="인가" data-en="Authorization" data-desc="로그인한 사람이 특정 데이터나 기능을 쓸 자격이 있는지 판단하는 일이에요. &#x27;누구인가&#x27;를 확인하는 인증과 달라서, 둘을 섞으면 BOLA가 생겨요." data-g="3">인가</span>)은 다른 문제예요. 정상 토큰을 가진 공격자가 요청 속 고유 번호만 바꿔 남의 데이터를 가져가는 게 BOLA예요. 응답에 필요 없는 속성까지 실려 나가는 건 <span class="term" data-term="BOPLA" data-en="Broken Object Property Level Authorization" data-desc="볼 자격이 없는 속성(필드)까지 응답에 실려 나가거나 바꿀 수 있는 취약점이에요. 화면에서 숨겨도 응답 데이터에 남아 있으면 그대로 새요." data-g="2">BOPLA(Broken Object Property Level Authorization)</span>고요. 아래 그림이 토큰만 확인하는 서버에서 벌어지는 일이에요.</p>
+
+<figure class="diagram">
+  <svg viewBox="0 0 640 170" role="img" aria-label="정상 토큰을 가진 공격자가 번호만 바꿔 요청하자 서버가 토큰만 확인하고 남의 데이터를 돌려주는 흐름">
+    <defs><marker id="arrow-bola" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="box" x="10" y="45" width="150" height="80" rx="10"/>
+    <text x="85" y="80" text-anchor="middle">공격자</text>
+    <text x="85" y="102" text-anchor="middle" class="sub">정상 토큰 보유</text>
+    <path class="line" d="M162 85 H238" marker-end="url(#arrow-bola)"/>
+    <text x="200" y="72" text-anchor="middle" class="mono">id=1 → 2</text>
+    <rect class="box" x="240" y="30" width="170" height="110" rx="10"/>
+    <text x="325" y="62" text-anchor="middle">서버</text>
+    <text x="325" y="88" text-anchor="middle" class="sub">토큰 검증 통과</text>
+    <text x="325" y="112" text-anchor="middle" class="sub">소유권 검증 없음</text>
+    <path class="line" d="M412 85 H478" marker-end="url(#arrow-bola)"/>
+    <rect class="bad" x="480" y="45" width="150" height="80" rx="10"/>
+    <text x="555" y="80" text-anchor="middle">응답</text>
+    <text x="555" y="102" text-anchor="middle" class="sub">남의 데이터 전체</text>
+  </svg>
+  <figcaption>서버가 '로그인했나'만 묻고 '이 데이터의 주인인가'를 묻지 않으면, 번호 하나만 바꿔도 남의 데이터가 나와요.</figcaption>
+</figure>
+
+<h3>슬라이드가 보여 주는 위협의 규모</h3>
+<p>문서 앞부분 슬라이드는 숫자 세 개로 시작해요. 왼쪽 카드는 지난 2년 안에 API 관련 데이터 유출을 겪은 조직이 57%인데 API 계층 공격 탐지율은 21%라고 적었어요. 가운데 카드는 2026년 주요 침해 사고 다섯 건 중 네 건이 경계망 돌파가 아니라 '이미 작동 중인 권한'을 남용했다고 해요. 오른쪽은 생성형 AI(Artificial Intelligence)를 통한 비정상 API 호출을 가장 심각한 위협(65%)으로 꼽아요.</p>
+<figure>
+  <img src="assets/frame-0055.webp" alt="시스템 붕괴의 현실 슬라이드. 57%, 4 out of 5, 65% Extreme Risk 세 장의 숫자 카드">
+  <figcaption>가운데 카드가 이 대담의 출발점이에요. 사고는 문을 부수고 들어온 게 아니라 이미 가진 권한에서 나와요. 슬라이드에 출처는 적혀 있지 않아요. <a href="https://www.youtube.com/watch?v=aLIzXtvuQm8&amp;t=55s" target="_blank" rel="noopener">영상 00:55에서 보기</a></figcaption>
+</figure>
+
+<p>다음 슬라이드는 실제 사고를 세 칸으로 나눠요. 왼쪽은 Stripe(2025)의 섀도우 API, 가운데는 McDonald's / Paradox.ai와 VW(Volkswagen)의 BOLA, 오른쪽은 Intel과 Azure AD(Active Directory)의 과도한 데이터 노출이에요. 가운데 칸 설명이 BOLA를 한 줄로 요약해요. 신청 번호나 차대번호 같은 순차적 ID를 조작해 남의 권한에 접근했고, 원인은 사용자 인증과 데이터 인가를 나누지 못한 거라고요.</p>
+<figure>
+  <img src="assets/frame-0150.webp" alt="검증된 취약점 슬라이드. Shadow APIs(Stripe 2025), BOLA(McDonald's / Paradox.ai & VW), Excessive Data Exposure(Intel & Azure AD) 세 칸과 각 설명">
+  <figcaption>세 칸이 이 영상의 세 주제와 그대로 이어져요. BOLA는 2장, 과도한 노출은 DTO, 섀도우 API는 4장에서 다뤄요. <a href="https://www.youtube.com/watch?v=aLIzXtvuQm8&amp;t=110s" target="_blank" rel="noopener">영상 01:50에서 보기</a></figcaption>
+</figure>
+
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>BOLA와 BOPLA는 OWASP(Open Worldwide Application Security Project) API Security Top 10 2023판의 1번(<code>API1</code>)과 3번(<code>API3</code>) 항목이에요. BOPLA는 2019판의 Excessive Data Exposure(과도한 데이터 노출)와 Mass Assignment를 하나로 묶은 이름이라, 슬라이드의 'Excessive Data Exposure'는 지금 분류로는 BOPLA에 들어가요. 4장에서 다루는 섀도우·좀비 API는 <code>API9</code> Improper Inventory Management(부적절한 자산 관리)에 해당해요.</p>
+  <p class="cite">출처: <a href="https://owasp.org/API-Security/editions/2023/en/0x11-t10/" target="_blank" rel="noopener">OWASP API Security Top 10 2023</a> · <a href="https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/" target="_blank" rel="noopener">API3:2023 BOPLA</a></p>
+</aside>
+
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>슬라이드의 McDonald's 사례는 2025년 보안 연구자 Ian Carroll과 Sam Curry가 공개한 McHire(채용 챗봇 플랫폼, Paradox.ai 운영) 건이에요. 관리 화면이 기본 계정 123456:123456을 받아 줬고, 지원자 채팅의 lead_id 번호를 하나 줄이자 다른 지원자의 개인정보가 바로 나왔다고 해요. 연구자들은 6,400만 명이 넘는 지원자 데이터를 가져올 수 있었다고 썼어요. 2025년 6월 30일에 Paradox.ai와 McDonald's에 알렸어요.</p>
+  <p class="cite">출처: <a href="https://ian.sh/mcdonalds" target="_blank" rel="noopener">Ian Carroll — McDonald's AI Hiring Bot (연구자 원문)</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=aLIzXtvuQm8&amp;t=134s" target="_blank" rel="noopener">02:14</a>
+  <h2>남의 데이터를 원천 차단하는 세 가지 장치</h2>
+<p>그럼 문서를 어떻게 고쳐야 할까요? 진행자들이 내놓는 답은 세 겹이에요. 번호를 추측할 수 없게 만들고, 소유권 확인을 개발자 손에서 빼서 시스템에 박고, 응답에 나갈 필드를 미리 정해 두는 거예요.</p>
+
+<h3>1. 순차 번호 대신 추측할 수 없는 ID</h3>
+<p>DB가 자동으로 매기는 1, 2, 3 같은 번호는 하나씩 올려 보기만 해도 다음 사람 데이터가 나와요. 그래서 UUID v4나 암호학적으로 만든 토큰형 식별자로 바꾸자고 해요. 무차별 대입으로 남의 ID를 맞히는 길이 막혀요.</p>
+<p>슬라이드도 같은 위협을 AI 쪽에서 설명해요. 왼쪽의 엉킨 선이 오른쪽에서 분석·자동화·생성·반복의 고리로 정리되는 그림이에요. 아래 오른쪽 문장이 핵심이에요. '모두의창업' 사례처럼 매개변수를 순차적으로 바꾸는 자동화 스크립트를 AI가 바로 만들어 낸다는 거예요.</p>
+<figure>
+  <img src="assets/frame-0240.webp" alt="비대칭 위협의 가속화 슬라이드. 엉킨 선이 분석, 자동화, 생성, 반복 네 고리로 바뀌는 그림과 AI가 진입 장벽을 허물었다는 문장">
+  <figcaption>AI가 새 취약점을 만드는 게 아니라, 번호를 하나씩 바꿔 보는 반복 작업을 공짜로 만들어 줬다는 게 슬라이드의 주장이에요. <a href="https://www.youtube.com/watch?v=aLIzXtvuQm8&amp;t=160s" target="_blank" rel="noopener">영상 02:40에서 보기</a></figcaption>
+</figure>
+
+<h3>2. 소유권 확인을 시스템에 박는 공통 인터셉터</h3>
+<p>여기서 반론이 나와요. 번호를 바꿔도 개발자가 비즈니스 로직에서 소유권 검증을 빼먹는 실수는 못 막잖아요. 마감에 쫓기다 우연히 알게 된 남의 ID 조회를 그냥 통과시킬 수도 있고요. 진행자도 ID 교체만으로는 부족하다고 인정해요.</p>
+<p>그래서 요청자의 세션 토큰과 조회 대상의 소유권을 SQL(Structured Query Language) 쿼리 수준에서 강제로 묶는 공통 인터셉터를 문서에 넣자고 해요. ORM(Object-Relational Mapping)이나 DB 접근 계층에서 조건이 자동으로 붙으니, 개발자가 잊어도 남의 데이터는 애초에 조회되지 않아요. 로직의 끝단이 아니라 가장 깊은 조회 단계에서 막는 거예요.</p>
+
+<h3>3. 내보낼 필드만 담는 DTO</h3>
+<p>ID가 안전해져도 <code>SELECT *</code>로 모든 컬럼을 가져와 그대로 던지면 여전히 위험해요. 그래서 외부 응답 전용 DTO를 의무로 만들자고 해요. 진행자는 '모두의창업'과 Intel 유출을 예로 들어요. 백엔드가 엔티티 객체를 그대로 <span class="term" data-term="직렬화" data-en="Serialization" data-desc="프로그램 안의 객체를 JSON 같은 전송용 형태로 바꾸는 일이에요. 엔티티를 통째로 직렬화하면 내부용 필드까지 응답에 섞여 나가요." data-g="5">직렬화</span>해서 내부 메타데이터가 평문으로 다 나갔다는 거예요.</p>
+<p>세 장치를 요청 하나의 흐름에 놓으면 이렇게 돼요.</p>
+
+<figure class="diagram">
+  <svg viewBox="0 0 720 190" role="img" aria-label="요청이 추측 불가능한 ID, 공통 인터셉터의 소유권 조건, DB 조회, DTO를 차례로 거쳐 필요한 필드만 응답으로 나가는 흐름">
+    <defs><marker id="arrow-fix" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="c1 cell" x="10" y="40" width="124" height="90" rx="10"/>
+    <text x="72" y="74" text-anchor="middle">요청</text>
+    <text x="72" y="98" text-anchor="middle" class="sub">UUID v4 ID</text>
+    <path class="line" d="M136 85 H152" marker-end="url(#arrow-fix)"/>
+    <rect class="c2 cell" x="154" y="40" width="124" height="90" rx="10"/>
+    <text x="216" y="74" text-anchor="middle">공통 인터셉터</text>
+    <text x="216" y="98" text-anchor="middle" class="sub">소유권 조건 자동</text>
+    <path class="line" d="M280 85 H296" marker-end="url(#arrow-fix)"/>
+    <rect class="c3 cell" x="298" y="40" width="124" height="90" rx="10"/>
+    <text x="360" y="74" text-anchor="middle">DB 조회</text>
+    <text x="360" y="98" text-anchor="middle" class="sub">내 것만 조회</text>
+    <path class="line" d="M424 85 H440" marker-end="url(#arrow-fix)"/>
+    <rect class="c4 cell" x="442" y="40" width="124" height="90" rx="10"/>
+    <text x="504" y="74" text-anchor="middle">DTO</text>
+    <text x="504" y="98" text-anchor="middle" class="sub">필요한 필드만</text>
+    <path class="line" d="M568 85 H584" marker-end="url(#arrow-fix)"/>
+    <rect class="ok" x="586" y="40" width="124" height="90" rx="10"/>
+    <text x="648" y="74" text-anchor="middle">응답</text>
+    <text x="648" y="98" text-anchor="middle" class="sub">빈틈없는 페이로드</text>
+    <text x="72" y="160" text-anchor="middle" class="sub">추측 차단</text>
+    <text x="216" y="160" text-anchor="middle" class="sub">실수 차단</text>
+    <text x="504" y="160" text-anchor="middle" class="sub">과다 노출 차단</text>
+  </svg>
+  <figcaption>세 장치는 서로 다른 구멍을 막아요. 하나만 있으면 나머지 두 구멍이 그대로 남아요.</figcaption>
+</figure>
+
+<p>슬라이드의 제로 트러스트 프레임워크도 같은 방향이에요. 왼쪽 첫 칸 '동적 권한 제어'에 <span class="term" data-term="ABAC" data-en="Attribute-Based Access Control" data-desc="역할 하나가 아니라 요청자, 대상 데이터, 환경의 여러 속성을 함께 보고 허용 여부를 정하는 방식이에요. 데이터 소유자도 속성이라 BOLA 방어에 맞아요." data-g="11">ABAC(Attribute-Based Access Control)</span>와 OPA를 적고, 그 효과로 'BOLA 차단 및 컨텍스트 기반 접근 제어'를 달았어요. 가운데 칸은 DPoP로 토큰 탈취를 막고, 오른쪽 칸은 Redis 기반 속도 제한으로 AI 스크래핑을 줄인다고 해요. 이 세 칸은 3장과 4장에서 다시 나와요.</p>
+<figure>
+  <img src="assets/frame-0330.webp" alt="제로 트러스트 API 프레임워크 슬라이드. 동적 권한 제어, 암호학적 신원 바인딩, 지능형 트래픽 셰이핑 세 칸을 화살표로 이은 그림">
+  <figcaption>대화는 첫 칸(권한)에서 시작해 셋째 칸(트래픽)으로 넘어가요. 슬라이드는 이 순서로 문서 전체를 묶어요. <a href="https://www.youtube.com/watch?v=aLIzXtvuQm8&amp;t=210s" target="_blank" rel="noopener">영상 03:30에서 보기</a></figcaption>
+</figure>
+
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>UUID 표준 RFC(Request for Comments) 9562도 영상의 두 번째 지적과 같은 말을 해요. 보안 고려 사항에서 'UUID가 추측하기 어렵다고 가정하면 안 되고, 가지고 있다는 것만으로 접근을 허락하는 식별자로 쓰면 안 된다'고 적어 뒀어요. UUID v4는 추측을 어렵게 할 뿐이고, 권한 확인은 따로 해야 해요.</p>
+  <p class="cite">출처: <a href="https://www.rfc-editor.org/rfc/rfc9562" target="_blank" rel="noopener">RFC 9562 — Universally Unique IDentifiers (8. Security Considerations)</a></p>
+</aside>
+
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>슬라이드의 Intel 사례는 2025년 보안 연구자 Eaton Zveare가 공개한 Intel 사내 명함 주문 사이트 건이에요. 로그인 화면을 우회하자 직원 검색 API가 필터 없이 거의 1GB에 이르는 JSON(JavaScript Object Notation)을 돌려줬고, 그 안에 Intel 전 직원 정보가 들어 있었다고 해요. 화면이 쓰는 것보다 훨씬 많은 데이터를 API가 내보낸, DTO가 막으려는 바로 그 상황이에요.</p>
+  <p class="cite">출처: <a href="https://eaton-works.com/2025/08/18/intel-outside-hack/" target="_blank" rel="noopener">Eaton Zveare — Intel Outside (연구자 원문)</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=aLIzXtvuQm8&amp;t=264s" target="_blank" rel="noopener">04:24</a>
+  <h2>정상 토큰을 쥔 공격자는 어떻게 잡나요?</h2>
+<p>앞단을 다 막았다고 쳐도 남는 구멍이 있어요. 공격자가 피싱으로 사용자의 정상 자격 증명을 훔치면, 완벽하게 합법적인 형식으로 API를 불러요. 진행자는 문서의 탐지 전략이 트래픽 양이나 정해진 임계치를 감시하는 데 머물러 있어서 이런 공격을 못 막는다고 봐요.</p>
+
+<h3>방화벽이 통과시키는 공격</h3>
+<p>기존 웹 방화벽(WAF)은 요청 형식이 맞는지, 악성 페이로드가 있는지만 봐요. 토큰이 유효하고 요청이 깔끔하면 그냥 통과예요. 공격자는 그 틈에 조용히 데이터를 긁어 가거나 비즈니스 흐름 자체를 악용해요.</p>
+<p>슬라이드의 '정적 토큰의 치명적 결함'이 이 상황을 그림으로 보여 줘요. 가운데 Bearer Token을 Attacker가 가로채 Server로 가져가고, 서버는 빨간 X로 무너져요. 아래 문장은 '토큰이 곧 권한'이라는 정적 논리가 문제라고 짚어요.</p>
+<figure>
+  <img src="assets/frame-0655.webp" alt="정적 토큰의 치명적 결함 슬라이드. Client와 Server 사이의 Bearer Token을 Attacker가 가로채 서버에 쓰는 그림">
+  <figcaption>탈취한 토큰을 가진 사람은 서버 눈에 원래 주인과 똑같아 보여요. <a href="https://www.youtube.com/watch?v=aLIzXtvuQm8&amp;t=415s" target="_blank" rel="noopener">영상 06:55에서 보기</a></figcaption>
+</figure>
+<p>슬라이드는 여기에 DPoP로 답해요. 토큰을 클라이언트만 가진 개인 키에 묶어서, 토큰만 훔친 공격자가 오면 'Cryptographic Mismatch'로 막히는 그림이에요. 대화에서는 이 방법을 다루지 않고 행위 기반 탐지로 넘어가요.</p>
+<figure>
+  <img src="assets/frame-0735.webp" alt="암호학적 신원 바인딩 DPoP 슬라이드. Client 쪽 Bearer Token과 TLS Session Key가 묶여 있고, 토큰만 가져간 Attacker는 Server에서 Cryptographic Mismatch로 거부되는 그림">
+  <figcaption>'무엇을 가지고 있나'에서 '원래 발급받은 그 주체가 맞나'로 질문을 바꾸는 방식이에요. <a href="https://www.youtube.com/watch?v=aLIzXtvuQm8&amp;t=455s" target="_blank" rel="noopener">영상 07:35에서 보기</a></figcaption>
+</figure>
+
+<h3>양이 아니라 순서를 보는 행위 기반 탐지</h3>
+<p>진행자의 처방은 머신러닝 이상탐지가 들어간 WAAP으로 실시간 행위 프로파일링을 하는 거예요. 다른 진행자가 한 걸음 더 나가요. '1분에 100번 불렀으니 차단'이 아니라, 이 사용자가 API를 어떤 순서로 부르는지 맥락을 읽자는 거예요. 아래 그림이 진행자가 든 예예요.</p>
+
+<figure class="diagram">
+  <svg viewBox="0 0 640 200" role="img" aria-label="정상 흐름은 로그인, 장바구니, 결제 내역, 결제 승인 순서이고 비정상 흐름은 로그인 직후 결제 승인만 연달아 부르는 비교">
+    <defs><marker id="arrow-seq" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="10" y="24" class="sub">정상 앱 이용</text>
+    <rect class="ok" x="10" y="34" width="130" height="50" rx="8"/><text x="75" y="64" text-anchor="middle">로그인</text>
+    <path class="line" d="M142 59 H158" marker-end="url(#arrow-seq)"/>
+    <rect class="ok" x="160" y="34" width="130" height="50" rx="8"/><text x="225" y="64" text-anchor="middle">장바구니</text>
+    <path class="line" d="M292 59 H308" marker-end="url(#arrow-seq)"/>
+    <rect class="ok" x="310" y="34" width="130" height="50" rx="8"/><text x="375" y="64" text-anchor="middle">결제 내역 화면</text>
+    <path class="line" d="M442 59 H458" marker-end="url(#arrow-seq)"/>
+    <rect class="ok" x="460" y="34" width="130" height="50" rx="8"/><text x="525" y="64" text-anchor="middle">결제 승인</text>
+    <text x="10" y="124" class="sub">비정상 조합</text>
+    <rect class="ok" x="10" y="134" width="130" height="50" rx="8"/><text x="75" y="164" text-anchor="middle">로그인</text>
+    <path class="line" d="M142 159 H158" marker-end="url(#arrow-seq)"/>
+    <rect class="bad" x="160" y="134" width="130" height="50" rx="8"/><text x="225" y="164" text-anchor="middle">결제 승인</text>
+    <path class="line" d="M292 159 H308" marker-end="url(#arrow-seq)"/>
+    <rect class="bad" x="310" y="134" width="130" height="50" rx="8"/><text x="375" y="164" text-anchor="middle">결제 승인</text>
+    <path class="line" d="M442 159 H458" marker-end="url(#arrow-seq)"/>
+    <rect class="bad" x="460" y="134" width="130" height="50" rx="8"/><text x="525" y="164" text-anchor="middle">결제 승인</text>
+  </svg>
+  <figcaption>호출 횟수가 적어도, 화면을 거치지 않고 결제 승인만 연달아 부르는 순서는 정상 앱에서 나올 수 없어요.</figcaption>
+</figure>
+
+<p>AI는 접속 IP, 세션, 토큰, 요청값의 변화폭과 함께 이 호출 순서를 실시간으로 보고, 이상한 흐름이 잡히면 바로 격리해요.</p>
+<p>슬라이드는 같은 문제를 트래픽 쪽에서 풀어요. 왼쪽의 어지러운 'High-Volume AI Requests'가 WAF를 지나 'Advanced Rate Limiting'에서 가지런한 'Shaped Traffic'으로 바뀌는 그림이에요. 아래 문장은 정상 형식을 갖춘 AI 자동화 요청이 WAF의 시그니처 탐지를 쉽게 피한다고 적었어요.</p>
+<figure>
+  <img src="assets/frame-0845.webp" alt="지능형 트래픽 제어의 필요성 슬라이드. High-Volume AI Requests, WAF, Advanced Rate Limiting, Shaped Traffic 순서로 흐름이 정리되는 그림">
+  <figcaption>WAF는 선 하나로만 그려져 있고, 흐름을 실제로 정리하는 건 그 뒤의 속도 제한이에요. <a href="https://www.youtube.com/watch?v=aLIzXtvuQm8&amp;t=525s" target="_blank" rel="noopener">영상 08:45에서 보기</a></figcaption>
+</figure>
+<p>이어지는 슬라이드는 속도 제한 알고리즘 세 가지를 표로 비교해요. 글자가 작아서 내용을 옮겨 둘게요.</p>
+<figure>
+  <img src="assets/frame-0930.webp" alt="속도 제한 알고리즘 진단 표. Token Bucket, Leaky Bucket, Sliding Window Counter를 메커니즘, 버스트 처리, 최적 사용처로 비교">
+  <figcaption>버스트를 허용할지 막을지가 셋을 가르는 기준이에요. <a href="https://www.youtube.com/watch?v=aLIzXtvuQm8&amp;t=570s" target="_blank" rel="noopener">영상 09:30에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>알고리즘</th><th>동작</th><th>버스트 처리</th><th>잘 맞는 곳</th></tr></thead>
+    <tbody>
+      <tr><td>Token Bucket</td><td>일정 속도로 토큰을 채우고 요청마다 소모</td><td>잠깐의 스파이크는 허용</td><td>모바일 앱 첫 로딩처럼 API를 한꺼번에 부를 때</td></tr>
+      <tr><td>Leaky Bucket</td><td>요청을 큐(FIFO(First In, First Out))에 담아 일정 속도로 내보냄</td><td>버스트를 막고 흐름을 고르게</td><td>뒤쪽 시스템을 엄격히 보호하거나 외부 API와 연동할 때</td></tr>
+      <tr><td>Sliding Window Counter</td><td>이전 구간과 현재 진행률에 가중치를 둬 계산</td><td>구간 경계에서 몰리는 요청을 정밀하게 제어</td><td>메모리는 적게, 방어는 정밀하게 해야 할 때</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3>너무 느린 공격에는 미끼를 둬요</h3>
+<p>다음 반론은 이래요. 공격자가 임계치 아래로 아주 느리게 긁어 가면 AI도 정상 사용자로 착각하지 않을까요? 오탐을 줄이려고 모델 민감도를 낮추면 결국 다 뚫리고요. 진행자는 AI의 수동적 감시를 보완할 능동적 함정, 허니 토큰을 꺼내요.</p>
+<p>API 응답 안에 정상 사용자는 절대 쓸 일이 없는 가짜 객체 ID를 넣어 둬요. 화면에서는 CSS(Cascading Style Sheets)로 숨기거나 메타데이터 깊숙이 두니 일반 사용자는 누를 방법이 없어요. 번호를 차례로 대입하며 긁는 공격자만 결국 이 미끼를 물어요.</p>
+<p>그런데 프론트엔드 개발자가 새 릴리스에서 실수로 미끼 ID를 부르는 버그를 만들면요? 우리 서버나 선량한 사용자가 공격자로 찍히는 오인 사격이 나요. 그래서 허니 토큰은 예외 처리와 한 묶음으로 설계해야 해요.</p>
+
+<figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["미끼 ID 호출 발생"] --> B{"백엔드 내부망 또는 승인된 프론트엔드 IP 대역?"}
+  B -- "예" --> C["AI 탐지 페널티에서 제외"]
+  B -- "아니요" --> D["악성으로 간주하고 격리"]
+</pre>
+  <figcaption>허용 목록으로 우리 쪽 호출을 먼저 빼 두니, 미끼를 건드린 외부 트래픽은 오탐 걱정 없이 100% 악성으로 볼 수 있다는 게 진행자의 설명이에요.</figcaption>
+</figure>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=aLIzXtvuQm8&amp;t=520s" target="_blank" rel="noopener">08:40</a>
+  <h2>숨은 API까지 찾고, 권한은 OPA에 맡기기</h2>
+<p>마지막 주제는 '모르는 API'예요. 하루에도 수십 번 배포가 일어나는 마이크로서비스 환경에서는 관리하는 API만 지켜서는 부족해요. 존재조차 모르는 섀도우 API와 버려진 <span class="term" data-term="좀비 API" data-en="Zombie API" data-desc="폐기했다고 여겨지지만 실제로는 아직 살아서 응답하는 옛 API예요. 패치가 안 된 채 남아 공격 통로가 되기 쉬워요." data-g="9">좀비 API</span>까지 통제해야 해요.</p>
+
+<h3>문서의 약점: 일회성 점검과 하드코딩된 권한</h3>
+<p>진행자는 문서의 API 점검 계획이 일회성·수동 검사에 머물러 있고, 권한을 동적으로 판정할 중앙집중형 인가 모델이 없다고 짚어요. 권한 관계를 소스 코드에 하드코딩하고 문서에 없는 API를 방치하면, CI(Continuous Integration)/CD 파이프라인의 속도를 보안이 못 따라가서 백도어가 생겨요. 진행자는 Stripe 레거시 API 공격을 그 예로 들어요. Swagger 같은 문서를 써도 코드가 병합되는 순간 낡아 버리고, 테스트용으로 잠깐 열어 둔 뒷문 하나가 시스템 전체를 무너뜨릴 수 있다고요.</p>
+
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>슬라이드가 'Stripe(2025)'로 적은 사례는 보안 업체 Jscrambler가 분석한 카드 스키밍 캠페인이에요. 쇼핑몰에 심은 악성 스크립트가 훔친 카드 번호를 Stripe의 지원 중단된(deprecated) API 버전으로 유효한지 먼저 확인했고, 피해 상점은 49곳으로 집계됐어요. Jscrambler는 업데이트에서 'Stripe의 API나 인프라에서 보안 문제를 찾지 못했다'고 따로 밝혔어요. 뚫린 건 Stripe가 아니라 각 상점 사이트이고, 낡은 API 버전은 공격자가 쓴 도구였다는 뜻이에요.</p>
+  <p class="cite">출처: <a href="https://jscrambler.com/blog/stripe-api-skimming-campaign/" target="_blank" rel="noopener">Jscrambler — Inside the Stripe API Skimming Campaign</a></p>
+</aside>
+
+<h3>찾기: 수동 분석과 능동 스캐닝을 함께</h3>
+<p>트래픽 분석이나 능동 스캐닝 중 하나만으로는 사각지대가 생겨요. 그래서 네트워크 트래픽을 관찰하는 수동적 분석과 소스 코드 스캐닝 같은 능동적 방식을 결합한 지속적 API 디스커버리를 만들자고 해요. 문서에 없거나 폐기된 좀비 API까지 실시간 인벤토리에 동기화하는 자동화 파이프라인이에요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>방식</th><th>무엇을 보나요</th><th>혼자 쓰면</th></tr></thead>
+    <tbody>
+      <tr><td>수동적 분석</td><td>실제로 오가는 네트워크 트래픽</td><td>호출이 없는 API는 못 찾아요</td></tr>
+      <tr><td>능동적 방식</td><td>소스 코드 스캐닝 같은 직접 탐색</td><td>실제로 어떻게 쓰이는지는 못 봐요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>'혼자 쓰면' 칸은 진행자가 말한 '사각지대'를 각 방식에 풀어 쓴 거예요. 슬라이드의 '진화하는 보안 거버넌스'는 이 과정을 원으로 그려요. 1 Discover(미관리 Shadow API 식별)에서 2 Test(CI/CD 파이프라인 안의 에이전트 검증), 3 Protect(WAAP 및 API Gateway 방어), 4 Analyze(데이터 레이크 분석)로 돌고 다시 처음으로 이어져요.</p>
+<figure>
+  <img src="assets/frame-1110.webp" alt="진화하는 보안 거버넌스 슬라이드. Discover, Test, Protect, Analyze 네 단계가 원을 따라 순환하는 그림">
+  <figcaption>점검이 한 번으로 끝나는 게 아니라 배포마다 다시 도는 고리라는 게 요점이에요. <a href="https://www.youtube.com/watch?v=aLIzXtvuQm8&amp;t=670s" target="_blank" rel="noopener">영상 11:10에서 보기</a></figcaption>
+</figure>
+
+<h3>판정: 정책 기반 인가와 OPA</h3>
+<p>찾아낸 수많은 API의 권한은 어떻게 통제할까요? 서비스마다 언어도 프레임워크도 다르니 권한 로직을 일일이 심을 수는 없어요. 답은 정책 기반 인가, 곧 Policy as Code예요. OPA 같은 정책 엔진으로 속성 기반 접근 제어(ABAC)를 구현해서, 권한 통제를 비즈니스 로직과 완전히 떼어 내요.</p>
+<p>한 진행자는 이걸 마이크로서비스들의 대법원에 빗대요. 각 서비스가 법을 해석할 필요 없이 사실관계만 넘기면, 엔진이 코드로 쓴 정책에 따라 허용이나 거부를 판결해요. 직급이나 역할만이 아니라 물리적 위치, 디바이스 보안 상태까지 따져요.</p>
+<p>슬라이드는 ABAC를 세 가지 속성으로 정리해요. 왼쪽의 깨진 자물쇠 아래 'Role = Admin'은 역할 확인만으로는 BOLA를 못 막는다는 뜻이에요. 오른쪽 목록이 함께 따지는 속성이에요. Subject(요청자의 부서, 직급, 보안 등급), Resource(대상 데이터의 민감도, 소유자, 생성일), Environment(요청 시간, IP 위치, 디바이스 보안 상태)예요.</p>
+<figure>
+  <img src="assets/frame-0415.webp" alt="역할 기반에서 동적 속성 기반으로 슬라이드. Role = Admin이라 적힌 깨진 자물쇠와 Subject, Resource, Environment 세 속성 목록">
+  <figcaption>Resource의 '소유자' 속성이 바로 1장에서 빠졌던 소유권 확인이에요. <a href="https://www.youtube.com/watch?v=aLIzXtvuQm8&amp;t=255s" target="_blank" rel="noopener">영상 04:15에서 보기</a></figcaption>
+</figure>
+<p>다음 두 슬라이드는 OPA가 어떻게 판정하는지 보여 줘요. 왼쪽 JSON Input이 Open Policy Agent로 들어가고, 안의 Rego Policies를 거쳐 Allow나 Deny가 나와요.</p>
+<figure>
+  <img src="assets/frame-0515.webp" alt="정책과 코드의 완벽한 분리 슬라이드. JSON Input이 Rego Policies를 담은 Open Policy Agent로 들어가 Allow 또는 Deny로 나뉘는 그림">
+  <figcaption>서비스는 사실(JSON)만 넘기고 판결(Allow·Deny)만 받아요. 대법원 비유가 이 그림이에요. <a href="https://www.youtube.com/watch?v=aLIzXtvuQm8&amp;t=315s" target="_blank" rel="noopener">영상 05:15에서 보기</a></figcaption>
+</figure>
+<p>Rego 정책 예시는 '문서 소유자만 수정할 수 있다'는 규칙이에요. 기본값을 거부(<code>default allow := false</code>)로 두고, 수정 요청이면서 리소스 소유자가 요청자일 때만 허용해요.</p>
+<pre><code>package abac
+default allow := false
+
+# 문서 소유자만 수정(write) 가능
+allow if {
+    input.action == "write"
+    input.resource.owner == input.user.id
+}</code></pre>
+<figure>
+  <img src="assets/frame-0600.webp" alt="실행 가능한 정책 슬라이드. 문서 소유자만 수정할 수 있게 하는 8줄짜리 Rego 코드">
+  <figcaption>7번째 줄이 BOLA를 막는 소유권 조건이에요. 코드에 흩어져 있던 규칙이 정책 파일 한 줄이 돼요. <a href="https://www.youtube.com/watch?v=aLIzXtvuQm8&amp;t=360s" target="_blank" rel="noopener">영상 06:00에서 보기</a></figcaption>
+</figure>
+
+<h3>지연 걱정은 사이드카로</h3>
+<p>대법원 비유를 그대로 가져가면 문제가 생겨요. 수십 개 서비스가 통신할 때마다 외부 OPA에 승인을 받아야 하니 네트워크 지연이 커지고, CI/CD 속도도 늦어질 수 있어요. 진행자의 답은 OPA를 중앙 서버 하나로 띄우지 말고, 각 마이크로서비스와 같은 노드에 사이드카로 붙이는 거예요.</p>
+
+<figure class="diagram">
+  <svg viewBox="0 0 640 260" role="img" aria-label="중앙 컨트롤 플레인이 정책과 데이터를 세 노드의 OPA 사이드카로 동기화하고, 각 서비스는 같은 노드의 사이드카에 물어 로컬에서 판정받는 구조">
+    <defs><marker id="arrow-side" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="box accent" x="190" y="10" width="260" height="54" rx="10"/>
+    <text x="320" y="34" text-anchor="middle">중앙 컨트롤 플레인</text>
+    <text x="320" y="54" text-anchor="middle" class="sub">정책과 데이터</text>
+    <path class="line" d="M240 66 L105 118" marker-end="url(#arrow-side)"/>
+    <path class="line" d="M320 66 V118" marker-end="url(#arrow-side)"/>
+    <path class="line" d="M400 66 L535 118" marker-end="url(#arrow-side)"/>
+    <text x="520" y="80" class="sub">실시간 동기화</text>
+    <rect class="box dim" x="10" y="120" width="190" height="120" rx="10"/>
+    <text x="105" y="140" text-anchor="middle" class="sub">노드 1</text>
+    <rect class="c1 cell" x="22" y="152" width="80" height="70" rx="8"/><text x="62" y="192" text-anchor="middle">서비스</text>
+    <rect class="c5 cell" x="112" y="152" width="78" height="70" rx="8"/><text x="151" y="192" text-anchor="middle">OPA</text>
+    <rect class="box dim" x="225" y="120" width="190" height="120" rx="10"/>
+    <text x="320" y="140" text-anchor="middle" class="sub">노드 2</text>
+    <rect class="c1 cell" x="237" y="152" width="80" height="70" rx="8"/><text x="277" y="192" text-anchor="middle">서비스</text>
+    <rect class="c5 cell" x="327" y="152" width="78" height="70" rx="8"/><text x="366" y="192" text-anchor="middle">OPA</text>
+    <rect class="box dim" x="440" y="120" width="190" height="120" rx="10"/>
+    <text x="535" y="140" text-anchor="middle" class="sub">노드 3</text>
+    <rect class="c1 cell" x="452" y="152" width="80" height="70" rx="8"/><text x="492" y="192" text-anchor="middle">서비스</text>
+    <rect class="c5 cell" x="542" y="152" width="78" height="70" rx="8"/><text x="581" y="192" text-anchor="middle">OPA</text>
+    <text x="320" y="256" text-anchor="middle" class="sub">판정은 같은 노드 안 로컬 메모리에서, 밀리초 단위</text>
+  </svg>
+  <figcaption>중앙은 정책을 나눠 주기만 하고, 판정은 네트워크를 건너지 않고 각 노드 안에서 끝나요. 그래서 지연 걱정이 사라진다는 거예요.</figcaption>
+</figure>
+
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>OPA 공식 문서도 같은 배치를 권해요. Go 밖에서 연동할 때는 OPA를 호스트 수준 데몬이나 사이드카 컨테이너로 띄우라고 하고, 서비스와 같은 호스트에서 돌려야 정책 판정이 빠르고 가용성도 높다고 적어 뒀어요. 설계 철학 문서에는 사이드카, 호스트 데몬, 라이브러리 세 가지 방식이 나와요.</p>
+  <p class="cite">출처: <a href="https://www.openpolicyagent.org/docs/integration" target="_blank" rel="noopener">OPA 공식 문서 — Integrating OPA</a> · <a href="https://www.openpolicyagent.org/docs/philosophy" target="_blank" rel="noopener">OPA 공식 문서 — Philosophy</a></p>
+</aside>
+
+<h3>세 가지 실행 계획</h3>
+<p>대담은 이렇게 정리하며 끝나요.</p>
+<ol class="steps">
+  <li><b>UUID v4와 시스템 수준 SQL 바인딩</b> — BOLA를 원천에서 막아요.</li>
+  <li><b>정적 룰셋을 넘어선 실시간 행위 기반 AI 탐지</b> — 오인 사격을 막는 격리 설계(허용 목록)와 함께요.</li>
+  <li><b>이중 스캐닝 API 디스커버리와 사이드카 OPA</b> — 숨은 API까지 찾고, 권한 통제를 한곳으로 모아요.</li>
+</ol>
+<p>영상 끝에는 문서 전체를 한 장에 담은 인포그래픽이 나와요. 왼쪽에 위기 지표(99%, 95%, 4.99백만 달러), 가운데에 쿠팡·맥도날드·인텔·폭스바겐 침해 사례, 오른쪽 위에 OWASP API Top 10 2023의 BOLA, BOPLA, 부적절한 자산 관리, 오른쪽 아래에 4단계 방어 전략(API Discovery, 토큰 바인딩, Policy as Code, WAAP)이 있어요.</p>
+<figure>
+  <img src="assets/frame-1250.webp" alt="API 보안 가이드 인포그래픽. 위기 지표 세 개, 최근 침해 사례 카드, OWASP API Top 10 2023 요약 세 원, API 방어 4단계 전략 방패 네 개">
+  <figcaption>오른쪽 아래 방패 네 개가 대담의 결론과 거의 겹쳐요. 인포그래픽의 작은 글자는 군데군데 깨져 있어서, 숫자와 사례 설명은 그대로 믿지 말고 원문을 확인하는 게 좋아요. <a href="https://www.youtube.com/watch?v=aLIzXtvuQm8&amp;t=770s" target="_blank" rel="noopener">영상 12:50에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 용어와 일부 낱말이 잘못 받아적혔어요. 슬라이드와 문맥으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>백핸드</td><td>백엔드</td><td></td></tr>
+      <tr><td>보라</td><td>BOLA</td><td>객체 수준 권한 검사 실패</td></tr>
+      <tr><td>BOPA / BOP</td><td>BOPLA</td><td></td></tr>
+      <tr><td>U유디 V4 / UID4</td><td>UUID v4</td><td></td></tr>
+      <tr><td>신환</td><td>신원</td><td></td></tr>
+      <tr><td>권항 덤증</td><td>권한 검증</td><td></td></tr>
+      <tr><td>엔티 객체</td><td>엔티티 객체</td><td></td></tr>
+      <tr><td>셀렉트 올</td><td>SELECT *</td><td>(추정) 모든 컬럼 조회</td></tr>
+      <tr><td>유효 아이디</td><td>UUID</td><td>(추정)</td></tr>
+      <tr><td>보완 정비</td><td>보안 장비</td><td></td></tr>
+      <tr><td>장바군 / 과면</td><td>장바구니 / 화면</td><td></td></tr>
+      <tr><td>셀리 일리스</td><td>새 릴리스</td><td>(추정)</td></tr>
+      <tr><td>5인 사격</td><td>오인 사격</td><td></td></tr>
+      <tr><td>설량한</td><td>선량한</td><td></td></tr>
+      <tr><td>얼로우리스트</td><td>allowlist (허용 목록)</td><td></td></tr>
+      <tr><td>종비 API / 최도우 API</td><td>좀비 API / 섀도우 API</td><td></td></tr>
+      <tr><td>마이크로비스 / 마이크로소</td><td>마이크로서비스</td><td></td></tr>
+      <tr><td>백도우 / 백도</td><td>백도어</td><td></td></tr>
+      <tr><td>절압</td><td>결합</td><td></td></tr>
+      <tr><td>폴리시 에즈코드</td><td>Policy as Code</td><td></td></tr>
+      <tr><td>OP</td><td>OPA</td><td>Open Policy Agent</td></tr>
+      <tr><td>사이드 카피턴</td><td>사이드카 패턴</td><td></td></tr>
+      <tr><td>행해 기반</td><td>행위 기반</td><td></td></tr>
+      <tr><td>생동하는 아티팩트</td><td>살아있는 아티팩트</td><td>슬라이드 부제 &#x27;The Living Artifact&#x27;</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-4"><dt>공통 인터셉터<span class="en">Interceptor</span></dt><dd>모든 요청이 지나가는 길목에서 공통 처리를 끼워 넣는 장치예요. 여기서 소유권 조건을 자동으로 붙이면 개발자가 잊어도 남의 데이터가 조회되지 않아요.</dd></div>
+    <div class="g" id="g-10"><dt>사이드카<span class="en">Sidecar</span></dt><dd>서비스 옆에 같은 노드로 붙여 띄우는 보조 프로세스예요. OPA를 사이드카로 두면 권한 판정을 네트워크 왕복 없이 로컬에서 해요.</dd></div>
+    <div class="g" id="g-8"><dt>섀도우 API<span class="en">Shadow API</span></dt><dd>운영 중이지만 보안팀의 목록이나 문서에 없는 API예요. 아무도 관리하지 않으니 점검과 방어에서 빠져요.</dd></div>
+    <div class="g" id="g-3"><dt>인가<span class="en">Authorization</span></dt><dd>로그인한 사람이 특정 데이터나 기능을 쓸 자격이 있는지 판단하는 일이에요. &#x27;누구인가&#x27;를 확인하는 인증과 달라서, 둘을 섞으면 BOLA가 생겨요.</dd></div>
+    <div class="g" id="g-9"><dt>좀비 API<span class="en">Zombie API</span></dt><dd>폐기했다고 여겨지지만 실제로는 아직 살아서 응답하는 옛 API예요. 패치가 안 된 채 남아 공격 통로가 되기 쉬워요.</dd></div>
+    <div class="g" id="g-5"><dt>직렬화<span class="en">Serialization</span></dt><dd>프로그램 안의 객체를 JSON 같은 전송용 형태로 바꾸는 일이에요. 엔티티를 통째로 직렬화하면 내부용 필드까지 응답에 섞여 나가요.</dd></div>
+    <div class="g" id="g-7"><dt>허니 토큰<span class="en">Honeytoken</span></dt><dd>정상 사용자는 절대 쓰지 않을 가짜 ID나 값을 일부러 심어 둔 미끼예요. 이걸 건드린 요청은 공격일 가능성이 매우 높아서 탐지 신호로 써요.</dd></div>
+    <div class="g" id="g-11"><dt>ABAC<span class="en">Attribute-Based Access Control</span></dt><dd>역할 하나가 아니라 요청자, 대상 데이터, 환경의 여러 속성을 함께 보고 허용 여부를 정하는 방식이에요. 데이터 소유자도 속성이라 BOLA 방어에 맞아요.</dd></div>
+    <div class="g"><dt>AD</dt><dd>Active Directory</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g" id="g-1"><dt>BOLA<span class="en">Broken Object Level Authorization</span></dt><dd>요청 속 객체 번호만 바꿔 남의 데이터에 접근할 수 있는 취약점이에요. 서버가 &#x27;로그인했나&#x27;만 보고 &#x27;이 데이터의 주인인가&#x27;를 확인하지 않아서 생겨요.</dd></div>
+    <div class="g" id="g-2"><dt>BOPLA<span class="en">Broken Object Property Level Authorization</span></dt><dd>볼 자격이 없는 속성(필드)까지 응답에 실려 나가거나 바꿀 수 있는 취약점이에요. 화면에서 숨겨도 응답 데이터에 남아 있으면 그대로 새요.</dd></div>
+    <div class="g"><dt>CI</dt><dd>Continuous Integration</dd></div>
+    <div class="g"><dt>CSS</dt><dd>Cascading Style Sheets</dd></div>
+    <div class="g"><dt>DB</dt><dd>Database</dd></div>
+    <div class="g"><dt>DTO</dt><dd>Data Transfer Object</dd></div>
+    <div class="g"><dt>FIFO</dt><dd>First In, First Out</dd></div>
+    <div class="g"><dt>IP</dt><dd>Internet Protocol</dd></div>
+    <div class="g"><dt>JSON</dt><dd>JavaScript Object Notation</dd></div>
+    <div class="g"><dt>JWT</dt><dd>JSON Web Token</dd></div>
+    <div class="g"><dt>OPA</dt><dd>Open Policy Agent</dd></div>
+    <div class="g"><dt>ORM</dt><dd>Object-Relational Mapping</dd></div>
+    <div class="g"><dt>OWASP</dt><dd>Open Worldwide Application Security Project</dd></div>
+    <div class="g"><dt>RFC</dt><dd>Request for Comments</dd></div>
+    <div class="g"><dt>SQL</dt><dd>Structured Query Language</dd></div>
+    <div class="g"><dt>UUID</dt><dd>Universally Unique Identifier</dd></div>
+    <div class="g"><dt>VW</dt><dd>Volkswagen</dd></div>
+    <div class="g" id="g-6"><dt>WAAP<span class="en">Web Application and API Protection</span></dt><dd>웹 방화벽에 API 보호, 봇 관리, 이상 탐지를 더한 보안 솔루션 묶음이에요. 영상은 머신러닝으로 사용자 행위를 실시간 분석하는 쪽을 강조해요.</dd></div>
+    <div class="g"><dt>WAF</dt><dd>Web Application Firewall</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=aLIzXtvuQm8" target="_blank" rel="noopener">원본 영상 — AI&amp;Security Insight</a></li>
+    <li id="src-2"><a href="https://owasp.org/API-Security/editions/2023/en/0x11-t10/" target="_blank" rel="noopener">OWASP API Security Top 10 2023</a></li>
+    <li id="src-3"><a href="https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/" target="_blank" rel="noopener">OWASP — API3:2023 Broken Object Property Level Authorization</a></li>
+    <li id="src-4"><a href="https://ian.sh/mcdonalds" target="_blank" rel="noopener">Ian Carroll — McDonald&#x27;s AI Hiring Bot (McHire) 취약점 공개</a></li>
+    <li id="src-5"><a href="https://www.rfc-editor.org/rfc/rfc9562" target="_blank" rel="noopener">RFC 9562 — Universally Unique IDentifiers</a></li>
+    <li id="src-6"><a href="https://eaton-works.com/2025/08/18/intel-outside-hack/" target="_blank" rel="noopener">Eaton Zveare — Intel Outside</a></li>
+    <li id="src-7"><a href="https://jscrambler.com/blog/stripe-api-skimming-campaign/" target="_blank" rel="noopener">Jscrambler — Inside the Stripe API Skimming Campaign</a></li>
+    <li id="src-8"><a href="https://www.openpolicyagent.org/docs/integration" target="_blank" rel="noopener">OPA 공식 문서 — Integrating OPA</a></li>
+    <li id="src-9"><a href="https://www.openpolicyagent.org/docs/philosophy" target="_blank" rel="noopener">OPA 공식 문서 — Philosophy</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 14일에 이 영상의 자동생성 자막과 화면 슬라이드를 보고 정리했어요. 원본은 AI&amp;Security Insight 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

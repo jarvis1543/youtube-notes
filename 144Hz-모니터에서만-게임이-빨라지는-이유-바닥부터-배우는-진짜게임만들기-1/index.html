@@ -1,0 +1,831 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>144Hz 모니터에서만 게임이 빨라지는 이유</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>144Hz 모니터에서만 게임이 빨라지는 이유</h1>
+  <p class="lede">속도에 dt를 곱해야 하는 이유를 공 하나로 짚어요</p>
+  <div class="meta">
+    <span>진짜게임만들기</span><span class="dot">·</span>
+    <span>영상 06:32</span><span class="dot">·</span>
+    <span>읽는 데 약 8분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=3U0lTzLukUo" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>게임 화면은 지우고, 옮기고, 다시 그리기를 반복하는 플립북이에요. 이 반복이 <span class="term" data-term="게임 루프" data-en="Game loop" data-desc="입력 처리, 상태 갱신, 그리기를 매 프레임 되풀이하는 게임의 심장 같은 반복문이에요. 이 영상의 공도 loop 함수 하나로 움직여요." data-g="1">게임 루프</span>예요.</li>
+    <li>한 장에 4픽셀씩 옮기면 60Hz에서 1초에 240픽셀, 144Hz에서 576픽셀을 가요. 같은 코드인데 2.4배 빨라져요.</li>
+    <li>속도를 1초에 240픽셀로 정하고 dt(지난 장부터 흐른 초)를 곱하면 어느 모니터에서나 같은 속도가 돼요.</li>
+    <li>dt에 0.033초 상한을 두면 탭을 비웠다 돌아와도 공이 벽을 건너뛰고 사라지지 않아요.</li>
+    <li>벽에 닿으면 그 축 속도의 부호만 뒤집으면 튕겨요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">AI는 잘 만들지만, 원리를 모르면 못 고쳐요</a></li>
+    <li><a href="#s2">게임 루프: 지우고, 옮기고, 다시 그리기</a></li>
+    <li><a href="#s3">dt: 장 수 말고 시간을 세요</a></li>
+    <li><a href="#s4">벽 튕기기와 dt 상한</a></li>
+    <li><a href="#s5">처음 본 지시문, 이제 읽혀요</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>AI는 잘 만들지만, 원리를 모르면 못 고쳐요</h2>
+<p>AI(Artificial Intelligence)에게 공 튕기는 게임을 시키면 금방 만들어 와요. 문제는 그다음이에요. 같은 코드를 친구의 144Hz 모니터에서 켜면 공이 두 배 넘게 빨라져요. AI는 사용자의 모니터까지 챙기지 않아요.</p>
+<p>영상 첫 화면이 이 상황을 보여 줘요. 왼쪽이 내 컴퓨터(60Hz), 오른쪽이 친구 컴퓨터(144Hz)예요. 오른쪽 아래 빨간 딱지에 '2.4배 빠름'이라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0006.webp" alt="왼쪽 60Hz 화면과 오른쪽 144Hz 화면에서 노란 공이 움직이고, 144Hz 쪽에 2.4배 빠름 표시가 붙은 장면">
+  <figcaption>같은 코드인데 오른쪽 공이 훨씬 멀리 가 있어요. <a href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=6s" target="_blank" rel="noopener">영상 00:06에서 보기</a></figcaption>
+</figure>
+<p>영상은 이걸 원리를 모르는 문제로 봐요. AI가 공을 어떤 원리로 움직이는지 모르면 무엇을 고쳐 달라고 할지도 몰라요. 처음엔 그럴듯해 보여도 모니터 하나 바뀌면 게임이 무너지고요. 영상은 이 상태를 '운전은 할 줄 아는데 목적지를 모르는 것'에 빗대요.</p>
+<h3>오늘 끝에 AI에게 보낼 문장</h3>
+<p>영상은 결과물부터 보여 줘요. 왼쪽 상자가 AI에게 보낼 지시문이고, 오른쪽 빨간 딱지 세 개가 처음 보면 암호 같은 부분이에요. 암호 1은 dt, 암호 2는 0.033, 암호 3은 부호 뒤집기예요.</p>
+<figure>
+  <img src="assets/frame-0055.webp" alt="AI에게 보낼 프롬프트 전문과 그 옆에 암호 1 dt, 암호 2 0.033, 암호 3 부호 뒤집기라고 적은 빨간 딱지 세 개">
+  <figcaption>영상이 끝나면 세 암호가 각각 왜 들어갔는지 설명할 수 있게 돼요. <a href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=55s" target="_blank" rel="noopener">영상 00:55에서 보기</a></figcaption>
+</figure>
+<p>화면에 나온 지시문은 이래요.</p>
+<pre><code>canvas 960×540에 노란 공 하나를 그려 줘. requestAnimationFrame 루프에서 매 프레임 화면을
+지우고 다시 그려. 속도는 초당 픽셀로 정하고 dt(초)를 곱하되 dt는 0.033을 넘지 않게.
+벽에 닿으면 그 축의 속도 부호를 뒤집어 튕기게 해 줘.</code></pre>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=58s" target="_blank" rel="noopener">00:58</a>
+  <h2>게임 루프: 지우고, 옮기고, 다시 그리기</h2>
+<p>게임 화면은 교과서 귀퉁이에 그리는 플립북과 같아요. 한 장 그리고, 지우고, 조금 옮겨서 또 그려요. 1초에 60장을 넘기면 한 장이 0.016초밖에 안 돼서 눈에는 끊긴 그림이 아니라 이어진 움직임으로 보여요.</p>
+<p>아래 화면 오른쪽 위 딱지가 숫자를 정리해 줘요. 한 장이 1프레임, 한 장이 0.016초, 60Hz는 1초에 60장이에요. 왼쪽 아래 노란 딱지에는 '지우고 → 옮기고 → 그리기 = 게임 루프'라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0128.webp" alt="플립북 장면처럼 1장부터 6장까지 공 위치가 조금씩 달라지는 칸과, 한 장 = 1프레임, 한 장 = 0.016초, 60Hz = 1초에 60장 딱지">
+  <figcaption>이 반복을 게임 루프라고 부르고, 모니터가 1초에 몇 장 넘기는지가 Hz예요. 테트리스도 뱀서류도 이렇게 돌아요. <a href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=88s" target="_blank" rel="noopener">영상 01:28에서 보기</a></figcaption>
+</figure>
+<h3>공을 그리고 한 장씩 넘기기</h3>
+<p>코드로는 세 단계예요. <code>canvas</code> 태그(960×540)가 도화지이고, <code>arc</code>로 노란 원을 그리면 그림이 나와요. 이제 <code>loop</code> 함수 안에서 <code>x</code>를 4씩 늘리고 다시 그려요. 아래 화면에서 노란 줄로 강조된 마지막 줄의 <span class="term" data-term="requestAnimationFrame" data-desc="브라우저가 다음 화면을 그리기 직전에 지정한 함수를 한 번 불러 주게 하는 웹 API예요. 콜백에 현재 시각을 넘겨줘서 dt를 구할 수 있어요." data-g="6">requestAnimationFrame</span>이 브라우저에게 다음 장을 넘겨 달라고 부탁하는 함수예요.</p>
+<figure>
+  <img src="assets/frame-0158.webp" alt="loop 함수 코드. x = x + 4로 갱신하고 clearRect로 지운 뒤 arc로 원을 그리고, requestAnimationFrame(loop) 줄이 강조된 화면">
+  <figcaption>주석 1. 갱신, 2. 그리기, 3. 다음 프레임 순서가 곧 게임 루프예요. <a href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=118s" target="_blank" rel="noopener">영상 01:58에서 보기</a></figcaption>
+</figure>
+<p>한 장에 4픽셀이 작아 보여도 60Hz면 1초에 240픽셀이에요. 960픽셀 화면의 4분의 1이죠. 이 코드에는 멈추는 장치가 없어서 공은 그대로 화면 밖으로 나가요.</p>
+<h3>AI가 가끔 빼먹는 한 줄</h3>
+<p>화면을 지우는 <code>clearRect</code>를 주석 처리하면 어떻게 될까요. 아래 화면 왼쪽 코드에서 빨간 줄이 그 줄이고, 오른쪽 실행 결과에는 공 대신 노란 띠가 생겼어요.</p>
+<figure>
+  <img src="assets/frame-0228.webp" alt="clearRect 줄을 주석 처리한 코드와, 실행 결과 화면에 공이 지나간 자리가 노란 띠로 남은 모습. 노란 띠 = 지우지 않은 장들 딱지">
+  <figcaption>플립북을 안 지우고 같은 장에 계속 그린 셈이에요. <a href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=148s" target="_blank" rel="noopener">영상 02:28에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=153s" target="_blank" rel="noopener">02:33</a>
+  <h2>dt: 장 수 말고 시간을 세요</h2>
+<p>코드는 똑같은데 친구 모니터에서만 공이 빠른 이유는 간단해요. 지금 코드는 '한 장 넘길 때마다 4픽셀'씩 옮겨요. 모니터가 1초에 넘기는 장 수가 다르면 1초에 가는 거리도 달라져요.</p>
+<figure>
+  <img src="assets/frame-0248.webp" alt="왼쪽 60Hz 화면에 4 × 60 = 1초에 240px, 오른쪽 144Hz 화면에 4 × 144 = 1초에 576px 딱지가 붙은 비교 장면">
+  <figcaption>왼쪽 아래 240px, 오른쪽 아래 576px. 모니터가 좋을수록 공만 빨라져요. <a href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=168s" target="_blank" rel="noopener">영상 02:48에서 보기</a></figcaption>
+</figure>
+<h3>장 수 말고 시간을 세요</h3>
+<p><code>requestAnimationFrame</code>은 다음 장을 부를 때 지금 시각을 함께 넘겨줘요. 여기서 지난 장의 시각을 빼면 그 사이 흐른 시간이 나와요. 이게 <span class="term" data-term="델타 타임" data-en="Delta time (dt)" data-desc="지난 프레임부터 이번 프레임까지 흐른 시간이에요. 속도에 곱하면 프레임 수와 상관없이 같은 거리를 움직여요." data-g="4">델타 타임</span>, 줄여서 dt예요. 아래 코드 6번째 줄이 dt를 구하는 곳이고, 8번째 줄 <code>x = x + speed * dt</code>가 공을 옮기는 곳이에요.</p>
+<figure>
+  <img src="assets/frame-0307.webp" alt="step3 코드. const speed = 240, let last = performance.now(), const dt = (now - last) / 1000 줄이 강조되고 지금 시각 - 지난 시각 = dt 딱지가 붙은 화면">
+  <figcaption>1000으로 나누는 건 밀리초를 초로 바꾸기 위해서예요. <a href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=187s" target="_blank" rel="noopener">영상 03:07에서 보기</a></figcaption>
+</figure>
+<p>속도를 '1초에 240픽셀'로 정하고 dt를 곱하면 끝이에요. 모니터가 몇 장을 넘기든 공은 이제 시계만 봐요. 영상이 보여 준 계산을 표로 옮기면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>모니터</th><th>dt 없이 (한 장에 4px)</th><th>dt 곱하면 한 장 이동</th><th>dt 곱하면 1초 뒤</th></tr></thead>
+    <tbody>
+      <tr><td>60Hz</td><td>4 × 60 = 1초에 240px</td><td>0.016초 × 240 = 4px</td><td>240px</td></tr>
+      <tr><td>144Hz</td><td>4 × 144 = 1초에 576px</td><td>0.007초 × 240 = 1.7px</td><td>240px</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>아래 화면의 세 칸이 같은 이야기예요. 144Hz는 장을 더 많이 넘기지만 한 장에 조금씩 가니까 1초 뒤에는 둘 다 240픽셀에 도착해요. 왼쪽 아래 딱지는 'dt는 초 단위'라고 적었어요.</p>
+<figure>
+  <img src="assets/frame-0335.webp" alt="60Hz 0.016초 × 240 = 4px, 144Hz 0.007초 × 240 = 1.7px, 1초 뒤 둘 다 240px로 이어지는 세 칸 도식과 dt는 초 단위 딱지">
+  <figcaption>dt를 밀리초로 쓰면 속도 숫자가 천 배로 바뀌어서 AI도 사람도 헷갈려요. 그래서 초로 써요. <a href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=215s" target="_blank" rel="noopener">영상 03:35에서 보기</a></figcaption>
+</figure>
+<p>나란히 켜 보면 이번엔 도착하는 시간이 같아요. 144Hz 쪽은 대신 더 부드럽게 움직이고요. 원리가 귀찮으면 '속도에 dt를 곱한다'만 기억해도 돼요.</p>
+<div class="explore" id="dt-lab">
+  <span class="tag">직접 돌려 보기</span>
+  <div class="controls">
+    <label>모니터 <select><option value="30">30Hz</option><option value="60" selected>60Hz</option><option value="144">144Hz</option></select></label>
+    <label><input type="checkbox" class="use-dt"> 속도 240px/초 × dt로 옮기기</label>
+    <label>탭 비운 시간 <input type="range" class="gap" min="0" max="10" step="1" value="0"> <output>0</output>초</label>
+    <label><input type="checkbox" class="cap" checked> dt 상한 0.033초</label>
+  </div>
+  <div class="stage">
+    <svg viewBox="0 0 420 150" aria-label="1초에 가는 거리와 탭 복귀 첫 장 이동 거리를 960px 화면 너비와 비교한 막대"></svg>
+    <div class="readout"></div>
+  </div>
+  <div class="try"><b>해 볼 것</b><ol>
+    <li>dt를 끈 채 60Hz와 144Hz를 오가 보세요. 1초 거리가 240px에서 576px로 바뀌어요.</li>
+    <li>dt를 켜고 다시 오가 보세요. 한 장 이동은 4px과 1.7px로 달라도 1초 거리는 240px로 같아요.</li>
+    <li>dt를 켠 채 탭 비운 시간을 10초로, 상한을 꺼 보세요. 복귀 첫 장에 2,400px을 가서 화면 밖으로 나가요(다음 섹션).</li>
+  </ol></div>
+</div>
+<h3>큰 게임도 한 실수</h3>
+<p>영상은 다크 소울 2 PC(Personal Computer)판을 예로 들어요. 60프레임으로 돌리면 무기가 30프레임일 때보다 훨씬 빨리 부서졌대요. 무기가 닳는 계산이 시간 대신 <span class="term" data-term="프레임" data-en="Frame" data-desc="화면에 한 번 그려지는 정지 그림 한 장이에요. 1초에 몇 프레임을 그리느냐가 fps예요." data-g="2">프레임</span> 수에 묶여 있었기 때문이에요. 아래 화면 위쪽에는 '60fps = 무기가 훨씬 빨리 닳음'과 '2014.04 출시 → 2015.04 패치'가 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0410.webp" alt="PC Gamer 기사 제목 Dark Souls 2's next patch will fix weapon durability bug(2015년 4월 18일) 캡처와, 60fps = 무기가 훨씬 빨리 닳음, 2014.04 출시 → 2015.04 패치 딱지">
+  <figcaption>영상은 고치는 데 1년쯤 걸렸다고 말해요. 그동안 PC 유저는 대장장이를 두 배로 찾아갔다는 농담도 붙였어요. <a href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=250s" target="_blank" rel="noopener">영상 04:10에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상이 화면에 띄운 PC Gamer 기사(2015년 4월 18일)를 열어 보면 이야기가 조금 달라요. 기사는 30fps였던 첫 버전과 달리 새로 나온 DirectX 11 버전이 기본 60fps로 돌면서 장비가 두 배 빨리 닳는다고 써요. 예고된 패치도 시체나 아군 캐릭터를 칠 때 무기가 유난히 빨리 닳는 버그만 고친다고 봤어요. 30fps 수준으로 되돌리는 건 모드로 해결한다고 했고요.</p>
+  <p>그러니 '프레임 수에 묶인 계산 때문에 60fps에서 두 배로 닳았다'는 기사와 맞아요. '2014년 출시, 1년 뒤 패치로 고쳤다'는 흐름은 이 기사로는 확인되지 않아서 영상의 설명으로 두었어요.</p>
+  <p class="cite">출처: <a href="https://www.pcgamer.com/dark-souls-2s-next-patch-will-fix-weapon-durability-bug/" target="_blank" rel="noopener">PC Gamer — Dark Souls 2's next patch will fix weapon durability bug</a></p>
+</aside>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>MDN(Mozilla Developer Network) 문서도 같은 경고를 해요. <code>requestAnimationFrame</code>이 부르는 횟수는 대개 모니터 <span class="term" data-term="주사율" data-en="Refresh rate" data-desc="모니터가 1초에 화면을 몇 번 새로 그리는지를 나타내는 값이에요. 단위가 Hz라서 60Hz, 144Hz처럼 불러요." data-g="3">주사율</span>을 따라가요. 60Hz가 가장 흔하지만 75Hz, 120Hz, 144Hz도 널리 쓰인다고 해요. 그래서 콜백이 받는 첫 번째 인자(시각)로 한 장에 얼마나 움직일지 계산하지 않으면, 주사율이 높은 화면에서 애니메이션이 더 빨라진다고 적어 뒀어요.</p>
+  <p class="cite">출처: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame" target="_blank" rel="noopener">MDN — Window: requestAnimationFrame() method</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=253s" target="_blank" rel="noopener">04:13</a>
+  <h2>벽 튕기기와 dt 상한</h2>
+<p>마지막으로 벽에 튕겨 볼 차례예요. 답은 생각보다 단순해요. 벽을 넘은 쪽 속도의 부호만 뒤집어요. 좌우 벽이면 <code>vx</code>를, 위아래 벽이면 <code>vy</code>를 뒤집어요.</p>
+<p>아래 완성 코드에서 공은 <code>{ x: 100, y: 270, vx: 300, vy: 200, r: 30 }</code> 객체예요. 속도가 두 축으로 나뉘어서, 앞에서 본 240px/초 대신 가로 300, 세로 200을 써요. 강조된 9–10번째 줄이 좌우 벽 검사이고, 12–13번째 줄이 위아래 벽 검사예요.</p>
+<figure>
+  <img src="assets/frame-0420.webp" alt="step4 완성 코드. const dt = Math.min(0.033, (now - last) / 1000), ball.x += ball.vx * dt, 벽에 닿으면 ball.vx = -ball.vx, ball.vy = -ball.vy로 뒤집는 if 문">
+  <figcaption>벽 검사는 공의 반지름 <code>r</code>까지 따져서 공 가장자리가 벽에 닿을 때 뒤집어요. <a href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=260s" target="_blank" rel="noopener">영상 04:20에서 보기</a></figcaption>
+</figure>
+<h3>dt에 상한을 두는 이유</h3>
+<p>2번째 줄에서 dt를 <code>Math.min(0.033, …)</code>으로 감쌌어요. 이 상한을 빼면 생기는 일을 영상이 보여 줘요. 탭을 10초 비웠다 돌아오면 dt가 한 번에 10초로 들어와요. 아래 화면처럼 공은 한 장 만에 240 × 10 = 2,400픽셀을 가서 화면 밖으로 나가요.</p>
+<figure>
+  <img src="assets/frame-0434.webp" alt="dt = 10초 (탭 복귀) 제목 아래, 화면 안의 공에서 오른쪽 화면 밖까지 이어진 점선과 화면 밖 2,400px 표시">
+  <figcaption>한 번에 너무 멀리 가서 벽 검사를 건너뛰고 사라져요. 공 입장에선 10초 동안 순간이동 연습을 한 셈이에요. <a href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=274s" target="_blank" rel="noopener">영상 04:34에서 보기</a></figcaption>
+</figure>
+<p>그래서 0.033초에서 잘라요. 아래 슬라이드가 이유 세 가지를 정리해요.</p>
+<figure>
+  <img src="assets/frame-0502.webp" alt="dt 상한 0.033초 슬라이드. 0.033초 = 30프레임 한 장 길이, 한 장에 그 이상은 안 움직임, 30프레임 미만 컴퓨터: 살짝 느려짐(순간이동보다 낫다)">
+  <figcaption>대가는 30프레임도 안 나오는 컴퓨터에서 게임이 살짝 느려지는 것뿐이에요. <a href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=302s" target="_blank" rel="noopener">영상 05:02에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>탭을 비우면 dt가 크게 튀는 데는 이유가 있어요. MDN에 따르면 대부분의 브라우저는 백그라운드 탭이나 숨은 iframe에서 <code>requestAnimationFrame</code> 호출을 멈춰요. 성능과 배터리를 아끼기 위해서예요. 그래서 돌아온 뒤 첫 장의 시각 차이가 비운 시간만큼 커져요.</p>
+  <p class="cite">출처: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame" target="_blank" rel="noopener">MDN — Window: requestAnimationFrame() method</a></p>
+</aside>
+<h3>dt는 어디에 쓰나요</h3>
+<p>움직이거나 시간에 따라 변하는 건 전부예요. 캐릭터 이동, 총알, 쿨타임, 시간 따라 차오르는 게이지까지요. 다만 아무 데나 곱하면 안 돼요. 쿨타임에서 dt를 빼는 줄에 dt를 한 번 더 곱하면, 한 장에 0.016의 제곱만큼만 줄어서 쿨타임이 사실상 끝나지 않아요.</p>
+<p>영상 제작자의 미니게임 모음 코드에도 같은 줄이 있어요. 아래 화면의 빨간 줄은 <code>Math.min(33, now - lastTime)</code>이에요. 처음에 밀리초로 짜서 33으로 잘랐고, 오른쪽 위 딱지가 '33ms = 0.033초'라고 짚어 줘요.</p>
+<figure>
+  <img src="assets/frame-0530.webp" alt="book/001_game/src/app.js의 loop 함수. const dt = Math.min(33, now - lastTime) 줄이 빨갛게 표시되고 33ms = 0.033초 딱지가 붙은 화면">
+  <figcaption>같은 상한이라도 단위가 섞이면 헷갈려요. 영상은 AI에게 시킬 땐 초로 통일하라고 권해요. <a href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=330s" target="_blank" rel="noopener">영상 05:30에서 보기</a></figcaption>
+</figure>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=336s" target="_blank" rel="noopener">05:36</a>
+  <h2>처음 본 지시문, 이제 읽혀요</h2>
+<p>이제 처음 본 지시문을 다시 읽어요. 아래 화면 왼쪽이 그 지시문이고, 오른쪽 '왜 이렇게 시킬까' 상자가 한 줄씩 이유를 달아 줘요. 그 아래 '알아야 하는 것'에는 게임 루프, dt, <span class="term" data-term="속도 벡터" data-en="Velocity vector" data-desc="방향과 빠르기를 함께 담은 값이에요. 2D에서는 가로 vx, 세로 vy 두 숫자로 나눠 써서 한 축만 뒤집어 튕길 수 있어요." data-g="5">속도 벡터</span> 세 개가 있어요.</p>
+<figure>
+  <img src="assets/frame-0557.webp" alt="AI에게 보낼 프롬프트와, 지우고 다시 그리기 → 노란 띠 방지, 초당 픽셀 × dt → 모니터와 상관없이 같은 속도, dt 상한 → 순간이동 방지, 부호 뒤집기 → 벽 튕기기, 알아야 하는 것: 게임 루프, dt, 속도 벡터">
+  <figcaption>암호처럼 보이던 세 단어가 모두 앞에서 본 문제 하나씩을 막아요. <a href="https://www.youtube.com/watch?v=3U0lTzLukUo&amp;t=357s" target="_blank" rel="noopener">영상 05:57에서 보기</a></figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>지시문 속 표현</th><th>막는 문제</th><th>다룬 곳</th></tr></thead>
+    <tbody>
+      <tr><td>매 프레임 지우고 다시 그려</td><td>노란 띠</td><td>게임 루프</td></tr>
+      <tr><td>초당 픽셀에 dt(초)를 곱해</td><td>친구 모니터에서만 빠른 공</td><td>dt</td></tr>
+      <tr><td>dt는 0.033을 넘지 않게</td><td>탭 다녀온 뒤 순간이동</td><td>dt 상한</td></tr>
+      <tr><td>그 축의 속도 부호를 뒤집어</td><td>벽을 뚫고 나가는 공</td><td>벽 튕기기</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>영상은 이 작업을 '눈치 없는 신입에게 업무 지시서를 쓰는 일'에 빗대요. 원리를 알면 무엇을 적어야 할지 보여요.</p>
+<p>숙제는 AI에게 공을 두 개로 늘려 달라고 시켜 보는 거예요. 조건으로 ball을 배열에 담으라고 붙여요. 속도에 dt만 곱해 두면 모니터와 상관없이 같은 게임이 돼요.</p>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-1"><dt>게임 루프<span class="en">Game loop</span></dt><dd>입력 처리, 상태 갱신, 그리기를 매 프레임 되풀이하는 게임의 심장 같은 반복문이에요. 이 영상의 공도 loop 함수 하나로 움직여요.</dd></div>
+    <div class="g" id="g-4"><dt>델타 타임<span class="en">Delta time (dt)</span></dt><dd>지난 프레임부터 이번 프레임까지 흐른 시간이에요. 속도에 곱하면 프레임 수와 상관없이 같은 거리를 움직여요.</dd></div>
+    <div class="g" id="g-5"><dt>속도 벡터<span class="en">Velocity vector</span></dt><dd>방향과 빠르기를 함께 담은 값이에요. 2D에서는 가로 vx, 세로 vy 두 숫자로 나눠 써서 한 축만 뒤집어 튕길 수 있어요.</dd></div>
+    <div class="g" id="g-3"><dt>주사율<span class="en">Refresh rate</span></dt><dd>모니터가 1초에 화면을 몇 번 새로 그리는지를 나타내는 값이에요. 단위가 Hz라서 60Hz, 144Hz처럼 불러요.</dd></div>
+    <div class="g" id="g-2"><dt>프레임<span class="en">Frame</span></dt><dd>화면에 한 번 그려지는 정지 그림 한 장이에요. 1초에 몇 프레임을 그리느냐가 fps예요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>MDN</dt><dd>Mozilla Developer Network</dd></div>
+    <div class="g"><dt>PC</dt><dd>Personal Computer</dd></div>
+    <div class="g" id="g-6"><dt>requestAnimationFrame</dt><dd>브라우저가 다음 화면을 그리기 직전에 지정한 함수를 한 번 불러 주게 하는 웹 API예요. 콜백에 현재 시각을 넘겨줘서 dt를 구할 수 있어요.</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=3U0lTzLukUo" target="_blank" rel="noopener">원본 영상 — 진짜게임만들기</a></li>
+    <li id="src-2"><a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame" target="_blank" rel="noopener">MDN — Window: requestAnimationFrame() method</a></li>
+    <li id="src-3"><a href="https://www.pcgamer.com/dark-souls-2s-next-patch-will-fix-weapon-durability-bug/" target="_blank" rel="noopener">PC Gamer — Dark Souls 2&#x27;s next patch will fix weapon durability bug (2015-04-18)</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 14일에 이 영상을 보고 정리했어요. 원본은 진짜게임만들기 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/dt-lab.js
+// dt-lab: 영상의 숫자만 써요 — 한 장 4px, 240px/초, 상한 0.033초, 화면 너비 960px
+(() => {
+  const root = document.getElementById('dt-lab');
+  if (!root) return;
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs, text) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  };
+  const hz = root.querySelector('select');
+  const useDt = root.querySelector('.use-dt');
+  const gap = root.querySelector('.gap');
+  const cap = root.querySelector('.cap');
+  const svg = root.querySelector('svg');
+  const out = root.querySelector('.readout');
+  const W = 960, SPEED = 240, PER_FRAME = 4, CAP = 0.033;
+  const fmt = (n) => (Math.round(n * 10) / 10).toLocaleString('ko-KR');
+
+  function model() {
+    const f = Number(hz.value);
+    const frameDt = 1 / f;
+    const step = useDt.checked ? SPEED * frameDt : PER_FRAME;
+    const perSecond = step * f;
+    const rawDt = Number(gap.value) > 0 ? Number(gap.value) : frameDt;
+    const dt = cap.checked ? Math.min(CAP, rawDt) : rawDt;
+    const jump = useDt.checked ? SPEED * dt : PER_FRAME;
+    return { f, step, perSecond, jump };
+  }
+
+  function bar(y, label, value, cls) {
+    const x0 = 110, full = 290;
+    svg.append(el('text', { x: 6, y: y + 15, class: 'sub' }, label));
+    svg.append(el('rect', { x: x0, y, width: full, height: 22, rx: 4, class: 'box dim' }));
+    const w = Math.min(full, (value / W) * full);
+    svg.append(el('rect', { x: x0, y, width: Math.max(2, w), height: 22, rx: 4, class: cls }));
+    const txt = value > W ? `${fmt(value)}px · 화면 밖` : `${fmt(value)}px`;
+    svg.append(el('text', { x: x0 + 6, y: y + 15, class: 'mono' }, txt));
+  }
+
+  function draw() {
+    const m = model();
+    svg.replaceChildren();
+    svg.append(el('text', { x: 110, y: 18, class: 'sub' }, '막대 끝 = 화면 너비 960px'));
+    bar(34, '1초에 가는 거리', m.perSecond, m.perSecond > 240 ? 'bad' : 'ok');
+    bar(84, '탭 복귀 첫 장', m.jump, m.jump > W ? 'bad' : 'accent');
+    out.innerHTML =
+      `<p>한 장 이동 <span class="val">${fmt(m.step)}</span>px</p>` +
+      `<p>1초 이동 <span class="val">${fmt(m.perSecond)}</span>px</p>` +
+      `<p>${useDt.checked ? '' : 'dt를 안 쓰면 비운 시간과 상관없이 한 장에 4px만 가요. '}` +
+      `${m.jump > W ? '공이 벽 검사를 건너뛰고 사라져요.' : '공이 화면 안에 남아요.'}</p>`;
+  }
+
+  root.addEventListener('input', (e) => {
+    if (e.target === gap) gap.nextElementSibling.textContent = gap.value;
+    draw();
+  });
+  draw();
+})();
+</script>
+</body>
+</html>
