@@ -1,0 +1,908 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>왜 다들 AI 에이전트를 재우기 시작했을까? 앤트로픽 드리밍 정리</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>왜 다들 AI 에이전트를 재우기 시작했을까? 앤트로픽 드리밍 정리</h1>
+  <p class="lede">에이전트 메모리를 어느 층에 무엇으로 둘지, 앤트로픽 연구로 짚어요</p>
+  <div class="meta">
+    <span>메이커 에반 | Maker Evan</span><span class="dot">·</span>
+    <span>영상 13:37</span><span class="dot">·</span>
+    <span>읽는 데 약 14분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=ayLxfEpqSX8" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>메모리는 미래에 대한 예측이에요. 다음 세션은 적힌 걸 믿고 출발하니, 틀린 메모는 메모가 없는 것과 결과가 같았어요.</li>
+    <li>포켓몬 레드에서 모든 걸 적은 Sonnet 3.7은 파일 413개에 배지 1개, 화면에 없는 것만 적은 Fable 5는 파일 9개에 배지 4개였어요.</li>
+    <li>강한 모델에게는 메모의 목적만 알려 주고 쓰는 법은 맡겨요. '실패만 기록하라' 같은 규칙은 이득을 깎았어요.</li>
+    <li><span class="term" data-term="드리밍" data-en="Dreaming" data-desc="작업과 작업 사이 쉬는 시간에 에이전트가 지난 대화 기록을 다시 읽고 메모를 고치거나 새로 정리하는 과정이에요. 사람이 자는 동안 기억을 정리하는 데서 이름을 땄어요." data-g="6">드리밍</span>은 쉬는 시간에 원래 기록과 메모를 대조해 틀린 메모를 고치고, 위키 같은 새 구조를 만들어요.</li>
+    <li>매 세션 들어가는 맨 위층(Claude Code의 <code>MEMORY.md</code> 처음 200줄·25KB)은 내용이 아니라 <span class="term" data-term="색인" data-en="Index" data-desc="내용 대신 무엇이 어디 있는지만 적은 목록이에요. 맨 위층을 색인으로 두면 작게 유지하면서도 필요한 파일을 찾아갈 수 있어요." data-g="9">색인</span>으로 작게 유지해요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">메모리는 무엇이고, 왜 예측일까요</a></li>
+    <li><a href="#s2">포켓몬 실험: 많이 적은 쪽이 졌어요</a></li>
+    <li><a href="#s3">드리밍: 쉬는 시간에 틀린 메모를 고쳐요</a></li>
+    <li><a href="#s4">위키: 메모를 찾아가는 지도</a></li>
+    <li><a href="#s5">MEMORY.md 200줄과 남은 숙제</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>메모리는 무엇이고, 왜 예측일까요</h2>
+<p>컨텍스트가 100만 토큰이면 지난 대화와 문서, 히스토리를 전부 넣으면 되지 않을까요. 앤트로픽이 2026년 11월 6일에 낸 연구 글 「에이전트 메모리의 구성 요소」는 정반대 결과를 보여 줘요. 영상은 이 글을 처음부터 끝까지 따라가요.</p>
+
+<h3>메모리가 아닌 것 세 가지</h3>
+<p>에이전트 메모리라고 하면 사람마다 떠올리는 게 달라요. 그래서 앤트로픽은 메모리가 아닌 것부터 빼고 시작해요. 첫째는 모델 가중치를 바꾸는 일, 즉 사전 학습이나 <span class="term" data-term="파인튜닝" data-en="Fine-tuning" data-desc="이미 학습된 모델을 특정 데이터로 더 학습시켜 가중치를 바꾸는 일이에요. 지식이 모델 안에 새겨지니, 앤트로픽은 이걸 메모리로 치지 않아요." data-g="1">파인튜닝</span>으로 지식을 모델 안에 새기는 거예요. 둘째는 <span class="term" data-term="인컨텍스트 러닝" data-en="In-context learning" data-desc="가중치는 그대로 두고, 대화 안에 주어진 예시나 정보만으로 배우는 것이에요. 세션이 끝나면 같이 사라져요." data-g="2">인컨텍스트 러닝</span>이에요. 대화 하나 안에서 알게 된 정보라 세션이 끝나면 같이 사라져요. 셋째는 <span class="term" data-term="컴팩션" data-en="Compaction" data-desc="컨텍스트 창이 차면 옛 대화를 모델이 쓴 요약으로 갈아 끼워 같은 작업을 이어 가게 하는 기능이에요. Claude Code에서 대화가 길어지면 자동으로 일어나요." data-g="3">컴팩션</span>이에요. Claude Code에서 대화가 길어지면 자동으로 일어나는 그 요약이에요.</p>
+<p>아래 그림에서 회색 세 칸을 빼고 남는 오른쪽 칸이 에이전트 메모리예요. 작업하며 얻은 경험을 세션이 끝난 뒤에도 남기고, 다음 세션이 다시 읽을 수 있게 파일·폴더·데이터베이스에 저장하는 것이에요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 190" role="img" aria-label="메모리에서 빼는 세 가지와 남는 에이전트 메모리">
+    <defs><marker id="arrow-def" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <text x="215" y="22" text-anchor="middle" class="sub">메모리가 아닌 것</text>
+    <rect x="10" y="36" width="130" height="120" rx="10" class="box dim"/>
+    <text x="75" y="84" text-anchor="middle">가중치 변경</text>
+    <text x="75" y="106" text-anchor="middle" class="sub">사전 학습·파인튜닝</text>
+    <rect x="150" y="36" width="130" height="120" rx="10" class="box dim"/>
+    <text x="215" y="84" text-anchor="middle">인컨텍스트 러닝</text>
+    <text x="215" y="106" text-anchor="middle" class="sub">세션 끝나면 사라짐</text>
+    <rect x="290" y="36" width="130" height="120" rx="10" class="box dim"/>
+    <text x="355" y="84" text-anchor="middle">컴팩션</text>
+    <text x="355" y="106" text-anchor="middle" class="sub">옛 대화를 요약</text>
+    <path d="M428 96 h40" class="line" marker-end="url(#arrow-def)"/>
+    <rect x="476" y="36" width="154" height="120" rx="10" class="box accent"/>
+    <text x="553" y="76" text-anchor="middle">에이전트 메모리</text>
+    <text x="553" y="100" text-anchor="middle" class="sub">세션 뒤에도 남기고</text>
+    <text x="553" y="120" text-anchor="middle" class="sub">다음 세션이 다시 읽음</text>
+  </svg>
+  <figcaption>기준은 '세션이 끝난 뒤에도 남아서 다음 세션이 읽는가'예요. 셋 다 이 기준에서 빠져요.</figcaption>
+</figure>
+
+<h3>메모리는 미래에 대한 예측이에요</h3>
+<p>글은 사람의 뇌에서 출발해요. <span class="term" data-term="해마" data-en="Hippocampus" data-desc="겪은 일을 그때그때 빠르게 기록하는 뇌 부위예요. 기록이 바로 쓰이지만 전부 장기 기억이 되지는 않아요." data-g="4">해마</span>가 겪은 일을 빠르게 기록하지만, 그게 다 장기 기억이 되지는 않아요. 자거나 쉬는 동안 최근 경험을 다시 재생하고, 그중 일부만 <span class="term" data-term="신피질" data-en="Neocortex" data-desc="우리가 지식이라고 부르는 걸 주로 저장하는 뇌 바깥층이에요. 잠자는 동안 해마가 재생한 경험 중 일부가 여기로 옮겨져요." data-g="5">신피질</span>로 넘겨요. 에이전트도 작업 중에는 로그와 대화 기록을 쌓고, 나중에 그 기록을 훑어 정리하는 단계를 따로 둘 수 있어요.</p>
+<p>문제는 작업하는 순간엔 뭐가 중요할지 모른다는 점이에요. 그래서 앤트로픽은 메모리를 미래에 대한 예측이라고 불러요. 규칙 하나를 적는 건 그 패턴이 다시 쓰일 거라는 예측이에요. 확인한 사실을 적는 건 다음 세션이 다시 확인하지 않고 믿고 쓸 거라는 예측이고요. 예측이 맞으면 다음 세션이 토큰과 시간을 아껴요. 틀리면 다음 세션은 틀린 걸 믿고 출발해요.</p>
+
+<h3>실패에서 규칙을 만드는 모델</h3>
+<p>이 예측 실력을 앤트로픽은 먼저 지속 학습 벤치마크 CL-Bench 1.0의 데이터베이스 과제로 쟀어요. 질문에 답하면 정답을 알려 주고 메모를 남길 기회를 줘요. 매 질문은 새 세션에서 시작하고, 메모 폴더 하나만 다음 세션으로 넘어가요. 모델마다 메모 폴더에 남긴 게 달랐어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>모델</th><th>메모 폴더에 남긴 것</th></tr></thead>
+    <tbody>
+      <tr><td>Sonnet 4.6</td><td>틀린 이유에 대한 추측까지만. 검증 안 된 추측을 나열한 파일이 흩어져 있었어요</td></tr>
+      <tr><td>Opus 4.7</td><td>메모를 문서 하나로 모으고, 확인한 사실과 아직 모르는 걸 나누기 시작했어요</td></tr>
+      <tr><td>Sonnet 5</td><td>채점이 끝난 답엔 확인 표시, 틀린 답엔 정정을 적었어요</td></tr>
+      <tr><td>Opus 5</td><td>처음으로 고리를 닫았어요. 메모마다 규칙, 그 규칙이 맞는 근거, 이미 밟은 함정에 대한 경고가 있었어요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>'고리를 닫았다'는 말은 아래 슬라이드의 네 칸이 한 바퀴 돌았다는 뜻이에요. 틀린다, 이유를 세운다, 검증한다, 그리고 맨 오른쪽 검은 칸처럼 규칙으로 남긴다. Opus 5.5와 Sonnet 5.5도 같은 방식으로 고리를 닫았어요.</p>
+<figure>
+  <img src="assets/frame-0330.webp" alt="틀린다, 이유 세움, 검증, 규칙으로 네 칸이 가로로 이어진 슬라이드. 마지막 규칙으로 칸만 검은색">
+  <figcaption>앞의 세 칸에서 멈추면 추측만 쌓여요. 마지막 칸까지 가야 다음 세션이 쓸 수 있는 메모가 돼요. <a href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=210s" target="_blank" rel="noopener">영상 03:30에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>원문은 이 과제를 Claude Managed Agents 위에서 돌렸다고 밝혀요. 또 Opus 5.5와 Sonnet 5.5는 메모를 썼을 때 점수가 Opus 5와 비슷했고, 메모 없이 푼 기본 점수는 조금 더 높았다고 적어요.</p>
+  <p class="cite">출처: <a href="https://www.anthropic.com/research/components-of-agent-memory" target="_blank" rel="noopener">Anthropic — The components of agent memory (2026-11-06)</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=220s" target="_blank" rel="noopener">03:40</a>
+  <h2>포켓몬 실험: 많이 적은 쪽이 졌어요</h2>
+<p>포켓몬스터 레드는 긴 시간 목표를 쫓아야 하는 게임이라, 무엇을 기억할지 판단력을 보기 좋아요. 앤트로픽은 모델마다 읽고 쓸 수 있는 메모 폴더를 하나씩 주고, 약 1만 스텝쯤 진행됐을 때 폴더를 열어 봤어요.</p>
+
+<h3>파일 413개와 9개</h3>
+<p>아래 슬라이드는 원문 그림을 옮긴 거예요. 왼쪽을 거의 다 채운 주황·회색 칸들이 Sonnet 3.7의 메모 폴더이고, 오른쪽 위 작은 칸이 Fable 5의 폴더예요. 크기 차이가 그대로 보여요.</p>
+<figure>
+  <img src="assets/frame-0410.webp" alt="Sonnet 3.7 vs Fable 5 메모 폴더라는 제목 아래, 왼쪽은 수많은 칸으로 쪼개진 큰 트리맵, 오른쪽 위는 작은 칸 몇 개뿐인 원문 그림">
+  <figcaption>Sonnet 3.7은 전투마다, 아이템마다, 만난 사람마다 파일을 하나씩 만들었어요. <a href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=250s" target="_blank" rel="noopener">영상 04:10에서 보기</a></figcaption>
+</figure>
+<p>숫자로 보면 더 분명해요. Sonnet 3.7은 폴더 225개에 파일 413개를 쓰고 배지 1개를 땄어요. Fable 5는 폴더 2개에 파일 9개, 맨 위에 <code>global.md</code> 하나를 두고 배지 4개를 땄어요.</p>
+<figure>
+  <img src="assets/frame-0440.webp" alt="메모 폴더 크기 표. Sonnet 3.7은 폴더 225, 파일 413. 테두리로 강조한 Fable 5 열은 폴더 2, 파일 9 + global.md">
+  <figcaption>많이 적은 쪽이 졌어요. <a href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=280s" target="_blank" rel="noopener">영상 04:40에서 보기</a></figcaption>
+</figure>
+<p>Sonnet 3.7이 진 이유는 포켓몬의 게임 상태가 계속 바뀐다는 데 있어요. 적어 둔 기록이 몇 걸음 만에 낡은 정보가 돼요. 진행할수록 게임보다 메모를 뒤지는 데 시간을 더 썼어요. 1만 스텝 근처에서는 네 번째 '마스터 메모 폴더'를 만들었고, 그 뒤 17스텝 동안 파일 6개를 만들고 9개를 지우면서 게임 조작은 한 번도 하지 않았어요.</p>
+
+<h3>화면에 없는 것만 적어요</h3>
+<p>차이는 무엇을 적느냐였어요. Fable 5는 가진 돈이나 지금 지도 위치를 적지 않았어요. 매 턴 화면에 나오니까요. 대신 화면이 알려 주지 않는 것만 적었어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>적지 않은 것 (화면에 나와요)</th><th>적은 것 (안 적으면 사라져요)</th></tr></thead>
+    <tbody>
+      <tr><td>가진 돈</td><td>전략</td></tr>
+      <tr><td>지금 지도 위치</td><td>계획</td></tr>
+      <tr><td>—</td><td>직접 확인한 규칙</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>맨 위 <code>global.md</code>는 대시보드 역할을 했어요. 아래 슬라이드의 세 칸처럼 지금 목표, 체육관 공략 계획, 그리고 검은 칸의 메모 사용 규칙까지 들어 있었어요. 그 아래 <code>locations</code> 폴더엔 길 찾기 계획, <code>gameplay</code> 폴더엔 게임 규칙에 대한 전략이 들어갔어요.</p>
+<figure>
+  <img src="assets/frame-0510.webp" alt="global.md 안이라는 제목 아래 지금 목표, 체육관 계획, 메모 사용 규칙 세 카드. 마지막 카드만 검은색">
+  <figcaption>메모를 어떻게 쓸지에 대한 규칙도 모델이 스스로 적었어요. <a href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=310s" target="_blank" rel="noopener">영상 05:10에서 보기</a></figcaption>
+</figure>
+<p>'직접 확인한 규칙'의 예가 있어요. 잉어킹에게 몬스터볼을 7번 연속 던졌는데 다 실패했어요. 그러자 이런 규칙을 적었어요.</p>
+<blockquote>
+  <p>볼이 세 번 이상 연속으로 실패하면 메뉴 조작 사이에 대기 입력을 넣어 타이밍을 바꿔라. 그렇게 하자마자 잡혔다.</p>
+  <cite>— 영상 05:00</cite>
+</blockquote>
+<p>화면에 보이는 현상이 아니라 직접 시도해서 얻은 규칙이에요. Opus 5.5도 비슷하게 작은 폴더로 목표와 다음 단계만 관리했고, 게임을 끝까지 깼어요.</p>
+
+<h3>쓰는 법을 정해 주면 오히려 떨어져요</h3>
+<p>그러면 메모 쓰는 법을 프롬프트로 알려 주면 더 좋아질까요. 앤트로픽의 답은 메모가 무엇을 위한 건지는 알려 주되, 어떻게 쓸지는 알려 주지 말라는 거예요. CL-Bench에서 메모 폴더가 있다는 것만 알려 줘도 Opus 4.7과 Opus 5는 메모를 잘 썼고 점수가 확실히 올랐어요.</p>
+<p>그다음 '실패만 기록하라' 같은 규칙을 하나씩 줘 봤어요. 아래 원문 그래프의 오른쪽 패널이 그 결과예요. 막대가 아래로 내려갈수록 메모로 얻던 이득을 잃었다는 뜻인데, Opus 5(주황)가 −0.234, Opus 4.7(노랑)이 −0.150으로 크게 내려갔어요.</p>
+<figure>
+  <img src="assets/frame-0610.webp" alt="'실패만 기록' 규칙의 효과라는 제목의 원문 그래프 두 개. 왼쪽은 Sonnet 4.6 점수 막대 0.330, 0.364, 0.641. 오른쪽은 실패만 기록하라고 했을 때 이득 변화 Opus 5 −0.234, Opus 4.7 −0.150, Sonnet 4.6 −0.020">
+  <figcaption>강한 모델일수록 무엇이 중요한지 스스로 판단하게 두는 게 나았어요. <a href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=370s" target="_blank" rel="noopener">영상 06:10에서 보기</a></figcaption>
+</figure>
+<p>예전 모델은 반대였어요. Sonnet 4.6은 메모 폴더를 잘 읽지도 않고, 세운 가설을 검증하지도 않았어요. 답하기 전에 메모를 읽고 가설을 검증하라고 시키자, 아래 막대처럼 점수가 0.36에서 0.64로 거의 두 배가 됐어요. Sonnet 5는 시키지 않아도 10번 중 9번은 답하기 전에 메모를 읽었고, Sonnet 4.6은 절반도 안 됐어요.</p>
+<figure>
+  <img src="assets/frame-0625.webp" alt="Sonnet 4.6 지시 추가라는 제목의 막대 두 개. 메모만 0.36, 읽고 검증하라 0.64">
+  <figcaption>지시가 도움이 되는 건 스스로 메모를 챙기지 못하는 모델이에요. <a href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=385s" target="_blank" rel="noopener">영상 06:25에서 보기</a></figcaption>
+</figure>
+<p>그래서 최신 모델에는 짧게만 말해요. 사용자가 기억하라고 하거나 확실히 기억할 가치가 있을 때 메모를 남기라고요. 나머지 판단은 모델에게 맡겨요.</p>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=405s" target="_blank" rel="noopener">06:45</a>
+  <h2>드리밍: 쉬는 시간에 틀린 메모를 고쳐요</h2>
+<p>판단을 잘한다고 메모가 늘 맞는 건 아니에요. 작업 중에 적은 메모는 그 순간의 판단이라 처음부터 틀렸을 수 있어요. 환경이 바뀌면서 나중에 틀려지기도 하고요. 더 큰 문제는 다음 세션이 그 틀린 메모를 믿는다는 점이에요.</p>
+
+<h3>드리밍이 하는 일</h3>
+<p>여기서 나오는 게 드리밍이에요. Letta와 UC(University of California) 버클리 연구진이 제안한 <span class="term" data-term="수면 시간 연산" data-en="Sleep-time compute" data-desc="요청이 없는 쉬는 시간에 미리 연산을 써서 맥락을 정리해 두는 방법이에요. 드리밍의 바탕이 된 개념이에요." data-g="7">수면 시간 연산</span>이라는 개념이 바탕이에요. 작업과 작업 사이 쉬는 시간에 에이전트가 원래 대화 기록을 다시 읽어요. 그리고 슬라이드의 세 칸처럼 메모와 대조해 틀린 걸 고치고, 새 메모를 만들고, 구조를 다시 짜요.</p>
+<figure>
+  <img src="assets/frame-0715.webp" alt="드리밍이 하는 일이라는 제목 아래 틀린 것 고침, 새 메모, 구조 재편 세 카드">
+  <figcaption>이 섹션은 첫 칸, 다음 섹션은 마지막 칸 이야기예요. <a href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=435s" target="_blank" rel="noopener">영상 07:15에서 보기</a></figcaption>
+</figure>
+<p>흐름을 한 장으로 그리면 이래요. 작업 중에는 대화 기록과 메모가 따로 쌓이고, 드리밍은 기록을 정답지로 삼아 메모를 검사해요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart TB
+  A["작업 세션"] --> B["대화 기록 (그대로 남음)"]
+  A --> C["메모 (그 순간의 판단)"]
+  B --> D["쉬는 시간: 드리밍"]
+  C --> D
+  D --> E["틀린 메모 고침 · 새 메모 · 구조 재편"]
+  E --> F["다음 세션이 읽음"]
+</pre>
+  <figcaption>기록은 실제로 일어난 일이라 메모보다 믿을 만해요. 드리밍은 그 차이를 이용해요.</figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>수면 시간 연산은 2025년 4월 arXiv에 올라온 논문 「Sleep-time Compute: Beyond Inference Scaling at Test-time」에서 나온 개념이에요. Letta와 UC 버클리 연구진이 썼어요. 질문이 오기 전 쉬는 시간에 미리 맥락을 생각해 두면, 질문을 받은 뒤 쓰는 연산을 줄일 수 있다는 아이디어예요.</p>
+  <p class="cite">출처: <a href="https://arxiv.org/abs/2504.13171" target="_blank" rel="noopener">arXiv 2504.13171 — Sleep-time Compute</a></p>
+</aside>
+
+<h3>달맞이산에서 생긴 일</h3>
+<p>실제 사례가 포켓몬에 나와요. 달맞이산 동굴은 입구가 서쪽, 출구가 동쪽이에요. 입구 근처에는 한 번 떨어지면 다시 올라갈 수 없는 일방통행 언덕이 있어요. 클로드는 산 입구의 포켓몬센터를 기준점으로 길을 찾고 있었는데, 메모에 센터가 동쪽에 있다고 잘못 적었어요.</p>
+<p>그래서 센터에서 나오자마자 산을 이미 지나왔다고 선언하고, 메모를 '달맞이산 완료'로 고쳤어요. 아래 원문 그림 왼쪽 패널의 빨간 화살표가 그다음 움직임이에요. 몇 걸음 뒤 언덕에서 떨어져 왔던 길로 돌아갔어요.</p>
+<figure>
+  <img src="assets/frame-0745.webp" alt="언덕에서 떨어져 왔던 길이라는 제목의 원문 그림. 게임 화면 두 장이 나란히 있고, 각 화면에 캐릭터 위치와 빨간 화살표, 말풍선이 표시돼 있음">
+  <figcaption>왼쪽은 틀린 메모로, 오른쪽은 고친 메모로 움직인 화면이에요. <a href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=465s" target="_blank" rel="noopener">영상 07:45에서 보기</a></figcaption>
+</figure>
+<p>내비게이션 도구가 낭떠러지를 보여 주지 않아서, 클로드는 서쪽으로 너무 많이 왔다고 착각했어요. 그렇게 세 번 떨어졌어요. 세 번째에는 계속 반복하느니 멈추겠다고 적었어요. 자동 응답이 계속하라고 하자 산 앞 마을까지 되돌아갔고, 결국 다음 도시에 가지 못했어요.</p>
+<p>앤트로픽은 이 틀린 메모가 든 폴더에 드리밍을 돌렸어요. 원래 세션 기록에는 실제로 어디서 무엇을 봤는지가 그대로 남아 있어요. 클로드는 그걸 기준으로 포켓몬센터 위치가 틀렸다는 걸 찾아 메모를 다시 썼어요. 고친 메모를 들고 다시 돌리자 "Now I need to find the cave entrance", 이제 동굴 입구를 다시 찾아야겠다고 말했어요. 그리고 곧장 동굴로 들어가 다음 도시인 블루시티에 도착했어요.</p>
+<p>결과는 세 갈래예요. 아래 표에서 테두리를 친 오른쪽 칸만 산을 넘었어요.</p>
+<figure>
+  <img src="assets/frame-0840.webp" alt="달맞이산 결과 표. 메모 없음 못 넘음, 틀린 메모 못 넘음, 테두리 친 드리밍 메모 블루시티 도착">
+  <figcaption>틀린 메모는 메모가 없는 것과 결과가 같았어요. 틀린 메모라도 있는 게 낫다는 생각이 여기서 깨져요. <a href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=520s" target="_blank" rel="noopener">영상 08:40에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>드리밍은 Claude Managed Agents에서 'Dreams'라는 이름의 리서치 프리뷰 기능으로 쓸 수 있어요. 접근 신청이 필요해요. 기존 메모리 저장소와 지난 세션 기록을 함께 읽고, 중복을 합치고 낡거나 모순된 항목을 최신 값으로 바꾼 새 저장소를 만들어요. 원래 저장소는 건드리지 않아서, 결과를 검토하고 마음에 안 들면 버릴 수 있어요.</p>
+  <p class="cite">출처: <a href="https://platform.claude.com/docs/en/managed-agents/dreams" target="_blank" rel="noopener">Claude Platform Docs — Dreams</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=525s" target="_blank" rel="noopener">08:45</a>
+  <h2>위키: 메모를 찾아가는 지도</h2>
+<p>드리밍은 고치기만 하지 않아요. 메모를 찾아가기 쉽게 새 구조를 만들기도 해요. 대표적인 게 위키예요. 주제 하나에 페이지 하나, 페이지끼리 링크로 연결된 구조예요.</p>
+
+<h3>4억 토큰짜리 문서로 만든 위키</h3>
+<p>앤트로픽은 5월에 인수한 Stainless라는 회사의 내부 문서로 시험했어요. 슬라이드의 두 막대처럼 파일 약 35만 개, 토큰으로 약 4억 2천만 개예요.</p>
+<figure>
+  <img src="assets/frame-0905.webp" alt="문서 규모라는 제목 아래 파일 35만 개, 토큰 4억 2천만 막대 두 개">
+  <figcaption>한 번에 컨텍스트에 넣을 수 없는 크기예요. <a href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=545s" target="_blank" rel="noopener">영상 09:05에서 보기</a></figcaption>
+</figure>
+<p>이 문서에 대한 질문 25개를 만들고, Opus 5 에이전트들이 128세션 동안 위키를 만들었어요. 세션마다 문서를 탐색하고, 페이지를 쓰거나 고치고, 중복을 합치고, 주장을 원문과 대조했어요.</p>
+<p>아래 원문 그림 가운데 그래프에서 아래쪽 회색 선이 위키만으로 답한 점수예요. 2세션 13%에서 128세션 48%까지 올라요. 위쪽 주황 선은 검색과 위키를 같이 쓴 점수로 61%에 닿고, 그 아래 점선이 검색 도구만 쓴 53%예요. 양옆 그림은 2세션 뒤 위키(103페이지)와 128세션 뒤 위키(222페이지)의 모습이에요.</p>
+<figure>
+  <img src="assets/frame-0929.webp" alt="2세션에서 128세션 위키라는 제목의 원문 그림. 가운데 그래프에 Wiki + search tool 54%에서 61%, Search tool no wiki 53% 점선, Wiki alone 13%에서 48%. 왼쪽은 103 pages 766 links, 오른쪽은 222 pages 12,893 links 네트워크 그림">
+  <figcaption>위키만으로는 검색을 못 이겼지만, 둘을 같이 쓰면 가장 잘 찾았어요. <a href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=569s" target="_blank" rel="noopener">영상 09:29에서 보기</a></figcaption>
+</figure>
+<p>검색과 위키를 같이 쓰면 질문 하나당 토큰도 약 2만 개씩 아꼈어요. 여러 문서를 엮어야 하는 합병 질문에서는 차이가 더 컸어요. 위키를 쓰면 87%, 검색만 쓰면 73%였어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>조건</th><th>점수</th></tr></thead>
+    <tbody>
+      <tr><td>위키만 (2세션 → 128세션)</td><td>13% → 48%</td></tr>
+      <tr><td>검색 도구만</td><td>53%</td></tr>
+      <tr><td>검색 + 위키</td><td>61%</td></tr>
+      <tr><td>합병 질문: 검색만 / 위키</td><td>73% / 87%</td></tr>
+    </tbody>
+  </table>
+</div>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>영상은 Stainless 문서 실험에 이어 합병 질문 수치를 말해서 같은 실험처럼 들려요. 원문을 보면 합병 질문은 다른 실험이에요. 합병 관련 문서 묶음(대부분 공개 공시 자료)으로 위키를 만들고 질문 24개를 물었어요. 그중 절반 넘게 여러 문서를 엮어야 했고, 그런 항목에서 87% 대 73%가 나왔어요.</p>
+  <p class="cite">출처: <a href="https://www.anthropic.com/research/components-of-agent-memory" target="_blank" rel="noopener">Anthropic — The components of agent memory</a></p>
+</aside>
+
+<h3>실패도 같이 공개했어요</h3>
+<p>법률 문서 과제 하나에서는 위키가 원본 문서보다 더 커졌어요. 아래 원문 그림 왼쪽 작은 원이 원본 문서, 오른쪽 큰 원이 거기서 만든 위키예요.</p>
+<figure>
+  <img src="assets/frame-0947.webp" alt="원본보다 커진 위키라는 제목의 원문 그림. 왼쪽 작은 원 안에 문서 아이콘 몇 개, 화살표 오른쪽에 점이 가득한 큰 원">
+  <figcaption>보르헤스의 짧은 소설 「과학의 정확성에 대하여」에 나오는 제국만 한 지도와 같은 상황이에요. 아무것도 요약하지 않은 위키는 토큰만 써요. <a href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=587s" target="_blank" rel="noopener">영상 09:47에서 보기</a></figcaption>
+</figure>
+<p>답이 문서 하나에 다 있는 과제에서도 위키는 검색보다 나을 게 없었어요. 위키는 여러 문서를 엮어야 할 때 값을 해요.</p>
+
+<h3>무엇을 위한 위키인지 알려 주면</h3>
+<p>위키가 목표를 알면 결과가 달라져요. 회사 인수 상황에서 계약서 묶음을 주고, 계약 조건을 정확히 정리하는 과제가 있었어요. 처음엔 위키 만드는 지침만 주고 무엇이 중요한지는 알려 주지 않았어요. 여러 에이전트가 계약 조건을 표 하나에 동시에 쓰면서 서로의 내용을 덮어썼고, 채점 기준 사실 57개 중 41개, 72%만 남았어요.</p>
+<p>그래서 클로드에게 실패를 돌아보고, 지침을 고치고, 위키를 다시 만드는 과정을 반복시켰어요. 클로드가 찾아낸 답은 계약서 하나에 에이전트 하나, 페이지 하나였어요. 조건 문구는 요약하지 않고 그대로 인용하게 했고요. 아래 원문 그림 왼쪽이 공유 표 하나에 에이전트 넷이 몰려 쓰던 모습, 오른쪽이 계약서마다 페이지를 따로 둔 모습이에요. 맨 아래 칸이 41 of 57에서 All 57 of 57로 바뀌어요.</p>
+<figure>
+  <img src="assets/frame-1045.webp" alt="공유 표 41개에서 계약별 페이지 57개라는 제목의 원문 그림. 왼쪽은 Agent 1~4가 provisions.md 하나에 쓰고 41 of 57 graded facts survived, 오른쪽은 에이전트마다 계약서 파일 하나씩이고 All 57 of 57 graded facts survived">
+  <figcaption>57개 중 57개, 100%였어요. 지침을 바꾼 건 사람이 아니라 실패를 돌아본 클로드였어요. <a href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=645s" target="_blank" rel="noopener">영상 10:45에서 보기</a></figcaption>
+</figure>
+<p>드리밍을 한 번 더 돌리면 빈 곳도 메워요. 없는 페이지를 가리키던 링크 9개를 실제 있는 페이지로 고치고, 색인을 포함한 페이지 3개를 새로 만들었어요.</p>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=658s" target="_blank" rel="noopener">10:58</a>
+  <h2>MEMORY.md 200줄과 남은 숙제</h2>
+<p>이제 매일 쓰는 Claude Code 이야기예요. 드리밍은 메모를 맨 위층으로 끌어올리기도 해요. 맨 위층은 매 세션 시작할 때 자동으로 컨텍스트에 들어가는 층이에요. 클로드가 찾을 필요도 없고, 그런 게 있는지 몰라도 돼요.</p>
+
+<h3>맨 위층은 색인이에요</h3>
+<p>대신 조심해야 해요. 여기 들어간 건 매 세션 토큰을 써요. 틀린 메모가 들어가면 모든 세션이 틀린 걸 들고 시작해요. 넣는다고 따르는 것도 아니에요. Claude Code 문서에도 지시 파일이 길수록 지시를 따르는 비율이 떨어진다고 적혀 있어요. 그래서 Claude Code의 <span class="term" data-term="자동 메모리" data-en="Auto memory" data-desc="Claude Code가 작업하며 배운 걸 스스로 MEMORY.md와 주제별 파일에 적어 두는 기능이에요. 사람이 쓰는 CLAUDE.md와 달리 클로드가 직접 써요." data-g="8">자동 메모리</span>는 아래 표처럼 <code>MEMORY.md</code>의 처음 200줄, 또는 25KB까지만 불러와요.</p>
+<figure>
+  <img src="assets/frame-1134.webp" alt="자동 메모리 세션 시작 시라는 제목의 표. MEMORY.md 줄은 처음 200줄, 용량은 25KB까지">
+  <figcaption>이 한도를 넘는 내용은 세션 시작 때 읽히지 않아요. <a href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=694s" target="_blank" rel="noopener">영상 11:34에서 보기</a></figcaption>
+</figure>
+<p>이 부분은 내용을 담는 곳이 아니라 색인이에요. 내가 무엇을 알고 있고, 자세한 건 어느 파일에 있는지만 적는 곳이에요. 발표자의 프로젝트 <code>MEMORY.md</code>도 지금 83줄인데, 한 줄이 파일 하나를 가리키는 링크예요. 자세한 내용은 아래 파일에 있고 필요할 때만 열어 봐요.</p>
+<figure>
+  <img src="assets/frame-1146.webp" alt="83줄이라고 적힌 원형 게이지와 제 MEMORY.md 한 줄 = 링크 하나라는 라벨">
+  <figcaption>200줄 한도의 절반도 안 쓰고, 그마저 링크만 둬요. <a href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=706s" target="_blank" rel="noopener">영상 11:46에서 보기</a></figcaption>
+</figure>
+<p>메모리를 층으로 보면 아래 슬라이드와 같아요. 맨 위 검은 칸 '매 세션 주입'이 작게 유지할 층이고, 그 아래로 위키·색인, 메모 노트, 대화 기록 원본이 깔려요. 드리밍이 하는 일의 큰 부분이 이 맨 위층을 작게 유지하는 거예요. 자세한 건 아래로 내리고 위에는 링크만 남겨요.</p>
+<figure>
+  <img src="assets/frame-1158.webp" alt="위에서 아래로 매 세션 주입(작게 유지), 위키·색인, 메모 노트, 대화 기록 원본 네 칸이 선으로 이어진 층 그림">
+  <figcaption>아래층일수록 크고 원본에 가까워요. 위층은 아래층을 찾아가는 길만 알려 줘요. <a href="https://www.youtube.com/watch?v=ayLxfEpqSX8&amp;t=718s" target="_blank" rel="noopener">영상 11:58에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Claude Code 공식 문서는 200줄과 25KB 중 먼저 닿는 쪽에서 끊는다고 적어요. 자동 메모리에 무엇이 저장됐는지는 <code>/memory</code>를 실행해 자동 메모리 폴더를 고르면 볼 수 있어요. 모두 평범한 마크다운이라 직접 읽고 고치고 지울 수 있어요. 사람이 쓰는 CLAUDE.md도 파일 하나당 200줄 아래를 권해요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/memory" target="_blank" rel="noopener">Claude Code Docs — How Claude remembers your project</a></p>
+</aside>
+
+<h3>드리밍만 켜면 다 해결될까요</h3>
+<p>여기까지 들으면 드리밍만 켜면 될 것 같지만, 앤트로픽도 열린 문제를 같이 적었어요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>열린 문제</th><th>무엇이 걸리나요</th></tr></thead>
+    <tbody>
+      <tr><td>언제 메모를 쓰나</td><td>작업 중에 쓰면 바로 다음 턴에 쓸 수 있지만 본업에서 주의가 빠져요. 드리밍으로 미루면 본업은 가볍지만 결과가 바로 반영되지 않아요</td></tr>
+      <tr><td>드리밍은 공짜가 아니에요</td><td>연산을 쓰니 모든 메모를 매번 검사할 수 없어요. 바뀔 가능성이 큰 정보만 고르거나, 얼마나 자주 읽히는지에 따라 주기를 정해야 해요</td></tr>
+      <tr><td>구조 유지비</td><td>위키 같은 구조도 관리하지 않으면 오류와 환각이 쌓여요. 그래서 대화 기록 검색 자체를 메모리의 기본으로 삼는 것도 합리적인 선택이라고 적었어요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>무엇보다 어떤 모델도 다음 턴에 무슨 일이 생길지는 몰라요. 메모가 예측인 이상 틀릴 수 있고, 그래서 뒤돌아 고치는 시간이 필요해요.</p>
+
+<h3>정리</h3>
+<p>모든 걸 적은 Sonnet 3.7은 파일 413개에 배지 1개에서 멈췄어요. 화면에 없는 것만 적은 Fable 5는 파일 9개로 배지 4개를 땄고, Opus 5.5는 작은 메모 폴더로 게임을 끝냈어요. 틀린 메모 한 줄은 드리밍으로 원래 기록과 대조해 고쳤고, 그 한 줄로 산을 넘었어요. 4억 토큰짜리 문서도 위키와 검색을 같이 쓸 때 가장 잘 찾았어요. 그리고 매 세션 들어가는 맨 위층은 200줄짜리 색인으로 작게 유지해요.</p>
+<blockquote>
+  <p>컨텍스트 창을 얼마나 크게 쓰느냐보다 어느 층에 무엇을 둘지가 결과를 갈랐습니다.</p>
+  <cite>— 영상 13:19</cite>
+</blockquote>
+<p>발표자는 Claude Code를 쓴다면 오늘 <code>MEMORY.md</code>부터 열어 보라고 권해요. 처음 200줄이 색인인지, 내용으로 꽉 차 있는지요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 이름과 용어가 잘못 받아적힌 곳이 있어요. 화면 자막과 원문 글을 보고 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>엔트로픽</td><td>앤트로픽 (Anthropic)</td><td></td></tr>
+      <tr><td>배치네 개</td><td>배지 네 개</td><td></td></tr>
+      <tr><td>CL벤치</td><td>CL-Bench (Continual Learning Bench)</td><td></td></tr>
+      <tr><td>소네 5</td><td>Sonnet 5</td><td></td></tr>
+      <tr><td>소6 / 소은</td><td>Sonnet 4.6</td><td>06:07 부근</td></tr>
+      <tr><td>රිذلك 했습니다</td><td>쟀습니다</td><td>화면 자막 기준</td></tr>
+      <tr><td>소넷 3.7은 7은</td><td>Sonnet 3.7은</td><td>말 반복</td></tr>
+      <tr><td>페이블 5 / 페이블 오</td><td>Fable 5</td><td></td></tr>
+      <tr><td>글로벌 MD</td><td>global.md</td><td></td></tr>
+      <tr><td>자기 주치</td><td>자기 규칙</td><td>화면 자막 기준</td></tr>
+      <tr><td>레타와 유시버클리</td><td>Letta와 UC 버클리</td><td></td></tr>
+      <tr><td>제한한</td><td>제안한</td><td></td></tr>
+      <tr><td>대조에서</td><td>대조해서</td><td></td></tr>
+      <tr><td>달마지산</td><td>달맞이산 (Mt. Moon)</td><td></td></tr>
+      <tr><td>세 구조</td><td>새 구조</td><td></td></tr>
+      <tr><td>스테인리스</td><td>Stainless</td><td>앤트로픽이 인수한 회사</td></tr>
+      <tr><td>보르스</td><td>보르헤스</td><td></td></tr>
+      <tr><td>토큰 씁니다</td><td>토큰만 씁니다</td><td>(추정)</td></tr>
+      <tr><td>세인</td><td>색인</td><td></td></tr>
+      <tr><td>메모리 MD</td><td>MEMORY.md</td><td></td></tr>
+      <tr><td>25K바</td><td>25KB</td><td></td></tr>
+      <tr><td>밍크</td><td>링크</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-6"><dt>드리밍<span class="en">Dreaming</span></dt><dd>작업과 작업 사이 쉬는 시간에 에이전트가 지난 대화 기록을 다시 읽고 메모를 고치거나 새로 정리하는 과정이에요. 사람이 자는 동안 기억을 정리하는 데서 이름을 땄어요.</dd></div>
+    <div class="g" id="g-9"><dt>색인<span class="en">Index</span></dt><dd>내용 대신 무엇이 어디 있는지만 적은 목록이에요. 맨 위층을 색인으로 두면 작게 유지하면서도 필요한 파일을 찾아갈 수 있어요.</dd></div>
+    <div class="g" id="g-7"><dt>수면 시간 연산<span class="en">Sleep-time compute</span></dt><dd>요청이 없는 쉬는 시간에 미리 연산을 써서 맥락을 정리해 두는 방법이에요. 드리밍의 바탕이 된 개념이에요.</dd></div>
+    <div class="g" id="g-5"><dt>신피질<span class="en">Neocortex</span></dt><dd>우리가 지식이라고 부르는 걸 주로 저장하는 뇌 바깥층이에요. 잠자는 동안 해마가 재생한 경험 중 일부가 여기로 옮겨져요.</dd></div>
+    <div class="g" id="g-2"><dt>인컨텍스트 러닝<span class="en">In-context learning</span></dt><dd>가중치는 그대로 두고, 대화 안에 주어진 예시나 정보만으로 배우는 것이에요. 세션이 끝나면 같이 사라져요.</dd></div>
+    <div class="g" id="g-8"><dt>자동 메모리<span class="en">Auto memory</span></dt><dd>Claude Code가 작업하며 배운 걸 스스로 MEMORY.md와 주제별 파일에 적어 두는 기능이에요. 사람이 쓰는 CLAUDE.md와 달리 클로드가 직접 써요.</dd></div>
+    <div class="g" id="g-3"><dt>컴팩션<span class="en">Compaction</span></dt><dd>컨텍스트 창이 차면 옛 대화를 모델이 쓴 요약으로 갈아 끼워 같은 작업을 이어 가게 하는 기능이에요. Claude Code에서 대화가 길어지면 자동으로 일어나요.</dd></div>
+    <div class="g" id="g-1"><dt>파인튜닝<span class="en">Fine-tuning</span></dt><dd>이미 학습된 모델을 특정 데이터로 더 학습시켜 가중치를 바꾸는 일이에요. 지식이 모델 안에 새겨지니, 앤트로픽은 이걸 메모리로 치지 않아요.</dd></div>
+    <div class="g" id="g-4"><dt>해마<span class="en">Hippocampus</span></dt><dd>겪은 일을 그때그때 빠르게 기록하는 뇌 부위예요. 기록이 바로 쓰이지만 전부 장기 기억이 되지는 않아요.</dd></div>
+    <div class="g"><dt>UC</dt><dd>University of California</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=ayLxfEpqSX8" target="_blank" rel="noopener">원본 영상 — 메이커 에반 | Maker Evan</a></li>
+    <li id="src-2"><a href="https://www.anthropic.com/research/components-of-agent-memory" target="_blank" rel="noopener">Anthropic — The components of agent memory (2026-11-06)</a></li>
+    <li id="src-3"><a href="https://arxiv.org/abs/2504.13171" target="_blank" rel="noopener">arXiv 2504.13171 — Sleep-time Compute: Beyond Inference Scaling at Test-time</a></li>
+    <li id="src-4"><a href="https://platform.claude.com/docs/en/managed-agents/dreams" target="_blank" rel="noopener">Claude Platform Docs — Dreams</a></li>
+    <li id="src-5"><a href="https://code.claude.com/docs/en/memory" target="_blank" rel="noopener">Claude Code Docs — How Claude remembers your project</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 19일에 이 영상과 앤트로픽 원문 글을 보고 정리했어요. 원본은 메이커 에반 | Maker Evan 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
