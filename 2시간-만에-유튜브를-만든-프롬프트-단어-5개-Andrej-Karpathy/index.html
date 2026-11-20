@@ -1,0 +1,1052 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2시간 만에 유튜브를 만든 프롬프트, 단어 5개 | Andrej Karpathy</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>2시간 만에 유튜브를 만든 프롬프트, 단어 5개 | Andrej Karpathy</h1>
+  <p class="lede">카파시가 코드 0줄로 해커튜브를 띄운 두 시간을 뜯어봐요</p>
+  <div class="meta">
+    <span>Tech Bridge</span><span class="dot">·</span>
+    <span>영상 10:19</span><span class="dot">·</span>
+    <span>읽는 데 약 14분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=OV9By_UspTk" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>카파시가 손으로 한 일은 YouTube API(Application Programming Interface) 키 만들기, VPS(Virtual Private Server) 켜기, 도메인 사기 세 가지뿐이고 나머지는 전부 Claude가 했어요.</li>
+    <li>서버가 켜진 뒤 준 지시는 <code>update, deploy, secure, harden and optimize</code> 다섯 단어였어요. 단, Opus 5.5 이상에서만 이렇게 맡긴대요.</li>
+    <li>프롬프트는 점점 짧게, 적은 정보를 딱 맞게 줘요. 너무 많이 주면 오히려 모델을 묶어요.</li>
+    <li>검증할 방법을 줘서 사람은 루프에서 빠지고, 남는 시간은 결과를 그림·HTML(HyperText Markup Language)·영상으로 받아 이해하는 데 써요.</li>
+    <li>앱 만들기가 3분짜리 일이 되면 진짜 가치는 앱이 아니라 걸러 낸 데이터에 남아요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">해커튜브와 0.2%의 사람들</a></li>
+    <li><a href="#s2">두 시간 동안 실제로 한 일</a></li>
+    <li><a href="#s3">짧고 멍청한 프롬프트</a></li>
+    <li><a href="#s4">결과는 이해하고, 루프에서는 빠지기</a></li>
+    <li><a href="#s5">앱은 버려도 된다</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>해커튜브와 0.2%의 사람들</h2>
+<aside class="note">
+  <span class="tag">참고</span>
+  <p>이 영상은 카파시가 남긴 블로그 글, 해커 뉴스 댓글, 트윗, 인터뷰 두 편(No Priors 팟캐스트, Sequoia AI(Artificial Intelligence) Ascent)을 한국어 내레이션으로 엮은 영상이에요. 인터뷰 장면의 한국어 문장은 채널이 붙인 번역 자막이에요. 이 문서의 날짜와 숫자는 카파시의 원문을 확인할 수 있는 곳은 원문 기준으로 썼어요.</p>
+</aside>
+<p>출발은 금요일 밤 11시예요. 카파시는 유튜브를 켰다가 '망가질 대로 망가진 <span class="term" data-term="슬롭" data-en="Slop" data-desc="대충 대량으로 찍어 낸 저품질 콘텐츠를 낮춰 부르는 말이에요. 카파시는 추천 알고리즘이 이런 영상만 밀어 준다고 느꼈어요." data-g="1">슬롭</span>의 벽'을 봤어요. 터무니없이 부풀린 썸네일에 늘 같은 추천뿐이었죠. 다음 날 토요일 아침, Opus 5.5에게 일을 하나 맡겼어요. 아래는 그날 올린 블로그 글이에요. 첫 문단 마지막 줄에 맡긴 일이 그대로 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0005.webp" alt="카파시 블로그의 HackerTube 글. 금요일 밤 11시 유튜브를 보다 슬롭의 벽을 봤고, 토요일 아침 Opus 5.5에게 해커 뉴스 추천 영상으로 유튜브를 만들자고 맡겼다는 첫 문단">
+  <figcaption>
+    맡긴 일은 한 문장이었어요. 해커 뉴스에서 추천된 영상으로 우리만의 유튜브를 만들자.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=5s" target="_blank" rel="noopener">영상 00:05에서 보기</a>
+  </figcaption>
+</figure>
+<p>두 시간 뒤 정말 유튜브가 하나 생겼어요. 이름은 해커튜브(HackerTube)예요. 화면은 유튜브와 거의 같고, 오른쪽 위 꼬리표 두 개가 핵심을 말해 줘요. 영상 6,454개, 해커 뉴스 2007~2026년이에요.</p>
+<figure>
+  <img src="assets/frame-0025.webp" alt="유튜브처럼 생긴 해커튜브 홈 화면. 강연 썸네일이 격자로 놓여 있고 '영상 6,454개', 'HN 2007–2026' 꼬리표가 붙어 있다">
+  <figcaption>
+    20년치 해커 뉴스 댓글에서 골라낸 영상만 들어 있어요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=25s" target="_blank" rel="noopener">영상 00:25에서 보기</a>
+  </figcaption>
+</figure>
+<p>만든 사람은 OpenAI를 함께 세웠고, 테슬라에서 AI를 이끌었고, <span class="term" data-term="바이브 코딩" data-en="Vibe coding" data-desc="코드를 직접 읽고 쓰기보다 AI에게 말로 원하는 걸 설명하고 결과만 확인하며 만드는 방식이에요. 카파시가 2025년 초에 처음 쓴 말이에요." data-g="2">바이브 코딩</span>이라는 말을 처음 쓴 안드레이 카파시예요. 영상은 그가 올해(2026년) 5월 Anthropic에 합류했다고 소개해요. 발표 트윗은 조회수 587만 회를 넘겼어요.</p>
+<p>정작 눈에 띄는 건 글 아래 덧붙인 문단이에요. 빨간 밑줄 친 부분이 그 내용이에요. 이제 전통적인 엔지니어링 비슷한 일은 하나도 하지 않는대요. 코드를 읽지도 쓰지도 않고, 터미널 명령도 치지 않아요. Claude와 대화만 하고 모든 일을 Claude가 하게 해요.</p>
+<figure>
+  <img src="assets/frame-0055.webp" alt="블로그 글 끝에 덧붙인 문단. 'I don't actually do anything resembling traditional engineering anymore'와 'I only talk to Claude and have it do everything'에 밑줄이 쳐져 있다">
+  <figcaption>
+    코드를 한 줄도 치지 않는 사람이 두 시간 만에 서비스를 띄웠어요. 영상은 이 두 시간을 하나씩 뜯어봐요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=55s" target="_blank" rel="noopener">영상 00:55에서 보기</a>
+  </figcaption>
+</figure>
+<h3>왜 추천이 그 모양일까요</h3>
+<p>해커 뉴스 스레드에서 누가 묻자 카파시는 이렇게 답했어요. 알고리즘은 보통 사람들의 취향으로 학습되니, 자기 같은 사람은 반올림 오차일 뿐이래요.</p>
+<blockquote>
+  <p>Basically I think we see a massive deterioration of quality because we are a rounding error.</p>
+  <p>우리는 반올림 오차라서 품질이 크게 떨어지는 걸 보는 거라고 생각해요.</p>
+  <cite>— 카파시의 해커 뉴스 댓글 (영상 01:06 부근)</cite>
+</blockquote>
+<p>그 집단이 얼마나 작은지는 카파시가 10월에 올린 '냅킨 계산'에 나와요. 슬라이드는 아래 세 줄을 보여 주고, 맨 꼭대기 5,000명은 말로 덧붙여요.</p>
+<figure>
+  <img src="assets/frame-0143.webp" alt="카파시의 냅킨 계산 슬라이드. 약 60억 명 75% AI를 거의 안 써 봄, 10-20억 명 20% 무료 챗봇을 검색처럼, 약 2천만 명 0.2% 에이전트에게 맡겨 봄. 마지막 줄에 '카파시' 꼬리표가 붙어 있다">
+  <figcaption>
+    주황색 0.2% 줄에 카파시 자신이 있어요. 추천 알고리즘이 신경 쓰기엔 너무 작은 집단이에요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=103s" target="_blank" rel="noopener">영상 01:43에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>집단</th><th>규모</th><th>AI를 어떻게 쓰나</th></tr></thead>
+    <tbody>
+      <tr><td>거의 안 써 본 사람</td><td>약 60억 명 (~75%)</td><td>—</td></tr>
+      <tr><td>무료 챗봇 사용자</td><td>10~20억 명 (~20%)</td><td>조금 나은 구글 검색처럼</td></tr>
+      <tr><td>에이전트에게 맡겨 보는 사람</td><td>약 2,000만 명 (0.2%)</td><td>몇 주·몇 달짜리 큰 프로젝트를 프롬프트 하나로 끝내는 걸 지켜봐요</td></tr>
+      <tr><td>연구소 내부</td><td>약 5,000명</td><td>최전선 시스템을 써요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>왜 이렇게 벌어질까요? 카파시는 이유를 셋으로 꼽아요. 슬라이드의 체크 세 줄이 그거예요.</p>
+<figure>
+  <img src="assets/frame-0203.webp" alt="'깔때기가 좁아지는 이유 (카파시)' 슬라이드. 야망 — 문제가 클수록 차이가 커진다, 들쭉날쭉함 — 디지털·검증 가능·돈 되는 분야부터, 접근 — 무료·유료·내부">
+  <figcaption>
+    질문이 작으면 시스템이 힘을 쓰지 않고, 실력은 수학과 코드부터 늘었고, 요금제마다 보는 세상이 달라요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=123s" target="_blank" rel="noopener">영상 02:03에서 보기</a>
+  </figcaption>
+</figure>
+<ul>
+  <li><b>야망</b> — 한 문단짜리 답을 묻는 질문으로는 시스템이 거의 힘을 쓰지 않아요.</li>
+  <li><b>들쭉날쭉함</b> — AI 실력은 디지털이고 검증할 수 있고 돈이 되는 분야, 곧 수학과 코드에서 먼저 늘었어요.</li>
+  <li><b>접근</b> — 무료 요금제냐, 유료냐, 연구소 내부냐에 따라 보는 세상이 달라요.</li>
+</ul>
+<p>카파시 자신도 1년 전에는 코드를 한 글자씩 손으로 쳤대요. 무엇이 바뀌었는지는 2026년 3월 No Priors 팟캐스트에서 말해요. 에이전트가 나오고 12월에 뭔가가 확 뒤집혔대요. 아래 장면의 자막이 그 비율이에요.</p>
+<figure>
+  <img src="assets/frame-0237.webp" alt="No Priors 팟캐스트 스튜디오에서 카파시와 진행자가 마주 앉은 장면. 자막: 직접 코딩 80 대 맡기기 20이, 20 대 80이 됐어요">
+  <figcaption>
+    직접 치는 비율과 맡기는 비율이 뒤집혔어요. 카파시는 12월 이후로 코드를 한 줄도 안 쳤을 거래요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=157s" target="_blank" rel="noopener">영상 02:37에서 보기</a>
+  </figcaption>
+</figure>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=167s" target="_blank" rel="noopener">02:47</a>
+  <h2>두 시간 동안 실제로 한 일</h2>
+<p>카파시의 글과 댓글을 이어 붙이면 두 시간의 순서가 나와요. 영상은 이걸 손그림 흐름도로 보여 줘요. 왼쪽 위에서 시작해 시계 방향으로 읽으면 돼요.</p>
+<figure>
+  <img src="assets/frame-0312.webp" alt="손그림 흐름도. HN 댓글 4,300만 개(20년 치, HuggingFace 공개 데이터) → 정규식으로 거르기(URL, 스팸 제거) → Sonnet이 하나씩 읽기(Claude Code Workflow) → 영상 6,454개(추천 댓글 약 4만 개), 마지막 칸에 빨간 동그라미">
+  <figcaption>
+    4,300만 개에서 6,454개까지 세 번 걸렀어요. 사람 손은 한 번도 안 들어갔어요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=192s" target="_blank" rel="noopener">영상 03:12에서 보기</a>
+  </figcaption>
+</figure>
+<ol class="steps">
+  <li><b>댓글 내려받기</b> — 해커 뉴스 20년치 댓글 4,300만 개. 허깅페이스에 공개된 데이터가 있었어요.</li>
+  <li><b>기계적으로 거르기</b> — URL(Uniform Resource Locator)과 정규식으로 유튜브 링크가 있는 댓글만 남기고 스팸을 버려요.</li>
+  <li><b>Sonnet이 하나씩 읽기</b> — Claude Code의 <span class="term" data-term="워크플로우" data-en="Workflow (Claude Code)" data-desc="Claude Code에서 여러 단계 작업을 정해진 흐름으로 묶어 돌리는 기능이에요. 해커튜브에서는 Sonnet이 댓글 수만 개를 하나씩 읽게 하는 데 썼어요." data-g="3">워크플로우</span> 기능으로 남은 댓글에 이름표를 붙여요.</li>
+  <li><b>남은 것</b> — 영상을 추천하는 댓글 약 4만 개, 영상 6,454개.</li>
+</ol>
+<p>어떤 영상을 남길지 기준은 해커튜브 소개 페이지에 있어요. 2번 항목의 빨간 밑줄이 그 기준이에요.</p>
+<figure>
+  <img src="assets/frame-0317.webp" alt="hackertube.org/about의 How it was built. 1번 Read all of Hacker News, 2번 Keep the videos HN keeps coming back to, at least three different에 밑줄과 '서로 다른 세 사람이, 서로 다른 세 달에 걸쳐 추천한 영상만' 한국어 메모">
+  <figcaption>
+    한 번 반짝 링크된 영상은 떨어져요. 서로 다른 세 사람이, 서로 다른 세 달에 걸쳐 추천해야 남아요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=197s" target="_blank" rel="noopener">영상 03:17에서 보기</a>
+  </figcaption>
+</figure>
+<h3>사람이 한 일은 셋뿐</h3>
+<p>이 과정에서 카파시가 손으로 한 일은 딱 세 가지였어요. 체크리스트 세 줄이 전부예요.</p>
+<figure>
+  <img src="assets/frame-0342.webp" alt="'카파시가 손으로 한 일 (전부)' 체크리스트. Google Cloud에서 YouTube API 키 만들기, 서버(VPS) 켜기, 도메인 사기 세 항목이 모두 체크돼 있다">
+  <figcaption>
+    이것도 Claude가 일하는 틈틈이 했대요. 그래서 "여전히 조금은 팀으로 일하는 느낌"이라고 적었어요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=222s" target="_blank" rel="noopener">영상 03:42에서 보기</a>
+  </figcaption>
+</figure>
+<h3>토큰은 얼마나 들었나</h3>
+<p>카파시는 정액 구독으로 썼다며 Claude에게 토큰을 합산시켜 댓글에 올렸어요. 노란 형광펜 부분이 숫자예요. 입력 5억 400만 토큰(90%는 캐시), 출력 760만 토큰이에요.</p>
+<figure>
+  <img src="assets/frame-0347.webp" alt="카파시의 해커 뉴스 댓글. I'm on subscription, 504M input tokens (90% cached), 7.6M output tokens에 형광펜. 아래 자막: 입력 5억 400만 토큰(90% 캐시), 출력 760만 토큰">
+  <figcaption>
+    댓글 끝에는 컨텍스트를 한 번 압축했다는 말도 있어요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=227s" target="_blank" rel="noopener">영상 03:47에서 보기</a>
+  </figcaption>
+</figure>
+<p>그중 대부분은 앱이 아니라 댓글 분류에 들어갔어요. 막대가 거의 다 찬 90%+가 Sonnet 호출이고, 아래 작은 글씨가 나머지예요.</p>
+<figure>
+  <img src="assets/frame-0353.webp" alt="'그중 Sonnet 호출 (댓글 이름표 붙이기) 90%+' 막대그래프. 아래 작은 글씨: 앱 만들기·배포 = Opus 5.5 약 100만 토큰">
+  <figcaption>
+    앱을 만들고 배포한 진짜 작업은 Opus 5.5 토큰 약 100만 개였어요. 카파시는 "요즘 기준으로 아주 작은 프로젝트"라고 했어요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=233s" target="_blank" rel="noopener">영상 03:53에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>카파시의 블로그 원문은 해커튜브의 특징도 적어 둬요. 올린 사람이 고른 썸네일 대신 영상 정확히 중간 지점의 장면을 썸네일로 써요. 계정 없이 브라우저에만 상태를 저장하는 맞춤 추천이 있고, 단축키가 있어요. 그리고 사이트 데이터를 내려받아 각자의 에이전트로 자기 버전을 만들 수 있게 했어요. 영상 6,454개는 150개 주제로 묶여 있대요.</p>
+  <p class="cite">출처: <a href="https://karpathy.bearblog.dev/hacker-tube/" target="_blank" rel="noopener">Andrej Karpathy 블로그 — HackerTube (2026-10-31)</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=238s" target="_blank" rel="noopener">03:58</a>
+  <h2>짧고 멍청한 프롬프트</h2>
+<p>그럼 Claude에게는 뭐라고 말했을까요? 해커 뉴스에서 누가 모델을 어떻게 지휘하느냐고 묻자 카파시가 답한 댓글이에요. 초록 형광펜 세 군데를 차례로 읽으면 요지가 나와요.</p>
+<figure>
+  <img src="assets/frame-0422.webp" alt="카파시의 해커 뉴스 댓글. My prompts are getting shorter and dumber, you're constraining the model with too many requirements, fewer bits administered just right에 형광펜. 자막: 적은 정보를, 딱 맞게">
+  <figcaption>
+    너무 많이 주면 요구 사항으로 모델을 묶어 버려요. 내버려 뒀으면 더 똑똑하게 했을 텐데요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=262s" target="_blank" rel="noopener">영상 04:22에서 보기</a>
+  </figcaption>
+</figure>
+<blockquote>
+  <p>My prompts are getting shorter and dumber because the model "gets" what I'm doing even with fewer words.</p>
+  <p>모델이 적은 말로도 내가 뭘 하려는지 알아들어서, 내 프롬프트는 점점 짧고 멍청해져요.</p>
+  <cite>— 카파시의 해커 뉴스 댓글 (영상 04:04 부근)</cite>
+</blockquote>
+<p>해커튜브에서도 그랬어요. 서버가 켜지자 카파시는 Claude에게 서버 IP(Internet Protocol)를 주고 한 줄을 보냈어요. 화면의 노란 줄이 그 한 줄이고, 손글씨 메모가 '이게 전부'라고 짚어요.</p>
+<figure>
+  <img src="assets/frame-0434.webp" alt="Claude Code 창을 흉내 낸 화면. 1행 (서버 IP 주소), 2행 update, deploy, secure, harden and optimize, 3행 it did the whole thing. 오른쪽 위 손글씨 '이게 전부'">
+  <figcaption>
+    영어 원문은 update, deploy, secure, harden, optimize 다섯 단어예요. 영상 제목의 '단어 5개'가 이거예요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=274s" target="_blank" rel="noopener">영상 04:34에서 보기</a>
+  </figcaption>
+</figure>
+<p>내레이션은 이 다섯 단어를 '업데이트, 배포, 보안 강화, 최적화' 넷으로 옮겨요. secure와 harden을 '보안 강화' 하나로 묶은 거예요. 블로그 원문에도 이 다섯 단어가 그대로 있어요.</p>
+<p>보안도 비슷해요. 가끔은 "최근 사이버 쪽 좀 확인해 줘" 정도로만 말한대요. 그러면 Claude가 <span class="term" data-term="하위 에이전트" data-en="Subagent" data-desc="주 에이전트가 일을 나눠 맡기려고 띄우는 보조 에이전트예요. 각자 따로 조사하고 결과만 돌려줘서 주 대화가 길어지지 않아요." data-g="4">하위 에이전트</span> 몇 개를 보내 알아서 처리해요.</p>
+<figure>
+  <img src="assets/frame-0440.webp" alt="카파시의 해커 뉴스 댓글. Sometimes I say something like 'check recent cyber stuff' and it dispatches a few subagents and does the thing. 자막: '최근 사이버 쪽 좀 확인해 줘'">
+  <figcaption>
+    무엇을 어떻게 확인할지는 모델이 나눠서 정해요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=280s" target="_blank" rel="noopener">영상 04:40에서 보기</a>
+  </figcaption>
+</figure>
+<p>소스 코드를 공개해 달라는 요청에는 반 농담으로 이런 프롬프트를 답글로 달았어요. 사실상 이게 해커튜브의 '소스'라는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0446.webp" alt="카파시의 트윗. Hi Claude good morning how are you I'm great thx build me a YouTube-style site but restricted to videos that have been repeatedly recommended on HN over the years pls. Don't make any mistakes.">
+  <figcaption>
+    "안녕 Claude, 좋은 아침이야. 해커 뉴스에서 오랫동안 반복해서 추천된 영상만 모은 유튜브 같은 사이트 만들어 줘. 실수하지 말고."
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=286s" target="_blank" rel="noopener">영상 04:46에서 보기</a>
+  </figcaption>
+</figure>
+<h3>조건: Opus 5.5 이상에서만</h3>
+<p>다만 조건이 하나 붙어요. 이렇게 짧게 맡기는 건 Opus 5.5 이상에서만 한대요. 노란 형광펜 부분이 그 말이에요.</p>
+<figure>
+  <img src="assets/frame-0504.webp" alt="카파시의 해커 뉴스 댓글. Only with Opus 5.5+. The thing is beast mode. I wouldn't trust other weaker models this much. 자막: 더 약한 모델은 이만큼 믿지 않겠다">
+  <figcaption>
+    짧은 프롬프트는 모델이 그만큼 알아들을 때만 통해요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=304s" target="_blank" rel="noopener">영상 05:04에서 보기</a>
+  </figcaption>
+</figure>
+<p>카파시가 밝힌 기본 설정도 단순해요. Mac용 Claude Code 데스크톱 앱에 Opus 5.5, <span class="term" data-term="노력 수준" data-en="Effort level" data-desc="모델이 답하기 전에 얼마나 오래 생각할지 정하는 설정이에요. 높을수록 꼼꼼하지만 느리고 토큰을 더 써요. 카파시는 Medium을 기본으로 둬요." data-g="5">노력 수준</span>은 Medium이에요.</p>
+<figure>
+  <img src="assets/frame-0510.webp" alt="'카파시의 기본 설정 (블로그)' 슬라이드. Claude Code 데스크톱 (Mac), Opus 5.5 · Medium effort">
+  <figcaption>
+    최고 노력 수준이 아니라 중간이 기본값이에요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=310s" target="_blank" rel="noopener">영상 05:10에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>같은 댓글의 뒷부분에서 카파시는 이 요령을 영상으로 만들까 고민 중이라고 했어요. 다만 자기 '모범 사례'가 너무 멍청해 보여서 거의 민망할 정도라고 덧붙였어요. 짧은 프롬프트가 일부러 고른 기법이라기보다, 모델이 좋아지면서 저절로 줄어든 결과라는 뜻으로 읽혀요.</p>
+  <p class="cite">출처: <a href="https://news.ycombinator.com/item?id=50323111" target="_blank" rel="noopener">Hacker News — karpathy의 댓글 (2026-11-01)</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=311s" target="_blank" rel="noopener">05:11</a>
+  <h2>결과는 이해하고, 루프에서는 빠지기</h2>
+<p>AI가 일을 다 하면 사람은 뭘 할까요? 카파시는 10월 초 X에 글을 올렸어요. 앞으로는 언어 모델의 결과물을 이해하는 데 훨씬 많은 시간을 쓰게 될 거라고요. 그래서 결과물을 받아 보는 방법을 사다리처럼 정리했어요. 영상은 이걸 계단 모양으로 보여 줘요. 아래로 내려갈수록 더 좋은 형식이에요.</p>
+<figure>
+  <img src="assets/frame-0543.webp" alt="'결과물을 받아 보는 사다리 (카파시, 2026.10.02.)' 슬라이드. 계단 모양으로 쉬운 영어 — ASD-STE100, 그림 — 다이어그램, HTML — 눌러 보는 웹 페이지">
+  <figcaption>
+    화면에는 세 칸까지 나오고, 네 번째 칸인 설명 영상은 내레이션이 이어서 말해요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=343s" target="_blank" rel="noopener">영상 05:43에서 보기</a>
+  </figcaption>
+</figure>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>단계</th><th>어떻게 받나</th><th>왜 좋은가</th></tr></thead>
+    <tbody>
+      <tr><td>쉬운 영어</td><td>항공기 정비 문서용 단순 기술 영어(ASD-STE100)로 설명해 달라고 해요</td><td>문장이 짧고 뜻이 하나로 정해져요</td></tr>
+      <tr><td>그림</td><td>다이어그램으로 그려 달라고 해요</td><td>글보다 훨씬 빨리 읽혀요</td></tr>
+      <tr><td>HTML</td><td>움직이고 눌러 볼 수 있는 웹 페이지로 받아요</td><td>직접 조작하며 이해해요</td></tr>
+      <tr><td>설명 영상</td><td>주제마다 새로 만드는 설명 영상</td><td>카파시가 가장 기대하는 형식이고, 실제로 되기 시작했대요</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>글의 결론은 아래 카드의 두 형광펜이에요. 초록은 사람의 일이 감독과 이해 쪽으로 올라간다는 것, 노랑은 크고 맞춤이고 버려도 되는 소프트웨어를 주문하라는 거예요.</p>
+<figure>
+  <img src="assets/frame-0559.webp" alt="카파시 글의 맺음말 'In summary'. rise up the abstractions into oversight and understanding과 large, custom, discardable software artifacts에 형광펜. 자막: 크고, 맞춤이고, 버려도 되는 소프트웨어">
+  <figcaption>
+    지능과 코드가 흔해진 만큼, 예전엔 만들 이유가 없던 소프트웨어도 부담 없이 주문하라는 뜻이에요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=359s" target="_blank" rel="noopener">영상 05:59에서 보기</a>
+  </figcaption>
+</figure>
+<h3>그 사이에는 자리를 비우기</h3>
+<p>짧게 말하고, 결과를 이해해요. 그럼 그 사이에는 뭘 할까요? 카파시의 답은 아예 자리를 비우라는 거예요. No Priors 팟캐스트에서 한 말이 자막으로 나와요.</p>
+<figure>
+  <img src="assets/frame-0615.webp" alt="No Priors 팟캐스트에서 말하는 카파시. 자막: 지금 나온 도구를 제대로 쓰려면, 병목인 자기 자신을 빼야 한다">
+  <figcaption>
+    이어서 "다음 프롬프트를 치려고 앉아 있으면 안 되고, 루프에 끼지 않고 토큰 처리량을 최대로 하는 게 목표"라고 말해요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=375s" target="_blank" rel="noopener">영상 06:15에서 보기</a>
+  </figcaption>
+</figure>
+<p>물론 손을 떼려면 믿을 수 있어야 해요. Claude Code를 만든 Boris Cherny가 2026년 1월에 쓴 팁이 그 방법이에요. 형광펜 두 곳을 보면 돼요. Claude에게 자기 작업을 검증할 방법을 주라는 것, 그러면 품질이 2~3배가 된다는 거예요.</p>
+<figure>
+  <img src="assets/frame-0645.webp" alt="Boris Cherny의 트윗 13/ A final tip. give Claude a way to verify its work와 it will 2-3x the quality of the final result에 형광펜. 자막: 최종 결과물의 품질이 2~3배가 된다">
+  <figcaption>
+    <span class="term" data-term="피드백 고리" data-en="Feedback loop" data-desc="결과를 확인하고 그 결과로 다시 고치는 순환이에요. 테스트나 실행 결과를 Claude가 직접 보게 하면 사람 없이도 스스로 고쳐 나가요." data-g="6">피드백 고리</span>가 있어야 사람이 자리를 비워도 결과를 믿을 수 있어요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=405s" target="_blank" rel="noopener">영상 06:45에서 보기</a>
+  </figcaption>
+</figure>
+<p>해커튜브를 공개한 날 밤에도 그랬어요. 스레드에 기능 요청 댓글이 달리면 카파시는 금세 추가했다고 답했어요. 아래 댓글이 그 변경 기록이에요. 검색·주제 페이지 필터, 업로드일·조회수 정렬 같은 항목이 요청한 사람 아이디와 함께 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0655.webp" alt="카파시의 해커 뉴스 댓글 'Changelog push from HN comments on this thread'. 검색과 주제 페이지 필터, 업로드일·조회수 정렬, 홈 화면 필터 항목과 요청자 아이디. 자막: 이 스레드 댓글에서 나온 요청을 반영해 배포">
+  <figcaption>
+    검색 필터, 정렬, 재생 목록 같은 기능이 공개 두 시간도 안 돼 한꺼번에 들어갔어요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=415s" target="_blank" rel="noopener">영상 06:55에서 보기</a>
+  </figcaption>
+</figure>
+<h3>남의 스킬 팩은 효과가 있을까요</h3>
+<p>요즘은 이런 요령을 스킬 파일로 묶어 내려받는 사람이 많아요. 9월 말에 이걸 직접 재 본 사람이 있어요. GitHub 저장소 skill-placebo예요. 설명 줄에 '가장 별이 많은 코딩 에이전트 스킬의 위약 대조 벤치마크'라고 적혀 있어요.</p>
+<figure>
+  <img src="assets/frame-0709.webp" alt="GitHub 저장소 simonether/skill-placebo. 설명: Placebo-controlled benchmark of the most-starred coding agent skills. 자막: 인기 코딩 에이전트 스킬을 위약과 비교한 벤치마크">
+  <figcaption>
+    인기 스킬 9개를 '길이만 같고 쓸모는 없는 글'과 맞붙였어요. 약으로 치면 <span class="term" data-term="위약 대조군" data-en="Placebo control" data-desc="효과 없는 가짜 약을 준 비교 집단이에요. 스킬 실험에서는 길이만 같고 쓸모는 없는 글을 위약으로 넣어, 스킬이 &#x27;내용&#x27; 덕에 좋아지는지 따로 쟀어요." data-g="7">위약 대조군</span>이에요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=429s" target="_blank" rel="noopener">영상 07:09에서 보기</a>
+  </figcaption>
+</figure>
+<p>결과는 아래 막대 세 개예요. 가장 긴 막대가 '차이 없음' 6개예요.</p>
+<figure>
+  <img src="assets/frame-0721.webp" alt="'스킬 9개 vs 같은 길이의 위약 (Opus 5.5, 15개 과제)' 막대그래프. 더 쌌다(같은 결과) 2개, 차이 없음 6개, 오히려 나빴다 1개">
+  <figcaption>
+    위약보다 나은 2개도 품질이 아니라 같은 일을 더 싸게 했다는 뜻이었어요. 1개는 오히려 통과율이 떨어졌어요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=441s" target="_blank" rel="noopener">영상 07:21에서 보기</a>
+  </figcaption>
+</figure>
+<p>이 아홉 개 중에는 'karpathy'라는 이름이 붙은 스킬도 있었어요. 카파시 본인이 아니라 다른 사람이 만든 거예요.</p>
+<figure>
+  <img src="assets/frame-0729.webp" alt="'스킬 이름: karpathy, 만든 사람은 카파시가 아님, 판정: 위약과 차이 없음' 슬라이드">
+  <figcaption>
+    이름이 유명해도 효과는 따로 재 봐야 해요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=449s" target="_blank" rel="noopener">영상 07:29에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>저장소 README를 보면 실험은 2026년 9월 30일, Claude Code에서 claude-opus-5-5로 돌렸어요. 과제 15개는 SWE-bench Verified, Terminal-Bench 2.1, OpenThoughts-TBLite에서 골랐고, 조건마다 30번씩 모두 450번 시험했어요. 위약보다 나은 두 스킬도 통계 보정 뒤 p값이 0.049로 기준선에 걸쳐 있어요.</p>
+  <p>karpathy 스킬은 위약보다 비용이 9% 더 들었고, 통과율은 83% 대 87%였어요. 그리고 '오히려 나빠진' 1개(planning-with-files)는 처음엔 '차이 없음'이었다가, 10월 6일 정정에서 시간 초과 두 건을 실패로 다시 세면서 바뀌었어요.</p>
+  <p class="cite">출처: <a href="https://github.com/simonether/skill-placebo" target="_blank" rel="noopener">GitHub — simonether/skill-placebo README</a></p>
+</aside>
+<h3>길게 넣는다고 좋은 게 아니에요</h3>
+<p>길게 많이 넣는다고 좋은 게 아니라는 연구도 있어요. Chroma의 기술 보고서예요. 초록 형광펜이 '모델 18개를 평가'했다는 부분, 노란 형광펜이 결론이에요.</p>
+<figure>
+  <img src="assets/frame-0741.webp" alt="Chroma 기술 보고서 'Context Rot: How Increasing Input Tokens Impacts LLM Performance' (2025.07.14). we evaluate 18 LLMs와 their performance grows increasingly unreliable as input length grows에 형광펜">
+  <figcaption>
+    입력이 길어질수록 성능이 점점 불안정해져요. 이른바 <span class="term" data-term="컨텍스트 부패" data-en="Context rot" data-desc="모델에 넣는 입력이 길어질수록 앞쪽 정보를 놓치는 등 성능이 들쭉날쭉해지는 현상이에요. 많이 넣을수록 좋다는 생각을 반박해요." data-g="8">컨텍스트 부패</span>예요. 카파시는 반대로 모델에게 점점 덜 말하는 쪽을 택했어요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=461s" target="_blank" rel="noopener">영상 07:41에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>보고서는 GPT-4.1, Claude 4, Gemini 2.5, Qwen3 등 18개 모델을 시험했어요. 긴 글에 숨겨 둔 문장을 찾는 과제(Needle in a Haystack)를 늘려서, 질문과 정답 문장이 단어가 아니라 뜻으로만 이어지거나 헷갈리는 문장이 섞이면 성능이 어떻게 떨어지는지 봤어요. 긴 대화 기록에서 답을 찾는 LongMemEval과, 같은 단어를 반복해 따라 쓰는 과제도 넣었어요.</p>
+  <p class="cite">출처: <a href="https://research.trychroma.com/context-rot" target="_blank" rel="noopener">Chroma Research — Context Rot (2025-07-14)</a></p>
+</aside>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=466s" target="_blank" rel="noopener">07:46</a>
+  <h2>앱은 버려도 된다</h2>
+<p>해커튜브 코드를 공개해 달라는 사람이 많았지만, 카파시는 서버 코드는 공개하지 않았어요. 이유는 첫 번째 형광펜, '바이브 코딩으로 만든 엉망진창'이라서예요. 대신 댓글을 분석한 데이터를 압축 파일 하나로 올렸어요.</p>
+<figure>
+  <img src="assets/frame-0802.webp" alt="카파시의 해커 뉴스 댓글. it's a vibe coded mess와 This part was like 3 min에 형광펜. 자막: 이 부분은 3분쯤 걸렸다">
+  <figcaption>
+    압축 파일을 Opus 5.5에게 주고 유튜브 같은 사이트를 만들어 달라고 하면 거의 바로 나온대요. 앱 부분은 3분쯤이었어요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=482s" target="_blank" rel="noopener">영상 08:02에서 보기</a>
+  </figcaption>
+</figure>
+<p>엿새 뒤에는 실제로 그렇게 했어요. 다른 개발자 Tristan이 올린 유튜브 채널 목록을 보고 TristanTube를 만들었어요. 트윗 마지막 줄 괄호 안이 핵심이에요.</p>
+<figure>
+  <img src="assets/frame-0810.webp" alt="카파시의 트윗(2026.11.07). Tristan이 올린 top YouTube channels 목록을 TristanTube로 만들었고, 47K super nerdy videos, TV mode, (One-shotted with Claude Code in 3 minutes)에 형광펜">
+  <figcaption>
+    Claude Code로 한 번에, 3분 만에 영상 4만 7천 개짜리 사이트가 나왔어요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=490s" target="_blank" rel="noopener">영상 08:10에서 보기</a>
+  </figcaption>
+</figure>
+<h3>앱이 쉬워지면 앱의 가치는요?</h3>
+<p>카파시는 Sequoia AI Ascent 행사에서 자기 앱 이야기를 꺼냈어요. MenuGen이에요. 슬라이드의 화살표대로 메뉴판 사진을 올리면 글자를 읽고, 요리마다 그림을 만들어 줘요.</p>
+<figure>
+  <img src="assets/frame-0825.webp" alt="MenuGen 슬라이드. 메뉴판 사진 → 글자 읽기 → 요리 그림, 카파시가 직접 코딩한 앱">
+  <figcaption>
+    카파시가 직접 코딩해서 만든 앱이에요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=505s" target="_blank" rel="noopener">영상 08:25에서 보기</a>
+  </figcaption>
+</figure>
+<p>그런데 같은 일을 하는 '소프트웨어 3.0' 버전을 보고 충격을 받았대요. 사진을 그냥 Gemini에 주고, Nano Banana로 메뉴판 위에 요리 그림을 얹어 달라고 하면 끝이에요. 찍은 메뉴판 그대로인데 픽셀 안에 요리 그림이 그려져 나와요.</p>
+<figure>
+  <img src="assets/frame-0853.webp" alt="Sequoia AI Ascent 무대에서 청중 앞에 앉아 말하는 카파시와 진행자. 자막: 정말 충격이었어요. 제 MenuGen은 전부 쓸데없는 거였거든요">
+  <figcaption>
+    앱 하나가 통째로 모델 한 번 호출로 바뀌었어요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=533s" target="_blank" rel="noopener">영상 08:53에서 보기</a>
+  </figcaption>
+</figure>
+<p>앱이 이렇게 쉽게 나오면, 해커튜브에서 진짜 귀한 건 20년치 댓글에서 걸러 낸 영상 목록이에요. 카파시가 코드 대신 공개한 것도 바로 그 데이터였어요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>카파시는 행사 뒤 블로그에 이 대담을 정리했어요. 원래 MenuGen은 프런트엔드, API, 이미지 생성, 배포, 로그인, 결제, 비밀 키 관리까지 갖춘 평범한 웹 앱이었대요. 새 버전에서는 신경망이 입력 사진을 바로 출력 사진으로 바꾸니, 기존 소프트웨어는 모델이 이제 직접 하는 변환을 둘러싼 비계였다고 봐요. 그래서 "어떤 앱은 앱으로 존재하기를 멈춰야 한다"고 적었어요.</p>
+  <p class="cite">출처: <a href="https://karpathy.bearblog.dev/sequoia-ascent-2026/" target="_blank" rel="noopener">Andrej Karpathy 블로그 — Sequoia Ascent 2026 summary (2026-04-30)</a></p>
+</aside>
+<h3>무엇이 나은지는 사람이 고른다</h3>
+<p>무엇이 더 나은지 고르는 일도 사람에게 남아요. 벤치마크 추천을 묻는 댓글에 카파시가 답한 내용이에요. 마지막 줄이 요지예요. 요즘 벤치마크는 아주 나쁜 상태라 사실상 믿지 않는대요.</p>
+<figure>
+  <img src="assets/frame-0910.webp" alt="카파시의 해커 뉴스 댓글. No i don't recommend those anymore. Currently I recommend Epoch's ECI. ... I think benchmarks are in a really bad state right now otherwise, I basically don't trust them">
+  <figcaption>
+    지금 추천하는 건 Epoch의 ECI(Epoch Capabilities Index) 정도이고, 나머지는 믿지 않는대요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=550s" target="_blank" rel="noopener">영상 09:10에서 보기</a>
+  </figcaption>
+</figure>
+<p>대신 카파시는 Celeste라는 사람이 만든 재미있는 평가를 공유했어요. 위도와 경도만 주고 '육지냐 바다냐'를 지구 곳곳 16,200번 묻고, 답을 점으로 찍어요. 흰색이 육지예요. 빨간 동그라미 두 개를 비교하면 차이가 바로 보여요.</p>
+<figure>
+  <img src="assets/frame-0930.webp" alt="'How 12 blind Claudes see the Earth' 그림의 첫 줄과 마지막 줄. Sonnet 4.5 60.5%, Haiku 4.5 81.3%, Opus 4.5 82.6%, Opus 5 92.5%, Fable 5.1 98.2%, Opus 5.5 99.0%. Sonnet 4.5와 Opus 5.5에 빨간 동그라미">
+  <figcaption>
+    Sonnet 4.5(60.5%)의 지도는 얼룩이고, Opus 5.5(99.0%)의 지도는 대륙 모양이 또렷해요. 카파시 말로는 모델이 인터넷을 압축하면서 지구를 알게 된 거래요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=570s" target="_blank" rel="noopener">영상 09:30에서 보기</a>
+  </figcaption>
+</figure>
+<p>화면은 열두 모델 중 첫 줄과 마지막 줄 여섯 개만 보여 줘요. 내레이션은 Sonnet 4.5를 '60% 남짓', Opus 5.5를 '99%'로 말해요.</p>
+<h3>정리: 세 가지 습관</h3>
+<p>카파시는 해커튜브 발표 글을 이 문단으로 끝냈어요. 형광펜이 '아침밥 먹으며 해치울 수 있다'는 부분이에요.</p>
+<figure>
+  <img src="assets/frame-0941.webp" alt="'Weekend hack: HackerTube' 글의 마지막 문단. Many awesome projects that would have normally taken weeks/months even can now be few-shotted for breakfast. What else are we not thinking of.">
+  <figcaption>
+    몇 주, 몇 달 걸렸을 프로젝트를 이제 아침밥 먹으며 해치울 수 있어요. 우리가 아직 생각 못 한 건 또 뭘까요?
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=581s" target="_blank" rel="noopener">영상 09:41에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상은 세 장의 카드로 정리해요. 카드마다 손글씨 제목 아래 작은 글씨가 방법이에요.</p>
+<figure>
+  <img src="assets/frame-0957.webp" alt="폴라로이드 카드 세 장. 1 짧게 말한다 — 적은 정보를, 딱 맞게. 2 자리를 비운다 — 검증할 방법을 주고. 3 이해에 쓴다 — 그림·HTML·설명 영상">
+  <figcaption>
+    세 번째 카드가 앞으로 올라와 있어요. 남는 시간은 결과를 이해하고 고르는 데 써요.
+    <a href="https://www.youtube.com/watch?v=OV9By_UspTk&amp;t=597s" target="_blank" rel="noopener">영상 09:57에서 보기</a>
+  </figcaption>
+</figure>
+<p>세 습관은 따로가 아니라 한 바퀴로 이어져요. 아래 그림은 영상이 말한 순서를 고리로 옮긴 거예요. 사람이 짧게 맡기면, Claude가 일하고 스스로 검증해요. 결과는 그림·HTML·영상으로 받아 사람이 이해하고 골라요. 그리고 다시 짧게 맡겨요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 300" role="img" aria-label="사람이 짧게 맡기고, Claude가 일하며 스스로 검증하고, 결과를 그림·HTML·영상으로 받아 사람이 이해하고 고르는 고리">
+    <defs><marker id="arrow-loop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="c1 cell" x="20" y="30" width="180" height="80" rx="10"/>
+    <text x="110" y="64" text-anchor="middle">1 짧게 말한다</text>
+    <text x="110" y="88" text-anchor="middle" class="sub">적은 정보를, 딱 맞게</text>
+    <rect class="c2 cell" x="230" y="30" width="180" height="80" rx="10"/>
+    <text x="320" y="64" text-anchor="middle">Claude가 일한다</text>
+    <text x="320" y="88" text-anchor="middle" class="sub">하위 에이전트 · 워크플로우</text>
+    <rect class="c2 cell" x="440" y="30" width="180" height="80" rx="10"/>
+    <text x="530" y="64" text-anchor="middle">2 스스로 검증</text>
+    <text x="530" y="88" text-anchor="middle" class="sub">사람은 자리를 비워요</text>
+    <rect class="c3 cell" x="230" y="190" width="390" height="80" rx="10"/>
+    <text x="425" y="224" text-anchor="middle">3 이해에 쓴다</text>
+    <text x="425" y="248" text-anchor="middle" class="sub">그림 · HTML · 설명 영상으로 받아 보고, 무엇이 나은지 고른다</text>
+    <path class="line" d="M200 70 H228" marker-end="url(#arrow-loop)"/>
+    <path class="line" d="M410 62 H438" marker-end="url(#arrow-loop)"/>
+    <path class="line" d="M438 80 H412" marker-end="url(#arrow-loop)"/>
+    <path class="line" d="M530 110 V188" marker-end="url(#arrow-loop)"/>
+    <path class="line" d="M230 230 H110 V112" marker-end="url(#arrow-loop)"/>
+    <text x="545" y="155" class="sub">결과물</text>
+    <text x="40" y="160" class="sub">다음 프롬프트</text>
+  </svg>
+  <figcaption>가운데 일하고 검증하는 구간에 사람이 없어요. 사람은 고리의 양 끝, 맡길 때와 이해할 때에만 들어가요.</figcaption>
+</figure>
+<p>카파시는 불평하는 대신 두 시간을 썼고, 글 끝에 "이제야 숨을 쉴 수 있겠다"고 적었어요. 영상은 요즘 화면을 보며 답답했던 게 있다면, 두 시간이면 직접 고칠 수 있을지도 모른다는 말로 끝나요.</p>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 이름과 몇몇 낱말이 잘못 받아적혔어요. 화면 글자와 문맥으로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>밸브 코딩</td><td>바이브 코딩 (vibe coding)</td><td></td></tr>
+      <tr><td>엔트로픽</td><td>Anthropic</td><td></td></tr>
+      <tr><td>이름 바 냅킨 계산</td><td>이른바 냅킨 계산</td><td></td></tr>
+      <tr><td>같은 그래서</td><td>같은 글에서</td><td>화면 자막 기준</td></tr>
+      <tr><td>손수 세기 분에 하나하나 읽었습니다</td><td>Sonnet이 하나씩 읽었습니다</td><td>화면 흐름도 &#x27;Sonnet이 하나씩 읽기&#x27; (추정)</td></tr>
+      <tr><td>정액 코드</td><td>정액 구독</td><td>원문 &#x27;I&#x27;m on subscription&#x27;</td></tr>
+      <tr><td>소래도 주</td><td>Sonnet 호출</td><td>화면 &#x27;Sonnet 호출&#x27;</td></tr>
+      <tr><td>해커 초부</td><td>해커튜브 (HackerTube)</td><td></td></tr>
+      <tr><td>답 골라 달았습니다</td><td>답글로 달았습니다 (추정)</td><td></td></tr>
+      <tr><td>인 키코딩 에이전트</td><td>인기 코딩 에이전트</td><td>화면 자막 기준</td></tr>
+      <tr><td>이런바</td><td>이른바</td><td></td></tr>
+      <tr><td>보리스 체르니</td><td>Boris Cherny</td><td></td></tr>
+      <tr><td>크로마</td><td>Chroma</td><td></td></tr>
+      <tr><td>사와 세코이아 행사</td><td>Sequoia AI Ascent 행사</td><td>화면 이름표 &#x27;Sequoia AI Ascent (2026.04.)&#x27;</td></tr>
+      <tr><td>메뉴 제</td><td>MenuGen</td><td></td></tr>
+      <tr><td>예소넷 4.5</td><td>Sonnet 4.5</td><td></td></tr>
+      <tr><td>숨을 쉴 c 있겠다</td><td>숨을 쉴 수 있겠다</td><td></td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-5"><dt>노력 수준<span class="en">Effort level</span></dt><dd>모델이 답하기 전에 얼마나 오래 생각할지 정하는 설정이에요. 높을수록 꼼꼼하지만 느리고 토큰을 더 써요. 카파시는 Medium을 기본으로 둬요.</dd></div>
+    <div class="g" id="g-2"><dt>바이브 코딩<span class="en">Vibe coding</span></dt><dd>코드를 직접 읽고 쓰기보다 AI에게 말로 원하는 걸 설명하고 결과만 확인하며 만드는 방식이에요. 카파시가 2025년 초에 처음 쓴 말이에요.</dd></div>
+    <div class="g" id="g-1"><dt>슬롭<span class="en">Slop</span></dt><dd>대충 대량으로 찍어 낸 저품질 콘텐츠를 낮춰 부르는 말이에요. 카파시는 추천 알고리즘이 이런 영상만 밀어 준다고 느꼈어요.</dd></div>
+    <div class="g" id="g-3"><dt>워크플로우<span class="en">Workflow (Claude Code)</span></dt><dd>Claude Code에서 여러 단계 작업을 정해진 흐름으로 묶어 돌리는 기능이에요. 해커튜브에서는 Sonnet이 댓글 수만 개를 하나씩 읽게 하는 데 썼어요.</dd></div>
+    <div class="g" id="g-7"><dt>위약 대조군<span class="en">Placebo control</span></dt><dd>효과 없는 가짜 약을 준 비교 집단이에요. 스킬 실험에서는 길이만 같고 쓸모는 없는 글을 위약으로 넣어, 스킬이 &#x27;내용&#x27; 덕에 좋아지는지 따로 쟀어요.</dd></div>
+    <div class="g" id="g-8"><dt>컨텍스트 부패<span class="en">Context rot</span></dt><dd>모델에 넣는 입력이 길어질수록 앞쪽 정보를 놓치는 등 성능이 들쭉날쭉해지는 현상이에요. 많이 넣을수록 좋다는 생각을 반박해요.</dd></div>
+    <div class="g" id="g-6"><dt>피드백 고리<span class="en">Feedback loop</span></dt><dd>결과를 확인하고 그 결과로 다시 고치는 순환이에요. 테스트나 실행 결과를 Claude가 직접 보게 하면 사람 없이도 스스로 고쳐 나가요.</dd></div>
+    <div class="g" id="g-4"><dt>하위 에이전트<span class="en">Subagent</span></dt><dd>주 에이전트가 일을 나눠 맡기려고 띄우는 보조 에이전트예요. 각자 따로 조사하고 결과만 돌려줘서 주 대화가 길어지지 않아요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>ECI</dt><dd>Epoch Capabilities Index</dd></div>
+    <div class="g"><dt>HTML</dt><dd>HyperText Markup Language</dd></div>
+    <div class="g"><dt>IP</dt><dd>Internet Protocol</dd></div>
+    <div class="g"><dt>URL</dt><dd>Uniform Resource Locator</dd></div>
+    <div class="g"><dt>VPS</dt><dd>Virtual Private Server</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=OV9By_UspTk" target="_blank" rel="noopener">원본 영상 — Tech Bridge</a></li>
+    <li id="src-2"><a href="https://karpathy.bearblog.dev/hacker-tube/" target="_blank" rel="noopener">Andrej Karpathy 블로그 — HackerTube (2026-10-31)</a></li>
+    <li id="src-3"><a href="https://news.ycombinator.com/item?id=50319510" target="_blank" rel="noopener">Hacker News — HackerTube: YouTube built from videos recommended by HN</a></li>
+    <li id="src-4"><a href="https://news.ycombinator.com/item?id=50323111" target="_blank" rel="noopener">Hacker News — karpathy의 &#x27;짧고 멍청한 프롬프트&#x27; 댓글</a></li>
+    <li id="src-5"><a href="https://github.com/simonether/skill-placebo" target="_blank" rel="noopener">GitHub — simonether/skill-placebo</a></li>
+    <li id="src-6"><a href="https://research.trychroma.com/context-rot" target="_blank" rel="noopener">Chroma Research — Context Rot (2025-07-14)</a></li>
+    <li id="src-7"><a href="https://karpathy.bearblog.dev/sequoia-ascent-2026/" target="_blank" rel="noopener">Andrej Karpathy 블로그 — Sequoia Ascent 2026 summary</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 20일에 이 영상을 보고 정리했어요. 원본은 Tech Bridge 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
