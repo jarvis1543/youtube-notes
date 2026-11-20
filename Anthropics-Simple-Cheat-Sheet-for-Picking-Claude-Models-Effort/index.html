@@ -1,0 +1,897 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anthropic’s Simple Cheat Sheet for Picking Claude Models + Effort</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Anthropic’s Simple Cheat Sheet for Picking Claude Models + Effort</h1>
+  <p class="lede">Anthropic 가이드로 정리한 모델·노력 선택표와 결과가 나쁠 때의 순서</p>
+  <div class="meta">
+    <span>Ben AI</span><span class="dot">·</span>
+    <span>영상 15:34</span><span class="dot">·</span>
+    <span>읽는 데 약 18분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=_ioUbQftxBc" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>모델은 Claude가 '얼마나 아는지', 노력은 '얼마나 애쓰는지'예요. 노력을 max로 올려도 모델에 없는 지식은 생기지 않아요.</li>
+    <li>단순·반복 작업은 Haiku, '완료'를 한 문장으로 말할 수 있으면 Sonnet, 잘 모르겠으면 Opus 5.5 medium, 열린 문제에 정확도가 중요하면 Fable이에요.</li>
+    <li>노력은 질문 네 개로 골라요. 주고받을 일이면 low, 숨은 실수가 비싸면 high, 길고 어렵고 중요한 일을 맡기고 떠나면 xhigh, 나머지는 기본값이에요.</li>
+    <li>결과가 나쁘면 프롬프트 고치기 → 스스로 검증 → 노력 한 칸 → 모델 한 단계(노력은 낮춰서) 순서로 손대요.</li>
+    <li>대화 중간에 모델을 바꾸면 <span class="term" data-term="캐시" data-en="Prompt caching" data-desc="이미 보낸 대화 앞부분을 서버에 저장해 두고 싸게 다시 읽는 기능이에요. 앞부분이 그대로여야 살아남아서, 중간에 설정을 바꾸면 깨져요." data-g="6">캐시</span>가 깨지고, 아래로 내리면 <span class="term" data-term="사고 블록" data-en="Thinking blocks" data-desc="모델이 답하기 전에 스스로 적는 추론 메모예요. 대화에 남아 다음 턴에도 쓰이지만, 작은 모델은 큰 모델의 사고 블록을 읽지 못해요." data-g="7">사고 블록</span>도 잃어요. 바꿔야 하면 <span class="term" data-term="핸드오프 프롬프트" data-en="Handoff prompt" data-desc="할 일, 한 일, 다음 할 일을 짧게 정리해 새 대화에 넘기는 글이에요. 모델을 바꿀 때 캐시와 사고 내용 손실을 피하는 방법이에요." data-g="8">핸드오프 프롬프트</span>로 새 대화를 열어요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">모델과 노력, 두 개의 다이얼</a></li>
+    <li><a href="#s2">Haiku와 Sonnet — 싸고 빠른 쪽부터 떠올리기</a></li>
+    <li><a href="#s3">Opus와 Fable — 판단이 필요한 일</a></li>
+    <li><a href="#s4">노력 단계는 질문 네 개로 고르기</a></li>
+    <li><a href="#s5">결과가 마음에 안 들 때 손대는 순서</a></li>
+    <li><a href="#s6">왜 대화 중간에 모델을 바꾸면 안 될까요?</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>모델과 노력, 두 개의 다이얼</h2>
+<p>모델과 <span class="term" data-term="노력 단계" data-en="Effort level" data-desc="Claude가 한 요청에 얼마나 많이 읽고, 확인하고, 혼자 결정할지를 정하는 설정이에요. low부터 max까지 다섯 단계가 있고, 높을수록 느리고 비싸져요." data-g="5">노력 단계</span>를 매번 같은 값으로 두면 둘 중 하나가 생겨요. 간단한 일에 돈을 더 내거나, 어려운 일에서 품질을 놓치거나요. 발표자는 그래서 일을 시작할 때마다 두 다이얼을 따로 맞춰 보라고 해요. 기준은 Anthropic이 직접 낸 가이드와 문서예요.</p>
+<p>왼쪽 다이얼에는 Haiku, Sonnet, Opus, Fable 네 모델이 붙어 있고, 아래에 '무엇을 아는지(what it knows)'라고 적혀 있어요. 오른쪽 다이얼이 노력 단계예요.</p>
+<figure>
+  <img src="assets/frame-0100.webp" alt="'You have two dials' 제목 아래 Haiku·Sonnet·Opus·Fable을 고르는 모델 다이얼과 노력 다이얼이 나란히 놓인 그림">
+  <figcaption>모델은 '얼마나 아는지', 노력은 '얼마나 애쓰는지'를 맡아요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=60s" target="_blank" rel="noopener">영상 01:00에서 보기</a></figcaption>
+</figure>
+<h3>모델은 분야가 아니라 아는 양으로 갈려요</h3>
+<p>Haiku는 이런 일, Opus는 저런 일처럼 모델마다 전문 분야가 있다고 생각하기 쉬워요. Anthropic은 그렇지 않다고 해요. 모든 모델이 코딩, 에이전트 작업, 지식 업무를 잘하도록 훈련됐고, 큰 모델일수록 더 많이 알 뿐이에요. 화면에 띄운 공식 글의 노란 부분이 그 차이를 말해요. Fable 같은 큰 모델은 벤치마크 점수가 Opus와 비슷해도 지혜, 창의성, 글솜씨가 더 낫다는 거예요.</p>
+<figure>
+  <img src="assets/frame-0124.webp" alt="Anthropic 글에서 'larger models such as Fable tend to have more wisdom, creativity, and writing skills' 부분을 노랗게 강조한 화면">
+  <figcaption>점수표만 보면 Opus와 Fable의 차이가 잘 안 보여요. 차이는 실제 일에서 드러난다는 말이에요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=84s" target="_blank" rel="noopener">영상 01:24에서 보기</a></figcaption>
+</figure>
+<h3>노력은 다섯 단계, 하지만 지식을 늘리진 못해요</h3>
+<p>노력은 low, medium, high, extra high(xhigh), max 다섯 단계예요. 높을수록 Claude가 더 많이 읽고, 더 많이 테스트하고, 더 많은 결정을 혼자 내려요. 그만큼 오래 걸리고 비싸져요. 어느 모델이든 마찬가지예요.</p>
+<p>중요한 건 두 다이얼이 서로를 대신하지 못한다는 점이에요. 아래 문서의 강조 부분이 그걸 못 박아요. 노력을 올려도 모델에 없는 지식이나 기술은 생기지 않고, 그럴 땐 모델을 올려야 한다고요. Sonnet을 max로 돌려도 Opus가 아는 만큼은 몰라요.</p>
+<figure>
+  <img src="assets/frame-0148.webp" alt="공식 문서에서 'moving to a higher effort level won't give a model knowledge or skill it doesn't have' 부분을 노랗게 강조한 화면">
+  <figcaption>노력은 '더 애쓰기'일 뿐 '더 알기'가 아니에요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=108s" target="_blank" rel="noopener">영상 01:48에서 보기</a></figcaption>
+</figure>
+<p>영상이 이어서 설명하는 네 모델을 한 표로 먼저 보면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>모델</th><th>이럴 때</th><th>영상의 예</th><th>주의할 점</th></tr></thead>
+    <tbody>
+      <tr><td>Haiku</td><td>단순·반복·검증이 쉬운 일</td><td>대량 요약, 분류, <span class="term" data-term="라우팅" data-en="Routing" data-desc="들어온 요청을 보고 어느 담당이나 처리 경로로 보낼지 정하는 일이에요. 판단이 단순하고 양이 많아서 작은 모델에 잘 맞아요." data-g="3">라우팅</span>, 읽기용 <span class="term" data-term="서브에이전트" data-en="Subagent" data-desc="메인 대화가 일부 작업을 떼어 맡기는 보조 에이전트예요. 자기 컨텍스트에서 일하고 요약만 돌려줘서, 어떤 모델로 띄우느냐가 비용을 크게 바꿔요." data-g="1">서브에이전트</span></td><td>스스로 판단할 일에는 약해요</td></tr>
+      <tr><td>Sonnet</td><td>'완료'를 한 문장으로 말할 수 있는 일</td><td>통화 녹취로 제안서 템플릿 채우기, 주간 보고서</td><td>토큰 단가는 Opus의 절반</td></tr>
+      <tr><td>Opus</td><td>대부분의 일, 어려울지 모를 때</td><td>발표 자료 숫자를 원본 시트와 대조하기</td><td>Claude Code 기본 모델</td></tr>
+      <tr><td>Fable</td><td>열린 문제, 판단과 정확도가 중요할 때</td><td>1년 치 고객 통화로 이탈 원인 분석</td><td>토큰 단가는 Opus의 두 배</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=133s" target="_blank" rel="noopener">02:13</a>
+  <h2>Haiku와 Sonnet — 싸고 빠른 쪽부터 떠올리기</h2>
+<h3>Haiku: 단순하고, 반복되고, 확인하기 쉬운 일</h3>
+<p>Haiku는 가장 빠르고 싼 모델이에요. 발표자는 대부분이 이 모델을 아예 안 쓴다고 봐요. 하지만 단순한 일에서는 큰 모델과 거의 차이가 없어요. 화면의 표 한 줄이 그 기준이에요. 왼쪽 노란 칸이 '결과를 확인할 수 있는 대량 작업', 가운데가 'Haiku 5.5부터 써 보라'예요. 아래 두 꼬리표는 Anthropic이 꼽은 Haiku의 대표 용도인 요약과 분류예요.</p>
+<figure>
+  <img src="assets/frame-0232.webp" alt="공식 문서 표에서 'High-volume work with outputs you can check'와 'Try Claude Haiku 5.5 first' 칸을 강조하고, 아래에 Summarization, Classification 꼬리표를 붙인 화면">
+  <figcaption>요약·분류·라우팅처럼 많이 돌리고 쉽게 검사할 수 있는 일이 Haiku 몫이에요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=152s" target="_blank" rel="noopener">영상 02:32에서 보기</a></figcaption>
+</figure>
+<p>Anthropic 테스트에서 Haiku 5.5는 어려운 과학 퀴즈에서 85%를 맞혀 Opus의 91%에 조금 못 미쳤어요. 대신 정답 하나당 비용은 약 20분의 1이었어요. 서브에이전트에도 잘 맞아요. Claude가 띄우는 서브에이전트는 대부분 많이 읽고 메인 에이전트에게 요약해 주는 일이라서요.</p>
+<p>약점은 판단이에요. 아래 그래프는 Anthropic의 결함 찾기 과제 결과예요. 세로축이 찾아낸 결함 점수(F1), 가로축이 비용이에요. 맨 아래 왼쪽 'Opus 5.5 with Haiku 5.5 subagents'가 $47에 0.677이에요. 같은 Opus에 Sonnet 서브에이전트를 붙인 0.831보다 거의 5분의 1 낮아요.</p>
+<figure>
+  <img src="assets/frame-0310.webp" alt="비용(가로)과 F1 점수(세로) 산점도. Opus 5.5+Sonnet 5.5 서브에이전트 $139·F1 0.831, Sonnet 5.5 단독 high $103·F1 0.760, Opus 5.5+Haiku 5.5 서브에이전트 $47·F1 0.677이 표시된 그래프">
+  <figcaption>Haiku 서브에이전트는 가장 싸지만 점수도 가장 낮아요. 스스로 알아내고 결정해야 하는 일은 Haiku에 맡기지 않는 게 좋아요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=190s" target="_blank" rel="noopener">영상 03:10에서 보기</a></figcaption>
+</figure>
+<h3>Sonnet: '완료'를 한 문장으로 말할 수 있다면</h3>
+<p>Sonnet은 두 번째로 싸고 빠른 모델이에요. 발표자는 가장 덜 쓰이는 모델이라고 봐요. 카드 아래 두 줄이 핵심이에요. 가격은 Opus의 절반이고, 판별 기준은 "'완료'가 한 문장에 들어가는가"예요. 일이 그만큼 분명하면 큰 모델의 추가 지식이 필요 없어요.</p>
+<figure>
+  <img src="assets/frame-0329.webp" alt="Sonnet 5.5 카드. 'Second cheapest, fastest', 'Scoped tasks, replies fast', '½ the price of Opus', 'If done fits in one sentence'라고 적혀 있음">
+  <figcaption>범위가 정해진 일에 빠른 답이 필요하면 Sonnet이에요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=209s" target="_blank" rel="noopener">영상 03:29에서 보기</a></figcaption>
+</figure>
+<p>Anthropic 가이드도 반복하는 일에는 큰 모델이 거의 필요 없다고 해요. 아래 표의 셋째 줄이 그 문장이에요. '반복해서 돌리는 에이전트 작업(조사, 검토, 초안)'에 Sonnet 5.5 medium을 권하고, 이유로 '잘 정의된 반복 작업은 더 큰 모델이 거의 필요 없다'고 적었어요. 같은 표에서 문서·슬라이드·스프레드시트는 Sonnet 5.5 high(Claude Code에서는 medium), 컴퓨터 사용은 Opus 5.5, 큰 리팩터링과 설계는 Fable 5.2예요.</p>
+<figure>
+  <img src="assets/frame-0348.webp" alt="작업별 시작 모델 표. 일상 문서·슬라이드·스프레드시트는 Sonnet 5.5 high, 반복 에이전트 작업은 Sonnet 5.5 medium, 컴퓨터 사용은 Opus 5.5 medium, 대규모 리팩터링·마이그레이션은 Fable 5.2 medium 뒤 high">
+  <figcaption>표의 '시작 모델' 열에 Sonnet이 두 번 나와요. 일상 업무 상당수가 여기서 시작해도 된다는 뜻이에요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=228s" target="_blank" rel="noopener">영상 03:48에서 보기</a></figcaption>
+</figure>
+<p>발표자가 드는 대표 예는 영업 통화를 제안서로 바꾸는 일이에요. 제안서 템플릿과 통화 녹취를 주면 Claude가 템플릿을 채워요. 구조는 정해져 있고 정보는 통화에 다 있으니 범위가 아주 분명해요. 자주 오는 메일 답장 초안, 기존 스프레드시트 채우기, 매주 같은 양식의 주간 보고서도 같은 부류예요.</p>
+<h3>스킬과 서브에이전트는 따로 모델을 정할 수 있어요</h3>
+<p><span class="term" data-term="스킬" data-en="Skill" data-desc="특정 일을 내 방식대로 하는 법을 적어 둔 저장된 설명서 파일이에요. 필요할 때 Claude가 불러 써요." data-g="4">스킬</span>도 대부분 정해진 흐름을 따라서 Sonnet으로 충분해요. 스킬 파일 맨 위에 <code>model: sonnet</code> 한 줄을 넣으면 그 스킬은 늘 Sonnet으로 돌고, 대화는 원래 모델로 남아요. 자주 쓰는 스킬의 비용을 줄이기 좋아요. 발표자 말로는 Claude Code에서만 되고, Cowork는 스킬에 모델 설정을 받지 않아요.</p>
+<p>서브에이전트도 같아요. 아래 화면은 서브에이전트 정의 파일 머리말이에요. 이름(<code>code-improver</code>), 설명, 도구(<code>Read, Grep, Glob</code>) 아래에 노랗게 칠한 <code>model: sonnet</code>이 있어요. 읽고 보고만 하는 서브에이전트라 Sonnet이면 충분해요. Anthropic 엔지니어 한 명도 읽기 전용 서브에이전트는 Sonnet, 때로는 Haiku로 돌린다고 했대요.</p>
+<figure>
+  <img src="assets/frame-0445.webp" alt="서브에이전트 정의 파일의 머리말. name: code-improver, description, tools: Read, Grep, Glob, 그리고 강조된 model: sonnet">
+  <figcaption>도구가 읽기 전용이면 모델도 가벼운 쪽으로 내려도 돼요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=285s" target="_blank" rel="noopener">영상 04:45에서 보기</a></figcaption>
+</figure>
+<p>문제는 따로 말하지 않을 때예요. 아래 화면에서 Claude는 가격 조사를 서브에이전트 셋으로 나눴는데, 셋 다 오른쪽 노란 꼬리표가 'Opus 5.5'예요. 프롬프트에 "읽기 전용 서브에이전트는 Sonnet으로 돌려" 같은 한 줄이 없으면, 메인 대화와 같은 모델로 띄우거든요. 발표자는 작업에 따라 서브에이전트가 대화 전체 토큰의 90%까지 쓴다고 해요.</p>
+<figure>
+  <img src="assets/frame-0504.webp" alt="Claude가 가격 조사를 Notion·Coda, Linear·Asana, ClickUp 세 서브에이전트로 나누고, 셋 모두 Opus 5.5로 실행되는 화면">
+  <figcaption>단순한 웹 조사인데도 서브에이전트가 전부 Opus로 떠요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=304s" target="_blank" rel="noopener">영상 05:04에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 문서로 확인해 보면 두 설정 모두 실제로 있어요. 스킬의 <code>model</code> 필드는 그 스킬이 켜진 동안만 적용돼요. 설정에 저장되지 않고, 다음 프롬프트를 보내면 원래 세션 모델로 돌아와요.</p>
+  <p>서브에이전트는 정의 파일의 <code>model</code> 필드로 모델을 정해요. 정하지 않은 서브에이전트 전체의 기본값은 환경 변수 <code>CLAUDE_CODE_SUBAGENT_MODEL</code>로 바꿀 수 있어요. 둘 다 없으면 메인 대화의 모델을 그대로 써요. 영상이 말한 '따로 말하지 않으면 Opus로 뜬다'가 이 마지막 규칙이에요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code 문서 — Skills</a> · <a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code 문서 — Subagents</a> · <a href="https://code.claude.com/docs/en/model-config" target="_blank" rel="noopener">Claude Code 문서 — Model configuration</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=350s" target="_blank" rel="noopener">05:50</a>
+  <h2>Opus와 Fable — 판단이 필요한 일</h2>
+<h3>Opus: 잘 모르겠으면 여기서 시작</h3>
+<p>Opus는 Claude Code의 기본 모델이에요. 대부분의 일과, 일이 얼마나 어려울지 감이 안 올 때 쓰는 모델이에요. Anthropic은 '매일 타는 차(daily driver)'라고 불러요. Fable의 절반 가격으로 대부분의 일을 감당한다는 뜻이에요.</p>
+<p>화면은 Anthropic이 낸 'Fable 5.2냐 Opus냐' 영상이에요. 오른쪽 모델 메뉴에서 Opus 5.5를 고르는 장면 아래로, 노랗게 칠한 문장이 보여요. "대부분은 Opus 5.5 medium이 답"이라는 말이에요. 리서치, 글쓰기, 분석 같은 지식 업무를 여기서 시작하라는 거예요.</p>
+<figure>
+  <img src="assets/frame-0605.webp" alt="Anthropic 영상 'Fable 5.2 or Opus? When to use each model in Claude Code' 화면. 모델 메뉴에서 Opus 5.5를 고르고, 아래에 'Most of the time, the answer is Opus 5.5 ... medium effort' 자막">
+  <figcaption>가장 큰 장점은 일의 난도를 미리 몰라도 된다는 점이에요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=365s" target="_blank" rel="noopener">영상 06:05에서 보기</a></figcaption>
+</figure>
+<p>예로 든 일은 'Q3 고객 발표 자료 점검'이에요. 왼쪽 발표 자료의 매출 $4.2M, 이탈률 3.1%, NPS(Net Promoter Score) 46 같은 숫자를 오른쪽 원본 스프레드시트와 하나하나 대조하는 일이에요. 판단은 필요하지만 큰 일은 아니라서 Opus가 잘 해내요. 화면 위쪽 '난이도' 칸이 물음표인 것도 눈여겨볼 만해요. 시작할 때 난도를 모르는 일이라는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0620.webp" alt="'Check the Q3 client deck' 작업 화면. 왼쪽은 매출 $4.2M, 이탈률 3.1%, NPS 46이 적힌 Q3 발표 자료, 오른쪽은 Q3·Q2 수치가 담긴 원본 스프레드시트, 위에 'DIFFICULTY ?' 표시">
+  <figcaption>판단이 조금 필요하고 규모는 적당한 일이 Opus의 자리예요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=380s" target="_blank" rel="noopener">영상 06:20에서 보기</a></figcaption>
+</figure>
+<p>Opus는 좋은 <span class="term" data-term="오케스트레이터" data-en="Orchestrator" data-desc="일을 쪼개 서브에이전트들에 나눠 주고 결과를 모으는 리더 역할의 에이전트예요. 리더는 큰 모델, 일꾼은 작은 모델로 두면 비용을 아낄 수 있어요." data-g="2">오케스트레이터</span>이기도 해요. 일을 나눠 범위가 정해진 부분을 싼 서브에이전트에 넘긴다는 뜻이에요. 앞 섹션의 그래프에서 'Opus 5.5 with Sonnet 5.5 subagents'가 이 경우예요. Anthropic 테스트에서 Opus 리더가 Sonnet 서브에이전트를 최대 25개 쓰자, Opus 혼자 할 때보다 비용은 약 3분의 1 줄고 점수는 비슷했어요.</p>
+<h3>Fable: 정해진 길이 없고 틀리면 비싼 일</h3>
+<p>Fable은 가장 많이 아는 모델이에요. Anthropic은 야심차고 열린 일, 판단과 정확도가 정말 중요한 일에 쓰라고 해요. Fable은 계획하고, 실행하고, 하면서 테스트해요. 그래서 검토할 때 결과가 '완성'에 훨씬 가까워요.</p>
+<p>예는 1년 치 고객 통화로 이탈 원인을 분석해 완성된 발표 자료로 받는 일이에요. 화면 위쪽에 1월부터 12월까지 달마다 쌓인 통화 묶음이 있고, 아래 슬라이드는 '왜 고객이 떠나는가'예요. 통화 2,809건, 이탈 고객 333곳, 연간 매출 손실 $1.50M, 월별 이탈률 그래프가 들어 있어요. 정해진 길이 없고, 아무도 적어 두지 않은 작은 결정이 많고, 결론이 틀리면 손해가 커요.</p>
+<figure>
+  <img src="assets/frame-0705.webp" alt="Fable 5.2가 만든 'Why customers churn' 슬라이드. 이탈률 11.5%, 이탈 계정 333곳, 손실 매출 $1.50M, 분석한 통화 2,809건과 월별 이탈률 막대그래프. 위쪽엔 1~12월 통화 녹음 묶음">
+  <figcaption>재료는 1년 치 통화, 결과물은 바로 쓸 수 있는 발표 자료예요. 그 사이 판단을 전부 모델이 해야 해요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=425s" target="_blank" rel="noopener">영상 07:05에서 보기</a></figcaption>
+</figure>
+<p>새 시장 심층 조사, 1년 치 데이터로 매출 동인 찾기, 회사 전체를 새 시스템이나 소프트웨어로 옮기는 계획도 같은 부류예요.</p>
+<p>Fable은 가장 강한 오케스트레이터이기도 해요. 화면의 강조 부분이 그 실험이에요. Anthropic 엔지니어가 Fable 5.2에게 빈 폴더에서 시제품 운영체제를 설계하게 했어요. Fable은 서브에이전트 1,000개 이상을 8일 동안 밤낮으로 돌렸고, 노트북에서 부팅되는 운영체제가 나왔어요.</p>
+<figure>
+  <img src="assets/frame-0735.webp" alt="Anthropic 글에서 'prototype operating system'과 'empty folder'를 강조한 문단. 1,000개 넘는 서브에이전트가 8일 동안 작업해 노트북에서 부팅되는 운영체제를 만들었다는 내용">
+  <figcaption>글에는 디스크·키보드 드라이버, 파일 저장, 창, 로그인 화면, 설치 프로그램까지 들어간 운영체제라고 적혀 있어요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=455s" target="_blank" rel="noopener">영상 07:35에서 보기</a></figcaption>
+</figure>
+<p>하지만 Fable은 토큰당 Opus의 두 배예요. 아래 두 카드가 가격표예요. 백만 토큰당 Fable 5.2는 입력 $8 / 출력 $40, Opus 5.5는 $4 / $20이에요. 같은 2시간짜리 에이전트 작업이면 $31.20과 $15.60이에요. Opus 카드 아래 '긴 작업 · 리팩터링 + 테스트'에 초록 체크가 있어요. 길고 어려운 일 상당수는 Opus에 노력을 더 주는 편이 더 남는 장사라는 뜻이에요.</p>
+<figure>
+  <img src="assets/frame-0750.webp" alt="'Fable costs twice as much' 제목 아래 두 카드. Fable 5.2는 백만 토큰당 $8/$40, 2시간 에이전트 작업 $31.20, Opus 5.5는 $4/$20, 같은 작업 $15.60">
+  <figcaption>Fable은 '모든 긴 일'이 아니라 '판단이 정말 중요한 열린 일'에 아껴 둬요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=470s" target="_blank" rel="noopener">영상 07:50에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 가격표로 확인하면 백만 토큰당 Fable 5.2 $8 / $40, Opus 5.5 $4 / $20, Sonnet 5.5 $2 / $10이에요. 영상이 말한 'Sonnet은 Opus의 절반, Fable은 Opus의 두 배'가 그대로 맞아요. 참고로 Haiku 5.5는 10만 토큰 이하 프롬프트 기준 $0.10 / $0.50이에요.</p>
+  <p>공식 모델 선택 문서도 '대부분의 작업은 Opus 5.5에서 시작하라'고 하고, Opus를 xhigh·max로 올려 평가해도 부족할 때 Fable 5.2로 가라고 해요. 영상의 순서와 같아요.</p>
+  <p class="cite">출처: <a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">Claude 문서 — Pricing</a> · <a href="https://platform.claude.com/docs/en/about-claude/models/choosing-a-model" target="_blank" rel="noopener">Claude 문서 — Choosing a model</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=572s" target="_blank" rel="noopener">09:32</a>
+  <h2>노력 단계는 질문 네 개로 고르기</h2>
+<p>노력은 Claude가 얼마나 똑똑한지가 아니라, 얼마나 시간과 품을 들이는지예요. 발표자는 이걸 '내가 얼마나 관여할지'를 정하는 다이얼로 보라고 해요. 그림의 다이얼 왼쪽 끝 low에서는 Claude가 차라리 돌아와서 물어보고, 오른쪽 high 쪽으로 갈수록 많은 결정을 대신 내려요. 오른쪽 Claude 아이콘 아래 '똑똑함이 아님(not how smart)'이라고 강조해 둔 것도 같은 말이에요.</p>
+<figure>
+  <img src="assets/frame-0940.webp" alt="'How involved are you?' 제목 아래 사람 아이콘과 Claude 아이콘 사이에 Low·Medium·High·Extra high·Max 다이얼이 있고, Claude 아래 'not how smart'가 강조된 그림">
+  <figcaption>노력 다이얼은 일을 얼마나 Claude에게 넘길지를 정해요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=580s" target="_blank" rel="noopener">영상 09:40에서 보기</a></figcaption>
+</figure>
+<h3>순서대로 묻고, 처음 '예'에서 멈춰요</h3>
+<p>고르는 방법은 질문 네 개예요. 순서가 중요해요. 위에서부터 물어서 처음 '예'가 나온 곳의 단계를 써요.</p>
+<figure class="diagram">
+<pre class="mermaid">
+flowchart TB
+  Q1{"① 주고받을 일? 단순한 일?"} -- 예 --> L["low · 내가 매 단계 조종"]
+  Q1 -- 아니요 --> Q2{"② 숨은 실수가 비싼가?"}
+  Q2 -- 예 --> H["high · 다시 확인을 더 함"]
+  Q2 -- 아니요 --> Q3{"③ 길고·어렵고·중요한 일을 맡기고 떠나나?"}
+  Q3 -- "셋 다 예" --> X["xhigh부터 · 혼자 몇 시간씩"]
+  Q3 -- 아니요 --> M["medium · 기본값"]
+</pre>
+  <figcaption>영상의 질문 네 개를 한 흐름으로 옮겼어요. 마지막 '나머지 전부'가 medium이라, 대부분의 일은 결국 기본값으로 떨어져요.</figcaption>
+</figure>
+<ol class="steps">
+  <li><b>Claude와 주고받으며 할 일이거나 단순한 일인가요? → low</b> — low는 나를 흐름 안에 두니까, 단계마다 반응하며 방향을 잡을 수 있어요. 발표자는 유튜브 영상을 준비할 때 계속 관여하고 싶어서 low를 써요.</li>
+  <li><b>숨은 실수가 돈, 고객, 잘못된 결정으로 이어지나요? → high</b> — high에서 Claude는 더 많이 다시 확인해요. 발표자는 계약서를 검토할 때 high를 써요.</li>
+  <li><b>길고, 어렵고, 중요한 일을 맡기고 자리를 뜰 건가요? → extra high나 max</b> — 셋 다 해당해야 해요. 이 단계에서는 Claude가 모든 결정을 혼자 내리고 몇 시간씩 돌 수 있거든요.</li>
+  <li><b>나머지 전부 → medium</b> — 기본값이에요. Anthropic도 대부분의 작업에는 모델의 기본 노력 단계를 쓰라고 해요.</li>
+</ol>
+<h3>단순한 일은 노력을 올려도 안 나아져요</h3>
+<p>첫 번째 질문의 근거는 Anthropic의 실험이에요. 화면의 강조 부분을 보면 같은 간단한 재디자인 과제가 low에서 1분, max에서 28분 걸렸어요. 결과물 차이는 크지 않았다고 발표자는 말해요. 문서는 max 쪽이 실제 화면에 좀 더 가깝고 다듬어졌다고 적었지만, 피드백을 주며 고쳐 갈 거라면 low가 훨씬 빨리 도착한다고 해요.</p>
+<figure>
+  <img src="assets/frame-1012.webp" alt="Anthropic 글에서 'At low effort (which took 1 minute)'와 'At max effort (which took 28 minutes)' 부분을 강조한 화면">
+  <figcaption>걸린 시간은 28배, 결과의 쓸모는 비슷했어요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=612s" target="_blank" rel="noopener">영상 10:12에서 보기</a></figcaption>
+</figure>
+<h3>max는 비싸고, 생각이 과해질 수도 있어요</h3>
+<p>세 번째 질문에서 xhigh부터 시작하라는 이유는 공식 문서에 있어요. 화면은 Fable 5.2의 권장 노력 단계 문단이에요. 마지막 강조 부분이 'max는 xhigh보다 느리고 비싼데, 얻는 건 대개 작다'예요. 발표자는 여기에 max가 생각을 과하게 하기 시작할 수도 있다는 점을 덧붙여요.</p>
+<figure>
+  <img src="assets/frame-1044.webp" alt="공식 문서의 Fable 5.2 권장 노력 단계 문단. 'Start with high', 가장 어려운 장기 작업은 xhigh, max는 'costs more than at xhigh, often for only a small gain' 부분 강조">
+  <figcaption>문단 첫 문장은 'high로 시작하라'예요. 얻을 게 대부분 high에 이미 있다는 뜻이에요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=644s" target="_blank" rel="noopener">영상 10:44에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>'medium이 기본값'은 Opus 5.5와 Haiku 5.5에만 해당해요. 공식 문서 기준으로 API(Application Programming Interface) 기본값은 high이고, Opus 5.5와 Haiku 5.5만 medium이에요. Sonnet 5.5와 Fable 5.2는 기본이 high예요. 그래서 '나머지는 기본값'이라는 영상의 규칙을 Sonnet이나 Fable에 적용하면 medium이 아니라 high가 돼요.</p>
+  <p>Claude Code 팀 Lydia Hallie의 글은 노력을 '일마다 바꾸는 값'보다 '하는 일의 종류에 맞춘 평소 취향'에 가깝게 보라고 해요. 대부분은 기본값에 두고, 철저함이나 속도에 뚜렷한 선호가 있을 때만 일부러 바꾸라는 거예요.</p>
+  <p class="cite">출처: <a href="https://platform.claude.com/docs/en/build-with-claude/effort" target="_blank" rel="noopener">Claude 문서 — Effort</a> · <a href="https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence" target="_blank" rel="noopener">Claude 문서 — Optimizing for cost and intelligence</a> · <a href="https://claude.com/resources/articles/claude-model-and-effort-level-in-claude-code" target="_blank" rel="noopener">Lydia Hallie, Choosing a Claude model and effort level in Claude Code (2026-07-07)</a></p>
+</aside>
+</section>
+
+<section id="s5">
+  <a class="stamp" href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=657s" target="_blank" rel="noopener">10:57</a>
+  <h2>결과가 마음에 안 들 때 손대는 순서</h2>
+<p>엉뚱한 결과는 AI(Artificial Intelligence)와 일하면 늘 생겨요. 화면의 첫 장면도 '빗나가는 건 정상(A miss is normal)'이에요. 이때 다그치거나 모델과 노력을 이리저리 바꾸기 전에, 무엇을 바꿀지부터 정해야 해요.</p>
+<p>발표자가 기준으로 삼는 건 Claude Code 팀 Lydia Hallie가 쓴 'Claude Code에서 모델과 노력 단계 고르기' 글이에요. 핵심 질문은 하나예요. "Claude가 몰랐나, 덜 애썼나?" 몰랐다면 더 큰 모델이, 단계를 건너뛰었다면 더 높은 노력이 필요해요.</p>
+<figure>
+  <img src="assets/frame-1111.webp" alt="claude.com 글 'Choosing a Claude model and effort level in Claude Code' 첫 화면. 저자 Lydia Hallie, Claude Code team at Anthropic, 2026년 7월 7일, 읽는 시간 3분">
+  <figcaption>몰라서 틀렸는지, 덜 해서 틀렸는지에 따라 손댈 다이얼이 달라져요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=671s" target="_blank" rel="noopener">영상 11:11에서 보기</a></figcaption>
+</figure>
+<p>그다음은 Anthropic이 권한다는 4단계예요. 아래 그림은 Opus 5.5 medium에서 시작해 엉뚱한 결과를 받은 경우를 따라가요. 한 단계를 해 보고 안 될 때만 다음 단계로 올라가요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 230" role="img" aria-label="결과가 나쁠 때 4단계: 프롬프트 고치기, 스스로 검증시키기, 노력 한 칸 올리기, 모델 한 단계 올리고 노력 낮추기">
+    <defs><marker id="arrow-ladder" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="c1 cell" x="10" y="140" width="140" height="74" rx="10"/>
+    <text x="80" y="168" text-anchor="middle">① 프롬프트 고치기</text>
+    <text x="80" y="194" text-anchor="middle" class="sub">Opus 5.5 · medium</text>
+    <path class="line" d="M152 160 L168 128" marker-end="url(#arrow-ladder)"/>
+    <rect class="c2 cell" x="170" y="100" width="140" height="74" rx="10"/>
+    <text x="240" y="128" text-anchor="middle">② 스스로 검증</text>
+    <text x="240" y="154" text-anchor="middle" class="sub">Opus 5.5 · medium</text>
+    <path class="line" d="M312 120 L328 88" marker-end="url(#arrow-ladder)"/>
+    <rect class="c3 cell" x="330" y="60" width="140" height="74" rx="10"/>
+    <text x="400" y="88" text-anchor="middle">③ 노력 한 칸 ↑</text>
+    <text x="400" y="114" text-anchor="middle" class="sub">Opus 5.5 · high</text>
+    <path class="line" d="M472 80 L488 48" marker-end="url(#arrow-ladder)"/>
+    <rect class="c4 cell ring" x="490" y="20" width="140" height="74" rx="10"/>
+    <text x="560" y="48" text-anchor="middle">④ 모델 ↑ 노력 ↓</text>
+    <text x="560" y="74" text-anchor="middle" class="sub">Fable 5.2 · medium</text>
+    <text x="80" y="128" text-anchor="middle" class="sub">설정은 그대로</text>
+    <text x="560" y="116" text-anchor="middle" class="sub">Fable high가 아니라</text>
+  </svg>
+  <figcaption>①과 ②는 다이얼을 건드리지 않아요. 다이얼은 ③에서 처음 움직이고, ④에서 모델을 올릴 때는 노력을 오히려 한 칸 내려요.</figcaption>
+</figure>
+<h3>① 처음 프롬프트부터 고쳐요</h3>
+<p>나쁜 프롬프트는 노력을 올려도 고쳐지지 않아요. 병목은 모델 능력보다 우리 전달력인 경우가 많아요. Claude Code에서 <code>/rewind</code>를 치거나 Esc를 두 번 누르면 앞의 프롬프트로 돌아가 고쳐 쓸 수 있어요. 여러 번 주고받은 뒤라도 그 지점부터 대화를 다시 시작하고, 그 뒤 Claude가 파일에 한 변경도 되돌릴 수 있어요.</p>
+<p>아래 화면은 되감기로 첫 프롬프트를 고친 모습이에요. 맨 앞에 노랗게 칠한 '시니어 전환 디자이너처럼 행동해'라는 역할이 새로 들어갔어요. 그 아래 흐리게 보이는 줄들은 원래 대화예요. '더 고급스럽게, 히어로가 너무 바빠' 같은 고치기 요청이 이어지던 흐름이에요. 새 모델들은 강력해서, 엇나간 대화를 계속 고치는 것보다 이 편이 대개 빨라요.</p>
+<figure>
+  <img src="assets/frame-1207.webp" alt="되감기로 고친 첫 프롬프트. 'Act as a senior conversion designer.'가 강조되고, 히어로·서비스 세 개·가격표·예약 버튼이 있는 랜딩 페이지를 만들라는 요청. 아래에 이전 대화가 흐리게 남아 있음">
+  <figcaption>빠뜨린 조건을 처음 프롬프트에 넣고 그 지점부터 다시 시작해요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=727s" target="_blank" rel="noopener">영상 12:07에서 보기</a></figcaption>
+</figure>
+<h3>② Claude가 스스로 검증하게 해요</h3>
+<p>랜딩 페이지 디자인처럼 기대하는 결과가 주관적이면 프롬프트만으로는 부족할 수 있어요. 이때는 비교할 기준이나 '반드시 맞아야 할 것' 목록을 줘요. 그러면 Claude가 돌아오기 전에 스스로 실수를 잡아요.</p>
+<p>화면 왼쪽이 Claude의 결과물, 오른쪽이 참고 디자인이에요. "참고 디자인과 비교해서 차이를 전부 나열해"라고 하면 Claude가 차이를 직접 찾고, 나도 어디서 어긋났는지 알게 돼요. 아래 검은 띠의 'MUST BE TRUE' 항목이 다른 방법이에요. 헤드라인 하나, 가격표, 예약 버튼처럼 짧은 체크리스트를 주는 거예요.</p>
+<figure>
+  <img src="assets/frame-1235.webp" alt="왼쪽 Claude's output과 오른쪽 Reference design 두 랜딩 페이지를 나란히 놓고, 아래에 MUST BE TRUE: One headline, A pricing table, A booking button 체크리스트">
+  <figcaption>참고 자료나 예시를 주는 게 결과를 맞추는 가장 강력한 방법 중 하나라고 발표자는 말해요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=755s" target="_blank" rel="noopener">영상 12:35에서 보기</a></figcaption>
+</figure>
+<h3>③ 노력을 한 칸, ④ 모델을 한 단계</h3>
+<p>1·2단계가 불가능하거나 해 봤는데도 부족할 때만 노력을 한 칸 올려요. Opus 5.5 medium이면 high로요. Anthropic 말로는 노력을 올리는 게 모델을 바꾸는 것보다 작은 걸음이에요.</p>
+<p>그래도 안 되면 그때 모델을 올리는데, 노력은 낮춰요. 아래 화면 왼쪽 Opus 5.5 카드는 High에 점이 찍혀 있고 '부족함(Falls short)'이에요. 오른쪽 Fable 5.2 카드는 점이 Med에 있어요. high를 넘어서면 노력 한 칸이 더 큰 모델만큼 비쌀 수 있어서, 다음 모델은 앞 모델보다 낮은 노력에서 시작해요.</p>
+<figure>
+  <img src="assets/frame-1331.webp" alt="'Up a model, down an effort' 제목 아래 두 카드. Opus 5.5는 High에서 Falls short, Fable 5.2는 Med에 표시">
+  <figcaption>Fable 5.2 high가 아니라 Fable 5.2 medium으로 올라가요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=811s" target="_blank" rel="noopener">영상 13:31에서 보기</a></figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Lydia Hallie의 글도 순서가 같아요. 틀렸을 때 첫 반응은 다이얼이 아니라 준 맥락을 보는 거예요. 프롬프트가 모호한지, 맞는 도구와 스킬이 연결됐는지 먼저 봐요. 맥락이 충분한데도 틀렸다면, 파일을 건너뛰거나 테스트를 안 돌렸을 땐 노력을, 열심히 했는데도 자신 있게 틀렸을 땐 더 큰 모델을 고르라고 해요. 반대로 큰 모델에서 한동안 일상적인 일만 했다면 작은 모델로 내려도 품질은 그대로고 더 빠르고 싸다고 해요.</p>
+  <p>되감기는 <code>/rewind</code>와 별칭 <code>/undo</code>로 열고, 입력창이 비어 있을 때 Esc를 두 번 눌러도 열려요. 다만 Claude의 파일 편집 도구로 바뀐 것만 되돌려요. Bash 명령으로 바뀐 파일이나 외부 변경은 되돌리지 못하니 버전 관리를 대신하진 못해요.</p>
+  <p class="cite">출처: <a href="https://claude.com/resources/articles/claude-model-and-effort-level-in-claude-code" target="_blank" rel="noopener">Lydia Hallie, Choosing a Claude model and effort level in Claude Code</a> · <a href="https://code.claude.com/docs/en/checkpointing" target="_blank" rel="noopener">Claude Code 문서 — Checkpointing</a></p>
+</aside>
+</section>
+
+<section id="s6">
+  <a class="stamp" href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=819s" target="_blank" rel="noopener">13:39</a>
+  <h2>왜 대화 중간에 모델을 바꾸면 안 될까요?</h2>
+<p>4단계에서 모델을 올리더라도 같은 대화에서 바로 바꾸지 말라는 게 발표자의 팁이에요. 먼저 지금 대화에서 Claude에게 핸드오프 프롬프트를 받아요. 할 일, 한 일, 다음 할 일을 짧게 정리한 글이에요. 화면의 요청이 바로 그거예요. "새 대화용 핸드오프 프롬프트를 써 줘: 과제, 한 일, 다음 할 일."</p>
+<figure>
+  <img src="assets/frame-1346.webp" alt="Claude 앱의 'Landing page redesign' 대화에서 'Write me a handoff prompt for a new chat: the task, what's done, and what's next.'라고 요청하고 Claude가 작업 중인 화면">
+  <figcaption>이 글을 새 대화에 붙여 넣고, 거기서 새 모델을 써요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=826s" target="_blank" rel="noopener">영상 13:46에서 보기</a></figcaption>
+</figure>
+<p>대화 중간에 모델을 바꾸면 돈도 성능도 잃을 수 있어요. 이유는 두 가지예요.</p>
+<h3>이유 1: 캐시는 한 모델에만 속해요</h3>
+<p>메시지를 보낼 때마다 Claude는 대화 전체를 다시 읽어요. 이걸 싸게 하려고 Anthropic 서버에 대화 사본을 저장해 둬요. 이게 캐시예요. 아래 화면 위쪽에서 왼쪽 'Landing page' 대화(Opus 5.5, 12개 메시지)가 오른쪽 Anthropic 서버에 'Opus 5.5 전용' 사본으로 저장돼 있어요. 아래 두 막대가 비용이에요. 처음부터 다시 읽으면 $1.00, 같은 모델로 캐시에서 읽으면 $0.10이에요.</p>
+<figure>
+  <img src="assets/frame-1414.webp" alt="'The hidden cost of switching' 그림. Landing page 대화가 Anthropic 서버에 'Opus 5.5 only' 캐시로 저장되고, 아래에 처음부터 다시 읽기 $1.00, 캐시에서 읽기 $0.10 막대">
+  <figcaption>같은 모델로 이어 가면 대화를 다시 읽는 값이 아주 싸요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=854s" target="_blank" rel="noopener">영상 14:14에서 보기</a></figcaption>
+</figure>
+<p>모델을 Fable 5.2로 바꾸는 순간 그 사본은 쓸 수 없어요. 다음 화면에서 서버의 사본에 '잘못된 모델(WRONG MODEL)' 도장이 찍혀 있어요. 새 모델의 첫 메시지는 대화 전체를 제값 내고 다시 읽어야 해요. 대화가 길수록 더 비싸요. 메시지가 40개로 늘어난 아래 막대는 $3.40이에요.</p>
+<figure>
+  <img src="assets/frame-1421.webp" alt="모델을 Fable 5.2로 바꾼 뒤 서버의 Opus 5.5 캐시에 WRONG MODEL 표시가 붙고, 40개 메시지의 긴 대화를 다시 읽는 비용이 $3.40으로 표시된 그림">
+  <figcaption>그래서 Anthropic은 세션을 시작할 때 모델을 고르고 중간에 바꾸지 말라고 해요. 바꿔야 한다면 핸드오프로 새 대화를 열어요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=861s" target="_blank" rel="noopener">영상 14:21에서 보기</a></figcaption>
+</figure>
+<h3>이유 2: 작은 모델로 내려가면 생각을 잃어요</h3>
+<p>Claude는 답하기 전에 스스로에게 메모를 써요. 이게 사고 블록이에요. 그런데 작은 모델은 큰 모델의 메모를 읽지 못해요. 아래 공식 문서 문단 첫 줄이 그 규칙이에요. Sonnet 5.5는 Haiku 5.5의 것을, Fable 5.2는 Opus 5.5·Sonnet 5.5·Haiku 5.5의 것을 읽어요. 거꾸로는 안 돼요. 둘째 문단은 '한 단계 아래로 옮기면 앞의 추론을 잃는다'고 해요. 모델은 위 모델의 블록을 읽지 못해서, API가 그걸 빼고 요청을 처리해요.</p>
+<figure>
+  <img src="assets/frame-1442.webp" alt="공식 문서 문단. 어떤 모델이 어떤 모델의 thinking 블록을 읽는지, 'A move down a tier loses the earlier reasoning', 그리고 'Put subagents on smaller models' 소제목 아래 model: haiku, model: sonnet, CLAUDE_CODE_SUBAGENT_MODEL 설명">
+  <figcaption>Fable이 어려운 생각을 해 둔 뒤 같은 대화에서 Opus로 내리면, Opus는 그 생각 없이 일해야 해요. 아래쪽엔 앞 섹션에서 본 서브에이전트 모델 지정법도 보여요. <a href="https://www.youtube.com/watch?v=_ioUbQftxBc&amp;t=882s" target="_blank" rel="noopener">영상 14:42에서 보기</a></figcaption>
+</figure>
+<p>그래서 핸드오프가 또 필요해요. 큰 모델이 정리해 준 글이 있으면, 작은 모델도 앞 모델이 멈춘 곳에서 바로 이어 갈 수 있어요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>화면의 $1.00 대 $0.10은 이해를 돕는 예시예요. 공식 문서 기준으로 캐시에서 다시 읽는 값은 보통 입력 가격의 약 10분의 1이고, Opus 5.5와 Sonnet 5.5는 20분의 1, Fable 5.2는 40분의 1이에요. 큰 모델일수록 캐시를 깨뜨렸을 때 잃는 게 커요.</p>
+  <p>캐시는 대화 앞부분이 바뀌지 않아야 살아남아요. 문서에는 사고 설정을 바꾸는 것만으로도 메시지 부분의 캐시가 깨진다고 적혀 있어요.</p>
+  <p class="cite">출처: <a href="https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence" target="_blank" rel="noopener">Claude 문서 — Optimizing for cost and intelligence</a> · <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching" target="_blank" rel="noopener">Claude 문서 — Prompt caching</a></p>
+</aside>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 영어 자막이라 이름과 제품명이 잘못 받아적힌 곳이 있어요. 화면과 공식 문서로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>Lydia Holly</td><td>Lydia Hallie</td><td>Anthropic Claude Code 팀. 화면의 글 저자 표시로 확인</td></tr>
+      <tr><td>CoWorker</td><td>Cowork</td><td>Claude의 데스크톱 작업 도구 이름</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-5"><dt>노력 단계<span class="en">Effort level</span></dt><dd>Claude가 한 요청에 얼마나 많이 읽고, 확인하고, 혼자 결정할지를 정하는 설정이에요. low부터 max까지 다섯 단계가 있고, 높을수록 느리고 비싸져요.</dd></div>
+    <div class="g" id="g-3"><dt>라우팅<span class="en">Routing</span></dt><dd>들어온 요청을 보고 어느 담당이나 처리 경로로 보낼지 정하는 일이에요. 판단이 단순하고 양이 많아서 작은 모델에 잘 맞아요.</dd></div>
+    <div class="g" id="g-7"><dt>사고 블록<span class="en">Thinking blocks</span></dt><dd>모델이 답하기 전에 스스로 적는 추론 메모예요. 대화에 남아 다음 턴에도 쓰이지만, 작은 모델은 큰 모델의 사고 블록을 읽지 못해요.</dd></div>
+    <div class="g" id="g-1"><dt>서브에이전트<span class="en">Subagent</span></dt><dd>메인 대화가 일부 작업을 떼어 맡기는 보조 에이전트예요. 자기 컨텍스트에서 일하고 요약만 돌려줘서, 어떤 모델로 띄우느냐가 비용을 크게 바꿔요.</dd></div>
+    <div class="g" id="g-4"><dt>스킬<span class="en">Skill</span></dt><dd>특정 일을 내 방식대로 하는 법을 적어 둔 저장된 설명서 파일이에요. 필요할 때 Claude가 불러 써요.</dd></div>
+    <div class="g" id="g-2"><dt>오케스트레이터<span class="en">Orchestrator</span></dt><dd>일을 쪼개 서브에이전트들에 나눠 주고 결과를 모으는 리더 역할의 에이전트예요. 리더는 큰 모델, 일꾼은 작은 모델로 두면 비용을 아낄 수 있어요.</dd></div>
+    <div class="g" id="g-6"><dt>캐시<span class="en">Prompt caching</span></dt><dd>이미 보낸 대화 앞부분을 서버에 저장해 두고 싸게 다시 읽는 기능이에요. 앞부분이 그대로여야 살아남아서, 중간에 설정을 바꾸면 깨져요.</dd></div>
+    <div class="g" id="g-8"><dt>핸드오프 프롬프트<span class="en">Handoff prompt</span></dt><dd>할 일, 한 일, 다음 할 일을 짧게 정리해 새 대화에 넘기는 글이에요. 모델을 바꿀 때 캐시와 사고 내용 손실을 피하는 방법이에요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>NPS</dt><dd>Net Promoter Score</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=_ioUbQftxBc" target="_blank" rel="noopener">원본 영상 — Ben AI, Anthropic’s Simple Cheat Sheet for Picking Claude Models + Effort</a></li>
+    <li id="src-2"><a href="https://claude.com/resources/articles/claude-model-and-effort-level-in-claude-code" target="_blank" rel="noopener">Lydia Hallie — Choosing a Claude model and effort level in Claude Code (claude.com, 2026-07-07)</a></li>
+    <li id="src-3"><a href="https://claude.com/blog/claude-models-explained" target="_blank" rel="noopener">Michael Segner — Claude models explained (claude.com 블로그, 2026-07-24)</a></li>
+    <li id="src-4"><a href="https://platform.claude.com/docs/en/about-claude/models/choosing-a-model" target="_blank" rel="noopener">Claude 문서 — Choosing a model</a></li>
+    <li id="src-5"><a href="https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence" target="_blank" rel="noopener">Claude 문서 — Optimizing for cost and intelligence</a></li>
+    <li id="src-6"><a href="https://platform.claude.com/docs/en/build-with-claude/effort" target="_blank" rel="noopener">Claude 문서 — Effort</a></li>
+    <li id="src-7"><a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">Claude 문서 — Pricing</a></li>
+    <li id="src-8"><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching" target="_blank" rel="noopener">Claude 문서 — Prompt caching</a></li>
+    <li id="src-9"><a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code 문서 — Skills</a></li>
+    <li id="src-10"><a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code 문서 — Subagents</a></li>
+    <li id="src-11"><a href="https://code.claude.com/docs/en/model-config" target="_blank" rel="noopener">Claude Code 문서 — Model configuration</a></li>
+    <li id="src-12"><a href="https://code.claude.com/docs/en/checkpointing" target="_blank" rel="noopener">Claude Code 문서 — Checkpointing</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 18일에 이 영상을 보고 정리했어요. 원본은 Ben AI 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
