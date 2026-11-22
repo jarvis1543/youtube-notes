@@ -1,0 +1,912 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- yn-lock:start -->
+<style id="yn-lock">html{display:none !important}</style>
+<script>
+(function(){
+  var ok = false;
+  try { ok = localStorage.getItem('yn-unlock') === "0ae0086b8105aef35e25d0e2067cd69300646d3c0e31981f80c62860117bad90"; } catch (e) {}
+  if (ok) { var s = document.getElementById('yn-lock'); s.parentNode.removeChild(s); return; }
+  location.replace(new URL('../', location.href).pathname + '?next=' + encodeURIComponent(location.pathname + location.search + location.hash));
+})();
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  document.addEventListener('keydown', function(e){
+    var c = e.code, mod = e.ctrlKey || e.metaKey;
+    if (e.key === 'F12' ||
+        (mod && e.shiftKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC')) ||
+        (e.metaKey && e.altKey && (c === 'KeyI' || c === 'KeyJ' || c === 'KeyC' || c === 'KeyU')) ||
+        (mod && c === 'KeyU')) {
+      e.preventDefault(); e.stopPropagation();
+    }
+  }, true);
+</script>
+<!-- yn-lock:end -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>토큰 37% 아끼는데 작업 시간은 2배? 클로드 코드 Code Mode 완벽 정리</title>
+<link rel="stylesheet" media="(prefers-color-scheme: light)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<link rel="stylesheet" media="(prefers-color-scheme: dark)" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+  :root{
+    --bg:#fff; --surface:#f9fafb; --surface-2:#f2f4f6;
+    --text:#191f28; --text-sub:#4e5968; --text-mute:#8b95a1;
+    --line:#e5e8eb; --brand:#3182f6; --brand-soft:#e8f3ff;
+    --warn:#ff8a00; --warn-soft:#fff4e6;
+    --info:#00b8a9; --info-soft:#e4f8f6;
+    --ok:#03b26c; --ok-soft:#e5f8ef; --danger:#f04452; --danger-soft:#feeced;
+    /* 그림 범주색: 같은 대상(단계, 역할, 종류)은 문서 전체에서 같은 색 */
+    --c1:#c9e2ff; --c2:#ffe0b3; --c3:#c8f0d8; --c4:#f6d0f0; --c5:#fff1a8; --c6:#d9d4ff;
+    --radius:16px; --maxw:760px; --tocw:232px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#17171c; --surface:#1e1e24; --surface-2:#26262e;
+      --text:#eaeaef; --text-sub:#b0b8c1; --text-mute:#8b95a1;
+      --line:#2e2e38; --brand:#5b9dff; --brand-soft:#1b2a44;
+      --warn:#ffab4a; --warn-soft:#3a2a13;
+      --info:#4fd6c8; --info-soft:#123330;
+      --ok:#3fd68f; --ok-soft:#12301f; --danger:#ff6b76; --danger-soft:#3a1a1d;
+      --c1:#1f3d63; --c2:#5a3d12; --c3:#1c4a30; --c4:#4f2449; --c5:#4d4513; --c6:#352f66;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+      "Noto Sans KR","Segoe UI",Roboto,sans-serif;
+    font-size:17px; line-height:1.75; letter-spacing:-.01em;
+    word-break:keep-all; overflow-wrap:break-word;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 20px 96px}
+  a{color:var(--brand); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── 머리말 ─────────────────────────────────────────── */
+  header{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  header h1{margin:0 0 12px; font-size:34px; line-height:1.35; letter-spacing:-.03em}
+  .lede{margin:0 0 20px; font-size:18px; color:var(--text-sub)}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    font-size:14px; color:var(--text-mute)}
+  .meta .dot{opacity:.4}
+  .src-btn{display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+    padding:10px 16px; border-radius:999px; background:var(--brand-soft);
+    color:var(--brand); font-size:14px; font-weight:600}
+  .src-btn:hover{text-decoration:none; filter:brightness(.97)}
+
+  /* ── 핵심 요약 ──────────────────────────────────────── */
+  .keypoints{margin:32px 0; padding:24px 26px; background:var(--surface);
+    border-radius:var(--radius)}
+  .keypoints h2{margin:0 0 14px; font-size:15px; font-weight:700; color:var(--brand);
+    letter-spacing:.02em}
+  .keypoints ol{margin:0; padding-left:20px}
+  .keypoints li{margin:8px 0; color:var(--text-sub)}
+  .keypoints li strong{color:var(--text)}
+
+  /* ── 목차 ──────────────────────────────────────────── */
+  /* 좁은 화면: 머리말 아래 상자. 넓은 화면(1100px+): 본문 오른쪽에 떠 있고,
+     지금 읽는 절이 파란색으로 표시돼요. */
+  nav.toc{margin:0 0 40px; padding:20px 24px; border:1px solid var(--line);
+    border-radius:var(--radius)}
+  nav.toc h2{margin:0 0 10px; font-size:14px; color:var(--text-mute); font-weight:600}
+  nav.toc ol{margin:0; padding-left:20px}
+  nav.toc li{margin:4px 0; font-size:15px}
+  nav.toc a{display:block; padding:3px 10px; margin-left:-10px; border-radius:8px;
+    color:var(--text-sub); line-height:1.5; transition:background .15s, color .15s}
+  nav.toc a:hover{text-decoration:none; color:var(--text)}
+  nav.toc a.active{color:var(--brand); font-weight:700; background:var(--brand-soft)}
+  @media (min-width:1100px){
+    .wrap{margin-left:max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2))}
+    nav.toc{position:fixed; z-index:20; top:72px; width:var(--tocw);
+      left:calc(max(20px, calc((100vw - var(--maxw) - var(--tocw) - 48px) / 2)) + var(--maxw) + 28px);
+      max-height:calc(100vh - 104px); overflow-y:auto; overscroll-behavior:contain;
+      margin:0; padding:14px 10px 14px 14px; background:var(--bg); scrollbar-width:thin}
+    nav.toc h2{margin-bottom:6px; font-size:13px}
+    nav.toc ol{list-style:none; padding:0}
+    nav.toc li{margin:1px 0; font-size:14px}
+    nav.toc a{margin-left:0; border-left:2px solid transparent; border-radius:0 8px 8px 0}
+    nav.toc a.active{border-left-color:var(--brand)}
+  }
+
+  /* ── 본문 ──────────────────────────────────────────── */
+  section{padding-top:16px; margin-bottom:44px; scroll-margin-top:24px}
+  section h2{margin:0 0 6px; font-size:25px; line-height:1.4; letter-spacing:-.02em}
+  section h3{margin:32px 0 6px; font-size:19px; letter-spacing:-.02em}
+  p{margin:14px 0}
+  ul,ol{padding-left:22px}
+  li{margin:6px 0}
+  strong{font-weight:700}
+
+  .stamp{display:inline-block; margin-bottom:14px; padding:3px 10px; border-radius:8px;
+    background:var(--surface-2); color:var(--text-mute);
+    font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums}
+  a.stamp:hover{background:var(--brand-soft); color:var(--brand); text-decoration:none}
+
+  :target{scroll-margin-top:24px}
+  li:target,.hit{background:var(--brand-soft); border-radius:8px; transition:background .6s}
+  .tail li.hit{padding-inline:8px; margin-inline:-8px}
+  /* 단어집·출처로 건너뛴 뒤 읽던 자리로 돌아가는 버튼 */
+  #jump-back{position:fixed; z-index:40; left:50%; transform:translateX(-50%);
+    bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+    padding:11px 18px; border:0; border-radius:999px; background:var(--brand); color:#fff;
+    font:inherit; font-size:15px; font-weight:600; cursor:pointer; touch-action:manipulation;
+    box-shadow:0 8px 24px rgba(0,0,0,.22)}
+
+  /* ── 그림 ──────────────────────────────────────────── */
+  figure{margin:28px 0}
+  figure img{width:100%; height:auto; display:block; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface)}
+  figcaption{margin-top:10px; font-size:14px; color:var(--text-mute); line-height:1.6}
+  figcaption a{color:var(--text-mute); text-decoration:underline; text-underline-offset:3px}
+
+  /* ── 표 ────────────────────────────────────────────── */
+  .table-scroll{margin:26px 0; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; min-width:460px; font-size:15.5px}
+  th,td{padding:13px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top}
+  thead th{background:var(--surface); font-size:14px; color:var(--text-sub);
+    font-weight:700; white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  /* 화면보다 긴 표: 머리글이 읽는 동안 화면 위에 따라붙어요 (스크립트가 복제해서 띄워요) */
+  .thead-float{position:fixed; z-index:30; top:env(safe-area-inset-top, 0px); overflow:hidden;
+    background:var(--bg); box-shadow:0 4px 10px -4px rgba(0,0,0,.25)}
+  .thead-float table{min-width:0; table-layout:fixed; margin:0}
+  .thead-float th{box-sizing:border-box}
+  td code{font-size:13.5px}
+
+  /* ── 용어 팝업 ─────────────────────────────────────── */
+  /* 탭·클릭하면 카드가 고정돼요. 마우스는 올리기만 해도 미리 보여요. */
+  .term{border-bottom:1.5px dotted var(--brand); color:inherit; cursor:pointer;
+    background:none; border-radius:2px}
+  .term:hover,.term.open{background:var(--brand-soft)}
+  .term:focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+  #tip{position:fixed; z-index:50; width:max-content; max-width:min(360px, calc(100vw - 24px));
+    padding:14px 16px; background:var(--bg); color:var(--text);
+    border:1px solid var(--line); border-radius:14px;
+    font-size:14.5px; line-height:1.65; letter-spacing:-.01em;
+    box-shadow:0 10px 32px rgba(0,0,0,.18); opacity:0; visibility:hidden;
+    transition:opacity .12s ease}
+  #tip.on{opacity:1; visibility:visible}
+  #tip .tt{display:block; font-weight:700; font-size:15.5px}
+  #tip .te{display:block; margin-bottom:6px; font-size:12.5px; color:var(--text-mute)}
+  #tip .go{display:inline-block; margin-top:8px; font-size:13px; font-weight:600}
+
+  /* ── 박스 두 종류 ───────────────────────────────────
+     .more — 영상에 없던 내용을 바깥 출처에서 가져온 것 (출처 링크 필수)
+     .note — 문서를 읽는 데 필요한 안내 (재구성 영상 등, 출처 없음) */
+  aside{margin:26px 0; padding:20px 22px; border-radius:var(--radius)}
+  aside .tag{display:block; margin-bottom:8px; font-size:13px; font-weight:700}
+  aside p{margin:8px 0}
+  aside p:last-child{margin-bottom:0}
+  aside .cite{font-size:13.5px; color:var(--text-sub)}
+  aside.more{background:var(--warn-soft)}
+  aside.more .tag{color:var(--warn)}
+  aside.note{background:var(--info-soft)}
+  aside.note .tag{color:var(--info)}
+  aside .table-scroll{margin:12px 0 0}
+  aside table{min-width:320px; font-size:14.5px}
+  aside th,aside td{padding:9px 12px}
+
+  /* ── 직접 그린 그림 ────────────────────────────────── */
+  figure.diagram{padding:20px; border:1px solid var(--line); border-radius:12px;
+    background:var(--surface); overflow-x:auto}
+  /* 글자 크기는 svg 에 두고 text 가 물려받아요. 그래야 text 의 font-size 속성이 이겨요. */
+  figure.diagram svg{display:block; width:100%; height:auto; min-width:460px;
+    color:var(--text); font-family:inherit; font-size:13px}
+  figure.diagram svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  figure.diagram svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:1.5}
+  figure.diagram svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  figure.diagram svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  figure.diagram svg text{fill:var(--text)}
+  figure.diagram svg text.sub{fill:var(--text-mute); font-size:11.5px}
+  figure.diagram svg text.mono{font-family:"SF Mono",ui-monospace,Menlo,monospace; font-size:12px}
+  /* 범주색: .c1~.c6 은 칸·막대를 칠해요 */
+  svg .c1{fill:var(--c1)} svg .c2{fill:var(--c2)} svg .c3{fill:var(--c3)}
+  svg .c4{fill:var(--c4)} svg .c5{fill:var(--c5)} svg .c6{fill:var(--c6)}
+  svg .cell{stroke:var(--text-mute); stroke-width:1}
+  svg .ok{fill:var(--ok-soft); stroke:var(--ok); stroke-width:1.5}
+  svg .bad{fill:var(--danger-soft); stroke:var(--danger); stroke-width:1.5}
+  svg .ring{fill:none; stroke:var(--brand); stroke-width:2; stroke-dasharray:5 4}
+  svg .dim{opacity:.35}
+  svg .axis{stroke:var(--line); stroke-width:1}
+  svg marker path{fill:var(--text-mute); stroke:none}
+  svg .bar{fill:var(--brand)} svg .bar.alt{fill:var(--warn)}
+  figure.diagram pre.mermaid{margin:0; padding:0; border:0; background:none; text-align:center}
+
+  /* ── 직접 돌려 보기 (explore) ───────────────────────────
+     controls(버튼·슬라이더) · legend · stage(svg) · readout(현재 값·이벤트 로그) */
+  .explore{margin:28px 0; padding:18px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--surface)}
+  .explore > .tag{display:block; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--brand)}
+  .explore .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+  .explore button{padding:8px 14px; border:1px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--text); font:inherit; font-size:14.5px; cursor:pointer;
+    touch-action:manipulation}
+  .explore button.primary{background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600}
+  .explore button:disabled{opacity:.45; cursor:default}
+  .explore label{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-sub)}
+  .explore input[type=range]{width:min(220px, 60vw); accent-color:var(--brand)}
+  .explore output,.explore .val{font-variant-numeric:tabular-nums; font-weight:700; color:var(--text)}
+  .explore .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:0 0 10px; font-size:13px; color:var(--text-sub)}
+  .explore .legend i{display:inline-block; width:12px; height:12px; margin-right:5px; border-radius:3px;
+    vertical-align:-1px; border:1px solid var(--text-mute)}
+  .explore .stage{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px}
+  .explore .stage > *{min-width:0}
+  .explore svg{display:block; width:100%; height:auto; color:var(--text); font-family:inherit; font-size:13px}
+  .explore svg text{fill:var(--text)}
+  .explore svg .box{fill:var(--bg); stroke:var(--line); stroke-width:1.5}
+  .explore svg .accent{fill:var(--brand-soft); stroke:var(--brand); stroke-width:2}
+  .explore svg .line{stroke:var(--text-mute); stroke-width:1.5; fill:none}
+  .explore svg .hot{stroke:var(--brand); stroke-width:2; fill:none}
+  .explore .readout{font-size:14px; color:var(--text-sub)}
+  .explore .events{max-height:220px; overflow:auto; margin:0; padding:10px 12px; list-style:none;
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    font-size:13px; line-height:1.55}
+  .explore .events li{margin:2px 0}
+  .explore .try{margin:14px 0 0; padding:12px 14px; background:var(--bg); border-radius:12px; font-size:15px}
+  .explore .try b{display:block; margin-bottom:4px; color:var(--brand); font-size:13px}
+  .explore .try ol{margin:0; padding-left:20px}
+  @media (max-width:640px){ .explore .stage{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){ .explore *{transition:none!important; animation:none!important} }
+
+  /* ── 따라 하기 단계 · 체크리스트 ─────────────────────── */
+  ol.steps{list-style:none; counter-reset:step; padding:0; margin:20px 0}
+  ol.steps > li{counter-increment:step; position:relative; margin:0 0 14px; padding:14px 16px 14px 56px;
+    background:var(--surface); border-radius:12px}
+  ol.steps > li::before{content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px;
+    border-radius:50%; background:var(--brand); color:#fff; font-weight:700; font-size:14px;
+    display:flex; align-items:center; justify-content:center}
+  ol.steps .done{display:block; margin-top:6px; font-size:14px; color:var(--text-mute)}
+  ol.steps .done::before{content:"확인 · "; font-weight:700; color:var(--info)}
+  ul.checklist{list-style:none; padding:0}
+  ul.checklist li{position:relative; padding-left:30px; margin:10px 0}
+  ul.checklist li::before{content:""; position:absolute; left:2px; top:6px; width:16px; height:16px;
+    border:2px solid var(--brand); border-radius:4px}
+
+  /* ── 단어집 ─────────────────────────────────────────── */
+  .g-filter{width:100%; margin:0 0 12px; padding:10px 14px; border:1px solid var(--line);
+    border-radius:10px; background:var(--bg); color:var(--text); font:inherit; font-size:15px}
+  dl.glossary{margin:0}
+  dl.glossary .g{padding:12px 4px; border-bottom:1px solid var(--line); scroll-margin-top:24px}
+  dl.glossary .g:target{background:var(--brand-soft); border-radius:8px; padding-inline:12px}
+  dl.glossary dt{font-weight:700}
+  dl.glossary dt .en{margin-left:8px; font-weight:400; font-size:13px; color:var(--text-mute)}
+  dl.glossary dd{margin:4px 0 0; font-size:15px; color:var(--text-sub)}
+
+  /* ── 인용 ──────────────────────────────────────────── */
+  blockquote{margin:24px 0; padding:4px 0 4px 18px; border-left:3px solid var(--line);
+    color:var(--text-sub)}
+  blockquote p{margin:6px 0}
+  blockquote cite{display:block; margin-top:8px; font-size:13.5px; color:var(--text-mute);
+    font-style:normal}
+
+  /* ── 코드 ──────────────────────────────────────────── */
+  code{padding:2px 6px; border-radius:6px; background:var(--surface-2);
+    font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace;
+    font-size:.88em}
+  pre{margin:22px 0; padding:18px 20px; border-radius:12px; background:var(--surface);
+    border:1px solid var(--line); overflow-x:auto; line-height:1.6}
+  pre code{padding:0; background:none; font-size:14px}
+  pre code.hljs{padding:0; background:none}
+
+  /* ── 꼬리말 ────────────────────────────────────────── */
+  .tail{margin-top:56px; padding-top:32px; border-top:1px solid var(--line)}
+  .tail h2{font-size:20px; margin:0 0 14px}
+  .tail + .tail{margin-top:40px}
+  .tail ol{padding-left:20px}
+  .tail li{margin:10px 0; font-size:15px; color:var(--text-sub); scroll-margin-top:24px}
+  footer{margin-top:48px; padding-top:24px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--text-mute)}
+
+  @media (max-width:640px){
+    body{font-size:16px}
+    header{padding-top:36px}
+    header h1{font-size:27px}
+    section h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>토큰 37% 아끼는데 작업 시간은 2배? 클로드 코드 Code Mode 완벽 정리</h1>
+  <p class="lede">토큰은 줄지만 속도는 작업마다 달라요. 켜기 전에 볼 것만 모았어요</p>
+  <div class="meta">
+    <span>MINDUNG</span><span class="dot">·</span>
+    <span>영상 06:23</span><span class="dot">·</span>
+    <span>읽는 데 약 10분</span>
+  </div>
+  <a class="src-btn" href="https://www.youtube.com/watch?v=aaTzeVps2XE" target="_blank" rel="noopener">
+    원본 영상 보러 가기 →
+  </a>
+</header>
+
+<div class="keypoints">
+  <h2>핵심만 먼저</h2>
+  <ol>
+    <li>Code Mode는 Claude가 여러 <span class="term" data-term="도구 호출" data-en="Tool call" data-desc="Claude가 파일 읽기, 셸 명령 같은 도구를 한 번 쓰는 단위예요. 기존 방식에서는 호출마다 결과가 Claude에게 돌아와 토큰을 써요." data-g="1">도구 호출</span>을 JavaScript 코드 하나로 묶어 돌리고, 결과 중 필요한 부분만 받아 보게 하는 실험 기능이에요.</li>
+    <li>한 실험에서 <span class="term" data-term="입력 토큰" data-en="Input tokens" data-desc="모델에 보내는 글의 양을 세는 단위예요. 대화 기록, 도구 설명, 도구 결과가 모두 여기에 쌓여 비용과 한도를 깎아요." data-g="4">입력 토큰</span>은 37%, <span class="term" data-term="도구 설명" data-en="System tools" data-desc="어떤 도구가 있고 어떻게 쓰는지 Claude에게 미리 알려 주는 설명서예요. 매 요청에 함께 실려서 토큰을 차지해요." data-g="2">도구 설명</span>은 24,600토큰에서 11,100토큰으로 줄었지만 작업 시간은 15초에서 37초로 늘었어요.</li>
+    <li>빨라진 사례도 있어요. 측정이 대부분 한두 번뿐이라 어느 쪽이 무조건 빠르다고 말하긴 어려워요.</li>
+    <li>MCP(Model Context Protocol)로 외부 자료를 많이 가져오거나 여러 파일에서 정보를 추려내는 작업에 유리하고, 간단한 수정이나 빠른 처리가 중요하면 기존 방식이 나아요.</li>
+    <li><span class="term" data-term="환경 변수" data-en="Environment variable" data-desc="프로그램을 실행할 때 바깥에서 넘겨주는 설정값이에요. Code Mode는 이 값 하나가 1이냐 0이냐로 켜고 꺼요." data-g="5">환경 변수</span> 하나로 켜요. 터미널 전용이고, 기다리는 실행은 10분에 멈추고, Code Mode로 시작한 대화는 Code Mode를 켠 채로만 이어 가요.</li>
+  </ol>
+</div>
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">설정 한 줄로 바뀌는 것: 도구를 코드로 불러요</a></li>
+    <li><a href="#s2">토큰은 줄었는데, 속도는요?</a></li>
+    <li><a href="#s3">어떤 작업에 켜면 좋을까요?</a></li>
+    <li><a href="#s4">알아 둘 제한과 켜는 방법</a></li>
+    <li><a href="#corrections">자막 표기 바로잡기</a></li>
+    <li><a href="#glossary">이 글에 나온 용어</a></li>
+    <li><a href="#sources">참고한 곳</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="s1">
+  <a class="stamp" href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=0s" target="_blank" rel="noopener">00:00</a>
+  <h2>설정 한 줄로 바뀌는 것: 도구를 코드로 불러요</h2>
+<p>한 개발자가 Claude Code에 설정 한 줄을 넣고 똑같은 작업을 다시 돌렸더니 입력 토큰이 37% 줄었어요. 그 한 줄이 켜는 기능이 Code Mode예요. 2026년 11월 12일 Claude Code에 실험 기능으로 들어왔고, Claude가 도구를 쓰는 방식 자체를 바꿔요.</p>
+<p>아래 표가 그 실험이에요. 주문 파일 40개에서 결제 금액이 가장 큰 고객 세 명을 찾게 했어요. 왼쪽 열이 Code Mode를 끈 상태, 오른쪽 열이 켠 상태예요. 초록 줄(첫 요청의 입력 토큰)이 36,404에서 22,233으로, 그 아래 캐시까지 포함한 전체 입력 토큰이 150,364에서 94,659로 줄었어요. 맨 아래 답은 양쪽 모두 initech, umbrella, acme로 같아요.</p>
+<figure>
+  <img src="assets/frame-0005.webp" alt="Code Mode 끔과 켬을 비교한 표. 요청 수 4와 4, 첫 요청 입력 토큰 36,404와 22,233, 캐시 포함 전체 입력 토큰 150,364와 94,659, 출력 토큰 1,172와 1,213, 시간 15초와 37초">
+  <figcaption>
+    영상이 말한 37%는 캐시를 포함한 전체 입력 토큰이 줄어든 비율이에요. 같은 표의 시간 줄은 뒤에서 다시 나와요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=5s" target="_blank" rel="noopener">영상 00:05에서 보기</a>
+  </figcaption>
+</figure>
+<p>특히 크게 줄어든 건 도구 설명이에요. Claude에게 어떤 도구가 있고 어떻게 쓰는지 알려 주는 몫이죠. <code>/context</code>로 보면 System tools가 24.6k 토큰에서 11.1k 토큰으로 절반 넘게 줄어 있어요.</p>
+<figure>
+  <img src="assets/frame-0010.webp" alt="/context 출력 비교. Without Code Mode는 System tools 24.6k tokens (2.5%), With Code Mode는 11.1k tokens (1.1%)">
+  <figcaption>
+    내 세션에서도 첫 답이 나온 뒤 <code>/context</code>를 치면 같은 숫자를 확인할 수 있어요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=10s" target="_blank" rel="noopener">영상 00:10에서 보기</a>
+  </figcaption>
+</figure>
+<h3>같은 일을 어떻게 다르게 하나요</h3>
+<p>영상은 주문 파일 40개 예시로 차이를 보여 줘요. 기존 방식에서는 Claude가 도구를 불러 파일 내용을 받고, 결과를 하나씩 확인하면서 다음 일을 정해요. 주문 내역이 전부 Claude에게 넘어오는 거예요.</p>
+<p>Code Mode에서는 Claude가 여러 도구를 부르는 JavaScript를 직접 써요. 아래 그림의 세 칸처럼 파일 읽기, 고객별 합산, 상위 3명 추리기가 모두 코드 안에서 이어져요. Claude는 마지막 칸의 결과만 받아요.</p>
+<figure>
+  <img src="assets/frame-0116.webp" alt="파일 읽기, 고객별 합산, 상위 3명 세 칸이 화살표로 이어진 흐름도">
+  <figcaption>
+    수많은 주문 내역 대신 계산이 끝난 세 줄만 Claude에게 돌아와요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=76s" target="_blank" rel="noopener">영상 01:16에서 보기</a>
+  </figcaption>
+</figure>
+<p>그래서 토큰이 주는 곳은 두 군데예요. 아래 그림 왼쪽의 <span class="term" data-term="중간 데이터" data-desc="최종 답을 내기 전에 거쳐 가는 자료예요. 이 영상에서는 주문 파일 40개의 원본 내용처럼, 계산에만 쓰이고 답에는 필요 없는 것을 말해요." data-g="3">중간 데이터</span>는 코드 안에서 걸러지고, 오른쪽의 도구 설명은 도구를 코드로 부르게 되면서 훨씬 짧아져요.</p>
+<figure>
+  <img src="assets/frame-0152.webp" alt="왼쪽 중간 데이터, 가운데 Claude, 오른쪽 도구 설명 세 칸이 초록 선으로 이어진 그림">
+  <figcaption>
+    중간 데이터 처리와 도구 설명, 두 곳이 함께 가벼워져요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=112s" target="_blank" rel="noopener">영상 01:52에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 문서의 예시를 보면 Claude가 쓰는 코드는 이런 모양이에요. 파일을 찾고, 고치고, 테스트를 돌린 뒤 마지막 줄의 값만 Claude에게 돌려줘요.</p>
+<pre><code class="language-javascript">const files = await $`rg -l "function retryPolicy" src`.text();
+const target = files.trim().split("\n")[0];
+await edit(target, "maxAttempts: 3", "maxAttempts: 5");
+({ edited: target, tests: $`npm test -- retryPolicy`.nothrow() });</code></pre>
+  <p>대화 화면에는 코드 대신 수정 내용 같은 도구 호출만 보여요. 코드는 따로 열어 봐야 해요(마지막 섹션).</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/code-mode" target="_blank" rel="noopener">Claude Code 공식 문서 — Code Mode</a> · 실험 표: <a href="https://wmedia.es/en/tips/claude-code-code-mode-turn-on" target="_blank" rel="noopener">Wmedia (2026-11-13)</a></p>
+</aside>
+</section>
+
+<section id="s2">
+  <a class="stamp" href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=115s" target="_blank" rel="noopener">01:55</a>
+  <h2>토큰은 줄었는데, 속도는요?</h2>
+<p>토큰이 줄어든 만큼 빨라졌을까요? 꼭 그렇진 않았어요. 앞의 주문 파일 실험에서 시간 줄을 보면, 끈 상태는 15초, 켠 상태는 37초가 걸렸어요. 토큰은 줄었는데 시간은 두 배 넘게 늘었어요.</p>
+<figure>
+  <img src="assets/frame-0202.webp" alt="같은 비교 표의 Time 줄에 15 s와 37 s가 동그라미로 표시되고, 아래에 OFF 15초, ON 37초 스톱워치가 놓인 화면">
+  <figcaption>
+    같은 실험, 같은 답인데 Code Mode 쪽이 22초 더 걸렸어요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=122s" target="_blank" rel="noopener">영상 02:02에서 보기</a>
+  </figcaption>
+</figure>
+<p>더 크게 벌어진 사례도 있어요. 한 개발자가 문서 파일 432개에서 잘못된 링크를 찾게 했어요. 기존 방식은 명령 세 번으로 40초 만에 끝냈어요. Code Mode는 파일 읽기 도구를 742번이나 불러서 1분 36초가 걸렸어요. 화면 아래 흰 상자의 'made 742 Read calls and took 1 min 36 s for $0.62'가 그 기록이에요.</p>
+<figure>
+  <img src="assets/frame-0223.webp" alt="Code Mode 아이콘에서 742개의 선이 퍼져 나가는 그림과 742번이라는 숫자, made 742 Read calls and took 1 min 36 s for $0.62라는 인용 상자">
+  <figcaption>
+    스크립트 하나로 끝낼 일을 수백 번의 호출로 쪼개서 오히려 오래 걸렸어요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=143s" target="_blank" rel="noopener">영상 02:23에서 보기</a>
+  </figcaption>
+</figure>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>이 사례는 Claude Code GitHub 저장소에 올라온 이슈예요. 작성자는 Claude Code 2.1.327, Opus 5.5, 자동 모드로 각각 한 번씩 돌렸어요. 비용은 기존 방식 $0.58, Code Mode $0.62였고, 두 쪽 모두 같은 링크 18개를 찾았어요.</p>
+  <p>작성자는 느려진 이유를 호출마다 거치는 권한 검사와 <span class="term" data-term="PreToolUse 훅" data-en="PreToolUse hook" data-desc="도구가 실행되기 직전에 내가 정한 스크립트를 돌려 허용하거나 막는 Claude Code 기능이에요. 호출마다 한 번씩 돌아요." data-g="9">PreToolUse 훅</span>으로 추정해요. 742번의 Read가 하나하나 그 검사를 지나가니까요. 다만 그 부분은 재지 않았다고 직접 밝혔어요. 훅을 많이 걸어 둔 환경이라면 같은 일이 생길 수 있다는 사용자 보고로 봐 주세요.</p>
+  <p class="cite">출처: <a href="https://github.com/anthropics/claude-code/issues/111033" target="_blank" rel="noopener">anthropics/claude-code 이슈 #111033 (2026-11-18, 사용자 보고)</a></p>
+</aside>
+<h3>빨라진 사례도 있어요</h3>
+<p>그렇다고 늘 느려지진 않아요. 개발자 Flavio Copes가 자기 웹 앱 문서에서 잘못된 파일 링크를 찾게 했을 땐 35초에서 15초로 줄었어요. 아래 표의 동그라미가 그 두 값이에요.</p>
+<figure>
+  <img src="assets/frame-0244.webp" alt="Code Mode off와 on을 비교한 표에서 Broken links time이 35s와 15s로 표시되고, 화면 아래에 35초에서 15초로 바뀌는 화살표가 있는 장면">
+  <figcaption>
+    같은 링크 점검이라도 어떤 문서, 어떤 방식이냐에 따라 결과가 뒤집혀요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=164s" target="_blank" rel="noopener">영상 02:44에서 보기</a>
+  </figcaption>
+</figure>
+<p>프로그램을 빌드하고 <span class="term" data-term="타입 검사" data-en="Type checking" data-desc="코드를 실행하지 않고 변수와 함수의 자료형이 맞는지 따져 보는 단계예요. TypeScript에서는 tsc가 이 일을 해요." data-g="8">타입 검사</span>를 하는 작업도 17초에서 14초로 조금 줄었어요. 화면 위 줄의 Build + tsc 행이 그 결과예요.</p>
+<figure>
+  <img src="assets/frame-0251.webp" alt="Build + tsc + outdated time 행에 17s와 14s가 적힌 표와, 빌드와 타입 검사 아이콘 옆에 14초가 크게 표시된 그림">
+  <figcaption>
+    줄어든 폭은 3초로 크지 않아요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=171s" target="_blank" rel="noopener">영상 02:51에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상에 나온 시간 비교를 한 그림에 모으면 아래와 같아요. 위 두 줄은 켰을 때 느려졌고, 아래 세 줄은 빨라졌어요.</p>
+<figure class="diagram">
+  <svg viewBox="0 0 640 290" role="img" aria-label="Code Mode를 끈 상태와 켠 상태의 작업 시간 비교 막대">
+    <g id="fig-times"></g>
+  </svg>
+  <figcaption>영상이 말한 숫자만 그렸어요. 가장 크게 느려진 건 파일 읽기를 742번 쪼갠 사례예요. 기능 추가 사례의 80초와 60초는 다음 섹션에 나와요.</figcaption>
+</figure>
+<p>영상은 이 결과를 이렇게 정리해요. 아직 대부분 한두 번 잰 결과라 어느 쪽이 무조건 빠르다고 단정하기 어렵고, 토큰이 줄어도 실제 속도는 Claude가 일을 어떤 방식으로 처리하느냐에 따라 달라져요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>Flavio Copes의 글을 보면 두 결과가 갈린 이유가 보여요. 링크 점검에서 끈 상태는 검색 2번과 셸 명령 3번을 하나씩 차례로 돌렸고, 켠 상태는 코드 두 덩어리 안에서 파일 읽기 8번과 셸 명령 16번을 한꺼번에 처리했어요. 빌드 쪽은 원래 표 이름이 'Build + tsc + outdated'로, 의존성 점검까지 포함한 작업이에요. 켠 상태는 <code>Promise.all()</code>로 세 명령을 한 코드에서 동시에 돌렸어요.</p>
+  <p>Copes도 한 프로젝트에서 한 번씩 돌린 결과라 벤치마크가 아니라 예시라고 밝혀요.</p>
+  <p class="cite">출처: <a href="https://flaviocopes.com/claude-code-code-mode/" target="_blank" rel="noopener">Flavio Copes — How to use Code Mode in Claude Code (2026-11-18)</a></p>
+</aside>
+</section>
+
+<section id="s3">
+  <a class="stamp" href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=194s" target="_blank" rel="noopener">03:14</a>
+  <h2>어떤 작업에 켜면 좋을까요?</h2>
+<p>그럼 어떤 작업에 켜야 효과를 볼까요? 영상은 먼저 Anthropic 공식 문서를 보여 줘요. 화면의 초록 형광펜 세 줄이 문서가 꼽은 작업이에요.</p>
+<figure>
+  <img src="assets/frame-0328.webp" alt="Claude Code Docs 페이지에서 Try Code Mode on tasks that take many related tool calls 아래 세 항목이 형광펜으로 표시된 화면">
+  <figcaption>
+    여러 파일에 같은 수정 반복, 읽기 전에 걸러야 하는 검색, 동시에 돌릴 수 있는 독립 명령 여러 개예요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=208s" target="_blank" rel="noopener">영상 03:28에서 보기</a>
+  </figcaption>
+</figure>
+<p>세 줄을 우리말로 옮기면 이래요.</p>
+<ol>
+  <li>여러 파일에 같은 수정을 반복하는 작업</li>
+  <li>Claude가 읽기 전에 검색 결과에서 필요한 정보만 추려야 하는 작업</li>
+  <li>서로 독립적인 명령 여러 개를 동시에 실행하는 작업</li>
+</ol>
+<h3>효과를 본 사례 두 가지</h3>
+<p>첫 번째는 외부 검색이에요. 한 개발자가 MCP로 연결한 검색 도구로 20번 넘게 검색하고, 중복된 결과를 지운 뒤 믿을 만한 출처 12개만 정리하게 했어요. 화면에 동그라미 친 두 숫자처럼 토큰은 63% 줄고, 작업 시간도 29% 빨라졌어요.</p>
+<figure>
+  <img src="assets/frame-0349.webp" alt="블로그 글 일부. On my research test, Code Mode used 63% fewer tokens and finished 29% faster 문장에서 63%와 29%에 빨간 동그라미">
+  <figcaption>
+    결과가 많이 돌아와서 걸러 내야 하는 큰 작업일수록 효과가 커요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=229s" target="_blank" rel="noopener">영상 03:49에서 보기</a>
+  </figcaption>
+</figure>
+<p>두 번째는 코드를 고치는 작업이에요. 기존 프로그램에 새 옵션을 추가하고 관련 테스트까지 쓰게 한 실험인데, 켜고 끈 상태로 세 번씩 돌렸어요. 화면 왼쪽 위 인용문의 '$0.35 a run instead of $0.45'가 비용, '60 seconds instead of 80'이 시간이에요.</p>
+<figure>
+  <img src="assets/frame-0410.webp" alt="Feature with tests: $0.35 a run instead of $0.45, done in about 60 seconds instead of 80 인용문과, 비용 약 23% 감소, 평균 80초에서 60초로라는 자막 카드">
+  <figcaption>
+    비용은 약 23% 줄고, 시간은 평균 80초에서 60초 수준으로 줄었어요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=250s" target="_blank" rel="noopener">영상 04:10에서 보기</a>
+  </figcaption>
+</figure>
+<p>같은 실험에는 반대 결과도 있어요. 파일 20개에 버전 정보를 한 줄씩 추가하는 간단한 작업은 비용과 시간 모두 거의 차이가 없었어요. 화면 목록 맨 아래 '20-file edit: about the same, $0.16 against $0.17'이 그 줄이에요.</p>
+<figure>
+  <img src="assets/frame-0417.webp" alt="세 작업 결과 목록에서 20-file edit: about the same, $0.16 against $0.17 줄이 강조되고, 옆에 저울과 '20개 파일 수정: 거의 같음' 카드">
+  <figcaption>
+    단순 반복 수정은 켜도 이득이 거의 없어요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=257s" target="_blank" rel="noopener">영상 04:17에서 보기</a>
+  </figcaption>
+</figure>
+<p>영상의 판단을 표로 묶으면 이래요.</p>
+<div class="table-scroll">
+  <table>
+    <thead><tr><th>작업</th><th>추천</th><th>영상 속 근거</th></tr></thead>
+    <tbody>
+      <tr><td>MCP로 외부 자료를 많이 가져오는 작업</td><td>Code Mode</td><td>검색 20번 이상: 토큰 63%↓, 시간 29%↓</td></tr>
+      <tr><td>여러 파일에서 필요한 정보만 추려내는 작업</td><td>Code Mode</td><td>공식 문서의 예시, 링크 점검 35초→15초</td></tr>
+      <tr><td>기능 추가와 테스트 작성</td><td>Code Mode</td><td>비용 약 23%↓, 80초→60초</td></tr>
+      <tr><td>간단한 파일 수정</td><td>기존 방식</td><td>파일 20개 수정: 거의 같음</td></tr>
+      <tr><td>빠른 처리가 중요한 작업</td><td>기존 방식</td><td>주문 파일 15초→37초, 문서 432개 40초→1분 36초</td></tr>
+    </tbody>
+  </table>
+</div>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>두 실험의 원문을 보면 조건이 조금 더 보여요. 검색 실험은 AI(Artificial Intelligence)용 검색 도구 Tavily를 MCP로 연결해서 했어요. 작성자는 이 실험을 '내 연구 테스트' 하나로 소개할 뿐, 몇 번 돌렸는지는 밝히지 않았어요.</p>
+  <p>기능 추가 실험은 Opus 5.5, Claude Code 2.1.325로 작업마다 켜고 끈 상태를 세 번씩 새 저장소 사본에서 돌렸어요. 켰을 때 모델에 보낸 요청 수가 10~13번에서 6~8번으로 줄었어요. 23%는 API(Application Programming Interface) 정가로 계산한 비용이에요. 같은 글의 세 번째 작업(Markdown 134개 링크 점검)도 비용이 약 22% 줄었어요.</p>
+  <p class="cite">출처: <a href="https://dev.to/shreyshah/claude-code-has-a-code-mode-now-31mm" target="_blank" rel="noopener">Shrey Shah — Claude Code has a Code Mode now (DEV)</a> · <a href="https://bestagent.dev/claude-code-code-mode-cost-tested-2026" target="_blank" rel="noopener">bestagent.dev — Code Mode cost tested (2026-11-15)</a> · <a href="https://code.claude.com/docs/en/code-mode" target="_blank" rel="noopener">Claude Code 공식 문서</a></p>
+</aside>
+</section>
+
+<section id="s4">
+  <a class="stamp" href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=268s" target="_blank" rel="noopener">04:28</a>
+  <h2>알아 둘 제한과 켜는 방법</h2>
+<p>Code Mode는 아직 실험 기능이라 켜기 전에 알아 둘 제한이 있어요. 첫째, 터미널에서 실행하는 Claude Code에서만 돼요. 화면의 주황 형광펜처럼 VS Code 패널이나 데스크톱 앱에서는 지원하지 않아요.</p>
+<figure>
+  <img src="assets/frame-0443.webp" alt="공식 문서의 Surface 항목. an interactive claude session in a terminal에 초록 형광펜, the VS Code panel, the Desktop app에 주황 형광펜이 칠해진 화면">
+  <figcaption>
+    초록이 되는 곳, 주황이 안 되는 곳이에요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=283s" target="_blank" rel="noopener">영상 04:43에서 보기</a>
+  </figcaption>
+</figure>
+<p>둘째, 실행 시간에 제한이 있어요. 아래 문서의 마지막 항목(Long-running code)처럼, 코드 실행 결과를 기다리는 경우엔 10분이 지나면 멈춰요. 대신 <span class="term" data-term="자동 모드" data-en="Auto mode" data-desc="Claude Code 권한 모드의 하나로, 분류기가 위험한지 판단해서 대부분의 작업을 묻지 않고 승인해요." data-g="6">자동 모드</span>나 <span class="term" data-term="권한 검사 우회 모드" data-en="bypassPermissions" data-desc="권한 확인 창을 띄우지 않고 거의 모든 도구 호출을 바로 실행하는 모드예요. 편하지만 그만큼 위험해요." data-g="7">권한 검사 우회 모드</span>에서 백그라운드로 돌리면 최대 2시간까지 쓸 수 있어요.</p>
+<p>셋째, 같은 목록 맨 위의 Resuming 항목이에요. Code Mode로 시작한 대화를 나중에 이어 가려면 다시 Code Mode를 켠 상태로 실행해야 해요.</p>
+<figure>
+  <img src="assets/frame-0448.webp" alt="공식 문서의 Code Mode limitations 목록. Resuming, Auto mode, Long-running code 세 항목이 보이고, 마지막 항목의 stops after ten minutes가 강조된 화면과 모래시계">
+  <figcaption>
+    10분 제한은 기다리는 실행에만 걸려요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=288s" target="_blank" rel="noopener">영상 04:48에서 보기</a>
+  </figcaption>
+</figure>
+<p>사람마다 자주 하는 작업이 다르니, 영상은 평소 Claude Code에 자주 시키는 작업을 켜고 끈 상태로 각각 돌려 보라고 권해요. 그다음 <code>/cost</code>로 토큰과 작업 시간을 비교하면 나한테 어느 쪽이 유리한지 알 수 있어요.</p>
+<h3>켜는 방법</h3>
+<p>터미널에서 아래 한 줄을 실행하면 돼요. 화면에 보이는 그대로예요.</p>
+<figure>
+  <img src="assets/frame-0527.webp" alt="터미널 창에 $ CLAUDE_CODE_EXPERIMENTAL_CODE_MODE=1 claude가 입력된 화면">
+  <figcaption>
+    환경 변수를 1로 두고 <code>claude</code>를 실행하는 한 줄이에요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=327s" target="_blank" rel="noopener">영상 05:27에서 보기</a>
+  </figcaption>
+</figure>
+<p>처음 실행하면 켤지 묻는 화면이 떠요. 초록 테두리 안의 <b>Yes, turn on Code Mode</b>를 고르면 돼요.</p>
+<figure>
+  <img src="assets/frame-0531.webp" alt="터미널에서 Code Mode를 켤지 묻는 선택 화면. 선택지 Yes, turn on Code Mode에 커서가 놓여 있음">
+  <figcaption>
+    한 번 고르면 다음부터는 묻지 않아요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=331s" target="_blank" rel="noopener">영상 05:31에서 보기</a>
+  </figcaption>
+</figure>
+<p>매번 치기 번거롭다면 설정 파일에 넣어 둬요. 아래 문서 캡처의 마지막 줄처럼 <code>~/.claude/settings.json</code>의 <code>env</code> 블록에 같은 변수를 추가하면, 그다음부터는 <code>claude</code>를 실행할 때마다 자동으로 켜져요.</p>
+<figure>
+  <img src="assets/frame-0535.webp" alt="공식 문서의 How to turn it on 부분. 1. Start with the variable 아래 CLAUDE_CODE_EXPERIMENTAL_CODE_MODE=1 claude, 그 아래 To keep it on, put it in the env block of ~/.claude/settings.json 문장">
+  <figcaption>
+    한 번만 써 볼 땐 명령 한 줄, 계속 쓸 땐 settings.json이에요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=335s" target="_blank" rel="noopener">영상 05:35에서 보기</a>
+  </figcaption>
+</figure>
+<pre><code class="language-json">{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_CODE_MODE": "1"
+  }
+}</code></pre>
+<p>다시 끄고 싶으면 설정값을 <code>"0"</code>으로 바꾸면 돼요. 아래 화면에서 주황 밑줄 친 값이에요.</p>
+<figure>
+  <img src="assets/frame-0547.webp" alt="CLAUDE_CODE_EXPERIMENTAL_CODE_MODE: 0이 적힌 줄과 그 아래 Code Mode 토글 스위치">
+  <figcaption>
+    값 하나로 켜고 꺼요.
+    <a href="https://www.youtube.com/watch?v=aaTzeVps2XE&amp;t=347s" target="_blank" rel="noopener">영상 05:47에서 보기</a>
+  </figcaption>
+</figure>
+<p>참고로 Code Mode에서 Claude가 쓴 JavaScript는 <code>Ctrl+O</code>를 눌러 볼 수 있어요.</p>
+<h3>영상의 마무리</h3>
+<p>영상은 이번 Code Mode에서 토큰 절약보다 방향을 더 눈여겨봐요. Claude가 도구를 하나씩 부르고 결과를 확인하던 방식에서, 여러 작업을 코드로 묶어 처리하는 쪽으로 가고 있다는 거예요. 아직 실험 기능이라 모든 작업이 좋아지길 기대하긴 어렵지만, 터미널에서 여러 파일이나 외부 도구를 자주 다룬다면 직접 켜서 비교해 볼 만해요.</p>
+<aside class="more">
+  <span class="tag">영상에 없는 보충 설명</span>
+  <p>공식 문서에는 영상에 없는 조건이 더 있어요.</p>
+  <ul>
+    <li><b>버전</b>: Claude Code v2.1.323 이상이어야 해요. <code>claude --version</code>으로 확인하고, 낮으면 <code>claude update</code>를 실행해요.</li>
+    <li><b>계정과 경로</b>: Claude 구독이나 Console 계정이어야 해요. 게이트웨이, Amazon Bedrock, Google Cloud, Microsoft Foundry를 거치면 쓸 수 없어요.</li>
+    <li><b>모델</b>: Opus 5.5, Sonnet 5.5, Haiku 5.5, Fable 5.2에서 돼요.</li>
+    <li><b>같이 못 쓰는 기능</b>: Remote Control, Claude in Chrome, computer use는 Code Mode 세션에서 쓸 수 없어요.</li>
+    <li><b>프로젝트 설정 파일은 무시돼요</b>: 이 변수는 사용자 설정(<code>~/.claude/settings.json</code>)이나 셸에서만 먹혀요. 내려받은 저장소가 몰래 Code Mode를 켜지 못하게 막아 둔 거예요.</li>
+    <li><b>끄는 쪽이 이겨요</b>: 셸과 설정 파일 중 한 곳에라도 <code>0</code>이 있으면 다른 곳에 <code>1</code>이 있어도 꺼진 상태예요.</li>
+  </ul>
+  <p>자동 모드에서는 분류기가 도구 호출 하나하나가 아니라 코드 덩어리를 검사해요. 실행 중에 계산되는 값(검색 결과에서 뽑은 경로 같은 것)은 보지 못하니, 꼭 막아야 할 명령은 권한 규칙이나 훅으로 따로 걸어 두라고 문서는 권해요.</p>
+  <p class="cite">출처: <a href="https://code.claude.com/docs/en/code-mode" target="_blank" rel="noopener">Claude Code 공식 문서 — Code Mode</a> · <a href="https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Claude Code CHANGELOG (2.1.323에 Code Mode 추가)</a></p>
+</aside>
+</section>
+
+<section id="corrections">
+  <h2>자막 표기 바로잡기</h2>
+<aside class="note">
+  <span class="tag">자막 관련 참고</span>
+  <p>자동생성 자막이라 영어 이름과 기술 용어가 한국어 소리로 받아적혔어요. 화면과 공식 문서로 이렇게 바로잡았어요.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>자막 표기</th><th>실제</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>클라우드 / 클라우드 코드</td><td>Claude / Claude Code</td><td></td></tr>
+      <tr><td>엔트로피 공식 문서</td><td>Anthropic 공식 문서</td><td></td></tr>
+      <tr><td>플라비오 코페스</td><td>Flavio Copes</td><td>화면 자막에는 &#x27;플라비오 코페스&#x27;로 나와요</td></tr>
+      <tr><td>슬래시 코스트</td><td>/cost</td><td></td></tr>
+      <tr><td>세팅즈 제이슨</td><td>settings.json</td><td>~/.claude/settings.json</td></tr>
+      <tr><td>ENV 항목</td><td>env 블록</td><td></td></tr>
+      <tr><td>예스 턴 온 코드 모드</td><td>Yes, turn on Code Mode</td><td></td></tr>
+      <tr><td>컨트롤 5</td><td>Ctrl+O</td><td>화면 자막과 공식 문서 모두 Ctrl+O</td></tr>
+      <tr><td>주문이 토큰을 절약할 수 있다는 점</td><td>단순히 토큰을 절약할 수 있다는 점</td><td>(추정)</td></tr>
+    </tbody>
+  </table></div>
+</aside>
+</section>
+</main>
+
+<div class="tail" id="glossary">
+  <h2>이 글에 나온 용어</h2>
+  <input class="g-filter" type="search" placeholder="용어 찾기" aria-label="용어 찾기">
+  <dl class="glossary">
+    <div class="g" id="g-7"><dt>권한 검사 우회 모드<span class="en">bypassPermissions</span></dt><dd>권한 확인 창을 띄우지 않고 거의 모든 도구 호출을 바로 실행하는 모드예요. 편하지만 그만큼 위험해요.</dd></div>
+    <div class="g" id="g-2"><dt>도구 설명<span class="en">System tools</span></dt><dd>어떤 도구가 있고 어떻게 쓰는지 Claude에게 미리 알려 주는 설명서예요. 매 요청에 함께 실려서 토큰을 차지해요.</dd></div>
+    <div class="g" id="g-1"><dt>도구 호출<span class="en">Tool call</span></dt><dd>Claude가 파일 읽기, 셸 명령 같은 도구를 한 번 쓰는 단위예요. 기존 방식에서는 호출마다 결과가 Claude에게 돌아와 토큰을 써요.</dd></div>
+    <div class="g" id="g-4"><dt>입력 토큰<span class="en">Input tokens</span></dt><dd>모델에 보내는 글의 양을 세는 단위예요. 대화 기록, 도구 설명, 도구 결과가 모두 여기에 쌓여 비용과 한도를 깎아요.</dd></div>
+    <div class="g" id="g-6"><dt>자동 모드<span class="en">Auto mode</span></dt><dd>Claude Code 권한 모드의 하나로, 분류기가 위험한지 판단해서 대부분의 작업을 묻지 않고 승인해요.</dd></div>
+    <div class="g" id="g-3"><dt>중간 데이터</dt><dd>최종 답을 내기 전에 거쳐 가는 자료예요. 이 영상에서는 주문 파일 40개의 원본 내용처럼, 계산에만 쓰이고 답에는 필요 없는 것을 말해요.</dd></div>
+    <div class="g" id="g-8"><dt>타입 검사<span class="en">Type checking</span></dt><dd>코드를 실행하지 않고 변수와 함수의 자료형이 맞는지 따져 보는 단계예요. TypeScript에서는 tsc가 이 일을 해요.</dd></div>
+    <div class="g" id="g-5"><dt>환경 변수<span class="en">Environment variable</span></dt><dd>프로그램을 실행할 때 바깥에서 넘겨주는 설정값이에요. Code Mode는 이 값 하나가 1이냐 0이냐로 켜고 꺼요.</dd></div>
+    <div class="g"><dt>AI</dt><dd>Artificial Intelligence</dd></div>
+    <div class="g"><dt>API</dt><dd>Application Programming Interface</dd></div>
+    <div class="g"><dt>MCP</dt><dd>Model Context Protocol</dd></div>
+    <div class="g" id="g-9"><dt>PreToolUse 훅<span class="en">PreToolUse hook</span></dt><dd>도구가 실행되기 직전에 내가 정한 스크립트를 돌려 허용하거나 막는 Claude Code 기능이에요. 호출마다 한 번씩 돌아요.</dd></div>
+  </dl>
+</div>
+
+<div class="tail" id="sources">
+  <h2>참고한 곳</h2>
+  <ol>
+    <li id="src-1"><a href="https://www.youtube.com/watch?v=aaTzeVps2XE" target="_blank" rel="noopener">원본 영상 — MINDUNG</a></li>
+    <li id="src-2"><a href="https://code.claude.com/docs/en/code-mode" target="_blank" rel="noopener">Claude Code 공식 문서 — Run tool calls from code with Code Mode</a></li>
+    <li id="src-3"><a href="https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Claude Code CHANGELOG (2.1.323, Code Mode 추가)</a></li>
+    <li id="src-4"><a href="https://wmedia.es/en/tips/claude-code-code-mode-turn-on" target="_blank" rel="noopener">Wmedia — Claude Code Code Mode 켜기와 토큰 비교 (2026-11-13)</a></li>
+    <li id="src-5"><a href="https://github.com/anthropics/claude-code/issues/111033" target="_blank" rel="noopener">anthropics/claude-code 이슈 #111033 — Code Mode가 파일마다 Read를 한 번씩 부르는 문제</a></li>
+    <li id="src-6"><a href="https://flaviocopes.com/claude-code-code-mode/" target="_blank" rel="noopener">Flavio Copes — How to use Code Mode in Claude Code (2026-11-18)</a></li>
+    <li id="src-7"><a href="https://dev.to/shreyshah/claude-code-has-a-code-mode-now-31mm" target="_blank" rel="noopener">Shrey Shah — Claude Code has a Code Mode now (DEV)</a></li>
+    <li id="src-8"><a href="https://bestagent.dev/claude-code-code-mode-cost-tested-2026" target="_blank" rel="noopener">bestagent.dev — Claude Code&#x27;s Code Mode, tested (2026-11-15)</a></li>
+  </ol>
+</div>
+
+<footer>2026년 11월 23일에 이 영상을 보고 정리했어요. 원본은 MINDUNG 채널에 있어요.</footer>
+
+</div>
+
+<div id="tip" role="dialog" aria-live="polite"></div>
+<button type="button" id="jump-back" hidden>↩ 읽던 곳으로</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module">
+  // Mermaid 다이어그램: 라이트/다크 테마를 시스템 설정에 맞춘다. 오프라인이면 소스가 그대로 보인다.
+  if (document.querySelector('pre.mermaid')) {
+    try {
+      const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
+      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' });
+      await mermaid.run({ querySelector: 'pre.mermaid' });
+    } catch (e) { console.warn('mermaid unavailable', e); }
+  }
+</script>
+<script>
+(function () {
+  // ── 코드 하이라이트 ─────────────────────────────────
+  if (window.hljs) document.querySelectorAll('pre code[class^="language-"]').forEach(function (b) { hljs.highlightElement(b); });
+
+  // ── 용어 팝업 ───────────────────────────────────────
+  // 탭·클릭하면 카드가 고정되고, 바깥을 누르거나 Esc 로 닫혀요.
+  // 마우스는 올리기만 해도 미리 보여요(터치에서 생기는 가짜 hover 는 무시해요).
+  var tip = document.getElementById('tip');
+  var open = null, pinned = false, hideTimer = null;
+
+  function place(el) {
+    var r = el.getBoundingClientRect();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var left = Math.min(Math.max(12, r.left + r.width / 2 - tw / 2), vw - tw - 12);
+    var top = r.bottom + 8;
+    if (top + th > vh - 12) top = Math.max(12, r.top - th - 8);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function show(el) {
+    clearTimeout(hideTimer);
+    var desc = el.getAttribute('data-desc');
+    if (!desc) return;
+    if (open && open !== el) open.classList.remove('open');
+    tip.innerHTML = '';
+    var tt = document.createElement('span'); tt.className = 'tt';
+    tt.textContent = el.getAttribute('data-term') || el.textContent; tip.appendChild(tt);
+    var en = el.getAttribute('data-en');
+    if (en) { var te = document.createElement('span'); te.className = 'te'; te.textContent = en; tip.appendChild(te); }
+    tip.appendChild(document.createTextNode(desc));
+    var g = el.getAttribute('data-g');
+    if (g) {
+      tip.appendChild(document.createElement('br'));
+      var a = document.createElement('a'); a.className = 'go'; a.href = '#g-' + g; a.textContent = '용어 모음에서 보기 ↓';
+      tip.appendChild(a);
+    }
+    tip.classList.add('on'); el.classList.add('open'); open = el; place(el);
+  }
+  function hide(force) {
+    if (pinned && !force) return;
+    pinned = false;
+    if (open) open.classList.remove('open');
+    open = null; tip.classList.remove('on');
+  }
+
+  document.querySelectorAll('.term').forEach(function (el) {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse' && !pinned) show(el); });
+    el.addEventListener('pointerleave', function (e) {
+      if (e.pointerType === 'mouse' && !pinned) hideTimer = setTimeout(function () { hide(); }, 150);
+    });
+    el.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (pinned && open === el) return hide(true);
+      show(el); pinned = true;
+    });
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+  tip.addEventListener('pointerenter', function () { clearTimeout(hideTimer); });
+  tip.addEventListener('pointerleave', function () { if (!pinned) hideTimer = setTimeout(function () { hide(); }, 150); });
+  tip.addEventListener('click', function (e) { e.stopPropagation(); if (e.target.tagName === 'A') hide(true); });
+  document.addEventListener('click', function () { hide(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(true); });
+  window.addEventListener('scroll', function () { if (open) place(open); }, { passive: true });
+  window.addEventListener('resize', function () { if (open) place(open); });
+
+  // ── 용어 찾기 ───────────────────────────────────────
+  var gf = document.querySelector('.g-filter');
+  if (gf) gf.addEventListener('input', function () {
+    var q = gf.value.trim().toLowerCase();
+    document.querySelectorAll('dl.glossary .g').forEach(function (it) {
+      it.hidden = !!q && it.textContent.toLowerCase().indexOf(q) < 0;
+    });
+  });
+
+  // ── 긴 표의 머리글 띄우기 ─────────────────────────────
+  // 표가 화면 높이보다 길면, 머리글이 화면 위로 지나간 뒤에도 복제본이 위에 붙어 있어요.
+  // 가로로 스크롤되는 표는 복제본도 같이 움직여요.
+  document.querySelectorAll('.table-scroll').forEach(function (box) {
+    var table = box.querySelector('table'), head = table && table.tHead;
+    if (!head) return;
+    var bar = document.createElement('div'); bar.className = 'thead-float'; bar.hidden = true;
+    bar.setAttribute('aria-hidden', 'true');
+    var copy = document.createElement('table'); copy.appendChild(head.cloneNode(true));
+    bar.appendChild(copy); document.body.appendChild(bar);
+    function size() {
+      var r = box.getBoundingClientRect(), cs = getComputedStyle(table);
+      bar.style.left = r.left + 'px'; bar.style.width = box.clientWidth + 'px';
+      copy.style.width = table.offsetWidth + 'px'; copy.style.fontSize = cs.fontSize;
+      var src = head.rows[0].cells, dst = copy.tHead.rows[0].cells;
+      for (var i = 0; i < src.length && i < dst.length; i++) {
+        dst[i].style.width = src[i].getBoundingClientRect().width + 'px';
+        dst[i].style.padding = getComputedStyle(src[i]).padding;
+      }
+    }
+    function update() {
+      var r = table.getBoundingClientRect(), h = head.offsetHeight;
+      var on = table.offsetHeight > window.innerHeight && r.top < 0 && r.bottom > h * 2;
+      if (on && bar.hidden) size();
+      bar.hidden = !on;
+      if (on) copy.style.transform = 'translateX(' + (-box.scrollLeft) + 'px)';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', function () { if (!bar.hidden) size(); update(); });
+    box.addEventListener('scroll', update, { passive: true });
+    update();
+  });
+
+  // ── 목차: 지금 읽는 절을 파란색으로 ───────────────────
+  // 화면 위쪽 40% 선을 지난 마지막 절이 '지금 읽는 절'이에요.
+  var toc = document.querySelector('nav.toc');
+  var spy = [].slice.call(document.querySelectorAll('nav.toc a[href^="#"]')).map(function (a) {
+    return { a: a, el: document.getElementById(a.getAttribute('href').slice(1)) };
+  }).filter(function (x) { return x.el; });
+  var current = null, ticking = false;
+  function markToc() {
+    ticking = false;
+    var line = window.innerHeight * 0.4, cur = null;
+    for (var i = 0; i < spy.length; i++) {
+      if (spy[i].el.getBoundingClientRect().top <= line) cur = spy[i]; else break;
+    }
+    var de = document.documentElement;
+    if (spy.length && window.scrollY + window.innerHeight >= de.scrollHeight - 4) cur = spy[spy.length - 1];
+    if (cur === current) return;
+    if (current) { current.a.classList.remove('active'); current.a.removeAttribute('aria-current'); }
+    current = cur;
+    if (!cur) return;
+    cur.a.classList.add('active'); cur.a.setAttribute('aria-current', 'location');
+    // 떠 있는 목차가 길면 지금 항목이 보이도록 목차 안에서만 굴려요.
+    if (toc && getComputedStyle(toc).position === 'fixed') {
+      var t = cur.a.offsetTop, h = toc.clientHeight;
+      if (t < toc.scrollTop + 40 || t > toc.scrollTop + h - 40) toc.scrollTop = t - h / 2;
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(markToc); }
+  }, { passive: true });
+  window.addEventListener('resize', markToc);
+  markToc();
+
+  // ── 페이지 안 이동: 주소에 #이 남고, 뒤로 가기로 읽던 자리에 돌아와요 ──
+  // 건너뛰기 전 위치를 지금 기록에 적어 두고(replaceState), 새 기록을 쌓아요(pushState).
+  // 앱 화면처럼 뒤로 가기가 안 먹는 곳을 위해 '읽던 곳으로' 버튼도 띄워요.
+  var back = document.getElementById('jump-back');
+  var returnY = null, pushed = false;
+  try { history.scrollRestoration = 'manual'; } catch (e) {}
+  function flash(el) {
+    el.classList.add('hit');
+    setTimeout(function () { el.classList.remove('hit'); }, 2400);
+  }
+  function go(id, smooth) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    el.scrollIntoView({ block: el.tagName === 'SECTION' || el.classList.contains('tail') ? 'start' : 'center',
+      behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' });
+    return el;
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!id || !document.getElementById(id)) return;
+    e.preventDefault();
+    var fromToc = !!a.closest('nav.toc');
+    var y = window.scrollY;
+    try {
+      history.replaceState({ y: y }, '');
+      history.pushState({ to: id }, '', '#' + id);
+      pushed = true;
+    } catch (err) { pushed = false; }
+    var el = go(id, fromToc);
+    if (!fromToc) {
+      returnY = y;
+      if (el && el.tagName !== 'SECTION' && !el.classList.contains('tail')) flash(el);
+      back.hidden = false;
+    }
+  }, true);
+  back.addEventListener('click', function () {
+    if (pushed) history.back();
+    else if (returnY !== null) { window.scrollTo(0, returnY); back.hidden = true; returnY = null; }
+  });
+  window.addEventListener('popstate', function (e) {
+    var st = e.state || {};
+    if (typeof st.y === 'number') {
+      window.scrollTo(0, st.y);
+      back.hidden = true; returnY = null;
+    } else if (st.to) {
+      var el = go(st.to, false); if (el) flash(el);
+    } else if (location.hash.length > 1) {
+      go(decodeURIComponent(location.hash.slice(1)), false);
+    } else if (returnY !== null) {
+      window.scrollTo(0, returnY); back.hidden = true; returnY = null;
+    }
+  });
+})();
+</script>
+<script>
+// widgets/figures.js
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, text) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  return e;
+};
+(() => {
+  const g = document.getElementById('fig-times');
+  if (!g) return;
+  const rows = [
+    ['주문 파일 40개', 15, 37],
+    ['문서 432개 링크', 40, 96],
+    ['Copes 링크 점검', 35, 15],
+    ['빌드·타입 검사', 17, 14],
+    ['기능+테스트 (평균)', 80, 60],
+  ];
+  const x0 = 170, scale = 3.4;
+  const fmt = (s) => (s === 96 ? '1분 36초' : `${s}초`);
+  g.append(el('rect', { x: x0, y: 6, width: 14, height: 10, class: 'c4 cell' }));
+  g.append(el('text', { x: x0 + 20, y: 15, class: 'sub' }, '끈 상태'));
+  g.append(el('rect', { x: x0 + 90, y: 6, width: 14, height: 10, class: 'c1 cell' }));
+  g.append(el('text', { x: x0 + 110, y: 15, class: 'sub' }, '켠 상태'));
+  rows.forEach(([name, off, on], i) => {
+    const y = 34 + i * 50;
+    g.append(el('text', { x: x0 - 10, y: y + 20, 'text-anchor': 'end' }, name));
+    g.append(el('rect', { x: x0, y, width: off * scale, height: 16, class: 'c4 cell' }));
+    g.append(el('text', { x: x0 + off * scale + 6, y: y + 12, class: 'sub' }, fmt(off)));
+    g.append(el('rect', { x: x0, y: y + 18, width: on * scale, height: 16, class: 'c1 cell' }));
+    g.append(el('text', { x: x0 + on * scale + 6, y: y + 30, class: on > off ? 'sub bad' : 'sub ok' }, fmt(on) + (on > off ? ' (느려짐)' : ' (빨라짐)')));
+  });
+})();
+</script>
+</body>
+</html>
